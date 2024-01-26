@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<!-- 引入 header -->
+<head th:include="layout/common/common-header::common-header('无权限', '无权限')"></head>
+<!-- 引入 script 脚本 -->
+<div th:include="layout/common/common-script::common-script"></div>
+
+<body class="docs loader">
+<div class="container-fluid container-docs">
+    <!-- 引入 navigation 菜单栏 -->
+    <div th:include="layout/common/common-navigation::common-navigation(null)"></div>
+    <div class="main-content row position-relative pb-5">
+        <div class="col-xl-9 docs-content pb-5">
+            <div th:include="layout/common/common-error::common-error('403', 'Forbidden', '对该资源的访问被拒绝。')"></div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:include="layout/common/common-header::common-header('最热文章', '最热文章')"></head>
+<div th:include="layout/common/common-script::common-script"></div>
+<body class="docs loader">
+<div class="container-fluid container-docs">
+    <!-- 引入 navigation 菜单栏 -->
+    <div th:include="layout/common/common-navigation::common-navigation(null)"></div>
+    <div class="main-content row position-relative pb-5">
+        <div class="col-xl-9 docs-content pb-5">
+            <div th:include="layout/index/index-navbar::index-navbar(${activeNavbar})"></div>
+            <div th:include="layout/index/index-navbar-data::index-navbar-data(${response.data.content})"></div>
+            <div th:include="layout/common/common-pagination::common-pagination(${activeNavbar}, ${response.data.page})"></div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

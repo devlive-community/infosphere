@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:if="${response}" th:include="layout/common/common-header::common-header('编辑文章', '编辑文章')"></head>
+<head th:else th:include="layout/common/common-header::common-header('写文章', '写文章')"></head>
+<div th:include="layout/common/common-script::common-script"></div>
+<body class="docs loader">
+<div class="container-fluid container-docs">
+    <div th:include="layout/common/common-navigation::common-navigation(null)"></div>
+    <div class="main-content position-relative pb-5" style="padding-left: 0;">
+        <div class="col-xl-12 docs-content pb-5 mt-7" style="padding: 0;">
+            <div class="card">
+                <!-- 顶部工具栏 -->
+                <div class="card-header d-flex justify-content-between align-items-center" style="padding: 10px;">
+                    <div class="ml-auto">
+                        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#configureModal">文章设置</button>
+                    </div>
+                </div>
+
+                <!-- 编辑器 -->
+                <div class="card-body" style="padding: 0;">
+                    <div th:include="layout/editor/md-editor::md-editor(${response?.data?.content}, null, null, null)"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文章属性 -->
+    <div class="modal fade" id="configureModal" tabindex="-1" role="dialog" aria-labelledby="configureModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="modal-title" id="exampleModalLabel">文章配置</span>
+                    <button type="button" class="close btn-sm" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form class="mt-4">
+                        <div class="form-group">
+                            <label class="form-control-label">文章标题</label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">
+                                        <i data-feather="file-text"></i>
+                                    </span>
+                                </div>
+                                <input type="text" class="form-control" placeholder="请输入文章标题" name="title" th:value="${response?.data?.title}"/>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary btn-sm btn-publish">发布文章</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</div>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    $('.btn-publish').click(function () {
+        const that = this;
+        $(that).prop('disabled', true);
+
+        let notify = new NotifyEntity('', '文章内容不能为空!!!');
+        const config = new NotifyConfigEntity();
+        config.type = 'danger';
+        config.icon = 'alert-triangle';
+
+        const articleInfo = new ArticleEntity();
+        articleInfo.id = [[${response?.data?.id}]];
+        articleInfo.title = $('input[name="title"]').val()
+        articleInfo.content = MdEditor.getValue();
+
+        if (articleInfo.title === undefined || articleInfo.title.trim() === '') {
+            notify.message = '文章标题不能为空!';
+            CommonNotify.initNotify(notify, config);
+            $(that).prop('disabled', false);
+            return false;
+        }
+
+        if (articleInfo.content.trim() === '') {
+            notify.message = '文章内容不能为空!'
+            CommonNotify.initNotify(notify, config);
+            $(that).prop('disabled', false);
+            return false;
+        }
+
+        HttpUtils.post('/api/v1/article', articleInfo, function (response) {
+            if (response.status) {
+                $('#configureModal').modal('hide');
+
+                config.type = 'success';
+                notify.message = `发布 [ ${articleInfo.title} ] 成功，即将跳转到文章详情页面`;
+                CommonNotify.initNotify(notify, config);
+                setTimeout(() => {
+                    window.location.href = `/viewer/article/${response.data.code}`;
+                }, 1000);
+            }
+            else {
+                notify.message = response.message;
+                CommonNotify.initNotify(notify, config);
+            }
+        }).fail(function (error) {
+            notify.message = error;
+            CommonNotify.initNotify(notify, config);
+        }).always(function () {
+            $(that).prop('disabled', false);
+        });
+    });
+    /*]]>*/
+</script>
+</html>

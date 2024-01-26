@@ -1,0 +1,18 @@
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<div th:fragment="index-navbar-data(response)">
+
+    <div th:each="article, index : ${response}" class="card shadow-none mt-3">
+        <div class="p-3 d-flex">
+            <div class="icon icon-shape rounded-circle text-white mr-4">
+                <img th:if="${article.user.avatar}" class="avatar rounded-circle avatar-sm" th:src="${article.user.avatar}" th:alt="${article.user.avatar}"/>
+                <span th:else th:text="${article.user.username.substring(0, 2)}" class="avatar bg-primary text-white rounded-circle avatar-sm"></span>
+            </div>
+            <div>
+                <span class="h6">
+                    <a th:target="_blank" th:href="@{'/viewer/article/' + ${article.code}}" th:text="${article.title}"></a>
+                </span>
+                <div class="text-sm text-muted mb-0" th:text="${#strings.length(article.content) > 200 ? article.content.substring(0, 200) + '...' : article.content}"></div>
+            </div>
+        </div>
+    </div>
+</div>

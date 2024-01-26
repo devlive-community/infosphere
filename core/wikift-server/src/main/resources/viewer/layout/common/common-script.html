@@ -1,0 +1,39 @@
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<div th:fragment="common-script">
+    <!-- jQuery -->
+    <script th:src="@{/static/js/vender/jquery/jquery.min.js}"></script>
+    <script th:src="@{/static/js/vender/jquery/jquery.select2.full.min.js}"></script>
+    <script th:src="@{/static/js/vender/jquery/jquery.template.min.js}"></script>
+    <script th:src="@{/static/js/vender/jquery/jquery.waves.min.js}"></script>
+
+    <!-- Bootstrap -->
+    <script th:src="@{/static/js/vender/bootstrap/bootstrap.min.js}"></script>
+    <script th:src="@{/static/js/vender/bootstrap/bootstrap.tether.min.js}"></script>
+
+    <!-- 其他脚本 -->
+    <script th:src="@{/static/js/vender/svg-injector/svg-injector.min.js}"></script>
+    <script th:src="@{/static/js/vender/feather-icons/feather.min.js}"></script>
+    <script>
+        feather.replace({
+            'width': '1em',
+            'height': '1em'
+        })
+    </script>
+    <script th:src="@{/static/js/vender/quick/quick.min.js}"></script>
+
+    <!-- 站点工具脚本 -->
+    <script th:src="@{/static/js/utils/storage.js}"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const authToken = StorageUtils.get('USER_TOKEN');
+        /*]]>*/
+    </script>
+    <script th:src="@{/static/js/utils/http.js}"></script>
+
+    <!-- 站点对象脚本 -->
+    <script th:src="@{/static/js/entity/user.js}"></script>
+    <script th:src="@{/static/js/entity/article.js}"></script>
+
+    <!-- 通知组件 -->
+    <div th:include="layout/common/common-notify::common-notify"></div>
+</div>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:include="layout/common/common-header::common-header(${response.data.title}, ${response.data.title})"></head>
+<div th:include="layout/common/common-script::common-script"></div>
+<body class="docs loader">
+<div class="container-fluid container-docs">
+    <div th:include="layout/common/common-navigation::common-navigation(${response.data})"></div>
+    <input type="hidden" id="website-access-article" th:value="${response.data.code}"/>
+    <div class="main-content row position-relative pb-5">
+        <div class="col-xl-9 docs-content pb-5 mt-7">
+            <div class="card">
+                <div class="card-body">
+                    <!-- 文章基本信息 -->
+                    <div th:include="layout/article/article-description::article-description(${response.data}, null)" class="card-title"></div>
+
+                    <!-- 文章内容 -->
+                    <div th:include="layout/article/article-context::article-context(${response.data}, true)" class="card-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

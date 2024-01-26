@@ -1,0 +1,16 @@
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<div th:fragment="article-description(details, type)">
+    <div class="container mt-3">
+        <div class="row">
+            <!-- 创建时间 -->
+            <div class="col-md-8">
+                <em th:text="${#dates.format(details.createTime,'yyyy年MM月dd日 HH:mm:ss')}"></em>
+            </div>
+
+            <!-- 操作功能 -->
+            <div class="col-md-4 text-right">
+                <a class="btn btn-link btn-xs" th:target="_blank" th:href="@{'/viewer/article/' + ${details.code} + '/edit'}">修改</a>
+            </div>
+        </div>
+    </div>
+</div>

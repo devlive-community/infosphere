@@ -1,0 +1,27 @@
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<div th:fragment="md-editor(content, spaces, tags, types)">
+    <div th:include="layout/editor/md-editor-script::md-editor-script"></div>
+    <div id="wikift-editor"></div>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const content = [[${content}]];
+        const editor = new EditorEntity('wikift-editor');
+        if (content) {
+            editor.markdown = content;
+        }
+        const config = new EditorConfigEntity();
+        config.libPath = '/static/js/vender/editor-md/lib/';
+        // 当前窗口高度
+        const windowHeight = parseInt($(window).height());
+        // header 头高度
+        const headerHeight = parseInt($('header').height());
+        // footer 高度
+        const footerHeight = parseInt($('footer').height());
+        // 工具栏高度
+        const toobarHeight = parseInt($('#editor-toolbar').height());
+        config.height = windowHeight - (headerHeight + footerHeight + toobarHeight);
+        // 初始化编辑器
+        MdEditor.initEditor(editor, config);
+        /*]]>*/
+    </script>
+</div>

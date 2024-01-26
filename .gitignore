@@ -1,0 +1,62 @@
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# mac os #
+.DS_Store
+
+# idea #
+.idea
+*.iml
+target/
+*.versionsBackup
+
+_site
+.sass-cache
+.jekyll-cache
+.jekyll-metadata
+vendor
+Odin.ai
+.DS_Store
+Gemfile.lock
+*.iml
+modules.xml
+vcs.xml
+.idea
+
+.DS_Store
+dist/electron/*
+dist/web/*
+build/*
+!build/icons
+package-lock.json
+node_modules/
+npm-debug.log
+npm-debug.log.*
+thumbs.db
+!.gitkeep
+*.log
+yarn.lock
+
+.idea/
+
+site/
