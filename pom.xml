@@ -2,26 +2,26 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.devlive.wikift</groupId>
-    <artifactId>wikift</artifactId>
+    <groupId>org.devlive.infosphere</groupId>
+    <artifactId>infosphere</artifactId>
     <packaging>pom</packaging>
     <version>1.5.0-SNAPSHOT</version>
 
     <modules>
-        <module>core/wikift-common</module>
-        <module>core/wikifi-service</module>
-        <module>core/wikift-server</module>
-        <module>core/wikift-security</module>
+        <module>core/infosphere-common</module>
+        <module>core/infosphere-service</module>
+        <module>core/infosphere-server</module>
+        <module>core/infosphere-security</module>
     </modules>
 
-    <name>wikift</name>
-    <description>Wikift 是一套开源的易用的知识管理系统。</description>
-    <url>https://wikift.devlive.org</url>
+    <name>incubator-infosphere</name>
+    <description>InfoSphere 是一款面向企业和个人的开源 Wiki 系统，旨在提供简单而强大的知识管理解决方案。</description>
+    <url>https://infosphere.devlive.org</url>
 
     <scm>
-        <url>https://wikift.devlive.org</url>
-        <connection>scm:git:git://github.com/devlive-community/wikift.git</connection>
-        <developerConnection>scm:git:git@github.com:devlive-community/wikift.git</developerConnection>
+        <url>https://infosphere.devlive.org</url>
+        <connection>scm:git:git://github.com/devlive-community/incubator-infosphere.git</connection>
+        <developerConnection>scm:git:git@github.com:devlive-community/incubator-infosphere.git</developerConnection>
         <tag>wiki</tag>
     </scm>
 
@@ -49,24 +49,9 @@
         <mysql.version>8.0.30</mysql.version>
         <guava.version>32.1.3-jre</guava.version>
         <jjwt.version>0.9.1</jjwt.version>
+        <jaxb.version>2.3.1</jaxb.version>
         <environment.compile.java.version>1.8</environment.compile.java.version>
-
-        <!-- sdfasadsfadfadsfafdasf -->
-        <!-- plugins version -->
         <plugin.maven.compiler.version>3.2</plugin.maven.compiler.version>
-        <plugin.frontend.version>1.6</plugin.frontend.version>
-        <plugin.springboot.version>1.1.8.RELEASE</plugin.springboot.version>
-        <plugin.docker.version>0.23.0</plugin.docker.version>
-        <!-- dependencie version -->
-        <spring.boot.version>1.5.6.RELEASE</spring.boot.version>
-        <spring.security.version>1.5.9.RELEASE</spring.security.version>
-        <spring.security.jwt.version>1.0.8.RELEASE</spring.security.jwt.version>
-        <spring.security.oauth2.version>2.1.1.RELEASE</spring.security.oauth2.version>
-        <lombok.version>1.16.16</lombok.version>
-        <google.collections.version>1.0-rc2</google.collections.version>
-        <apacheds.server.jndi.version>1.5.5</apacheds.server.jndi.version>
-        <spring.data.commons.version>1.13.9.RELEASE</spring.data.commons.version>
-        <docker.image.prefix>wikift</docker.image.prefix>
     </properties>
 
     <dependencies>
@@ -139,142 +124,13 @@
                 <artifactId>jjwt</artifactId>
                 <version>${jjwt.version}</version>
             </dependency>
-
-            <!--            <dependency>-->
-            <!--                <groupId>com.wikift</groupId>-->
-            <!--                <artifactId>wikift-model</artifactId>-->
-            <!--                <version>${project.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>com.wikift</groupId>-->
-            <!--                <artifactId>wikift-support</artifactId>-->
-            <!--                <version>${project.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>com.wikift</groupId>-->
-            <!--                <artifactId>wikift-common</artifactId>-->
-            <!--                <version>${project.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>com.wikift</groupId>-->
-            <!--                <artifactId>wikift-job</artifactId>-->
-            <!--                <version>${project.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>com.wikift</groupId>-->
-            <!--                <artifactId>wikift-support-com.wikift.support.ldap</artifactId>-->
-            <!--                <version>${project.version}</version>-->
-            <!--            </dependency>-->
-            <!-- spring boot -->
-            <!--            <dependency>-->
-            <!--                <groupId>org.springframework.boot</groupId>-->
-            <!--                <artifactId>spring-boot-starter-web</artifactId>-->
-            <!--                <version>${spring.boot.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>org.springframework.boot</groupId>-->
-            <!--                <artifactId>spring-boot-devtools</artifactId>-->
-            <!--                <version>${spring.boot.version}</version>-->
-            <!--                <scope>runtime</scope>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>org.springframework.boot</groupId>-->
-            <!--                <artifactId>spring-boot-starter-security</artifactId>-->
-            <!--                <version>${spring.security.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>org.springframework.security.oauth</groupId>-->
-            <!--                <artifactId>spring-security-oauth2</artifactId>-->
-            <!--                <version>${spring.security.oauth2.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>org.springframework.security</groupId>-->
-            <!--                <artifactId>spring-security-jwt</artifactId>-->
-            <!--                <version>${spring.security.jwt.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>com.fasterxml.jackson.core</groupId>-->
-            <!--                <artifactId>jackson-databind</artifactId>-->
-            <!--                <version>${jackson.databind.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>mysql</groupId>-->
-            <!--                <artifactId>mysql-connector-java</artifactId>-->
-            <!--                <version>${mysql.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>com.google.collections</groupId>-->
-            <!--                <artifactId>google-collections</artifactId>-->
-            <!--                <version>${google.collections.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                &lt;!&ndash; Is the ApacheDS server; as noted above, 1.5.6 and 1.5.7 don't work &ndash;&gt;-->
-            <!--                <groupId>org.apache.directory.server</groupId>-->
-            <!--                <artifactId>apacheds-server-jndi</artifactId>-->
-            <!--                <version>${apacheds.server.jndi.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>org.springframework.data</groupId>-->
-            <!--                <artifactId>spring-data-commons</artifactId>-->
-            <!--                <version>${spring.data.commons.version}</version>-->
-            <!--            </dependency>-->
-            <!--            <dependency>-->
-            <!--                <groupId>org.apache.commons</groupId>-->
-            <!--                <artifactId>commons-collections4</artifactId>-->
-            <!--                <version>4.2</version>-->
-            <!--            </dependency>-->
+            <dependency>
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>${jaxb.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
-
-    <!--    <build>-->
-    <!--        <pluginManagement>-->
-    <!--            <plugins>-->
-    <!--                &lt;!&ndash; 构建可执行jar &ndash;&gt;-->
-    <!--                <plugin>-->
-    <!--                    <groupId>org.springframework.boot</groupId>-->
-    <!--                    <artifactId>spring-boot-maven-plugin</artifactId>-->
-    <!--                    <version>${plugin.springboot.version}</version>-->
-    <!--                    <executions>-->
-    <!--                        <execution>-->
-    <!--                            <goals>-->
-    <!--                                <goal>repackage</goal>-->
-    <!--                            </goals>-->
-    <!--                        </execution>-->
-    <!--                    </executions>-->
-    <!--                </plugin>-->
-    <!--                &lt;!&ndash; docker &ndash;&gt;-->
-    <!--                <plugin>-->
-    <!--                    <groupId>io.fabric8</groupId>-->
-    <!--                    <artifactId>docker-maven-plugin</artifactId>-->
-    <!--                    <version>${plugin.docker.version}</version>-->
-    <!--                </plugin>-->
-    <!--            </plugins>-->
-    <!--        </pluginManagement>-->
-    <!--        <plugins>-->
-    <!--            <plugin>-->
-    <!--                <groupId>org.apache.maven.plugins</groupId>-->
-    <!--                <artifactId>maven-compiler-plugin</artifactId>-->
-    <!--                <version>${plugin.maven.compiler.version}</version>-->
-    <!--                <configuration>-->
-    <!--                    <source>11</source>-->
-    <!--                    <target>11</target>-->
-    <!--                </configuration>-->
-    <!--            </plugin>-->
-    <!--            <plugin>-->
-    <!--                <groupId>org.apache.maven.plugins</groupId>-->
-    <!--                <artifactId>maven-assembly-plugin</artifactId>-->
-    <!--                <version>2.5.5</version>-->
-    <!--                <configuration>-->
-    <!--                    <encoding>UTF-8</encoding>-->
-    <!--                    <appendAssemblyId>false</appendAssemblyId>-->
-    <!--                    <outputDirectory>wikift-web/docker</outputDirectory>-->
-    <!--                    <descriptors>-->
-    <!--                        <descriptor>package.xml</descriptor>-->
-    <!--                    </descriptors>-->
-    <!--                </configuration>-->
-    <!--            </plugin>-->
-    <!--        </plugins>-->
-    <!--    </build>-->
 
     <build>
         <plugins>

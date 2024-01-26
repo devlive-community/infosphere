@@ -1,0 +1,80 @@
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<div th:fragment="common-navigation(description)">
+    <header class="header">
+        <nav class="navbar navbar-main navbar-expand-lg fixed-top navbar-shadow navbar-light bg-white border-bottom" id="navbar-main">
+            <div class="container-fluid justify-content-between">
+                <!-- 网站名称 -->
+                <a class="navbar-brand" href="/">
+                    <span th:text="'InfoSphere'"></span>
+                    <sup class="text-muted text-xs text-uppercase">Incubator</sup>
+                </a>
+
+                <!-- 文章标题用户信息 -->
+                <div th:unless="${description == null}" class="navbar-brand ml-10">
+                    <div class="icon text-white rounded-circle icon-shape shadow">
+                        <img th:if="${description.user.avatar}" class="avatar rounded-circle avatar-sm" th:src="${description.user.avatar}" th:alt="${description.user.avatar}"/>
+                        <span th:else th:text="${description.user.username.substring(0, 2)}" class="avatar bg-primary text-white rounded-circle avatar-sm"></span>
+                    </div>
+<!--                    <button class="btn btn-primary btn-xs" th:disabled="${session.SPRING_SECURITY_CONTEXT == null}">关注</button>-->
+                </div>
+
+                <!-- 文章标题 -->
+                <div th:unless="${description == null}">
+                    <div class="text-muted mb-0 ml-3" th:text="${description.title}"></div>
+                </div>
+
+                <!-- 控制中间的空白区间，后续增加搜索 -->
+                <div class="collapse navbar-collapse"></div>
+
+                <!-- 个人工具 -->
+                <div class="ml-4 btn-icon d-none d-lg-inline-flex">
+                    <div class="collapse navbar-collapse">
+                        <!-- 创作中心 -->
+                        <div th:if="${session.SPRING_SECURITY_CONTEXT}"
+                             th:with="authentication=${T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication()}"
+                             class="btn-group ml-6">
+                            <button type="button" class="btn btn-inner--text dropdown-toggle btn-icon-only btn-sm"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                创作中心
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <!--                        <div class="dropdown-divider"></div>-->
+                                <a th:href="@{/viewer/article/writer}" th:target="_balank" class="dropdown-item">写文章</a>
+                            </div>
+                        </div>
+
+                        <!-- 个人管理 -->
+                        <div th:if="${session.SPRING_SECURITY_CONTEXT}"
+                             th:with="authentication=${T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication()}"
+                             class="btn-group ml-6">
+                            <button th:if="${authentication != null}" type="button" class="btn btn-secondary dropdown-toggle rounded-circle btn-icon-only btn-sm"
+                                    data-toggle="dropdown"
+                                    aria-haspopup="true" aria-expanded="false">
+                                <div th:with="userInfo=${authentication.getPrincipal()}"
+                                     class="btn-inner--icon" style="margin-left: 1.2rem !important;">
+                                    <img th:if="${userInfo.avatar}" class="avatar rounded-circle avatar-sm" th:src="${userInfo.avatar}"
+                                         th:alt="${userInfo.avatar}"/>
+                                    <span th:else th:text="${userInfo.username.substring(0, 2)}" class="avatar bg-primary text-white rounded-circle avatar-sm"></span>
+                                </div>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <!--                        <div class="dropdown-divider"></div>-->
+                                <a th:href="@{/viewer/user/logout}" class="dropdown-item">
+                                    <div class="listview__content">
+                                        <div class="listview__heading">退出系统</div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- 登录 -->
+                        <a th:unless="${session.SPRING_SECURITY_CONTEXT}" class="navbar-btn btn btn-sm btn-primary d-none d-lg-inline-block ml-3"
+                           th:href="@{/viewer/user/login}">
+                            登录
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+</div>
