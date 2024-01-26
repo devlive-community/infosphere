@@ -1,7 +1,11 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <div th:fragment="index-navbar-data(response)">
 
-    <div th:each="article, index : ${response}" class="card shadow-none mt-3">
+    <div th:if="${response.size() == 0}" class="alert alert-modern alert-outline-danger mt-3">
+        <span class="badge badge-danger badge-pill">警告</span>
+        <span class="alert-content">暂无数据，请注册用户或登录发表文章。</span>
+    </div>
+    <div th:else th:each="article, index : ${response}" class="card shadow-none mt-3">
         <div class="p-3 d-flex">
             <div class="icon icon-shape rounded-circle text-white mr-4">
                 <img th:if="${article.user.avatar}" class="avatar rounded-circle avatar-sm" th:src="${article.user.avatar}" th:alt="${article.user.avatar}"/>

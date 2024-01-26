@@ -1,6 +1,6 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <div th:fragment="common-pagination(root, response)">
-    <nav aria-label="...">
+    <nav th:if="${response.total > 0}" aria-label="...">
         <ul class="pagination">
             <li class="page-item" th:classappend="${response.page == 1} ? 'disabled'">
                 <a class="page-link" th:href="${'/' + root}" tabindex="-1" aria-disabled="true">第一页</a>
