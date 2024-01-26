@@ -1,0 +1,29 @@
+name: 🆕 发布新版本
+title: 🆕 [版本发布] xxx 的发布说明
+description: 新版本发布
+labels:
+  - release
+body:
+  - type: checkboxes
+    attributes:
+      label: 贡献准则
+      description: 在继续操作之前，请阅读贡献指南。
+      options:
+        - label: 我已阅读 [贡献指南](https://github.com/devlive-community/incubator-infosphere/blob/dev/CONTRIBUTING.md) 并完全同意
+          required: true
+  - type: checkboxes
+    attributes:
+      label: 受影响的模块
+      description: 更改了哪些模块。
+      options:
+        - label: 核心模块 (默认)
+        - label: 权限模块 (包含安全框架)
+        - label: Web 可视化模块
+        - label: 文档模块
+        - label: 其他模块
+  - type: textarea
+    attributes:
+      label: 发行说明
+      description: 当前版本的发布详细信息列表
+    validations:
+      required: true

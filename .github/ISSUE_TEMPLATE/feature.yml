@@ -1,0 +1,47 @@
+name: ✨ 新功能
+title: ✨ [新功能] 支持 xxx 新功能
+description: 提交一个新的想法或者新的功能点
+labels:
+  - feature
+  - enhancement
+body:
+  - type: checkboxes
+    attributes:
+      label: 贡献准则
+      description: 在继续操作之前，请阅读贡献指南。
+      options:
+        - label: 我已阅读 [贡献指南](https://github.com/devlive-community/incubator-infosphere/blob/dev/CONTRIBUTING.md) 并完全同意
+          required: true
+  - type: checkboxes
+    attributes:
+      label: 我想提出一个想法并检查了一下 ...
+      description: 请确保您的请求满足以下所有要求。如果不能满足一项要求，请详细解释原因。
+      options:
+        - label: ... 据我所知，我的想法不会破坏其他用户的东西
+        - label: ... 文档没有提到任何关于我的想法
+        - label: ... 没有与我的想法相关的未解决或已关闭的问题
+  - type: dropdown
+    id: module
+    attributes:
+      label: 受影响的模块
+      description: 更改了哪些模块。
+      options:
+        - 新功能 (默认)
+        - 文档中心
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 描述
+      description: 请合理详细地描述您的想法。
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 使用案例
+      description: 请描述您的想法将如何使您和其他用户受益。
+  - type: textarea
+    attributes:
+      label: 截图/模型
+      description: 如果适用，请提供模型或屏幕截图。您可以在此处拖放图像，或链接到外部资产。

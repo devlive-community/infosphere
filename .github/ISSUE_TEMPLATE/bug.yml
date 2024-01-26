@@ -1,0 +1,81 @@
+name: 🐛 问题反馈
+title: 🐛 [Bug] 反馈的问题名称
+description: 反馈一个问题
+labels:
+  - bug
+body:
+  - type: checkboxes
+    attributes:
+      label: 贡献准则
+      description: 在继续操作之前，请阅读贡献指南。
+      options:
+        - label: 我已阅读 [贡献指南](https://github.com/devlive-community/incubator-infosphere/blob/dev/CONTRIBUTING.md) 并完全同意
+          required: true
+  - type: checkboxes
+    attributes:
+      label: 我发现了一个错误并检查了它 ...
+      description: 请确保您的请求满足以下所有要求。如果不能满足一项要求，请详细解释原因。
+      options:
+        - label: ... `服务端` 或 `Web端` 不会出现此问题
+          required: true
+        - label: ... 文档没有提到任何关于我的问题
+        - label: ... 没有与我的问题相关的未解决或已关闭的问题
+  - type: dropdown
+    id: module
+    attributes:
+      label: 受影响的模块
+      description: 更改了哪些模块。
+      options:
+        - 核心模块 (默认)
+        - 权限模块 (包含安全框架)
+        - Web 可视化模块
+        - 文档模块
+        - 其他模块
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 描述
+      description: 请用 1-2 句话简要描述该错误。
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 预期行为
+      description: 请准确描述您期望发生的事情。
+  - type: textarea
+    attributes:
+      label: 实际行为
+      description: 请准确描述实际发生的情况。
+  - type: textarea
+    attributes:
+      label: 重现步骤
+      description: 请描述重现该错误的步骤。
+      placeholder: |-
+        1. ...
+        2. ...
+        3. ...
+  - type: textarea
+    attributes:
+      label: 包版本
+      description: 请提供所有软件包版本，即在 shell 上以反引号的形式运行命令。
+      value: |-
+        - Java 版本: `java --version`
+        - 软件包版本: `./mvnw -Dexec.executable='echo' -Dexec.args='${project.version}' --non-recursive exec:exec -Dorg.slf4j.simpleLogger.defaultLogLevel=WARN -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.help=INFO | tail -1`
+  - type: textarea
+    attributes:
+      label: 配置
+      description: 请提供最小的 `application.properties` 来重现错误。
+      placeholder: |-
+        site_name: InfoSphere 示例站点
+        site_url: http://try.infosphere.devlive.org
+  - type: textarea
+    attributes:
+      label: 系统信息
+      description: 请提供您的操作系统和浏览器类型和版本。
+      value: |-
+        - 操作系统: ...
+        - 浏览器: ...
+    validations:
+      required: true
