@@ -1,6 +1,8 @@
 package org.devlive.infosphere.server.viewer;
 
 import org.devlive.infosphere.service.adapter.PageRequestAdapter;
+import org.devlive.infosphere.service.entity.UserEntity;
+import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.ArticleService;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
@@ -53,6 +55,12 @@ public class IndexController
             @PathVariable(value = "page", required = false) Integer page,
             @PathVariable(value = "size", required = false) Integer size)
     {
+        UserEntity entity = UserDetailsService.getUser();
+        // 如果用户未登录跳转到403页面
+        if (entity == null) {
+            return "redirect:/viewer/network/403";
+        }
+
         stepModel(model, request, page, size);
         return "index/forme";
     }

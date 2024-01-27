@@ -74,7 +74,7 @@ public class SecurityConfigure
                 .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
 //                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
                 .authorizeRequests()
-                .antMatchers("/", "/home/**", "/hottest/**", "/recommend/**", "/favicon.ico",
+                .antMatchers("/", "/home/**", "/hottest/**", "/recommend/**", "/forme/**", "/favicon.ico",
                         "/static/**", "/viewer/**",
                         "/api/v1/user/signin", "/api/v1/user/register")
                 .permitAll()

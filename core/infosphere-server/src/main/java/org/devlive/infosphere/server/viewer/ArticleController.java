@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import java.util.Objects;
-
 @Controller
 @Component(value = "ArticleViewer")
 @RequestMapping(value = "viewer/article")
@@ -44,7 +42,9 @@ public class ArticleController
     {
         UserEntity user = UserDetailsService.getUser();
         ArticleEntity entity = repository.findByCode(code);
-        if (user == null || (!entity.isPublished() && !Objects.equals(entity.getUser().getId(), user.getId()))) {
+
+        // 如果文章未发布或用户未登录或用户不是文章的作者，重定向到403页面
+        if (!entity.isPublished() && (user == null || !entity.getUser().getId().equals(user.getId()))) {
             return "redirect:/viewer/network/403";
         }
 
