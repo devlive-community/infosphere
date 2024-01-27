@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345678
+      MYSQL_DATABASE: infosphere
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./configure/initializer/infosphere.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  infosphere-app:
+    image: devlive-community/infosphere:test
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/infosphere
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 12345678
+    restart: always
+    ports:
+      - "9099:9099"
+    depends_on:
+      - mysql
+    volumes:
+      - ./configure/docker/application.properties:/opt/app/infosphere/configure/application.properties
