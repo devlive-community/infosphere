@@ -45,6 +45,9 @@ public class ArticleEntity
     @Column(name = "content")
     private String content;
 
+    @Column(name = "published")
+    private boolean published;
+
     @Column(name = "create_time")
     @CreatedDate
     private Date createTime;

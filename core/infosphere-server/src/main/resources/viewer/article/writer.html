@@ -37,14 +37,28 @@
                 <div class="modal-body">
                     <form class="mt-4">
                         <div class="form-group">
-                            <label class="form-control-label">文章标题</label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text">
-                                        <i data-feather="file-text"></i>
-                                    </span>
+                            <div class="mb-3 row">
+                                <label class="col-sm-3 col-form-label form-control-label">文章标题</label>
+                                <div class="col-sm-9">
+                                    <input type="text" class="form-control form-control-sm" placeholder="请输入文章标题" name="title" th:value="${response?.data?.title}"/>
                                 </div>
-                                <input type="text" class="form-control" placeholder="请输入文章标题" name="title" th:value="${response?.data?.title}"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="mb-3 row">
+                                <label class="col-sm-3 col-form-label form-control-label">是否公开</label>
+                                <div class="col-sm-9">
+                                    <div class="custom-control custom-radio custom-control-inline">
+                                        <input type="radio" id="publishedTrue" name="published" class="custom-control-input" th:checked="${response?.data?.published == true}"
+                                               value="true">
+                                        <label class="custom-control-label" for="publishedTrue">公开</label>
+                                    </div>
+                                    <div class="custom-control custom-radio custom-control-inline">
+                                        <input type="radio" id="publishedFalse" name="published" class="custom-control-input"
+                                               th:checked="${response?.data?.published == false || response == null}" value="false">
+                                        <label class="custom-control-label" for="publishedFalse">私有</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -74,6 +88,7 @@
         articleInfo.id = [[${response?.data?.id}]];
         articleInfo.title = $('input[name="title"]').val()
         articleInfo.content = MdEditor.getValue();
+        articleInfo.published = $('input[name="published"]:checked').val()
 
         if (articleInfo.title === undefined || articleInfo.title.trim() === '') {
             notify.message = '文章标题不能为空!';

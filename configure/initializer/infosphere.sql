@@ -39,6 +39,7 @@ CREATE TABLE `infosphere_article`
     `code`        VARCHAR(200) NOT NULL COMMENT '文章唯一编码',
     `title`       VARCHAR(255) NOT NULL COMMENT '文章标题',
     `content`     LONGTEXT     NOT NULL COMMENT '文章内容',
+    `published`   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '文章是否公开',
     `create_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
     `view_count`  BIGINT(20) COMMENT '文章查看次数'
