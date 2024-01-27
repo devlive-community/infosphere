@@ -14,7 +14,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import java.util.Date;
+import java.time.Instant;
 
 @Data
 @ToString
@@ -40,9 +40,9 @@ public class RoleEntity
 
     @Column(name = "create_time")
     @CreatedDate
-    private Date createTime;
+    private Instant createTime;
 
     @Column(name = "update_time")
     @LastModifiedDate
-    private Date updateTime;
+    private Instant updateTime;
 }

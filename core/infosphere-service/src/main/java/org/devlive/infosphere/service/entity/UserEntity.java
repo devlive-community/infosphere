@@ -21,7 +21,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -67,11 +67,11 @@ public class UserEntity
 
     @Column(name = "create_time")
     @CreatedDate
-    private Date createTime;
+    private Instant createTime;
 
     @Column(name = "update_time")
     @LastModifiedDate
-    private Date updateTime;
+    private Instant updateTime;
 
     @OneToMany
     @JoinTable(name = "infosphere_user_role_relation",

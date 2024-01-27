@@ -1,14 +1,15 @@
 package org.devlive.infosphere.security;
 
 import org.devlive.infosphere.service.security.UserDetailsService;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
 
 @Component(value = "infosphereAuthenticationProvider")
-public class AuthenticationProvider
-        implements org.springframework.security.authentication.AuthenticationProvider
+public class InfoSphereAuthenticationProvider
+        implements AuthenticationProvider
 {
     @Override
     public Authentication authenticate(Authentication authentication)
