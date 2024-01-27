@@ -1,6 +1,7 @@
 package org.devlive.infosphere.security;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
@@ -10,8 +11,8 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
 @Component(value = "infosphereAuthenticationSuccessHandler")
-public class AuthenticationSuccessHandler
-        implements org.springframework.security.web.authentication.AuthenticationSuccessHandler
+public class InfoSphereAuthenticationSuccessHandler
+        implements AuthenticationSuccessHandler
 {
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)

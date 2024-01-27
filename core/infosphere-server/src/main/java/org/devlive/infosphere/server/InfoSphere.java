@@ -16,15 +16,15 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         @ComponentScan(value = "org.devlive.infosphere.security"),
         @ComponentScan(value = "org.devlive.infosphere.service")
 })
-public class Wikift
+public class InfoSphere
 {
     public void start(String[] args)
     {
-        SpringApplication.run(Wikift.class, args);
+        SpringApplication.run(InfoSphere.class, args);
     }
 
     public static void main(String[] args)
     {
-        new Wikift().start(args);
+        new InfoSphere().start(args);
     }
 }

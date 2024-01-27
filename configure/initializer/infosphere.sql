@@ -1,3 +1,5 @@
+USE `infosphere`;
+
 CREATE TABLE `infosphere_role`
 (
     `id`          BIGINT(20)   NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -27,7 +29,6 @@ CREATE TABLE `infosphere_user`
     `update_time` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间'
 ) COMMENT '用户表';
 
--- 添加匿名用户
 INSERT INTO `infosphere_user` (`id`, `username`, `password`, `avatar`, `alias_name`, `signature`, `email`, `active`, `locked`)
 VALUES (1, 'Anonymous User', null, '/static/images/anonymous.png', 'Anonymous User', '我是系统匿名用户用于底层默认用户', 'anonymous@devlive.org', 0, 1);
 

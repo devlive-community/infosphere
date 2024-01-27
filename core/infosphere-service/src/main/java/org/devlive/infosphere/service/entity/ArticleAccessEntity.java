@@ -18,7 +18,7 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import java.util.Date;
+import java.time.Instant;
 
 @Data
 @ToString
@@ -42,7 +42,7 @@ public class ArticleAccessEntity
 
     @Column(name = "create_time")
     @CreatedDate
-    private Date createTime;
+    private Instant createTime;
 
     @ManyToOne
     @JoinTable(name = "infosphere_article_access_article_relation",

@@ -52,6 +52,10 @@
         <jaxb.version>2.3.1</jaxb.version>
         <environment.compile.java.version>1.8</environment.compile.java.version>
         <plugin.maven.compiler.version>3.2</plugin.maven.compiler.version>
+        <plugin.maven.checkstyle.version>3.0.0</plugin.maven.checkstyle.version>
+        <plugin.maven.findbugs.version>3.0.5</plugin.maven.findbugs.version>
+        <plugin.maven.assembly.version>3.6.0</plugin.maven.assembly.version>
+        <plugin.maven.clean.version>3.0.0</plugin.maven.clean.version>
     </properties>
 
     <dependencies>
@@ -170,6 +174,67 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${plugin.maven.checkstyle.version}</version>
+                <configuration>
+                    <configLocation>configure/checks.xml</configLocation>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>validate</id>
+                        <phase>validate</phase>
+                        <configuration>
+                            <encoding>UTF-8</encoding>
+                            <consoleOutput>true</consoleOutput>
+                            <failsOnError>true</failsOnError>
+                        </configuration>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>findbugs-maven-plugin</artifactId>
+                <version>${plugin.maven.findbugs.version}</version>
+                <configuration>
+                    <effort>Low</effort>
+                    <threshold>Medium</threshold>
+                    <failOnError>true</failOnError>
+                    <includeTests>true</includeTests>
+                    <excludeFilterFile>configure/findbugs.xml</excludeFilterFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>run-findbugs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>${plugin.maven.clean.version}</version>
+                <configuration>
+                    <excludeDefaultDirectories>false</excludeDefaultDirectories>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.basedir}/dist/</directory>
+                            <followSymlinks>false</followSymlinks>
+                            <includes>
+                                <include>*.tar.gz</include>
+                                <include>infosphere*/</include>
+                            </includes>
+                        </fileset>
+                    </filesets>
+                </configuration>
             </plugin>
         </plugins>
     </build>

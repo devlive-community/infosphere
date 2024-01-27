@@ -27,9 +27,9 @@ public class SecurityConfigure
     @Resource
     private JwtAuthEntryPoint unauthorizedHandler;
     @Resource
-    private AuthenticationProvider authenticationProvider;
+    private InfoSphereAuthenticationProvider infosphereAuthenticationProvider;
     @Resource
-    private AuthenticationSuccessHandler authenticationSuccessHandler;
+    private InfoSphereAuthenticationSuccessHandler authenticationSuccessHandler;
 
     @Bean
     public AuthTokenFilterService authenticationJwtTokenFilter()
@@ -47,9 +47,8 @@ public class SecurityConfigure
 
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth)
-            throws Exception
     {
-        auth.authenticationProvider(authenticationProvider);
+        auth.authenticationProvider(infosphereAuthenticationProvider);
     }
 
     @Bean

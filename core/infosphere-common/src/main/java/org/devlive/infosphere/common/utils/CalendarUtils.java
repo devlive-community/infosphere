@@ -16,6 +16,9 @@ public class CalendarUtils
     private static String FIRST = "first";
     private static String LAST = "last";
 
+    private CalendarUtils()
+    {}
+
     public static Map<String, Date> getCurrentYearFirstAndLastDate()
     {
         Map<String, Date> map = new ConcurrentHashMap<String, Date>();

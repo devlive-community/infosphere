@@ -21,7 +21,7 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import java.util.Date;
+import java.time.Instant;
 
 @Data
 @ToString
@@ -51,11 +51,11 @@ public class ArticleEntity
 
     @Column(name = "create_time")
     @CreatedDate
-    private Date createTime;
+    private Instant createTime;
 
     @Column(name = "update_time")
     @LastModifiedDate
-    private Date updateTime;
+    private Instant updateTime;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinTable(name = "infosphere_user_article_relation",
