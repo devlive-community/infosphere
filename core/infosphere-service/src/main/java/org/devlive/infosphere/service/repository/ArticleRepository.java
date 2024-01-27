@@ -16,6 +16,7 @@ public interface ArticleRepository
 {
     @Query("SELECT e " +
             "FROM ArticleEntity e " +
+            "WHERE e.published = true " +
             "ORDER BY e.createTime DESC")
     Page<ArticleEntity> findAllOrderByCreateTimeDesc(Pageable pageable);
 

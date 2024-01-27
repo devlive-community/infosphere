@@ -27,6 +27,10 @@ CREATE TABLE `infosphere_user`
     `update_time` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间'
 ) COMMENT '用户表';
 
+-- 添加匿名用户
+INSERT INTO `infosphere_user` (`id`, `username`, `password`, `avatar`, `alias_name`, `signature`, `email`, `active`, `locked`)
+VALUES (1, 'Anonymous User', null, '/static/images/anonymous.png', 'Anonymous User', '我是系统匿名用户用于底层默认用户', 'anonymous@devlive.org', 0, 1);
+
 CREATE TABLE `infosphere_user_role_relation`
 (
     `user_id` BIGINT(20),
@@ -39,9 +43,9 @@ CREATE TABLE `infosphere_article`
     `code`        VARCHAR(200) NOT NULL COMMENT '文章唯一编码',
     `title`       VARCHAR(255) NOT NULL COMMENT '文章标题',
     `content`     LONGTEXT     NOT NULL COMMENT '文章内容',
+    `published`   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '文章是否公开',
     `create_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
-    `view_count`  BIGINT(20) COMMENT '文章查看次数'
+    `update_time` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间'
 ) COMMENT '文章表';
 
 CREATE TABLE `infosphere_user_article_relation`
@@ -50,4 +54,22 @@ CREATE TABLE `infosphere_user_article_relation`
     `article_id` BIGINT(20)
 ) COMMENT '用户与文章关系表';
 
+CREATE TABLE `infosphere_article_access`
+(
+    `id`          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `ip_address`  VARCHAR(255),
+    `user_agent`  VARCHAR(255),
+    `create_time` DATETIME
+) COMMENT '文章访问历史表';
 
+CREATE TABLE `infosphere_article_access_article_relation`
+(
+    `access_id`  BIGINT,
+    `article_id` BIGINT
+) COMMENT '文章访问历史和文章关联表';
+
+CREATE TABLE `infosphere_article_access_user_relation`
+(
+    `access_id` BIGINT,
+    `user_id`   BIGINT
+) COMMENT '文章访问历史和用户关联表';

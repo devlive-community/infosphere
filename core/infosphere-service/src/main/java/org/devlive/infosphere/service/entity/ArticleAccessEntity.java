@@ -4,15 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.hibernate.annotations.Formula;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -28,44 +25,34 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "infosphere_article")
+@Table(name = "infosphere_article_access")
 @EntityListeners(value = AuditingEntityListener.class)
-public class ArticleEntity
+public class ArticleAccessEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "title")
-    private String title;
+    @Column(name = "ip_address")
+    private String address;
 
-    @Column(name = "code")
-    private String code;
-
-    @Column(name = "content")
-    private String content;
-
-    @Column(name = "published")
-    private boolean published;
+    @Column(name = "user_agent")
+    private String agent;
 
     @Column(name = "create_time")
     @CreatedDate
     private Date createTime;
 
-    @Column(name = "update_time")
-    @LastModifiedDate
-    private Date updateTime;
+    @ManyToOne
+    @JoinTable(name = "infosphere_article_access_article_relation",
+            joinColumns = @JoinColumn(name = "access_id"),
+            inverseJoinColumns = @JoinColumn(name = "article_id"))
+    private ArticleEntity article;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinTable(name = "infosphere_user_article_relation",
-            joinColumns = @JoinColumn(name = "article_id"),
+    @ManyToOne
+    @JoinTable(name = "infosphere_article_access_user_relation",
+            joinColumns = @JoinColumn(name = "access_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     private UserEntity user;
-
-    @Formula(value = "(SELECT COUNT(aa.id) " +
-            "FROM infosphere_article_access aa " +
-            "LEFT JOIN infosphere_article_access_article_relation aar ON aar.article_id = aa.id " +
-            "WHERE aa.id = id)")
-    private Long viewCount;
 }
