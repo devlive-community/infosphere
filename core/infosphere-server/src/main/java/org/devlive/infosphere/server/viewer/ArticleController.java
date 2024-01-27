@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import javax.servlet.http.HttpServletRequest;
+
 @Controller
 @Component(value = "ArticleViewer")
 @RequestMapping(value = "viewer/article")
@@ -38,6 +40,7 @@ public class ArticleController
 
     @GetMapping(value = "{code}")
     public String info(Model model,
+            HttpServletRequest request,
             @PathVariable String code)
     {
         UserEntity user = UserDetailsService.getUser();
@@ -48,7 +51,7 @@ public class ArticleController
             return "redirect:/viewer/network/403";
         }
 
-        model.addAttribute("response", service.findArticle(code));
+        model.addAttribute("response", service.findArticle(code, request));
         return "article/info";
     }
 
