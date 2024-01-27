@@ -10,6 +10,9 @@ import java.util.Set;
 
 public class NullAwareBeanUtils
 {
+    private NullAwareBeanUtils()
+    {}
+
     /**
      * 将目标源中不为空的字段过滤，将数据库中查出的数据源复制到提交的目标源中
      *
