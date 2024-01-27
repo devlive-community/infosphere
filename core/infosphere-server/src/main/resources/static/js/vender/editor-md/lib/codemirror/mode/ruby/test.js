@@ -1,14 +1,1 @@
-// CodeMirror, copyright (c) by Marijn Haverbeke and others
-// Distributed under an MIT license: http://codemirror.net/LICENSE
-
-(function() {
-  var mode = CodeMirror.getMode({indentUnit: 2}, "ruby");
-  function MT(name) { test.mode(name, mode, Array.prototype.slice.call(arguments, 1)); }
-
-  MT("divide_equal_operator",
-     "[variable bar] [operator /=] [variable foo]");
-
-  MT("divide_equal_operator_no_spacing",
-     "[variable foo][operator /=][number 42]");
-
-})();
+(function(){var b=CodeMirror.getMode({indentUnit:2},"ruby");function a(c){test.mode(c,b,Array.prototype.slice.call(arguments,1))}a("divide_equal_operator","[variable bar] [operator /=] [variable foo]");a("divide_equal_operator_no_spacing","[variable foo][operator /=][number 42]")})();
