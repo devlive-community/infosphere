@@ -69,3 +69,5 @@ nav:
   - index.md
   - 文档中心:
       - reference/getStarted/install.md
+      - reference/getStarted/installFromDocker.md
+      - reference/getStarted/installFromDockerCompose.md
