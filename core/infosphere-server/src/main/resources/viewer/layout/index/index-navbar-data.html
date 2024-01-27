@@ -11,11 +11,14 @@
                 <img th:if="${article.user.avatar}" class="avatar rounded-circle avatar-sm" th:src="${article.user.avatar}" th:alt="${article.user.avatar}"/>
                 <span th:else th:text="${article.user.username.substring(0, 2)}" class="avatar bg-primary text-white rounded-circle avatar-sm"></span>
             </div>
-            <div>
+            <div class="col-sm-10">
                 <span class="h6">
                     <a th:target="_blank" th:href="@{'/viewer/article/' + ${article.code}}" th:text="${article.title}"></a>
                 </span>
                 <div class="text-sm text-muted mb-0" th:text="${#strings.length(article.content) > 200 ? article.content.substring(0, 200) + '...' : article.content}"></div>
+            </div>
+            <div th:if="${article.published}">
+                <div th:text="${'阅读数: ' + article.viewCount}"></div>
             </div>
         </div>
     </div>
