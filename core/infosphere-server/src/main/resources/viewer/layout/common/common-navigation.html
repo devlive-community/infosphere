@@ -55,12 +55,11 @@
                                 <div th:with="userInfo=${authentication.getPrincipal()}"
                                      class="btn-inner--icon" style="margin-left: 1.2rem !important;">
                                     <div class="icon icon-shape rounded-circle text-white mr-4" th:if="${userInfo.entity.avatar}">
-                                        <img class="avatar rounded-circle avatar-sm ml-4" style="width: 100%; height: 100%;" th:if="${userInfo.entity.avatar}"
-                                             th:src="${userInfo.entity.avatar}"
-                                             th:alt="${userInfo.entity.username}"/>
-                                        <span th:unless="${userInfo.entity.avatar}" th:text="${userInfo.entity.username.substring(0, 2)}"
-                                              class="avatar bg-primary text-white rounded-circle avatar-sm"></span>
+                                        <img th:src="${userInfo.entity.avatar}" th:alt="${userInfo.entity.username}"
+                                             class="avatar rounded-circle avatar-sm ml-4" style="width: 100%; height: 100%;"/>
                                     </div>
+                                    <span th:unless="${userInfo.entity.avatar}" th:text="${userInfo.entity.username.substring(0, 2)}"
+                                          class="avatar bg-primary rounded-circle avatar-sm"></span>
                                 </div>
                             </button>
                             <div class="dropdown-menu dropdown-menu-right">
