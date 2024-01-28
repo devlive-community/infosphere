@@ -19,7 +19,7 @@ CREATE TABLE `infosphere_user`
     `id`          BIGINT(20)  NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `username`    VARCHAR(25) NOT NULL,
     `password`    VARCHAR(255),
-    `avatar`      VARCHAR(255)         DEFAULT NULL,
+    `avatar`      VARCHAR(255)         DEFAULT '/static/images/default.png',
     `alias_name`  VARCHAR(25)          DEFAULT NULL,
     `signature`   VARCHAR(200)         DEFAULT NULL,
     `email`       VARCHAR(50),
