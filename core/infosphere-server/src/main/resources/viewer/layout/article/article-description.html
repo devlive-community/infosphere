@@ -12,7 +12,7 @@
 
             <!-- 操作功能 -->
             <div class="col-md-4 text-right">
-                <a class="btn btn-link btn-xs" th:target="_blank" th:href="@{'/viewer/article/' + ${details.code} + '/edit'}">修改</a>
+                <a th:if="${session.SPRING_SECURITY_CONTEXT}" class="btn btn-link btn-xs" th:target="_blank" th:href="@{'/viewer/article/' + ${details.code} + '/edit'}">修改</a>
             </div>
         </div>
     </div>

@@ -22,6 +22,12 @@ public interface ArticleRepository
 
     @Query(value = "SELECT e " +
             "FROM ArticleEntity e " +
+            "WHERE e.published = true " +
+            "ORDER BY e.viewCount DESC")
+    Page<ArticleEntity> findAllOrderByViewCountDesc(Pageable pageable);
+
+    @Query(value = "SELECT e " +
+            "FROM ArticleEntity e " +
             "WHERE e.user = :user " +
             "ORDER BY e.createTime DESC")
     Page<ArticleEntity> findAllByUserOrderByCreateTimeDesc(@Param(value = "user") UserEntity user, Pageable pageable);

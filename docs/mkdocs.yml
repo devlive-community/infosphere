@@ -71,3 +71,5 @@ nav:
       - reference/getStarted/install.md
       - reference/getStarted/installFromDocker.md
       - reference/getStarted/installFromDockerCompose.md
+  - 更新日志:
+      - 1.5.0 (latest): release/latest.md
