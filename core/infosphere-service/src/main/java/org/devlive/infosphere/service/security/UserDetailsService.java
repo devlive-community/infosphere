@@ -1,6 +1,7 @@
 package org.devlive.infosphere.service.security;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.Getter;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -16,22 +17,28 @@ import java.util.stream.Collectors;
 public class UserDetailsService
         implements UserDetails
 {
-    private Long id;
     private String username;
     @JsonIgnore
     private String password;
     private Collection<? extends GrantedAuthority> authorities;
+    @Getter
+    private Long id;
+    @Getter
     private String avatar;
+    @Getter
+    private UserEntity entity;
 
     public UserDetailsService(Long id, String username, String password,
             Collection<? extends GrantedAuthority> authorities,
-            String avatar)
+            String avatar,
+            UserEntity entity)
     {
         this.id = id;
         this.username = username;
         this.password = password;
         this.authorities = authorities;
         this.avatar = avatar;
+        this.entity = entity;
     }
 
     public static UserDetailsService build(UserEntity user)
@@ -45,7 +52,8 @@ public class UserDetailsService
                 user.getUsername(),
                 user.getPassword(),
                 authorities,
-                null);
+                user.getAvatar(),
+                user);
     }
 
     public static UserEntity getUser()
@@ -106,15 +114,5 @@ public class UserDetailsService
     public boolean isEnabled()
     {
         return true;
-    }
-
-    public Long getId()
-    {
-        return id;
-    }
-
-    public String getAvatar()
-    {
-        return avatar;
     }
 }

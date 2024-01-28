@@ -9,7 +9,7 @@
         <div class="p-3 d-flex">
             <div class="icon icon-shape rounded-circle text-white mr-4">
                 <img th:if="${article.user.avatar}" class="avatar rounded-circle avatar-sm" th:src="${article.user.avatar}" th:alt="${article.user.avatar}"/>
-                <span th:else th:text="${article.user.username.substring(0, 2)}" class="avatar bg-primary text-white rounded-circle avatar-sm"></span>
+                <span th:unless="${article.user.avatar}" th:text="${article.user.username.substring(0, 2)}" class="avatar bg-primary text-white rounded-circle avatar-sm"></span>
             </div>
             <div class="col-sm-10">
                 <span class="h6">

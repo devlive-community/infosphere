@@ -13,9 +13,9 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![GitHub Release Date](https://img.shields.io/github/release-date/devlive-community/incubator-infosphere?style=flat-square)
 
-![Docker Automated build](https://img.shields.io/docker/automated/devlive-community/infosphere)
-![Docker Image Size (latest by date)](https://img.shields.io/docker/image-size/devlive-community/infosphere?style=flat-square)
-![Docker Pulls](https://img.shields.io/docker/pulls/devlive-community/infosphere?style=flat-square)
+![Docker Automated build](https://img.shields.io/docker/automated/devliveorg/infosphere)
+![Docker Image Size (latest by date)](https://img.shields.io/docker/image-size/devliveorg/infosphere?style=flat-square)
+![Docker Pulls](https://img.shields.io/docker/pulls/devliveorg/infosphere?style=flat-square)
 
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/y/devlive-community/incubator-infosphere?style=flat-square)
 ![GitHub contributors](https://img.shields.io/github/contributors-anon/devlive-community/incubator-infosphere?style=flat-square)
