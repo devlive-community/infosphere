@@ -5,11 +5,17 @@
             <li class="page-item" th:classappend="${response.page == 1} ? 'disabled'">
                 <a class="page-link" th:href="${'/' + root}" tabindex="-1" aria-disabled="true">首页</a>
             </li>
+            <li class="page-item" th:classappend="${response.page == 1} ? 'disabled'">
+                <a class="page-link" th:href="${'/' + root + '/' + (response.page - 1) + '/' + response.size}">上一页</a>
+            </li>
             <li th:each="pageIndex : ${#numbers.sequence(1, response.totalPage)}" class="page-item" th:classappend="${response.page == pageIndex} ? 'active'">
                 <a class="page-link" th:href="${'/' + root + '/' + pageIndex + '/' + response.size}" th:text="${pageIndex}"></a>
             </li>
             <li class="page-item" th:classappend="${response.page == response.totalPage} ? 'disabled'">
-                <a class="page-link" th:href="${'/' + root + '/' + (response.page + 1) + '/' + response.size}">末页</a>
+                <a class="page-link" th:href="${'/' + root + '/' + (response.page + 1) + '/' + response.size}">下一页</a>
+            </li>
+            <li class="page-item" th:classappend="${response.page == response.totalPage} ? 'disabled'">
+                <a class="page-link" th:href="${'/' + root + '/' + response.totalPage + '/' + response.size}">末页</a>
             </li>
         </ul>
     </nav>
