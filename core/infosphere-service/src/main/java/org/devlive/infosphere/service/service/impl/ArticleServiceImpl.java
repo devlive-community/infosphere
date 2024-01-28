@@ -56,6 +56,9 @@ public class ArticleServiceImpl
         if (action.equals("forme")) {
             return CommonResponse.success(PageAdapter.of(repository.findAllByUserOrderByCreateTimeDesc(UserDetailsService.getUser(), pageable)));
         }
+        else if (action.equals("hottest")) {
+            return CommonResponse.success(PageAdapter.of(repository.findAllOrderByViewCountDesc(pageable)));
+        }
         else {
             return CommonResponse.success(PageAdapter.of(repository.findAllOrderByCreateTimeDesc(pageable)));
         }

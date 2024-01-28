@@ -10,9 +10,9 @@ CREATE TABLE `infosphere_role`
     `update_time` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间'
 ) COMMENT '用户路由表';
 
-INSERT INTO `infosphere_role`(`code`, `name`, `description`)
-VALUES ('8b80291d-6f7f-e239-005b-faeef22088d8', 'USER', 'User Role - 拥有普通用户权限'),
-       ('151b9c43-6385-85e2-fe33-6a720b4c570b', 'ADMIN', 'Admin Role - 拥有平台所有权限');
+INSERT INTO `infosphere_role`(`id`, `code`, `name`, `description`)
+VALUES (1, '8b80291d-6f7f-e239-005b-faeef22088d8', 'USER', 'User Role - 拥有普通用户权限'),
+       (2, '151b9c43-6385-85e2-fe33-6a720b4c570b', 'ADMIN', 'Admin Role - 拥有平台所有权限');
 
 CREATE TABLE `infosphere_user`
 (
@@ -31,12 +31,17 @@ CREATE TABLE `infosphere_user`
 
 INSERT INTO `infosphere_user` (`id`, `username`, `password`, `avatar`, `alias_name`, `signature`, `email`, `active`, `locked`)
 VALUES (1, 'Anonymous User', null, '/static/images/anonymous.png', 'Anonymous User', '我是系统匿名用户用于底层默认用户', 'anonymous@devlive.org', 0, 1);
+INSERT INTO `infosphere_user` (`id`, `username`, `password`, `avatar`, `alias_name`, `signature`, `email`, `active`, `locked`)
+VALUES (2, 'infosphere', '$2a$10$FsBJlTOyjqKmK9iFuRuSTub0pvO2h8amcIock.r8Pl9KMuCsScB8S', null, 'infosphere', null, 'infosphere@devlive.org', 0, 0);
 
 CREATE TABLE `infosphere_user_role_relation`
 (
     `user_id` BIGINT(20),
     `role_id` BIGINT(20)
 ) COMMENT '用户与路由关系表';
+
+INSERT INTO `infosphere_user_role_relation` (`user_id`, `role_id`)
+VALUES (2, 1);
 
 CREATE TABLE `infosphere_article`
 (
