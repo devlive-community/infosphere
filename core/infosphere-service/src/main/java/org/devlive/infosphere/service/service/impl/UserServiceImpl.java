@@ -1,8 +1,8 @@
 package org.devlive.infosphere.service.service.impl;
 
 import com.google.common.collect.Lists;
-import org.devlive.infosphere.common.CommonResponse;
-import org.devlive.infosphere.common.JwtResponse;
+import org.devlive.infosphere.common.response.CommonResponse;
+import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.service.entity.RoleEntity;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.RoleRepository;

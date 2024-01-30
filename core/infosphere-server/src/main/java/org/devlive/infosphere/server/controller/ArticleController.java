@@ -1,6 +1,6 @@
 package org.devlive.infosphere.server.controller;
 
-import org.devlive.infosphere.common.CommonResponse;
+import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.service.entity.ArticleEntity;
 import org.devlive.infosphere.service.service.ArticleService;
 import org.springframework.web.bind.annotation.RequestBody;

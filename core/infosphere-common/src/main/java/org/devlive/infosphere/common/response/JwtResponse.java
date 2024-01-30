@@ -1,4 +1,4 @@
-package org.devlive.infosphere.common;
+package org.devlive.infosphere.common.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

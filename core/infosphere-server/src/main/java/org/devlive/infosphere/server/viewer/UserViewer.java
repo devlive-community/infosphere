@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 @Component(value = "UserViewer")
 @RequestMapping(value = "viewer/user")
-public class UserController
+public class UserViewer
 {
     @GetMapping(value = "/login")
     public String login()

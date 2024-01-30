@@ -1,6 +1,6 @@
 package org.devlive.infosphere.service.service.impl;
 
-import org.devlive.infosphere.common.CommonResponse;
+import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.entity.ArticleAccessEntity;

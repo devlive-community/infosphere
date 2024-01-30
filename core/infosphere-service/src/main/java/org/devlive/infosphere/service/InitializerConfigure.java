@@ -4,7 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.devlive.infosphere.common.JwtResponse;
+import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.service.loader.UserCacheLoader;
 import org.springframework.stereotype.Component;
 
