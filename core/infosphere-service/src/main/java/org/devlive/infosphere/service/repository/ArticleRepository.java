@@ -40,8 +40,9 @@ public interface ArticleRepository
             "WHERE e.code = :code")
     ArticleEntity findByCode(@Param(value = "code") String code);
 
-    @Query(value = "SELECT e " +
-            "FROM ArticleEntity e " +
-            "WHERE e.tags in :tags")
-    Page<ArticleEntity> findAllByTags(@Param(value = "tags") Set<TagEntity> tags, Pageable pageable);
+    @Query("SELECT a " +
+            "FROM ArticleEntity a " +
+            "JOIN a.tags t " +
+            "WHERE t IN :tags")
+    Page<ArticleEntity> findAllByTags(@Param("tags") Set<TagEntity> tags, Pageable pageable);
 }

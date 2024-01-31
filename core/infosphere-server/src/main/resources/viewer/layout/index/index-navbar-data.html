@@ -17,7 +17,7 @@
                 <div class="text-sm text-muted mb-0 p-2" th:text="${#strings.length(article.content) > 200 ? article.content.substring(0, 200) + '...' : article.content}"></div>
                 <div class="infosphere-example pb-0 pb-b0" style="border-bottom: 0 solid #e2e8f0;">
                     <div class="tab-example-result pb-0">
-                        <a th:each="tag, index : ${article.tags}" th:text="${tag.name}" href="#" class="badge badge-primary"></a>
+                        <a th:each="tag, index : ${article.tags}" th:text="${tag.name}" th:href="@{'/viewer/tag/' + ${tag.code}}" class="badge badge-primary"></a>
                     </div>
                 </div>
             </div>
