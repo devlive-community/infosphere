@@ -1,7 +1,7 @@
 package org.devlive.infosphere.service.service;
 
-import org.devlive.infosphere.common.CommonResponse;
-import org.devlive.infosphere.common.JwtResponse;
+import org.devlive.infosphere.common.response.CommonResponse;
+import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.service.entity.UserEntity;
 
 public interface UserService

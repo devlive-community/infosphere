@@ -61,6 +61,18 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <div class="mb-3 row">
+                                <label class="col-sm-3 col-form-label form-control-label">文章标签</label>
+                                <div class="col-sm-9">
+                                    <div th:each="tag, index : ${tags}" class="custom-control custom-radio custom-control-inline">
+                                        <input th:id="${tag.name}" th:value="${tag.id}" th:checked="${#lists.contains(response.data?.tags.![id], tag.id)}" name="tag"
+                                               class="custom-control-input" type="checkbox">
+                                        <label th:text="${tag.name}" th:for="${tag.name}" class="custom-control-label"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -86,9 +98,14 @@
 
         const articleInfo = new ArticleEntity();
         articleInfo.id = [[${response?.data?.id}]];
-        articleInfo.title = $('input[name="title"]').val()
+        articleInfo.title = $('input[name="title"]').val();
         articleInfo.content = MdEditor.getValue();
-        articleInfo.published = $('input[name="published"]:checked').val()
+        articleInfo.published = $('input[name="published"]:checked').val();
+        const tags = [];
+        $('input[name="tag"]:checked').each(function () {
+            tags.push({id: $(this).val()});
+        })
+        articleInfo.tags = tags;
 
         if (articleInfo.title === undefined || articleInfo.title.trim() === '') {
             notify.message = '文章标题不能为空!';

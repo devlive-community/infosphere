@@ -2,7 +2,7 @@
 <div th:fragment="article-description(details, type)">
     <div class="container mt-3">
         <div class="row">
-            <!-- 创建时间 -->
+            <!-- 基本信息 -->
             <div class="col-md-8">
                 <div th:text="${#dates.format(details.createTime,'yyyy年MM月dd日 HH:mm:ss')} + ' 发布'"></div>
                 <div th:if="${details.published}">
@@ -12,6 +12,9 @@
 
             <!-- 操作功能 -->
             <div class="col-md-4 text-right">
+                <div class="tab-example-result pb-0">
+                    <a th:each="tag, index : ${details.tags}" th:text="${tag.name}" th:href="@{'/viewer/tag/' + ${tag.code}}" class="badge badge-primary ml-1"></a>
+                </div>
                 <a th:if="${session.SPRING_SECURITY_CONTEXT}" class="btn btn-link btn-xs" th:target="_blank" th:href="@{'/viewer/article/' + ${details.code} + '/edit'}">修改</a>
             </div>
         </div>

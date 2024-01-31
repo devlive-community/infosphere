@@ -14,11 +14,11 @@ import javax.servlet.http.HttpServletRequest;
 
 @Controller
 @Component(value = "IndexViewer")
-public class IndexController
+public class IndexViewer
 {
     private final ArticleService service;
 
-    public IndexController(ArticleService service)
+    public IndexViewer(ArticleService service)
     {
         this.service = service;
     }
