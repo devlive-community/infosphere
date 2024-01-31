@@ -28,7 +28,11 @@
                     </div>
                     <div class="col text-right text-right">
                         <div class="actions">
-                            <a th:if="${article.published}" class="action-item" data-toggle="tooltip" data-placement="top" title="阅读数">
+                            <a th:if="${article.published}" class="action-item" data-toggle="tooltip" data-placement="top" title="点赞数">
+                                <i data-feather="heart" style="margin-top: -3px;"></i>
+                                <span th:text="${article.likeCount}"></span>
+                            </a>
+                            <a th:if="${article.published}" class="action-item ml-2" data-toggle="tooltip" data-placement="top" title="阅读数">
                                 <i data-feather="eye" style="margin-top: -3px;"></i>
                                 <span th:text="${article.viewCount}"></span>
                             </a>
