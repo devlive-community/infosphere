@@ -1,6 +1,5 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <div th:fragment="index-navbar-data(response)">
-
     <div th:if="${response.size() == 0}" class="alert alert-modern alert-outline-danger mt-3">
         <span class="badge badge-danger badge-pill">警告</span>
         <span class="alert-content">暂无数据，请注册用户或登录发表文章。</span>

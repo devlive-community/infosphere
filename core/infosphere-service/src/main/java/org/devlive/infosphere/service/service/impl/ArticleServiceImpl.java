@@ -1,13 +1,16 @@
 package org.devlive.infosphere.service.service.impl;
 
+import com.google.common.collect.Sets;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.entity.ArticleAccessEntity;
 import org.devlive.infosphere.service.entity.ArticleEntity;
+import org.devlive.infosphere.service.entity.TagEntity;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.ArticleAccessRepository;
 import org.devlive.infosphere.service.repository.ArticleRepository;
+import org.devlive.infosphere.service.repository.TagRepository;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.ArticleService;
@@ -28,12 +31,14 @@ public class ArticleServiceImpl
     private final ArticleRepository repository;
     private final ArticleAccessRepository accessRepository;
     private final UserRepository userRepository;
+    private final TagRepository tagRepository;
 
-    public ArticleServiceImpl(ArticleRepository repository, ArticleAccessRepository accessRepository, UserRepository userRepository)
+    public ArticleServiceImpl(ArticleRepository repository, ArticleAccessRepository accessRepository, UserRepository userRepository, TagRepository tagRepository)
     {
         this.repository = repository;
         this.accessRepository = accessRepository;
         this.userRepository = userRepository;
+        this.tagRepository = tagRepository;
     }
 
     @Override
@@ -95,6 +100,13 @@ public class ArticleServiceImpl
     public CommonResponse<PageAdapter<ArticleAccessEntity>> findAllAccess(String code, Pageable pageable)
     {
         return CommonResponse.success(PageAdapter.of(accessRepository.findAllByArticle(repository.findByCode(code), pageable)));
+    }
+
+    @Override
+    public CommonResponse<PageAdapter<ArticleEntity>> findAllByTag(String tagCode, Pageable pageable)
+    {
+        TagEntity tag = tagRepository.findByCode(tagCode);
+        return CommonResponse.success(PageAdapter.of(repository.findAllByTags(Sets.newHashSet(tag), pageable)));
     }
 
     /**

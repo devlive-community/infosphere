@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.Formula;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -48,4 +49,10 @@ public class TagEntity
     @Column(name = "update_time")
     @LastModifiedDate
     private Instant updateTime;
+
+    @Formula(value = "(SELECT COUNT(a.id) " +
+            "FROM infosphere_article a " +
+            "LEFT JOIN infosphere_tag_article_relation tar ON tar.article_id = a.id " +
+            "WHERE a.id = id)")
+    private Long articleCount;
 }
