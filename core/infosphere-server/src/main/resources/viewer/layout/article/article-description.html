@@ -5,8 +5,15 @@
             <!-- 基本信息 -->
             <div class="col-md-8">
                 <div th:text="${#dates.format(details.createTime,'yyyy年MM月dd日 HH:mm:ss')} + ' 发布'"></div>
-                <div th:if="${details.published}">
-                    <div th:text="${'阅读数: ' + details.viewCount}"></div>
+                <div class="actions">
+                    <a th:if="${details.published}" class="action-item" data-toggle="tooltip" data-placement="top" title="点赞数">
+                        <i data-feather="heart" style="margin-top: -3px;"></i>
+                        <span th:text="${details.likeCount}"></span>
+                    </a>
+                    <a th:if="${details.published}" class="action-item ml-2" data-toggle="tooltip" data-placement="top" title="阅读数">
+                        <i data-feather="eye" style="margin-top: -3px;"></i>
+                        <span th:text="${details.viewCount}"></span>
+                    </a>
                 </div>
             </div>
 

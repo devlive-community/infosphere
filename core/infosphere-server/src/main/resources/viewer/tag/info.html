@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:include="layout/common/common-header::common-header(${tag.name}, ${tag.name})"></head>
-<div th:include="layout/common/common-script::common-script"></div>
 <body class="docs loader">
 <div class="container-fluid container-docs">
     <div th:include="layout/common/common-navigation::common-navigation(null)"></div>
@@ -16,4 +15,5 @@
     </div>
 </div>
 </body>
+<div th:include="layout/common/common-script::common-script"></div>
 </html>

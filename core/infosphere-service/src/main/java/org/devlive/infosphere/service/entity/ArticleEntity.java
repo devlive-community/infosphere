@@ -76,4 +76,10 @@ public class ArticleEntity
             "LEFT JOIN infosphere_article_access_article_relation aar ON aar.article_id = aa.id " +
             "WHERE aa.id = id)")
     private Long viewCount;
+
+    @Formula(value = "(SELECT COUNT(al.id) " +
+            "FROM infosphere_article_like al " +
+            "LEFT JOIN infosphere_article_access_article_relation aar ON aar.article_id = al.id " +
+            "WHERE al.id = id)")
+    private Long likeCount;
 }

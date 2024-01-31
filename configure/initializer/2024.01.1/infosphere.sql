@@ -15,3 +15,23 @@ CREATE TABLE `infosphere_tag_article_relation`
     `article_id` BIGINT,
     `tag_id`     BIGINT
 ) COMMENT '标签与文章关系表';
+
+CREATE TABLE `infosphere_article_like`
+(
+    `id`          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `ip_address`  VARCHAR(255),
+    `user_agent`  VARCHAR(255),
+    `create_time` DATETIME
+) COMMENT '文章点赞表';
+
+CREATE TABLE `infosphere_article_like_article_relation`
+(
+    `like_id`    BIGINT,
+    `article_id` BIGINT
+) COMMENT '文章点赞和文章关联表';
+
+CREATE TABLE `infosphere_article_like_user_relation`
+(
+    `like_id` BIGINT,
+    `user_id` BIGINT
+) COMMENT '文章点赞和用户关联表';

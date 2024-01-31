@@ -43,6 +43,7 @@ public interface ArticleRepository
     @Query("SELECT a " +
             "FROM ArticleEntity a " +
             "JOIN a.tags t " +
-            "WHERE t IN :tags")
+            "WHERE t IN :tags " +
+            "AND a.published = true ")
     Page<ArticleEntity> findAllByTags(@Param("tags") Set<TagEntity> tags, Pageable pageable);
 }

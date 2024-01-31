@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:if="${response}" th:include="layout/common/common-header::common-header('编辑文章', '编辑文章')"></head>
-<head th:else th:include="layout/common/common-header::common-header('写文章', '写文章')"></head>
-<div th:include="layout/common/common-script::common-script"></div>
+<head th:unless="${response}" th:include="layout/common/common-header::common-header('写文章', '写文章')"></head>
+<div th:include="layout/editor/md-editor-script::md-editor-script"></div>
 <body class="docs loader">
 <div class="container-fluid container-docs">
     <div th:include="layout/common/common-navigation::common-navigation(null)"></div>
@@ -66,10 +66,12 @@
                                 <label class="col-sm-3 col-form-label form-control-label">文章标签</label>
                                 <div class="col-sm-9">
                                     <div th:each="tag, index : ${tags}" class="custom-control custom-radio custom-control-inline">
-                                        <input th:id="${tag.name}" th:value="${tag.id}" th:checked="${#lists.contains(response.data?.tags.![id], tag.id)}" name="tag"
+                                        <input th:id="${tag.name}" th:value="${tag.id}"
+                                               th:checked="${response?.data?.tags != null ? #lists.contains(response.data.tags.![id], tag.id) : false}" name="tag"
                                                class="custom-control-input" type="checkbox">
                                         <label th:text="${tag.name}" th:for="${tag.name}" class="custom-control-label"></label>
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -84,7 +86,7 @@
     </div>
 </div>
 </body>
-</div>
+<div th:include="layout/common/common-script::common-script"></div>
 <script th:inline="javascript">
     /*<![CDATA[*/
     $('.btn-publish').click(function () {
