@@ -1,7 +1,7 @@
 package org.devlive.infosphere.security;
 
 import lombok.extern.slf4j.Slf4j;
-import org.devlive.infosphere.common.CommonResponse;
+import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.utils.JsonUtils;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;

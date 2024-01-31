@@ -18,10 +18,12 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 import java.time.Instant;
+import java.util.Set;
 
 @Data
 @ToString
@@ -62,6 +64,12 @@ public class ArticleEntity
             joinColumns = @JoinColumn(name = "article_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     private UserEntity user;
+
+    @ManyToMany
+    @JoinTable(name = "infosphere_tag_article_relation",
+            joinColumns = @JoinColumn(name = "article_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<TagEntity> tags;
 
     @Formula(value = "(SELECT COUNT(aa.id) " +
             "FROM infosphere_article_access aa " +

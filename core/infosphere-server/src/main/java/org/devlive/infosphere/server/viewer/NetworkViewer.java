@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 @Component(value = "NetworkViewer")
 @RequestMapping(value = "viewer/network")
-public class NetworkController
+public class NetworkViewer
 {
     @GetMapping(value = "403")
     public String f403()

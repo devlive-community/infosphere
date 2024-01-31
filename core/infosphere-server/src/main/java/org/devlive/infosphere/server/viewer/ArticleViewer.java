@@ -3,6 +3,7 @@ package org.devlive.infosphere.server.viewer;
 import org.devlive.infosphere.service.entity.ArticleEntity;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.ArticleRepository;
+import org.devlive.infosphere.service.repository.TagRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.ArticleService;
 import org.springframework.stereotype.Component;
@@ -17,24 +18,28 @@ import javax.servlet.http.HttpServletRequest;
 @Controller
 @Component(value = "ArticleViewer")
 @RequestMapping(value = "viewer/article")
-public class ArticleController
+public class ArticleViewer
 {
     private final ArticleRepository repository;
+    private final TagRepository tagRepository;
     private final ArticleService service;
 
-    public ArticleController(ArticleRepository repository, ArticleService service)
+    public ArticleViewer(ArticleRepository repository, TagRepository tagRepository, ArticleService service)
     {
         this.repository = repository;
+        this.tagRepository = tagRepository;
         this.service = service;
     }
 
     @GetMapping(value = "/writer")
-    public String writer()
+    public String writer(Model model)
     {
         UserEntity user = UserDetailsService.getUser();
         if (user == null) {
             return "redirect:/viewer/network/403";
         }
+
+        model.addAttribute("tags", tagRepository.findAll());
         return "article/writer";
     }
 
@@ -64,6 +69,7 @@ public class ArticleController
             return "redirect:/viewer/network/403";
         }
 
+        model.addAttribute("tags", tagRepository.findAll());
         model.addAttribute("response", service.findArticle(code));
         return "article/writer";
     }

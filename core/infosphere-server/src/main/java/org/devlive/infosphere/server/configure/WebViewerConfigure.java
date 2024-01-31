@@ -24,7 +24,7 @@ public class WebViewerConfigure
     }
 
     @Bean
-    @Description("Wikift web viewer configure")
+    @Description("InfoSphere web viewer configure")
     public ClassLoaderTemplateResolver templateResolver()
     {
         ClassLoaderTemplateResolver templateResolver = new ClassLoaderTemplateResolver();

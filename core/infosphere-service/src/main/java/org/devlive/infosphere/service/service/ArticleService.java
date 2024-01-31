@@ -1,6 +1,6 @@
 package org.devlive.infosphere.service.service;
 
-import org.devlive.infosphere.common.CommonResponse;
+import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.entity.ArticleAccessEntity;
 import org.devlive.infosphere.service.entity.ArticleEntity;
@@ -43,4 +43,13 @@ public interface ArticleService
      * @return 文章访问历史
      */
     CommonResponse<PageAdapter<ArticleAccessEntity>> findAllAccess(String code, Pageable pageable);
+
+    /**
+     * 根据标签编码获取文章列表
+     *
+     * @param tagCode 标签编码
+     * @param pageable 分页信息
+     * @return 符合条件的文章列表
+     */
+    CommonResponse<PageAdapter<ArticleEntity>> findAllByTag(String tagCode, Pageable pageable);
 }

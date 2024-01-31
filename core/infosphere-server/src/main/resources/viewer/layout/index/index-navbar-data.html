@@ -1,6 +1,5 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <div th:fragment="index-navbar-data(response)">
-
     <div th:if="${response.size() == 0}" class="alert alert-modern alert-outline-danger mt-3">
         <span class="badge badge-danger badge-pill">警告</span>
         <span class="alert-content">暂无数据，请注册用户或登录发表文章。</span>
@@ -15,7 +14,12 @@
                 <span class="h6">
                     <a th:target="_blank" th:href="@{'/viewer/article/' + ${article.code}}" th:text="${article.title}"></a>
                 </span>
-                <div class="text-sm text-muted mb-0" th:text="${#strings.length(article.content) > 200 ? article.content.substring(0, 200) + '...' : article.content}"></div>
+                <div class="text-sm text-muted mb-0 p-2" th:text="${#strings.length(article.content) > 200 ? article.content.substring(0, 200) + '...' : article.content}"></div>
+                <div class="infosphere-example pb-0 pb-b0" style="border-bottom: 0 solid #e2e8f0;">
+                    <div class="tab-example-result pb-0">
+                        <a th:each="tag, index : ${article.tags}" th:text="${tag.name}" th:href="@{'/viewer/tag/' + ${tag.code}}" class="badge badge-primary"></a>
+                    </div>
+                </div>
             </div>
             <div th:if="${article.published}">
                 <div th:text="${'阅读数: ' + article.viewCount}"></div>
