@@ -7,7 +7,16 @@
                 <div th:text="${#dates.format(details.createTime,'yyyy年MM月dd日 HH:mm:ss')} + ' 发布'"></div>
                 <div class="actions">
                     <a th:if="${details.published}" class="action-item" data-toggle="tooltip" data-placement="top" title="点赞数">
-                        <i data-feather="heart" style="margin-top: -3px;"></i>
+                        <i th:if="${session.SPRING_SECURITY_CONTEXT}"
+                           th:with="authentication=${T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication()}">
+                            <a th:if="${authentication.getPrincipal()?.entity?.id eq details.user.id}">
+                                <i class="fa fa-heart"></i>
+                            </a>
+                            <a th:unless="${authentication.getPrincipal()?.entity?.id eq details.user.id}" class="btn-like" href="javascript:void(0)">
+                                <i class="fa fa-heart-o"></i>
+                            </a>
+                        </i>
+                        <i th:unless="${session.SPRING_SECURITY_CONTEXT}" class="fa fa-heart-o"></i>
                         <span th:text="${details.likeCount}"></span>
                     </a>
                     <a th:if="${details.published}" class="action-item ml-2" data-toggle="tooltip" data-placement="top" title="阅读数">
@@ -26,4 +35,19 @@
             </div>
         </div>
     </div>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        $('.btn-like').click(function () {
+            const url = '/api/v1/article/like/' + [[${details.code}]];
+            HttpUtils.post(url, {}, function (response) {
+                if (response.data) {
+                    let notify = new NotifyEntity('', '文章点赞成功。。。');
+                    const config = new NotifyConfigEntity();
+                    config.type = 'success';
+                    CommonNotify.initNotify(notify, config);
+                }
+            })
+        });
+        /*]]>*/
+    </script>
 </div>

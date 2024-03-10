@@ -79,7 +79,7 @@ public class ArticleEntity
 
     @Formula(value = "(SELECT COUNT(al.id) " +
             "FROM infosphere_article_like al " +
-            "LEFT JOIN infosphere_article_access_article_relation aar ON aar.article_id = al.id " +
-            "WHERE al.id = id)")
+            "LEFT JOIN infosphere.infosphere_article_like_article_relation ialar on al.id = ialar.like_id " +
+            "WHERE ialar.article_id = id)")
     private Long likeCount;
 }

@@ -6,9 +6,11 @@ import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.entity.ArticleAccessEntity;
 import org.devlive.infosphere.service.entity.ArticleEntity;
+import org.devlive.infosphere.service.entity.ArticleLikeEntity;
 import org.devlive.infosphere.service.entity.TagEntity;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.ArticleAccessRepository;
+import org.devlive.infosphere.service.repository.ArticleLikeRepository;
 import org.devlive.infosphere.service.repository.ArticleRepository;
 import org.devlive.infosphere.service.repository.TagRepository;
 import org.devlive.infosphere.service.repository.UserRepository;
@@ -30,13 +32,15 @@ public class ArticleServiceImpl
 {
     private final ArticleRepository repository;
     private final ArticleAccessRepository accessRepository;
+    private final ArticleLikeRepository likeRepository;
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
 
-    public ArticleServiceImpl(ArticleRepository repository, ArticleAccessRepository accessRepository, UserRepository userRepository, TagRepository tagRepository)
+    public ArticleServiceImpl(ArticleRepository repository, ArticleAccessRepository accessRepository, ArticleLikeRepository likeRepository, UserRepository userRepository, TagRepository tagRepository)
     {
         this.repository = repository;
         this.accessRepository = accessRepository;
+        this.likeRepository = likeRepository;
         this.userRepository = userRepository;
         this.tagRepository = tagRepository;
     }
@@ -107,6 +111,20 @@ public class ArticleServiceImpl
     {
         TagEntity tag = tagRepository.findByCode(tagCode);
         return CommonResponse.success(PageAdapter.of(repository.findAllByTags(Sets.newHashSet(tag), pageable)));
+    }
+
+    @Override
+    @Transactional
+    public CommonResponse<Object> like(String code, HttpServletRequest request)
+    {
+        ArticleEntity article = repository.findByCode(code);
+        ArticleLikeEntity like = new ArticleLikeEntity();
+        like.setUser(UserDetailsService.getUser());
+        like.setArticle(article);
+        like.setAgent(request.getHeader("user-agent"));
+        like.setAddress(this.getIpAddress(request));
+        likeRepository.save(like);
+        return CommonResponse.success(true);
     }
 
     /**

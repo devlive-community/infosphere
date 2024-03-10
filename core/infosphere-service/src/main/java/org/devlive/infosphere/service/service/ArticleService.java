@@ -52,4 +52,13 @@ public interface ArticleService
      * @return 符合条件的文章列表
      */
     CommonResponse<PageAdapter<ArticleEntity>> findAllByTag(String tagCode, Pageable pageable);
+
+    /**
+     * 文章点赞
+     *
+     * @param code 文章编码
+     * @param request 客户端请求
+     * @return 文章内容
+     */
+    CommonResponse<Object> like(String code, HttpServletRequest request);
 }

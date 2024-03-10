@@ -3,10 +3,14 @@ package org.devlive.infosphere.server.controller;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.service.entity.ArticleEntity;
 import org.devlive.infosphere.service.service.ArticleService;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping(value = "/api/v1/article")
@@ -23,5 +27,12 @@ public class ArticleController
     CommonResponse<ArticleEntity> save(@RequestBody ArticleEntity entity)
     {
         return service.save(entity);
+    }
+
+    @PostMapping(value = "/like/{code}")
+    CommonResponse<Object> like(@PathVariable String code,
+            HttpServletRequest request)
+    {
+        return service.like(code, request);
     }
 }
