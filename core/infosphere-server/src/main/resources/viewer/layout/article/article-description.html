@@ -9,10 +9,10 @@
                     <a th:if="${details.published}" class="action-item" data-toggle="tooltip" data-placement="top" title="点赞数">
                         <i th:if="${session.SPRING_SECURITY_CONTEXT}"
                            th:with="authentication=${T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication()}">
-                            <a th:if="${authentication.getPrincipal()?.entity?.id eq details.user.id}" class="btn-like">
+                            <a th:if="${authentication.getPrincipal()?.entity?.id eq details.user.id}">
                                 <i class="fa fa-heart"></i>
                             </a>
-                            <a th:unless="${authentication.getPrincipal()?.entity?.id eq details.user.id}" href="javascript:void(0)">
+                            <a th:unless="${authentication.getPrincipal()?.entity?.id eq details.user.id}" class="btn-like" href="javascript:void(0)">
                                 <i class="fa fa-heart-o"></i>
                             </a>
                         </i>
