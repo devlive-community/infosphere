@@ -31,7 +31,18 @@
                 <div class="tab-example-result pb-0">
                     <a th:each="tag, index : ${details.tags}" th:text="${tag.name}" th:href="@{'/viewer/tag/' + ${tag.code}}" class="badge badge-primary ml-1"></a>
                 </div>
-                <a th:if="${session.SPRING_SECURITY_CONTEXT}" class="btn btn-link btn-xs" th:target="_blank" th:href="@{'/viewer/article/' + ${details.code} + '/edit'}">修改</a>
+                <div th:if="${session.SPRING_SECURITY_CONTEXT}"
+                     th:with="authentication=${T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication()}">
+                    <div th:if="${authentication.getPrincipal()?.entity?.id eq details.user.id}" class="btn-group">
+                        <button class="btn btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                style="padding: 15px 0 0 0;">
+                            <i class="fas fa-cog" style="margin-right: 10px;"></i>操作
+                        </button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" th:target="_blank" th:href="@{'/viewer/article/' + ${details.code} + '/edit'}">修改</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
