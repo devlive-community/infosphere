@@ -29,7 +29,7 @@
                 <div class="collapse navbar-collapse"></div>
 
                 <!-- 个人工具 -->
-                <div class="ml-4 btn-icon d-none d-lg-inline-flex">
+                <div class="ml-4 btn-icon d-none d-lg-inline-flex mr-6">
                     <div class="collapse navbar-collapse">
                         <!-- 创作中心 -->
                         <div th:if="${session.SPRING_SECURITY_CONTEXT}"
@@ -39,7 +39,7 @@
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 创作中心
                             </button>
-                            <div class="dropdown-menu dropdown-menu-right">
+                            <div class="dropdown-menu dropdown-menu-right min-w-130 p-tb-3 p-lr-10">
                                 <!--                        <div class="dropdown-divider"></div>-->
                                 <a th:href="@{/viewer/article/writer}" th:target="_balank" class="dropdown-item">写文章</a>
                             </div>
@@ -62,7 +62,7 @@
                                           class="avatar bg-primary rounded-circle avatar-sm"></span>
                                 </div>
                             </button>
-                            <div class="dropdown-menu dropdown-menu-right">
+                            <div class="dropdown-menu dropdown-menu-right min-w-130 p-tb-3 p-lr-10">
                                 <!--                        <div class="dropdown-divider"></div>-->
                                 <a th:href="@{/viewer/user/logout}" class="dropdown-item">
                                     <div class="listview__content">
