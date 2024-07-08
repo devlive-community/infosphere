@@ -10,4 +10,12 @@ const router = createRouter({
 
 createDefaultRouter(router)
 
+router.beforeEach((to, from, next) => {
+    // 如果设置了标题，替换为当前访问的标题
+    if (to.meta.title) {
+        document.title = to.meta.title as string
+    }
+    next()
+})
+
 export default router

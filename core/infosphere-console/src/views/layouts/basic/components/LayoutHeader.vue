@@ -17,7 +17,9 @@
       </div>
 
       <div class="flex ml-auto space-x-3">
-        <Button variant="ghost">登录</Button>
+        <RouterLink to="login">
+          <Button variant="ghost">登录</Button>
+        </RouterLink>
         <Button variant="secondary">注册</Button>
       </div>
     </div>

@@ -11,7 +11,18 @@ const createDefaultRouter = (router: Router): void => {
             {
                 name: 'index',
                 path: 'index',
+                meta: {
+                    title: '首页'
+                },
                 component: () => import('@/views/pages/index/IndexHome.vue')
+            },
+            {
+                name: 'login',
+                path: 'login',
+                meta: {
+                    title: '登录'
+                },
+                component: () => import('@/views/pages/login/LoginHome.vue')
             }
         ]
     })
