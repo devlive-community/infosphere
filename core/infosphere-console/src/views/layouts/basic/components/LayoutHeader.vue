@@ -20,7 +20,9 @@
         <RouterLink to="login">
           <Button variant="ghost">登录</Button>
         </RouterLink>
-        <Button variant="secondary">注册</Button>
+        <RouterLink to="register">
+          <Button variant="secondary">注册</Button>
+        </RouterLink>
       </div>
     </div>
   </header>

@@ -23,6 +23,14 @@ const createDefaultRouter = (router: Router): void => {
                     title: '登录'
                 },
                 component: () => import('@/views/pages/login/LoginHome.vue')
+            },
+            {
+                name: 'register',
+                path: 'register',
+                meta: {
+                    title: '注册'
+                },
+                component: () => import('@/views/pages/login/RegisterHome.vue')
             }
         ]
     })

@@ -23,13 +23,13 @@
           </div>
           <div class="mt-4 text-center text-sm">
             还没有账号
-            <RouterLink to="#" class="underline">立即注册</RouterLink>
+            <RouterLink to="register" class="underline">立即注册</RouterLink>
           </div>
         </div>
       </div>
-<!--      <div class="hidden bg-muted lg:block">-->
-<!--        <Image class="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"/>-->
-<!--      </div>-->
+      <!--      <div class="hidden bg-muted lg:block">-->
+      <!--        <Image class="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"/>-->
+      <!--      </div>-->
     </div>
   </div>
 </template>
