@@ -155,7 +155,7 @@ public interface UserRepository
      * @param email 邮箱
      * @return 用户信息
      */
-    UserEntity findByEmail(String email);
+    Optional<UserEntity> findByEmail(String email);
 
     /**
      * 修改邮箱

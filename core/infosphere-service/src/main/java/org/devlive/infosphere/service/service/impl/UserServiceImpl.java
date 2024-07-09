@@ -43,20 +43,19 @@ public class UserServiceImpl
         this.authenticationProvider = authenticationProvider;
     }
 
-//    @Autowired
-//    private ArticleRepository articleRepository;
-
     @Override
     public CommonResponse<JwtResponse> signing(UserEntity configure)
     {
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(configure.getUsername(), configure.getPassword());
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(configure.getEmail(), configure.getPassword());
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        SecurityContextHolder.getContext()
+                .setAuthentication(authentication);
         String jwt = jwtService.generateJwtToken(authentication);
 
         UserDetailsService userDetails = (UserDetailsService) authentication.getPrincipal();
-        List<String> roles = userDetails.getAuthorities().stream()
+        List<String> roles = userDetails.getAuthorities()
+                .stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
