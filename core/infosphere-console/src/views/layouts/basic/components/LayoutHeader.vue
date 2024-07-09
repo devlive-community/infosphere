@@ -15,7 +15,7 @@
           </li>
         </ul>
       </div>
-{{isLogin}}
+
       <div class="flex ml-auto space-x-3">
         <div v-if="!isLogin" class="space-x-2">
           <RouterLink to="login">

@@ -34,6 +34,23 @@ const createDefaultRouter = (router: Router): void => {
             }
         ]
     })
+
+    router.addRoute({
+        path: '/common',
+        name: 'common',
+        redirect: '/common/not_network',
+        component: LayoutContainer,
+        children: [
+            {
+                name: 'logged',
+                path: 'logged',
+                meta: {
+                    title: '用户已经登录'
+                },
+                component: () => import('@/views/pages/common/LoggedHome.vue')
+            }
+        ]
+    })
 }
 
 export {

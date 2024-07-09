@@ -2,7 +2,7 @@
   <div>
     <div class="hidden flex-col md:flex">
       <LayoutHeader/>
-      <div class="flex-1 space-y-4 pl-8 pr-8 min-h-[700px]">
+      <div class="flex-1 space-y-4 min-h-[650px]">
         <RouterView/>
       </div>
     </div>

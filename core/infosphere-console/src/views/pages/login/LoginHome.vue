@@ -11,7 +11,7 @@
             <Alert v-if="message" variant="destructive">
               <AlertDescription>{{ message }}</AlertDescription>
             </Alert>
-            <form class="space-y-4" @submit="onSubmit">
+            <form class="space-y-6" @submit="onSubmit">
               <div class="grid gap-2">
                 <FormField v-slot="{ componentField }" name="email">
                   <FormItem>
