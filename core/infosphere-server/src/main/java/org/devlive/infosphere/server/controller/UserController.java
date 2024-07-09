@@ -25,10 +25,7 @@ public class UserController
     @PostMapping("/signin")
     public CommonResponse<JwtResponse> signing(@RequestBody UserEntity configure)
     {
-        UserEntity user = new UserEntity();
-        user.setUsername(configure.getUsername());
-        user.setPassword(configure.getPassword());
-        return this.service.signing(user);
+        return this.service.signing(configure);
     }
 
     @RequestMapping(value = "register", method = RequestMethod.POST)

@@ -25,7 +25,7 @@ public class UserDetailsServiceImpl
     public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException
     {
-        UserEntity user = repository.findByUsername(username)
+        UserEntity user = repository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException(String.format("未找到用户名 [ %s ] 的用户", username)));
         return UserDetailsService.build(user);
     }
