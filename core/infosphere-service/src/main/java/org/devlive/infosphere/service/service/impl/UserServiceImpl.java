@@ -3,6 +3,7 @@ package org.devlive.infosphere.service.service.impl;
 import com.google.common.collect.Lists;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.response.JwtResponse;
+import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
 import org.devlive.infosphere.service.entity.RoleEntity;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.RoleRepository;
@@ -17,6 +18,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 
 import java.util.List;
 import java.util.Objects;
@@ -81,6 +83,15 @@ public class UserServiceImpl
         List<RoleEntity> roles = Lists.newArrayList();
         roles.add(roleRepository.findByName("USER"));
         configure.setRoles(roles);
+        return CommonResponse.success(repository.save(configure));
+    }
+
+    @Override
+    public CommonResponse<UserEntity> saveAndUpdate(UserEntity configure)
+    {
+        Long id = ObjectUtils.isEmpty(configure.getId()) ? Objects.requireNonNull(UserDetailsService.getUser()).getId() : configure.getId();
+        repository.findById(id)
+                .ifPresent(value -> NullAwareBeanUtils.copyNullProperties(value, configure));
         return CommonResponse.success(repository.save(configure));
     }
 

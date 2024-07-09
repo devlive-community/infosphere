@@ -23,6 +23,12 @@ public class UserController
         this.service = service;
     }
 
+    @PostMapping
+    public CommonResponse<UserEntity> save(@RequestBody UserEntity configure)
+    {
+        return this.service.saveAndUpdate(configure);
+    }
+
     @PostMapping("/signin")
     public CommonResponse<JwtResponse> signing(@RequestBody UserEntity configure)
     {

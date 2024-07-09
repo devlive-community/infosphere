@@ -12,5 +12,7 @@ public interface UserService
 
     CommonResponse<UserEntity> save(UserEntity configure);
 
+    CommonResponse<UserEntity> saveAndUpdate(UserEntity configure);
+
     CommonResponse<UserEntity> getInfo(String code);
 }

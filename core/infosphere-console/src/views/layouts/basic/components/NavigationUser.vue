@@ -14,6 +14,13 @@
         </div>
       </DropdownMenuLabel>
       <DropdownMenuSeparator/>
+      <RouterLink to="/setting">
+        <DropdownMenuItem class="cursor-pointer">
+          <span>个人设置</span>
+          <DropdownMenuShortcut>⇧⌘S</DropdownMenuShortcut>
+        </DropdownMenuItem>
+      </RouterLink>
+      <DropdownMenuSeparator/>
       <DropdownMenuItem class="cursor-pointer" @click="logout">
         <span>退出</span>
         <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
