@@ -23,12 +23,15 @@ public class JwtAuthEntryPoint
             AuthenticationException authException)
             throws IOException
     {
+        response.setHeader("Content-Type", "application/json;charset=UTF-8");
         log.error("Unauthorized error: {} path [ {} ]", authException.getMessage(), request.getRequestURI());
         if (authException instanceof BadCredentialsException) {
-            response.getWriter().print(JsonUtils.toJSON(CommonResponse.failure("用户账号或密码不匹配")));
+            response.getWriter()
+                    .print(JsonUtils.toJSON(CommonResponse.failure("用户账号或密码不匹配")));
         }
         else {
-            response.getWriter().print(JsonUtils.toJSON(CommonResponse.failure("未授权的用户")));
+            response.getWriter()
+                    .print(JsonUtils.toJSON(CommonResponse.failure("未授权的用户")));
         }
     }
 }

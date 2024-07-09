@@ -15,26 +15,48 @@
           </li>
         </ul>
       </div>
-
+{{isLogin}}
       <div class="flex ml-auto space-x-3">
-        <RouterLink to="login">
-          <Button variant="ghost">登录</Button>
-        </RouterLink>
-        <RouterLink to="register">
-          <Button variant="secondary">注册</Button>
-        </RouterLink>
+        <div v-if="!isLogin" class="space-x-2">
+          <RouterLink to="login">
+            <Button variant="ghost">登录</Button>
+          </RouterLink>
+          <RouterLink to="register">
+            <Button variant="secondary">注册</Button>
+          </RouterLink>
+        </div>
+        <NavigationUser v-else/>
       </div>
     </div>
   </header>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, onMounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { HomeIcon } from 'lucide-vue-next'
+import NavigationUser from '@/views/layouts/basic/components/NavigationUser.vue'
+import { useUserStore } from '@/stores/user.ts'
 
 export default defineComponent({
   name: 'LayoutHeader',
-  components: { Button, HomeIcon }
+  components: { NavigationUser, Button, HomeIcon },
+  setup()
+  {
+    const userStore = useUserStore()
+    let isLogin = ref(userStore.isLogin)
+
+    watch(() => userStore.isLogin, (newInfo) => {
+      isLogin.value = newInfo
+    })
+
+    onMounted(() => {
+      isLogin.value = userStore.isLogin
+    })
+
+    return {
+      isLogin
+    }
+  }
 })
 </script>

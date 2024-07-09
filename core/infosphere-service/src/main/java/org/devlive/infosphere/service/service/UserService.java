@@ -11,4 +11,6 @@ public interface UserService
     CommonResponse<UserEntity> getUserById(Long id);
 
     CommonResponse<UserEntity> save(UserEntity configure);
+
+    CommonResponse<UserEntity> getInfo(String code);
 }

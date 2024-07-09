@@ -5,6 +5,7 @@ import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.service.UserService;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,5 +33,11 @@ public class UserController
     CommonResponse<UserEntity> register(@RequestBody @Validated UserEntity configure)
     {
         return service.save(configure);
+    }
+
+    @GetMapping(value = "info")
+    CommonResponse<UserEntity> info()
+    {
+        return service.getInfo(null);
     }
 }

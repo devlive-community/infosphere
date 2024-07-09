@@ -10,6 +10,11 @@ class UserService
     {
         return new HttpUtils().post(`${ DEFAULT_PATH }/signin`, configure)
     }
+
+    getInfo(): Promise<Response>
+    {
+        return new HttpUtils().get(`${ DEFAULT_PATH }/info`)
+    }
 }
 
 export default new UserService()

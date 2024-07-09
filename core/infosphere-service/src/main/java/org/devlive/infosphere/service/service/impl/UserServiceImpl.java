@@ -11,7 +11,6 @@ import org.devlive.infosphere.service.security.JwtService;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.UserService;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -20,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,16 +31,14 @@ public class UserServiceImpl
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final PasswordEncoder encoder;
-    private final AuthenticationProvider authenticationProvider;
 
-    public UserServiceImpl(UserRepository repository, RoleRepository roleRepository, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder encoder, AuthenticationProvider authenticationProvider)
+    public UserServiceImpl(UserRepository repository, RoleRepository roleRepository, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder encoder)
     {
         this.repository = repository;
         this.roleRepository = roleRepository;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.encoder = encoder;
-        this.authenticationProvider = authenticationProvider;
     }
 
     @Override
@@ -49,8 +47,7 @@ public class UserServiceImpl
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(configure.getEmail(), configure.getPassword());
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
 
-        SecurityContextHolder.getContext()
-                .setAuthentication(authentication);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtService.generateJwtToken(authentication);
 
         UserDetailsService userDetails = (UserDetailsService) authentication.getPrincipal();
@@ -58,10 +55,7 @@ public class UserServiceImpl
                 .stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
-
-        JwtResponse jwtResponse = new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), roles, userDetails.getAvatar());
-        authenticationProvider.authenticate(authentication);
-        return CommonResponse.success(jwtResponse);
+        return CommonResponse.success(new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), roles, userDetails.getAvatar()));
     }
 
     @Override
@@ -88,5 +82,12 @@ public class UserServiceImpl
         roles.add(roleRepository.findByName("USER"));
         configure.setRoles(roles);
         return CommonResponse.success(repository.save(configure));
+    }
+
+    @Override
+    public CommonResponse<UserEntity> getInfo(String code)
+    {
+        return getUserById(Objects.requireNonNull(UserDetailsService.getUser())
+                .getId());
     }
 }

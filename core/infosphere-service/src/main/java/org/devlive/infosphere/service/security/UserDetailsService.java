@@ -49,7 +49,7 @@ public class UserDetailsService
                 .collect(Collectors.toList());
         return new UserDetailsService(
                 user.getId(),
-                user.getUsername(),
+                user.getEmail(),
                 user.getPassword(),
                 authorities,
                 user.getAvatar(),
