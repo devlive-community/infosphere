@@ -11,7 +11,7 @@
             <Alert v-if="message" variant="destructive">
               <AlertDescription>{{ message }}</AlertDescription>
             </Alert>
-            <form class="space-y-4" @submit="onSubmit">
+            <form class="space-y-6" @submit="onSubmit">
               <div class="grid gap-2">
                 <FormField v-slot="{ componentField }" name="email">
                   <FormItem>
@@ -70,6 +70,8 @@ import { Loader2 } from 'lucide-vue-next'
 import UserService from '@/service/user.ts'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { TokenUtils } from '@/lib/token.ts'
+import router from '@/router'
+import { useUserStore } from '@/stores/user.ts'
 
 export default defineComponent({
   name: 'LoginHome',
@@ -80,6 +82,7 @@ export default defineComponent({
   },
   setup()
   {
+    const userStore = useUserStore()
     let loading = ref(false)
     const formState = ref<User>({ email: undefined, password: undefined })
     const message = ref<string | null>(null)
@@ -103,6 +106,8 @@ export default defineComponent({
                    if (response.status) {
                      message.value = null
                      TokenUtils.setAuthUser(response.data as Auth)
+                     userStore.isLogin = true
+                     router.push('/')
                    }
                    else {
                      message.value = response.message as string

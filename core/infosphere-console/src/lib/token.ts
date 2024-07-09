@@ -24,6 +24,11 @@ export class TokenUtils
         localStorage.setItem(TOKEN, JSON.stringify(auth))
     }
 
+    public static removeAuthUser(): void
+    {
+        localStorage.removeItem(TOKEN)
+    }
+
     public static getToken(): String
     {
         return TOKEN

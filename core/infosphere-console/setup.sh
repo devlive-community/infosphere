@@ -8,5 +8,8 @@ yes | npx shadcn-vue@latest add input
 yes | npx shadcn-vue@latest add form
 yes | npx shadcn-vue@latest add toast
 yes | npx shadcn-vue@latest add alert
+yes | npx shadcn-vue@latest add dropdown-menu
+yes | npx shadcn-vue@latest add separator
+yes | npx shadcn-vue@latest add textarea
 
 echo "========== Done setup script =========="
