@@ -8,18 +8,40 @@
             <p class="text-balance text-muted-foreground">登录您的账号密码体验系统各种功能。</p>
           </div>
           <div class="grid gap-4">
-            <div class="grid gap-2">
-              <Label for="email">邮箱地址</Label>
-              <Input id="email" type="email" placeholder="请输入注册时用的邮箱地址" required/>
-            </div>
-            <div class="grid gap-2">
-              <div class="flex items-center">
-                <Label for="password">用户密码</Label>
-                <a href="#" class="ml-auto inline-block text-sm underline">找回密码?</a>
+            <Alert v-if="message" variant="destructive">
+              <AlertDescription>{{ message }}</AlertDescription>
+            </Alert>
+            <form class="space-y-4" @submit="onSubmit">
+              <div class="grid gap-2">
+                <FormField v-slot="{ componentField }" name="email">
+                  <FormItem>
+                    <FormLabel>邮箱地址</FormLabel>
+                    <FormControl>
+                      <Input type="text" v-model="formState.email" v-bind="componentField" placeholder="请输入注册时用的邮箱地址"/>
+                    </FormControl>
+                    <FormMessage/>
+                  </FormItem>
+                </FormField>
               </div>
-              <Input id="password" type="password" required placeholder="请输入账号绑定密码"/>
-            </div>
-            <Button type="submit" class="w-full">登录</Button>
+              <div class="grid gap-2">
+                <FormField v-slot="{ componentField }" name="password">
+                  <FormItem>
+                    <div class="flex items-center">
+                      <FormLabel>用户密码</FormLabel>
+                      <!--                      <a href="#" class="ml-auto inline-block text-sm underline">找回密码?</a>-->
+                    </div>
+                    <FormControl>
+                      <Input type="password" v-model="formState.password" v-bind="componentField" placeholder="请输入账号绑定密码"/>
+                    </FormControl>
+                    <FormMessage/>
+                  </FormItem>
+                </FormField>
+              </div>
+              <Button type="submit" class="w-full" :disabled="loading">
+                <Loader2 v-if="loading" class="mr-2 h-4 w-4 animate-spin"/>
+                登录
+              </Button>
+            </form>
           </div>
           <div class="mt-4 text-center text-sm">
             还没有账号
@@ -35,13 +57,66 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, ref } from 'vue'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { z } from 'zod'
+import { Auth, User } from '@/model/user.ts'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { Loader2 } from 'lucide-vue-next'
+import UserService from '@/service/user.ts'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { TokenUtils } from '@/lib/token.ts'
 
 export default defineComponent({
   name: 'LoginHome',
-  components: { Button, Input, Label }
+  components: {
+    AlertDescription, Alert,
+    FormMessage, FormControl, FormLabel, FormField, FormItem,
+    Button, Input, Label, Loader2
+  },
+  setup()
+  {
+    let loading = ref(false)
+    const formState = ref<User>({ email: undefined, password: undefined })
+    const message = ref<string | null>(null)
+    const validator = z
+        .object({
+          email: z.string({ required_error: '邮箱地址不能为空' })
+                  .email('邮箱地址格式不正确'),
+          password: z.string({ required_error: '用户密码不能为空' })
+                     .min(6, '密码必须在6-20个字符之间')
+                     .max(20, '密码必须在6-20个字符之间')
+        })
+
+    const { handleSubmit } = useForm({
+      validationSchema: toTypedSchema(validator)
+    })
+
+    const onSubmit = handleSubmit(() => {
+      loading.value = true
+      UserService.login(formState.value)
+                 .then(response => {
+                   if (response.status) {
+                     message.value = null
+                     TokenUtils.setAuthUser(response.data as Auth)
+                   }
+                   else {
+                     message.value = response.message as string
+                   }
+                 })
+                 .finally(() => loading.value = false)
+    })
+
+    return {
+      loading,
+      formState,
+      onSubmit,
+      message
+    }
+  }
 })
 </script>
