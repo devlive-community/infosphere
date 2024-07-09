@@ -21,8 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static java.util.Objects.requireNonNull;
 
 @Service
 public class UserServiceImpl
@@ -89,7 +90,7 @@ public class UserServiceImpl
     @Override
     public CommonResponse<UserEntity> saveAndUpdate(UserEntity configure)
     {
-        Long id = ObjectUtils.isEmpty(configure.getId()) ? Objects.requireNonNull(UserDetailsService.getUser()).getId() : configure.getId();
+        Long id = ObjectUtils.isEmpty(configure.getId()) ? requireNonNull(UserDetailsService.getUser()).getId() : configure.getId();
         repository.findById(id)
                 .ifPresent(value -> NullAwareBeanUtils.copyNullProperties(value, configure));
         return CommonResponse.success(repository.save(configure));
@@ -98,7 +99,7 @@ public class UserServiceImpl
     @Override
     public CommonResponse<UserEntity> getInfo(String code)
     {
-        return getUserById(Objects.requireNonNull(UserDetailsService.getUser())
+        return getUserById(requireNonNull(UserDetailsService.getUser())
                 .getId());
     }
 }
