@@ -2,8 +2,10 @@ export interface User
 {
     id?: number
     username?: string
+    aliasName?: string
     password?: string
     email?: string
+    signature?: string
 }
 
 export interface Auth

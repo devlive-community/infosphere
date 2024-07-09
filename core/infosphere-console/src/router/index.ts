@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import { createDefaultRouter } from '@/router/default.ts'
+import { useUserStore } from '@/stores/user.ts'
 
 const routes: Array<RouteRecordRaw> = []
 
@@ -15,6 +16,15 @@ router.beforeEach((to, from, next) => {
     if (to.meta.title) {
         document.title = to.meta.title as string
     }
+
+    const userStore = useUserStore()
+    if (to.path === '/login' || to.path === '/register') {
+        if (userStore.isLogin) {
+            next({ path: '/common/logged' })
+        }
+        return
+    }
+
     next()
 })
 

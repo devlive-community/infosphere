@@ -25,6 +25,7 @@ public class InfoSphere
 
     public static void main(String[] args)
     {
-        new InfoSphere().start(args);
+        new InfoSphere()
+                .start(args);
     }
 }

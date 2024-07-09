@@ -1,6 +1,5 @@
 package org.devlive.infosphere.security;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -9,27 +8,26 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
-import javax.annotation.Resource;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(
-        prePostEnabled = true)
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfigure
         extends WebSecurityConfigurerAdapter
 {
-    @Resource
-    private UserDetailsService userDetailsService;
-    @Resource
-    private JwtAuthEntryPoint unauthorizedHandler;
-    @Resource
-    private InfoSphereAuthenticationProvider infosphereAuthenticationProvider;
-    @Resource
-    private InfoSphereAuthenticationSuccessHandler authenticationSuccessHandler;
+    private final UserDetailsService userDetailsService;
+    private final JwtAuthEntryPoint unauthorizedHandler;
+
+    public SecurityConfigure(UserDetailsService userDetailsService, JwtAuthEntryPoint unauthorizedHandler)
+    {
+        this.userDetailsService = userDetailsService;
+        this.unauthorizedHandler = unauthorizedHandler;
+    }
 
     @Bean
     public AuthTokenFilterService authenticationJwtTokenFilter()
@@ -43,12 +41,6 @@ public class SecurityConfigure
     {
         authenticationManagerBuilder.userDetailsService(userDetailsService)
                 .passwordEncoder(passwordEncoder());
-    }
-
-    @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder auth)
-    {
-        auth.authenticationProvider(infosphereAuthenticationProvider);
     }
 
     @Bean
@@ -71,15 +63,14 @@ public class SecurityConfigure
     {
         http.cors().and().csrf().disable()
                 .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
-//                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
                 .authorizeRequests()
-                .antMatchers("/", "/home/**", "/hottest/**", "/recommend/**", "/forme/**", "/favicon.ico",
-                        "/static/**", "/viewer/**",
-                        "/api/v1/user/signin", "/api/v1/user/register")
+                .antMatchers("/api/v1/user/signin", "/api/v1/user/register")
                 .permitAll()
                 .anyRequest()
-                .authenticated()
-                .and().formLogin().loginPage("/viewer/user/login").successHandler(authenticationSuccessHandler).permitAll()
-                .and().logout().logoutUrl("/viewer/user/logout").logoutSuccessUrl("/").permitAll();
+                .authenticated();
+
+        // 添加 JWT 过滤器
+        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
     }
 }
