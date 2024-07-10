@@ -86,11 +86,11 @@ export default defineComponent({
     const validator = z
         .object({
           name: z.string({ required_error: '书籍名称不能为空' })
-                 .min(6, '书籍名称在6-50个字符之间')
-                 .max(50, '书籍名称在6-50个字符之间'),
+                 .min(2, '书籍名称在2-50个字符之间')
+                 .max(50, '书籍名称在2-50个字符之间'),
           identify: z.string({ required_error: '书籍标记不能为空' })
-                     .min(6, '密码必须在6-100个字符之间')
-                     .max(100, '密码必须在6-100个字符之间'),
+                     .min(2, '书籍标记必须在2-100个字符之间')
+                     .max(100, '书籍标记必须在2-100个字符之间'),
           visibility: z.enum(['true', 'false'], { required_error: '书籍可见性不能为空' })
         })
     const formSchema = toTypedSchema(validator)
