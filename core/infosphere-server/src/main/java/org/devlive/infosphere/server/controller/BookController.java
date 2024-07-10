@@ -1,9 +1,13 @@
 package org.devlive.infosphere.server.controller;
 
 import org.devlive.infosphere.common.response.CommonResponse;
+import org.devlive.infosphere.service.adapter.PageAdapter;
+import org.devlive.infosphere.service.adapter.PageFilterAdapter;
+import org.devlive.infosphere.service.adapter.PageRequestAdapter;
 import org.devlive.infosphere.service.entity.BookEntity;
 import org.devlive.infosphere.service.service.BookService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +23,12 @@ public class BookController
     public BookController(BookService service)
     {
         this.service = service;
+    }
+
+    @GetMapping
+    public CommonResponse<PageAdapter<BookEntity>> getAll(@ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getAll(configure.getVisibility(), PageRequestAdapter.of(configure.getStart(), configure.getEnd()));
     }
 
     @RequestMapping(method = {RequestMethod.POST, RequestMethod.PUT})

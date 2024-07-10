@@ -1,5 +1,6 @@
 package org.devlive.infosphere.service.entity;
 
+import com.fasterxml.jackson.annotation.JsonIncludeProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -60,5 +61,6 @@ public class BookEntity
     @JoinTable(name = "infosphere_book_user_relation",
             joinColumns = @JoinColumn(name = "book_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
+    @JsonIncludeProperties(value = {"id", "aliasName", "avatar", "email", "username"})
     private UserEntity user;
 }

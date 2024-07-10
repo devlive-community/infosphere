@@ -5,3 +5,11 @@ export interface Response
     message?: string
     data?: any
 }
+
+export interface Pagination
+{
+    page?: number
+    size?: number
+    total?: number
+    totalPage?: number
+}

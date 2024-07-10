@@ -1,3 +1,5 @@
+import { User } from '@/model/user.ts'
+
 export interface Book
 {
     id?: number
@@ -8,4 +10,5 @@ export interface Book
     visibility?: boolean | string
     createTime?: string
     updateTime?: string
+    user?: User
 }

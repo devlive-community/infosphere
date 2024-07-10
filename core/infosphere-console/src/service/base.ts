@@ -1,5 +1,6 @@
 import { Response } from '@/model/response'
 import { HttpUtils } from '@/lib/http'
+import { Page } from '@/model/page.ts'
 
 export abstract class BaseService
 {
@@ -8,6 +9,11 @@ export abstract class BaseService
     protected constructor(baseUrl: string)
     {
         this.baseUrl = baseUrl
+    }
+
+    getAll(configure: Page): Promise<Response>
+    {
+        return new HttpUtils().get(`${ this.baseUrl }`, configure)
     }
 
     /**

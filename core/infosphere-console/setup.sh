@@ -13,5 +13,9 @@ yes | npx shadcn-vue@latest add separator
 yes | npx shadcn-vue@latest add textarea
 yes | npx shadcn-vue@latest add switch
 yes | npx shadcn-vue@latest add radio-group
+yes | npx shadcn-vue@latest add card
+yes | npx shadcn-vue@latest add pagination
+yes | npx shadcn-vue@latest add skeleton
+yes | npx shadcn-vue@latest add aspect-ratio
 
 echo "========== Done setup script =========="
