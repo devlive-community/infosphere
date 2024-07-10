@@ -80,5 +80,8 @@ public class UserEntity
     private List<RoleEntity> roles;
 
     @Transient
+    private String newPassword;
+
+    @Transient
     private String conformPassword;
 }

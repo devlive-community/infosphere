@@ -21,8 +21,8 @@ router.beforeEach((to, from, next) => {
     if (to.path === '/login' || to.path === '/register') {
         if (userStore.isLogin) {
             next({ path: '/common/logged' })
+            return
         }
-        return
     }
 
     next()

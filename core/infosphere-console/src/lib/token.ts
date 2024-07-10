@@ -15,6 +15,7 @@ export class TokenUtils
             return JSON.parse(localStorage.getItem(TOKEN) || '{}') as Auth
         }
         catch (error) {
+            console.error(error)
             return undefined
         }
     }

@@ -4,6 +4,8 @@ export interface User
     username?: string
     aliasName?: string
     password?: string
+    newPassword?: string
+    confirmPassword?: string
     email?: string
     signature?: string
 }
