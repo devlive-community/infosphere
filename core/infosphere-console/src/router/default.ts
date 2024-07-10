@@ -1,6 +1,7 @@
 import { Router } from 'vue-router'
 import LayoutContainer from '@/views/layouts/basic/LayoutContainer.vue'
 import SettingContainer from '@/views/layouts/setting/SettingContainer.vue'
+import { useUserStore } from '@/stores/user.ts'
 
 const createDefaultRouter = (router: Router): void => {
     router.addRoute({
@@ -49,6 +50,14 @@ const createDefaultRouter = (router: Router): void => {
                     title: '用户已经登录'
                 },
                 component: () => import('@/views/pages/common/LoggedHome.vue')
+            },
+            {
+                name: 'authorized',
+                path: '403',
+                meta: {
+                    title: '无权访问'
+                },
+                component: () => import('@/views/pages/common/AuthorizedHome.vue')
             }
         ]
     })
@@ -58,6 +67,15 @@ const createDefaultRouter = (router: Router): void => {
         name: 'setting',
         redirect: '/setting/index',
         component: SettingContainer,
+        beforeEnter: (to, from, next) => {
+            const userStore = useUserStore()
+            if (!userStore.isLogin) {
+                next('/common/403')
+            }
+            else {
+                next()
+            }
+        },
         children: [
             {
                 name: 'settingIndex',
