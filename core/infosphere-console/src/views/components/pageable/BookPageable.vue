@@ -4,7 +4,7 @@
       <Card class="w-full rounded-sm shadow-background hover:bg-gray-50 cursor-pointer">
         <CardHeader class="p-3 space-y-1.5">
           <CardTitle>
-            <RouterLink to="" class="flex items-center space-x-2 hover:text-blue-400">
+            <RouterLink :to="`/book/info/${item.identify}`" class="flex items-center space-x-2 hover:text-blue-400">
               <LockOpenIcon v-if="item.visibility" class="w-5 h-5"/>
               <LockIcon v-else class="w-5 h-5"/>
               <span>{{ item.name }}</span>
@@ -12,26 +12,49 @@
           </CardTitle>
           <CardDescription>
             <div class="flex h-5 items-center space-x-4 text-sm">
-              <div class="flex items-center space-x-2">
-                <UserIcon class="w-4 h-4"/>
-                <span>创建人：{{ item.user?.username }}</span>
-              </div>
+              <InfoSphereTooltip>
+                <template #title>
+                  <div class="flex items-center space-x-2">
+                    <UserIcon class="w-4 h-4"/>
+                    <span>{{ item.user?.username }}</span>
+                  </div>
+                </template>
+                <template #content>
+                  创建人
+                </template>
+              </InfoSphereTooltip>
               <Separator orientation="vertical"/>
-              <div class="flex items-center space-x-2">
-                <ClockIcon class="w-4 h-4"/>
-                <span>创建时间：{{ item.createTime }}</span>
-              </div>
+              <InfoSphereTooltip>
+                <template #title>
+                  <div class="flex items-center space-x-2">
+                    <ClockIcon class="w-4 h-4"/>
+                    <span>{{ item.createTime }}</span>
+                  </div>
+                </template>
+                <template #content>
+                  创建时间
+                </template>
+              </InfoSphereTooltip>
               <Separator orientation="vertical"/>
-              <div class="flex items-center space-x-2">
-                <PencilIcon class="w-4 h-4"/>
-                <span>更新时间：{{ item.updateTime }}</span>
-              </div>
+              <InfoSphereTooltip>
+                <template #title>
+                  <div class="flex items-center space-x-2">
+                    <PencilIcon class="w-3.5 h-3.5"/>
+                    <span>{{ item.updateTime }}</span>
+                  </div>
+                </template>
+                <template #content>
+                  更新时间
+                </template>
+              </InfoSphereTooltip>
             </div>
           </CardDescription>
         </CardHeader>
         <CardContent class="p-3 pl-6 pr-6">
           <div class="grid items-center w-full gap-4">
-            {{ item.description }}
+            <div class="text-gray-400">
+              {{ item.description ? item.description : '暂无描述' }}
+            </div>
           </div>
         </CardContent>
         <CardFooter class="flex justify-between p-3">
@@ -74,10 +97,12 @@ import { Pagination as PaginationEntity } from '@/model/response.ts'
 import { cloneDeep } from 'lodash'
 import { ClockIcon, EyeIcon, LockIcon, LockOpenIcon, PencilIcon, UserIcon } from 'lucide-vue-next'
 import { Separator } from '@/components/ui/separator'
+import InfoSphereTooltip from '@/views/components/tooltip/InfoSphereTooltip.vue'
 
 export default defineComponent({
   name: 'BookPageable',
   components: {
+    InfoSphereTooltip,
     Separator,
     Button,
     CardContent, Card, CardDescription, CardFooter, CardHeader, CardTitle,

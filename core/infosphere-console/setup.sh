@@ -17,5 +17,7 @@ yes | npx shadcn-vue@latest add card
 yes | npx shadcn-vue@latest add pagination
 yes | npx shadcn-vue@latest add skeleton
 yes | npx shadcn-vue@latest add aspect-ratio
+yes | npx shadcn-vue@latest add tooltip
+yes | npx shadcn-vue@latest add tabs
 
 echo "========== Done setup script =========="
