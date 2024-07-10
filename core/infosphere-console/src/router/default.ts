@@ -127,6 +127,12 @@ const createDefaultRouter = (router: Router): void => {
                 component: () => import('@/views/pages/book/BookPublic.vue')
             },
             {
+                name: 'BookPrivate',
+                path: 'private',
+                meta: { title: '私有书籍' },
+                component: () => import('@/views/pages/book/BookPrivate.vue')
+            },
+            {
                 name: 'BookInfo',
                 path: 'info/:identify?',
                 meta: { title: '书籍详情' },
