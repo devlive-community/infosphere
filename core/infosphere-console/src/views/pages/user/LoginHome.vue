@@ -28,7 +28,6 @@
                   <FormItem>
                     <div class="flex items-center">
                       <FormLabel>用户密码</FormLabel>
-                      <!--                      <a href="#" class="ml-auto inline-block text-sm underline">找回密码?</a>-->
                     </div>
                     <FormControl>
                       <Input type="password" v-model="formState.password" v-bind="componentField" placeholder="请输入账号绑定密码"/>
@@ -49,9 +48,6 @@
           </div>
         </div>
       </div>
-      <!--      <div class="hidden bg-muted lg:block">-->
-      <!--        <Image class="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"/>-->
-      <!--      </div>-->
     </div>
   </div>
 </template>

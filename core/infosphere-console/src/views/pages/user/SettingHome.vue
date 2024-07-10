@@ -36,7 +36,7 @@
           <FormItem class="space-y-1">
             <FormLabel>简介</FormLabel>
             <FormControl>
-              <Textarea :model-value="formState.signature" @update:model-value="formState.signature = $event as string"/>
+              <Textarea :model-value="formState.signature" @update:model-value="formState.signature = $event as string" rows="4"/>
             </FormControl>
           </FormItem>
         </FormField>
