@@ -42,16 +42,15 @@ public class BookServiceImpl
     public CommonResponse<BookEntity> saveAndUpdate(BookEntity configure)
     {
         Optional<BookEntity> existingBook = repository.findByIdentify(configure.getIdentify());
-        if (existingBook.isPresent()) {
-            return CommonResponse.failure(String.format("书籍 [ %s ] 已存在", configure.getIdentify()));
-        }
-
         if (ObjectUtils.isEmpty(configure.getId())) {
+            if (existingBook.isPresent()) {
+                return CommonResponse.failure(String.format("书籍标记 [ %s ] 已存在", configure.getIdentify()));
+            }
             configure.setUser(UserDetailsService.getUser());
         }
 
-        if (configure.getId() != null) {
-            NullAwareBeanUtils.copyNullProperties(existingBook, configure);
+        if (!ObjectUtils.isEmpty(configure.getId()) && existingBook.isPresent()) {
+            NullAwareBeanUtils.copyNullProperties(existingBook.get(), configure);
         }
 
         return CommonResponse.success(repository.save(configure));

@@ -58,10 +58,12 @@
           </div>
         </CardContent>
         <CardFooter class="flex justify-between p-3">
-          <Button variant="outline" class="space-x-2">
-            <EyeIcon class="w-4 h-4"/>
-            <span>查看书籍</span>
-          </Button>
+          <RouterLink :to="`/book/info/${item.identify}`">
+            <Button variant="outline" class="space-x-2">
+              <EyeIcon class="w-4 h-4"/>
+              <span>查看书籍</span>
+            </Button>
+          </RouterLink>
         </CardFooter>
       </Card>
     </div>

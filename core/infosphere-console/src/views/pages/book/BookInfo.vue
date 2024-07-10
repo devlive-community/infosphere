@@ -9,7 +9,9 @@
             <div class="items-center">
               <InfoSphereTooltip>
                 <template #title>
-                  <SettingsIcon class="w-4 h-4"/>
+                  <RouterLink :to="`/book/setting/${info.identify}`">
+                    <SettingsIcon class="w-4 h-4"/>
+                  </RouterLink>
                 </template>
                 <template #content>
                   书籍设置

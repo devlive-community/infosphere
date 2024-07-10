@@ -1,10 +1,12 @@
 <template>
-  <form class="space-y-6" @submit="submit" v-if="formState">
+  <InfoSphereLoading v-if="loading" :show="loading"/>
+  <form v-else-if="formState" class="space-y-6" @submit="submit">
     <FormField v-slot="{ componentField }" name="name">
       <FormItem>
         <FormLabel>书籍名称</FormLabel>
         <FormControl>
-          <Input v-model="formState.name" v-bind="componentField" placeholder="书籍名称"/>
+          <Input v-model="formState.name" :default-value="formState.name as string" v-bind="componentField" placeholder="书籍名称"
+                 @input="updateModelValue('name', $event.target.value)"/>
         </FormControl>
         <FormMessage/>
       </FormItem>
@@ -13,7 +15,8 @@
       <FormItem class="space-y-1">
         <FormLabel>书籍标记</FormLabel>
         <FormControl>
-          <Input v-model="formState.identify" v-bind="componentField" placeholder="书籍标记"/>
+          <Input v-model="formState.identify" :disabled="formState.id" :default-value="formState.identify as string" v-bind="componentField" placeholder="书籍标记"
+                 @input="updateModelValue('identify', $event.target.value)"/>
         </FormControl>
         <FormMessage/>
       </FormItem>
@@ -22,7 +25,7 @@
       <FormItem class="space-y-2">
         <FormLabel>书籍可见性</FormLabel>
         <FormControl>
-          <RadioGroup v-model="formState.visibility" :default-value="formState.visibility as string" v-bind="componentField">
+          <RadioGroup v-model="formState.visibility" :default-value="formState.visibility?.toString()" v-bind="componentField">
             <div class="flex space-x-4">
               <div class="flex items-center space-x-2">
                 <RadioGroupItem id="public" value="true"/>
@@ -46,14 +49,15 @@
       <FormItem class="space-y-1">
         <FormLabel>书籍描述</FormLabel>
         <FormControl>
-          <Textarea v-model="formState.description" v-bind="componentField" rows="4" placeholder="书籍描述"/>
+          <Textarea v-model="formState.description" :default-value="formState.description as string" v-bind="componentField" rows="4" placeholder="书籍描述"
+                    @input="updateModelValue('description', $event.target.value)"/>
         </FormControl>
         <FormMessage/>
       </FormItem>
     </FormField>
     <div class="flex justify-start">
-      <Button :disabled="loading">
-        <Loader2Icon v-if="loading" class="w-full justify-center animate-spin mr-3" :size="15"/>
+      <Button :disabled="saving">
+        <Loader2Icon v-if="saving" class="w-full justify-center animate-spin mr-3" :size="15"/>
         保存
       </Button>
     </div>
@@ -61,7 +65,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { defineComponent, onMounted, reactive, ref } from 'vue'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -69,20 +73,24 @@ import { Loader2Icon } from 'lucide-vue-next'
 import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
-import { toast } from 'vue3-toastify'
 import { Book } from '@/model/book.ts'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import BookService from '@/service/book.ts'
+import { useRouter } from 'vue-router'
+import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
+import { toast } from 'vue3-toastify'
+import router from '@/router'
 
 export default defineComponent({
   name: 'BookSetting',
-  components: { RadioGroupItem, Label, RadioGroup, Textarea, Loader2Icon, FormField, FormControl, FormMessage, Button, Input, FormLabel, FormItem },
+  components: { InfoSphereLoading, RadioGroupItem, Label, RadioGroup, Textarea, Loader2Icon, FormField, FormControl, FormMessage, Button, Input, FormLabel, FormItem },
   setup()
   {
-    let loading = ref(false)
-    const formState = ref<Book>({ name: undefined, cover: undefined, identify: undefined, description: undefined, visibility: undefined })
+    const loading = ref(false)
+    const saving = ref(false)
+    const formState = reactive<Record<string, any>>({ id: undefined, name: undefined, cover: undefined, identify: undefined, description: undefined, visibility: undefined })
     const validator = z
         .object({
           name: z.string({ required_error: '书籍名称不能为空' })
@@ -94,29 +102,65 @@ export default defineComponent({
           visibility: z.enum(['true', 'false'], { required_error: '书籍可见性不能为空' })
         })
     const formSchema = toTypedSchema(validator)
+    const tip = ref<string | null>(null)
 
-    const { handleSubmit } = useForm({
+    const { handleSubmit, setValues } = useForm({
       validationSchema: formSchema
     })
 
+    // 获取原始数据更新数据模型
+    onMounted(() => {
+      const router = useRouter()
+      const params = router.currentRoute.value.params
+      const identify = params['identify'] as string
+
+      if (identify) {
+        loading.value = true
+        BookService.getByIdentify(identify)
+                   .then(response => {
+                     const data = response.data
+                     const newValue = {
+                       id: data.id,
+                       name: data.name,
+                       cover: data.cover,
+                       identify: data.identify,
+                       description: data.description,
+                       visibility: data.visibility.toString()
+                     }
+                     setValues(newValue)
+                     Object.assign(formState, newValue)
+                     tip.value = `更新书籍 [ ${ formState?.name } ] 成功`
+                   })
+                   .finally(() => loading.value = false)
+      }
+    })
+
+    // 由于中文输入法问题，使用 v-model 未更新数据，需要手动更新
+    const updateModelValue = (field: string, value: any) => {
+      formState[field] = value
+    }
+
     const submit = handleSubmit(() => {
-      loading.value = true
-      BookService.saveOrUpdate(formState.value as Book)
+      saving.value = true
+      BookService.saveOrUpdate(formState as Book)
                  .then((response) => {
                    if (response.status) {
-                     toast(`创建书籍 [ ${ formState.value?.name } ] 成功`, { type: 'success' })
+                     toast(tip.value ? tip.value : `创建书籍 [ ${ formState?.name } ] 成功`, { type: 'success' })
+                     router.push(`/book/info/${ response.data.identify }`)
                    }
                    else {
                      toast(response.message as string, { type: 'error' })
                    }
                  })
-                 .finally(() => loading.value = false)
+                 .finally(() => saving.value = false)
     })
 
     return {
       loading,
+      saving,
       formState,
-      submit
+      submit,
+      updateModelValue
     }
   }
 })
