@@ -11,5 +11,7 @@ yes | npx shadcn-vue@latest add alert
 yes | npx shadcn-vue@latest add dropdown-menu
 yes | npx shadcn-vue@latest add separator
 yes | npx shadcn-vue@latest add textarea
+yes | npx shadcn-vue@latest add switch
+yes | npx shadcn-vue@latest add radio-group
 
 echo "========== Done setup script =========="
