@@ -18,10 +18,10 @@
 
       <div class="flex ml-auto space-x-3">
         <div v-if="!isLogin" class="space-x-2">
-          <RouterLink to="login">
+          <RouterLink to="/login">
             <Button variant="ghost">登录</Button>
           </RouterLink>
-          <RouterLink to="register">
+          <RouterLink to="/register">
             <Button variant="secondary">注册</Button>
           </RouterLink>
         </div>

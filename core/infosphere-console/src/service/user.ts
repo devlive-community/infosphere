@@ -20,6 +20,11 @@ class UserService
     {
         return new HttpUtils().post(`${ DEFAULT_PATH }`, configure)
     }
+
+    changePassword(configure: User): Promise<Response>
+    {
+        return new HttpUtils().put(`${ DEFAULT_PATH }/change/password`, configure)
+    }
 }
 
 export default new UserService()

@@ -66,6 +66,14 @@ const createDefaultRouter = (router: Router): void => {
                     title: '基本信息'
                 },
                 component: () => import('@/views/pages/user/SettingHome.vue')
+            },
+            {
+                name: 'settingPassword',
+                path: 'password',
+                meta: {
+                    title: '修改密码'
+                },
+                component: () => import('@/views/pages/user/SettingPassword.vue')
             }
         ]
     })

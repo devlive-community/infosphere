@@ -47,7 +47,8 @@ export default defineComponent({
     initialize()
     {
       const items: NavigationItem[] = [
-        { title: '基本信息', href: '/setting/index' }
+        { title: '基本信息', href: '/setting/index' },
+        { title: '修改密码', href: '/setting/password' }
       ]
       this.items = [...items]
     }
