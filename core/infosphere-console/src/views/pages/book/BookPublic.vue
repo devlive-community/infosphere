@@ -19,7 +19,7 @@ import { Pagination } from '@/model/response.ts'
 import InfoSphereSkeleton from '@/views/components/skeleton/InfoSphereSkeleton.vue'
 
 export default defineComponent({
-  name: 'BookHome',
+  name: 'BookPublic',
   components: {
     InfoSphereSkeleton,
     BookPageable,
@@ -35,7 +35,7 @@ export default defineComponent({
   },
   created()
   {
-    this.pagination = { page: 1, size: 10 }
+    this.pagination = { page: 1, size: 10, visibility: true }
     this.initialize()
   },
   methods: {
@@ -52,6 +52,7 @@ export default defineComponent({
     changePage(value: Pagination)
     {
       this.pagination = value
+      this.pagination.visibility = true
       this.initialize()
     }
   }

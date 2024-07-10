@@ -117,26 +117,25 @@ const createDefaultRouter = (router: Router): void => {
             {
                 name: 'BookIndex',
                 path: 'index',
-                meta: {
-                    title: '我的书籍'
-                },
+                meta: { title: '我的书籍' },
                 component: () => import('@/views/pages/book/BookHome.vue')
+            },
+            {
+                name: 'BookPublic',
+                path: 'public',
+                meta: { title: '公开书籍' },
+                component: () => import('@/views/pages/book/BookPublic.vue')
             },
             {
                 name: 'BookInfo',
                 path: 'info/:identify?',
-                meta: {
-                    title: '书籍详情'
-                },
+                meta: { title: '书籍详情' },
                 component: () => import('@/views/pages/book/BookInfo.vue')
-
             },
             {
                 name: 'BookSetting',
                 path: 'setting/:identify?',
-                meta: {
-                    title: '书籍设置'
-                },
+                meta: { title: '书籍设置' },
                 component: () => import('@/views/pages/book/BookSetting.vue')
             }
         ]

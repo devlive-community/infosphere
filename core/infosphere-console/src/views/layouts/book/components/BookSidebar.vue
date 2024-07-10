@@ -45,7 +45,8 @@ export default defineComponent({
     initialize()
     {
       const items = [
-        { title: '所有书籍', href: '/book/index' }
+        { title: '所有书籍', href: '/book/index' },
+        { title: '公开书籍', href: '/book/public' }
       ]
       this.items = [...items] as any[]
     }
