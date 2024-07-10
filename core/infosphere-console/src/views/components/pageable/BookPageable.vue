@@ -44,8 +44,9 @@
     </div>
   </div>
   <div v-if="pagination" class="mt-3">
-    <Pagination v-slot="{ page }" :default-page="pagination.page" :items-per-page="pagination.size" :sibling-count="1" :total="pagination.total" show-edges>
-      <PaginationList v-slot="{ items }" class="flex items-center gap-1" @update:page="changePage($event)">
+    <Pagination v-slot="{ page }" :default-page="pagination.page" :items-per-page="pagination.size" :sibling-count="1" :total="pagination.total" show-edges
+                @update:page="changePage($event)">
+      <PaginationList v-slot="{ items }" class="flex items-center gap-1">
         <PaginationFirst/>
         <PaginationPrev/>
         <template v-for="(item, index) in items">

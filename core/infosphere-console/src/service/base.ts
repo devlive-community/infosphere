@@ -1,6 +1,5 @@
-import { Response } from '@/model/response'
+import { Pagination, Response } from '@/model/response'
 import { HttpUtils } from '@/lib/http'
-import { Page } from '@/model/page.ts'
 
 export abstract class BaseService
 {
@@ -11,7 +10,7 @@ export abstract class BaseService
         this.baseUrl = baseUrl
     }
 
-    getAll(configure: Page): Promise<Response>
+    getAll(configure: Pagination): Promise<Response>
     {
         return new HttpUtils().get(`${ this.baseUrl }`, configure)
     }

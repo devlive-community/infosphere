@@ -12,4 +12,5 @@ export interface Pagination
     size?: number
     total?: number
     totalPage?: number
+    visibility?: boolean
 }

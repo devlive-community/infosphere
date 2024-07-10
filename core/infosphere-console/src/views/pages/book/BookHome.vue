@@ -5,14 +5,13 @@
     </div>
     <Separator class="my-4"/>
     <InfoSphereSkeleton v-if="loading" :show="loading"/>
-    <BookPageable v-else :items="items" :pagination="pagination"/>
+    <BookPageable v-else :items="items" :pagination="pagination" @changePage="changePage"/>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
 import BookService from '@/service/book.ts'
-import { Page } from '@/model/page.ts'
 import { Separator } from '@/components/ui/separator'
 import { Book } from '@/model/book.ts'
 import BookPageable from '@/views/components/pageable/BookPageable.vue'
@@ -30,7 +29,6 @@ export default defineComponent({
   {
     return {
       loading: false,
-      configure: null as unknown as Page,
       items: [] as Array<Book>,
       pagination: null as unknown as Pagination
     }
@@ -43,13 +41,17 @@ export default defineComponent({
     initialize()
     {
       this.loading = true
-      this.configure = { start: 0, end: 10 }
-      BookService.getAll(this.configure)
+      BookService.getAll(this.pagination)
                  .then(response => {
                    this.items = response.data.content
                    this.pagination = response.data.page
                  })
                  .finally(() => this.loading = false)
+    },
+    changePage(value: Pagination)
+    {
+      this.pagination = value
+      this.initialize()
     }
   }
 })

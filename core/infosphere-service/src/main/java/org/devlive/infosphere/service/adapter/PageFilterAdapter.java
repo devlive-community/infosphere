@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class PageFilterAdapter
 {
-    private Integer start;
-    private Integer end;
+    private Integer page;
+    private Integer size;
     private Boolean visibility;
 }
