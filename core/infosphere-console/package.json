@@ -6,6 +6,7 @@
   "scripts": {
     "predev": "sh setup.sh",
     "dev": "vite",
+    "prebuild": "sh setup.sh",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview"
   },
