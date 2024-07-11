@@ -16,6 +16,11 @@ class BookService
     {
         return new HttpUtils().get(`${ DEFAULT_PATH }/${ identify }`)
     }
+
+    getLatest(top: number): Promise<Response>
+    {
+        return new HttpUtils().get(`${ DEFAULT_PATH }/latest/${ top }`)
+    }
 }
 
 export default new BookService()

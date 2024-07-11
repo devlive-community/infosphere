@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping(value = "/api/v1/book")
 public class BookController
@@ -41,5 +43,11 @@ public class BookController
     public CommonResponse<BookEntity> info(@PathVariable(value = "identify") String identify)
     {
         return service.getByIdentify(identify);
+    }
+
+    @GetMapping(value = "latest/{top}")
+    public CommonResponse<List<BookEntity>> getTopByCreateTime(@PathVariable(value = "top") Integer top)
+    {
+        return service.getTopByCreateTime(top);
     }
 }
