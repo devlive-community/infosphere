@@ -13,7 +13,7 @@
       <div class="flex w-full">
         <div class="w-44 h-64">
           <AspectRatio class="w-full h-64">
-            <img :src="info.cover ? info.cover : '/images/default-cover.png'" :alt="info.name" class="rounded-md object-cover w-full h-full"/>
+            <img :src="info.cover ? info.cover : '/images/default-cover.png'" :alt="info.name" class="rounded-md w-full h-full border-2"/>
           </AspectRatio>
         </div>
         <div class="flex-1 pl-10 space-y-3">
