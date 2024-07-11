@@ -22,7 +22,7 @@
         <url>https://infosphere.devlive.org</url>
         <connection>scm:git:git://github.com/devlive-community/incubator-infosphere.git</connection>
         <developerConnection>scm:git:git@github.com:devlive-community/incubator-infosphere.git</developerConnection>
-        <tag>wiki</tag>
+        <tag>wiki,knowledge,company,enterprise</tag>
     </scm>
 
     <developers>

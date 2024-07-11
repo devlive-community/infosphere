@@ -65,7 +65,7 @@ public class SecurityConfigure
                 .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
                 .authorizeRequests()
-                .antMatchers("/api/v1/user/signin", "/api/v1/user/register")
+                .antMatchers("/api/v1/user/signin", "/api/v1/user/register", "/favicon.ico", "/upload/**")
                 .permitAll()
                 .anyRequest()
                 .authenticated();
