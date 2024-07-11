@@ -19,5 +19,7 @@ yes | npx shadcn-vue@latest add skeleton
 yes | npx shadcn-vue@latest add aspect-ratio
 yes | npx shadcn-vue@latest add tooltip
 yes | npx shadcn-vue@latest add tabs
+yes | npx shadcn-vue@latest add dialog
+yes | npx shadcn-vue@latest add alert-dialog
 
 echo "========== Done setup script =========="

@@ -37,6 +37,7 @@ vcs.xml
 
 site/
 dist/
+data/
 
 # console #
 core/infosphere-console/src/components/ui
