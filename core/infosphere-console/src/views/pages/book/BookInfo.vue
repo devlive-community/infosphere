@@ -27,12 +27,20 @@
                 <img :src="info.cover ? info.cover : '/images/default-cover.png'" :alt="info.name" class="rounded-md object-cover w-full h-full"/>
               </AspectRatio>
             </div>
-            <div class="flex-1 pl-10">
+            <div class="flex-1 pl-10 space-y-3">
               <div class="flex items-center space-x-6">
                 <Label class="text-gray-400">书籍作者:</Label>
-                <div>
-                  {{ info.user?.username }}
-                </div>
+                <span>{{ info.user?.username }}</span>
+              </div>
+              <Separator class="bg-gray-100"/>
+              <div class="flex items-center space-x-6">
+                <Label class="text-gray-400">创建时间:</Label>
+                <span>{{ info.createTime }}</span>
+              </div>
+              <Separator class="bg-gray-100"/>
+              <div class="flex items-center space-x-6">
+                <Label class="text-gray-400">更新时间:</Label>
+                <span>{{ info.updateTime }}</span>
               </div>
             </div>
           </div>

@@ -57,11 +57,17 @@
             </div>
           </div>
         </CardContent>
-        <CardFooter class="flex justify-between p-3">
+        <CardFooter class="flex space-x-2 p-3">
           <RouterLink :to="`/book/info/${item.identify}`">
             <Button variant="outline" class="space-x-2">
               <EyeIcon class="w-4 h-4"/>
               <span>查看书籍</span>
+            </Button>
+          </RouterLink>
+          <RouterLink :to="`/book/setting/${item.identify}`">
+            <Button variant="outline" class="space-x-2">
+              <CogIcon class="w-4 h-4"/>
+              <span>书籍设置</span>
             </Button>
           </RouterLink>
         </CardFooter>
@@ -97,7 +103,7 @@ import { Book } from '@/model/book.ts'
 import { Button } from '@/components/ui/button'
 import { Pagination as PaginationEntity } from '@/model/response.ts'
 import { cloneDeep } from 'lodash'
-import { ClockIcon, EyeIcon, LockIcon, LockOpenIcon, PencilIcon, UserIcon } from 'lucide-vue-next'
+import { ClockIcon, CogIcon, EyeIcon, LockIcon, LockOpenIcon, PencilIcon, UserIcon } from 'lucide-vue-next'
 import { Separator } from '@/components/ui/separator'
 import InfoSphereTooltip from '@/views/components/tooltip/InfoSphereTooltip.vue'
 
@@ -109,7 +115,7 @@ export default defineComponent({
     Button,
     CardContent, Card, CardDescription, CardFooter, CardHeader, CardTitle,
     Pagination, PaginationEllipsis, PaginationFirst, PaginationLast, PaginationList, PaginationListItem, PaginationNext, PaginationPrev,
-    EyeIcon, LockOpenIcon, LockIcon, UserIcon, ClockIcon, PencilIcon
+    EyeIcon, LockOpenIcon, LockIcon, UserIcon, ClockIcon, PencilIcon, CogIcon
   },
   props: {
     items: {

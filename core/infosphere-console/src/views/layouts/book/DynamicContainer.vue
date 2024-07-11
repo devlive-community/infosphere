@@ -23,7 +23,7 @@ export default defineComponent({
       if (route.path.startsWith('/book/info')) {
         return LayoutContainer
       }
-      if (route.path.startsWith('/book/setting')) {
+      if (route.path.startsWith('/book/summary') || route.path.startsWith('/book/setting')) {
         return InfoContainer
       }
       else {

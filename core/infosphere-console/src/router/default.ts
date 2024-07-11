@@ -139,6 +139,12 @@ const createDefaultRouter = (router: Router): void => {
                 component: () => import('@/views/pages/book/BookInfo.vue')
             },
             {
+                name: 'BookSummary',
+                path: 'summary/:identify?',
+                meta: { title: '书籍摘要' },
+                component: () => import('@/views/pages/book/BookSummary.vue')
+            },
+            {
                 name: 'BookSetting',
                 path: 'setting/:identify?',
                 meta: { title: '书籍设置' },

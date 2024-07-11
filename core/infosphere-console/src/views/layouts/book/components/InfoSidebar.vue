@@ -51,7 +51,7 @@ export default defineComponent({
 
       const items = []
       if (identify) {
-        items.push({ title: '基本信息', href: `/book/info/${ identify }` })
+        items.push({ title: '书籍摘要', href: `/book/summary/${ identify }` })
       }
       items.push({ title: '书籍设置', href: identify ? `/book/setting/${ identify }` : '/book/setting' })
       this.items = [...items] as any[]
