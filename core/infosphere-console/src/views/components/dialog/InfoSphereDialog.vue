@@ -1,6 +1,6 @@
 <template>
-  <AlertDialog :open="visible" @update:open="handlerCancel">
-    <AlertDialogContent :class="`p-0 min-w-[${width}] max-w-[${width}] w-[${width}]`">
+  <AlertDialog :open="visible" @update:open="cancel">
+    <AlertDialogContent class="p-2">
       <AlertDialogHeader>
         <AlertDialogTitle class="border-b p-2">
           <span v-if="title">{{ title }}</span>
@@ -8,7 +8,7 @@
         </AlertDialogTitle>
       </AlertDialogHeader>
       <slot/>
-      <AlertDialogFooter class="border-t p-2">
+      <AlertDialogFooter v-if="$slots.footer" class="border-t p-2">
         <slot name="footer"/>
       </AlertDialogFooter>
     </AlertDialogContent>
@@ -50,7 +50,7 @@ export default defineComponent({
     }
   },
   methods: {
-    handlerCancel()
+    cancel()
     {
       this.visible = false
     }

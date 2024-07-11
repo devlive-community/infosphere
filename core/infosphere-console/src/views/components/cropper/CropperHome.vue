@@ -1,8 +1,8 @@
 <template>
-  <div v-if="result.blobURL || pic" class="pt-2 grid">
-    <div>
-      <img class="max-h-[180px] border-2" :src="result.blobURL ? result.blobURL : pic" alt=""/>
-    </div>
+  <div v-if="result.blobURL || pic" class="w-44 h-64">
+    <AspectRatio class="w-full h-64">
+      <img class="border-2 rounded-md w-full h-full" :src="result.blobURL ? result.blobURL : pic" alt="图片"/>
+    </AspectRatio>
   </div>
 
   <div>

@@ -19,4 +19,3 @@ public class WebAppConfigure
                 .addResourceLocations("file:" + home);
     }
 }
-

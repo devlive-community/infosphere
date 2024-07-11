@@ -6,7 +6,17 @@
         <CardHeader class="p-3 space-y-1.5">
           <CardTitle class="space-x-4 flex items-center">
             <span class="font-bold text-2xl">{{ info.name }}</span>
-            <div class="items-center">
+            <div class="flex items-center space-x-2">
+              <InfoSphereTooltip>
+                <template #title>
+                  <RouterLink :to="`/book/writer/${info.identify}`">
+                    <SquarePenIcon class="w-4 h-4"/>
+                  </RouterLink>
+                </template>
+                <template #content>
+                  编辑文档
+                </template>
+              </InfoSphereTooltip>
               <InfoSphereTooltip>
                 <template #title>
                   <RouterLink :to="`/book/setting/${info.identify}`">
@@ -79,7 +89,7 @@ import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
-import { SettingsIcon } from 'lucide-vue-next'
+import { SettingsIcon, SquarePenIcon } from 'lucide-vue-next'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
 
 export default defineComponent({
@@ -92,7 +102,7 @@ export default defineComponent({
     Button, InfoSphereTooltip,
     Tabs, TabsContent, TabsList, TabsTrigger,
     AspectRatio,
-    SettingsIcon
+    SettingsIcon, SquarePenIcon
   },
   data()
   {
