@@ -86,7 +86,7 @@
       </Card>
     </div>
   </div>
-  <div v-if="pagination" class="mt-3">
+  <div v-if="pagination && items?.length > 0" class="mt-3">
     <Pagination v-slot="{ page }" :default-page="pagination.page" :items-per-page="pagination.size" :sibling-count="1" :total="pagination.total" show-edges
                 @update:page="changePage($event)">
       <PaginationList v-slot="{ items }" class="flex items-center gap-1">
@@ -105,6 +105,9 @@
       </PaginationList>
     </Pagination>
   </div>
+  <div v-else>
+    <p class="text-muted-foreground m-6">暂无书籍。</p>
+  </div>
 </template>
 
 <script lang="ts">
@@ -115,7 +118,7 @@ import { Book } from '@/model/book.ts'
 import { Button } from '@/components/ui/button'
 import { Pagination as PaginationEntity } from '@/model/response.ts'
 import { cloneDeep } from 'lodash'
-import { ClockIcon, CogIcon, EyeIcon, LockIcon, LockOpenIcon, PencilIcon, UserIcon, FileTextIcon } from 'lucide-vue-next'
+import { ClockIcon, CogIcon, EyeIcon, FileTextIcon, LockIcon, LockOpenIcon, PencilIcon, UserIcon } from 'lucide-vue-next'
 import { Separator } from '@/components/ui/separator'
 import InfoSphereTooltip from '@/views/components/tooltip/InfoSphereTooltip.vue'
 
