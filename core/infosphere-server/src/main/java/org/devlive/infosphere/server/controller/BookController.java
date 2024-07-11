@@ -46,7 +46,7 @@ public class BookController
     }
 
     @GetMapping(value = "latest/{top}")
-    public CommonResponse<List<BookEntity>> getTopByCreateTime(@PathVariable(value = "top") Integer top)
+    public CommonResponse<List<BookEntity>> latest(@PathVariable(value = "top") Integer top)
     {
         return service.getTopByCreateTime(top);
     }

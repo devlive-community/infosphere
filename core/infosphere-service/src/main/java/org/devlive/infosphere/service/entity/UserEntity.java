@@ -83,5 +83,5 @@ public class UserEntity
     private String newPassword;
 
     @Transient
-    private String conformPassword;
+    private String confirmPassword;
 }
