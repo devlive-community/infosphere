@@ -59,7 +59,8 @@ public class UserDetailsService
     public static UserEntity getUser()
     {
         UserEntity userInfo = new UserEntity();
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext()
+                .getAuthentication();
         if (Objects.nonNull(authentication)) {
             Object principal = authentication.getPrincipal();
             if (principal instanceof String) {
