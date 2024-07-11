@@ -59,4 +59,12 @@ public class DocumentServiceImpl
         return existingBook.map(book -> CommonResponse.success(repository.findAllByBookOrderBySortingAsc(book)))
                 .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
     }
+
+    @Override
+    public CommonResponse<DocumentEntity> getByIdentify(String identify)
+    {
+        return repository.findByIdentify(identify)
+                .map(CommonResponse::success)
+                .orElseGet(() -> CommonResponse.failure(String.format("文档 [ %s ] 不存在", identify)));
+    }
 }

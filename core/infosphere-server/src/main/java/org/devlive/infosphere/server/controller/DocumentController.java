@@ -30,8 +30,14 @@ public class DocumentController
     }
 
     @GetMapping(value = "catalog/{identify}")
-    public CommonResponse<List<DocumentEntity>> info(@PathVariable(value = "identify") String identify)
+    public CommonResponse<List<DocumentEntity>> catalog(@PathVariable(value = "identify") String identify)
     {
         return service.getCatalogByBook(identify);
+    }
+
+    @GetMapping(value = "{identify}")
+    public CommonResponse<DocumentEntity> info(@PathVariable(value = "identify") String identify)
+    {
+        return service.getByIdentify(identify);
     }
 }

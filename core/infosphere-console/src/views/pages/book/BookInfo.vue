@@ -52,6 +52,18 @@
                 <Label class="text-gray-400">更新时间:</Label>
                 <span>{{ info.updateTime }}</span>
               </div>
+              <Separator class="bg-gray-100"/>
+            </div>
+          </div>
+          <div class="flex w-full">
+            <div class="w-44"></div>
+            <div class="flex-1 pl-10 space-y-3">
+              <RouterLink :to="`/book/reader/${info.identify}`">
+                <Button class="space-x-2">
+                  <BookIcon class="w-4 h-4"/>
+                  <span>立即阅读</span>
+                </Button>
+              </RouterLink>
             </div>
           </div>
           <div class="grid items-center w-full gap-4">
@@ -69,10 +81,12 @@
           </TabsTrigger>
         </TabsList>
         <TabsContent value="content" class="w-full">
-          <div v-if="items.length > 0" v-for="item in items" class="hover:bg-gray-100">
-            <div class="flex-1 p-2 cursor-pointer">
-              <Label>{{ item.name }}</Label>
-            </div>
+          <div v-if="items?.length > 0" v-for="item in items" class="hover:bg-gray-100">
+            <RouterLink :to="`/book/reader/${info.identify}/${item.identify}`">
+              <div class="flex-1 p-2 cursor-pointer">
+                <Label class="cursor-pointer font-normal text-gray-500">{{ item.name }}</Label>
+              </div>
+            </RouterLink>
             <Separator class="bg-gray-100"/>
           </div>
           <div v-else class="m-auto flex h-full w-full flex-col gap-2">
@@ -96,7 +110,7 @@ import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
-import { SettingsIcon, SquarePenIcon } from 'lucide-vue-next'
+import { BookIcon, SettingsIcon, SquarePenIcon } from 'lucide-vue-next'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
 import DocumentService from '@/service/document.ts'
 import { Document } from '@/model/document.ts'
@@ -111,7 +125,7 @@ export default defineComponent({
     Button, InfoSphereTooltip,
     Tabs, TabsContent, TabsList, TabsTrigger,
     AspectRatio,
-    SettingsIcon, SquarePenIcon
+    SettingsIcon, SquarePenIcon, BookIcon
   },
   data()
   {

@@ -16,4 +16,12 @@ public interface DocumentService
      * @return 文档目录
      */
     CommonResponse<List<DocumentEntity>> getCatalogByBook(String identify);
+
+    /**
+     * 根据文档标识获取文档
+     *
+     * @param identify 文档标识
+     * @return 文档
+     */
+    CommonResponse<DocumentEntity> getByIdentify(String identify);
 }
