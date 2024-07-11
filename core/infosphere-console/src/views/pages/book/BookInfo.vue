@@ -44,6 +44,11 @@
               </div>
               <Separator class="bg-gray-100"/>
               <div class="flex items-center space-x-6">
+                <Label class="text-gray-400">文档数量:</Label>
+                <span>{{ info.documentCount }}</span>
+              </div>
+              <Separator class="bg-gray-100"/>
+              <div class="flex items-center space-x-6">
                 <Label class="text-gray-400">创建时间:</Label>
                 <span>{{ info.createTime }}</span>
               </div>
