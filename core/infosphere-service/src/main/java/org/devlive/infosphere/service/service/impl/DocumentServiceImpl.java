@@ -56,10 +56,7 @@ public class DocumentServiceImpl
     public CommonResponse<List<DocumentEntity>> getCatalogByBook(String identify)
     {
         Optional<BookEntity> existingBook = bookRepository.findByIdentify(identify);
-        if (!existingBook.isPresent()) {
-            return CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify));
-        }
-
-        return CommonResponse.success(repository.findAllByBookOrderBySortingAsc(existingBook.get()));
+        return existingBook.map(book -> CommonResponse.success(repository.findAllByBookOrderBySortingAsc(book)))
+                .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
     }
 }

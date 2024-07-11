@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col space-y-8 lg:flex-row justify-center lg:space-x-12 lg:space-y-0 mt-5 min-h-[700px]">
-    <div class="flex-1 lg:max-w-7xl">
+    <div class="flex-1 max-w-7xl">
       <InfoSphereLoading v-if="loading" :show="loading"/>
       <Card v-else class="w-full rounded-sm border-0 shadow-background">
         <CardHeader class="p-3 space-y-1.5">
@@ -55,31 +55,38 @@
             </div>
           </div>
           <div class="grid items-center w-full gap-4">
-            <Label>书籍描述</Label>
-            <div class="text-gray-400 pl-6 pr-6">
+            <Label class="-ml-5">书籍描述</Label>
+            <div class="text-gray-400 p-4">
               {{ info.description ? info.description : '暂无描述' }}
             </div>
           </div>
         </CardContent>
-        <CardFooter class="flex justify-between p-3">
-          <Tabs default-value="content" class="w-[400px]">
-            <TabsList>
-              <TabsTrigger value="content">
-                书籍目录
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="content">
-            </TabsContent>
-          </Tabs>
-        </CardFooter>
       </Card>
+      <Tabs default-value="content">
+        <TabsList>
+          <TabsTrigger value="content">
+            书籍目录
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="content" class="w-full">
+          <div v-if="items.length > 0" v-for="item in items" class="hover:bg-gray-100">
+            <div class="flex-1 p-2 cursor-pointer">
+              <Label>{{ item.name }}</Label>
+            </div>
+            <Separator class="bg-gray-100"/>
+          </div>
+          <div v-else class="m-auto flex h-full w-full flex-col gap-2">
+            <p class="text-muted-foreground m-6">暂无文档。</p>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import InfoSphereTooltip from '@/views/components/tooltip/InfoSphereTooltip.vue'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'vue-router'
@@ -91,6 +98,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { SettingsIcon, SquarePenIcon } from 'lucide-vue-next'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
+import DocumentService from '@/service/document.ts'
+import { Document } from '@/model/document.ts'
 
 export default defineComponent({
   name: 'BookInfo',
@@ -98,7 +107,7 @@ export default defineComponent({
     Separator,
     Label,
     InfoSphereLoading,
-    CardFooter, CardTitle, CardContent, CardHeader, Card,
+    CardTitle, CardContent, CardHeader, Card,
     Button, InfoSphereTooltip,
     Tabs, TabsContent, TabsList, TabsTrigger,
     AspectRatio,
@@ -108,7 +117,8 @@ export default defineComponent({
   {
     return {
       loading: false,
-      info: null as unknown as Book
+      info: null as unknown as Book,
+      items: [] as Document[]
     }
   },
   created()
@@ -124,10 +134,11 @@ export default defineComponent({
 
       this.loading = true
       BookService.getByIdentify(identify)
-                 .then(response => {
-                   this.info = response.data
-                 })
+                 .then(response => this.info = response.data)
                  .finally(() => this.loading = false)
+
+      DocumentService.getCatalogByBook(identify)
+                     .then(response => this.items = response.data)
     }
   }
 })

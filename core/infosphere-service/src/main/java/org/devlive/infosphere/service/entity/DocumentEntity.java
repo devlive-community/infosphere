@@ -51,7 +51,7 @@ public class DocumentEntity
     private String editor;
 
     @Column(name = "sorting")
-    private Integer sorting;
+    private Integer sorting = 0;
 
     @Column(name = "create_time")
     @CreatedDate
