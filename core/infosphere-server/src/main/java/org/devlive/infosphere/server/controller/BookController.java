@@ -60,4 +60,10 @@ public class BookController
     {
         return service.getTopByCreateTime(top);
     }
+
+    @GetMapping(value = "public")
+    public CommonResponse<PageAdapter<BookEntity>> getAllPublic(@ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getAll(true, configure.getExcludeUser(), PageRequestAdapter.of(configure.getPage(), configure.getSize()));
+    }
 }

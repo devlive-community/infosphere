@@ -29,7 +29,7 @@
 import { defineComponent, onMounted, ref, watch } from 'vue'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils.ts'
-import DocumentService from '@/service/document.ts'
+import BookService from '@/service/book.ts'
 import { useRouter } from 'vue-router'
 import { Document } from '@/model/document.ts'
 import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
@@ -62,11 +62,11 @@ export default defineComponent({
 
       if (identify) {
         loading.value = true
-        DocumentService.getCatalogByBook(identify)
-                       .then(response => {
-                         items.value = response.data
-                       })
-                       .finally(() => loading.value = false)
+        BookService.getCatalogByBook(identify)
+                   .then(response => {
+                     items.value = response.data
+                   })
+                   .finally(() => loading.value = false)
       }
     }
 

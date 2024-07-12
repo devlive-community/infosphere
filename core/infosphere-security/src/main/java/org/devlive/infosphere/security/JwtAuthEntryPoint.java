@@ -31,7 +31,7 @@ public class JwtAuthEntryPoint
         }
         else {
             response.getWriter()
-                    .print(JsonUtils.toJSON(CommonResponse.failure("未授权的用户")));
+                    .print(JsonUtils.toJSON(CommonResponse.unauthorized("未授权的用户")));
         }
     }
 }
