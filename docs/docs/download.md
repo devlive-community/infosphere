@@ -28,7 +28,7 @@ hide:
 
     <br />
 
-    [InfoSphere-1.5.0.tar.gz](xxx){ .md-button .md-button-primary }
+    [InfoSphere-2024.01.1.tar.gz](xxx){ .md-button .md-button-primary }
 
 - :material-more: __更多__
 

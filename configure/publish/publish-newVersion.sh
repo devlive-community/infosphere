@@ -32,6 +32,9 @@ job_runner_apply() {
     else
         printf "\nApply new version for server successful\n\n"
     fi
+
+    cd "$HOME"/core/infosphere-console && npm version "$VERSION" --no-git-tag-version
+
     cd "$HOME"
     printf "============================================\n\n"
 }
