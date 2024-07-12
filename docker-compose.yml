@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  mysql:
+  infosphere-mysql:
     image: mysql:latest
     environment:
       MYSQL_ROOT_PASSWORD: 12345678
@@ -21,6 +21,6 @@ services:
     ports:
       - "9099:9099"
     depends_on:
-      - mysql
+      - infosphere-mysql
     volumes:
       - ./configure/docker/application.properties:/opt/app/infosphere/configure/application.properties
