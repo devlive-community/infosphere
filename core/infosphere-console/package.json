@@ -1,7 +1,7 @@
 {
   "name": "infosphere-console",
   "private": true,
-  "version": "2024.01.1-SNAPSHOT",
+  "version": "2024.01.1",
   "type": "module",
   "scripts": {
     "predev": "sh setup.sh",

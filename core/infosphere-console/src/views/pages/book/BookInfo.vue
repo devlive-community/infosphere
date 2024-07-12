@@ -145,7 +145,7 @@ export default defineComponent({
   },
   created()
   {
-    this.user = TokenUtils.getAuthUser()
+    this.user = TokenUtils.getAuthUser() as Auth
 
     this.initialize()
   },
