@@ -16,18 +16,19 @@ public interface BookRepository
 {
     @Query("SELECT b " +
             "FROM BookEntity b " +
-            "WHERE b.user = :user " +
+            "WHERE (:excludeUser = TRUE OR b.user = :user) " +
             "AND (:visibility IS NULL OR b.visibility = :visibility) " +
             "ORDER BY b.createTime DESC")
     Page<BookEntity> findAllByCreateTimeDesc(@Param(value = "user") UserEntity user,
             @Param(value = "visibility") Boolean visibility,
+            @Param(value = "excludeUser") Boolean excludeUser,
             Pageable pageable);
 
     Optional<BookEntity> findByIdentify(String identify);
 
     @Query("SELECT b " +
             "FROM BookEntity b " +
-            "WHERE b.visibility = true " +
+            "WHERE b.visibility = TRUE " +
             "ORDER BY b.createTime DESC")
     List<BookEntity> findTopByCreateTime(Pageable pageable);
 }

@@ -27,9 +27,9 @@ public class BookServiceImpl
     }
 
     @Override
-    public CommonResponse<PageAdapter<BookEntity>> getAll(Boolean visibility, Pageable pageable)
+    public CommonResponse<PageAdapter<BookEntity>> getAll(Boolean visibility, Boolean excludeUser, Pageable pageable)
     {
-        return CommonResponse.success(PageAdapter.of(repository.findAllByCreateTimeDesc(UserDetailsService.getUser(), visibility, pageable)));
+        return CommonResponse.success(PageAdapter.of(repository.findAllByCreateTimeDesc(UserDetailsService.getUser(), visibility, excludeUser, pageable)));
     }
 
     @Override

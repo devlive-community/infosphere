@@ -30,7 +30,7 @@ public class BookController
     @GetMapping
     public CommonResponse<PageAdapter<BookEntity>> getAll(@ModelAttribute PageFilterAdapter configure)
     {
-        return service.getAll(configure.getVisibility(), PageRequestAdapter.of(configure.getPage(), configure.getSize()));
+        return service.getAll(configure.getVisibility(), configure.getExcludeUser(), PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 
     @RequestMapping(method = {RequestMethod.POST, RequestMethod.PUT})

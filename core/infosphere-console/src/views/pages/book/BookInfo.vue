@@ -6,7 +6,7 @@
         <CardHeader class="p-3 space-y-1.5">
           <CardTitle class="space-x-4 flex items-center">
             <span class="font-bold text-2xl">{{ info.name }}</span>
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2" v-if="info.user?.id === user?.id">
               <InfoSphereTooltip>
                 <template #title>
                   <RouterLink :to="`/book/writer/${info.identify}`">
@@ -119,6 +119,8 @@ import { BookIcon, SettingsIcon, SquarePenIcon } from 'lucide-vue-next'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
 import DocumentService from '@/service/document.ts'
 import { Document } from '@/model/document.ts'
+import { TokenUtils } from '@/lib/token.ts'
+import { Auth } from '@/model/user.ts'
 
 export default defineComponent({
   name: 'BookInfo',
@@ -137,11 +139,14 @@ export default defineComponent({
     return {
       loading: false,
       info: null as unknown as Book,
-      items: [] as Document[]
+      items: [] as Document[],
+      user: null as unknown as Auth
     }
   },
   created()
   {
+    this.user = TokenUtils.getAuthUser()
+
     this.initialize()
   },
   methods: {
