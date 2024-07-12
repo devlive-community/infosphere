@@ -11,6 +11,11 @@
     <artifactId>infosphere-server</artifactId>
     <description>InfoSphere server</description>
 
+    <properties>
+        <node.version>v18.18.2</node.version>
+        <yarn.version>v1.22.19</yarn.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -65,6 +70,53 @@
                         <configuration>
                             <finalName>infosphere</finalName>
                             <appendAssemblyId>true</appendAssemblyId>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${plugin.maven.frontend.version}</version>
+                <configuration>
+                    <installDirectory>../infosphere-console/</installDirectory>
+                    <workingDirectory>../infosphere-console/</workingDirectory>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <yarnVersion>${yarn.version}</yarnVersion>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install node and yarn</id>
+                        <goals>
+                            <goal>install-node-and-yarn</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>yarn install</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>--legacy-peer-deps install</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>yarn cache clean</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>cache clean</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>yarn run build</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run build</arguments>
                         </configuration>
                     </execution>
                 </executions>

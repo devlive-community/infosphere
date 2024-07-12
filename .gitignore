@@ -41,3 +41,5 @@ data/
 
 # console #
 core/infosphere-console/src/components/ui
+core/infosphere-console/package-lock.json
+core/infosphere-console/node

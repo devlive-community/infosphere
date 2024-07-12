@@ -12,7 +12,7 @@
                   <template #title>
                     <div class="w-full h-32">
                       <AspectRatio class="w-full h-full">
-                        <img :src="item.cover ? item.cover : '/images/default-cover.png'" :alt="item.name" class="rounded-md w-full h-full border-2"/>
+                        <img :src="item.cover ? item.cover : '/static/images/default-cover.png'" :alt="item.name" class="rounded-md w-full h-full border-2"/>
                       </AspectRatio>
                       <span class="font-normal text-gray-500 text-xs text-center">{{ item.name }}</span>
                     </div>

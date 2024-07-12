@@ -2,7 +2,7 @@
   <header class="font-sans tracking-wide relative z-50 border-b">
     <div class="flex flex-wrap items-center gap-4 px-10 bg-white min-h-[60px] w-full justify-between">
       <a href="/">
-        <img src="/images/logo.png" alt="logo" class='w-12 h-12'/>
+        <img src="/static/images/logo.png" alt="logo" class='w-12 h-12'/>
       </a>
 
       <div class="max-lg:hidden lg:!block max-lg:before:fixed max-lg:before:bg-black max-lg:before:opacity-50 max-lg:before:inset-0 max-lg:before:z-50 ml-3">
