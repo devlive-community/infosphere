@@ -28,8 +28,8 @@ public class CommonResponse<T>
 
     public static <T> CommonResponse<T> failure(String message)
     {
-        CommonResponse<T> response = new CommonResponse<T>();
-        response.code = 400;
+        CommonResponse<T> response = new CommonResponse<>();
+        response.code = 403;
         response.status = false;
         response.message = message;
         response.data = null;

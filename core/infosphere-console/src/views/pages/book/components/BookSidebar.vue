@@ -25,10 +25,10 @@
 import { defineComponent, onMounted, ref } from 'vue'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils.ts'
-import DocumentService from '@/service/document.ts'
 import { useRouter } from 'vue-router'
 import { Document } from '@/model/document.ts'
 import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
+import BookService from '@/service/book.ts'
 
 export default defineComponent({
   name: 'BookSidebar',
@@ -55,20 +55,20 @@ export default defineComponent({
       const documentIdentify = params['documentIdentify'] as string
       if (identify) {
         loading.value = true
-        DocumentService.getCatalogByBook(identify)
-                       .then(response => {
-                         items.value = response.data
-                         if (documentIdentify) {
-                           selectItem.value = items.value.find(item => item.identify === documentIdentify) as any
-                           emit('change', documentIdentify)
-                         }
-                         else if (items.value.length > 0) {
-                           const fistItem = items.value[0]
-                           selectItem.value = fistItem
-                           emit('change', fistItem.identify)
-                         }
-                       })
-                       .finally(() => loading.value = false)
+        BookService.getCatalogByBook(identify)
+                   .then(response => {
+                     items.value = response.data
+                     if (documentIdentify) {
+                       selectItem.value = items.value.find(item => item.identify === documentIdentify) as any
+                       emit('change', documentIdentify)
+                     }
+                     else if (items.value.length > 0) {
+                       const fistItem = items.value[0]
+                       selectItem.value = fistItem
+                       emit('change', fistItem.identify)
+                     }
+                   })
+                   .finally(() => loading.value = false)
       }
     }
 

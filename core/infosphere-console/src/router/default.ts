@@ -111,16 +111,6 @@ const createDefaultRouter = (router: Router): void => {
         name: 'book',
         redirect: '/book/index',
         component: DynamicContainer,
-        beforeEnter: (to, from, next) => {
-            console.log(`from: ${ from.path }, to: ${ to.path }`)
-            const userStore = useUserStore()
-            if (!userStore.isLogin) {
-                next('/common/403')
-            }
-            else {
-                next()
-            }
-        },
         children: [
             {
                 name: 'BookIndex',
