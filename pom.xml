@@ -5,7 +5,7 @@
     <groupId>org.devlive.infosphere</groupId>
     <artifactId>infosphere</artifactId>
     <packaging>pom</packaging>
-    <version>2024.01.1-SNAPSHOT</version>
+    <version>2024.01.1</version>
 
     <modules>
         <module>core/infosphere-common</module>
@@ -56,6 +56,7 @@
         <plugin.maven.findbugs.version>3.0.5</plugin.maven.findbugs.version>
         <plugin.maven.assembly.version>3.6.0</plugin.maven.assembly.version>
         <plugin.maven.clean.version>3.0.0</plugin.maven.clean.version>
+        <plugin.maven.frontend.version>1.13.4</plugin.maven.frontend.version>
     </properties>
 
     <dependencies>

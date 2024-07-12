@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface BookRepository
@@ -15,12 +16,19 @@ public interface BookRepository
 {
     @Query("SELECT b " +
             "FROM BookEntity b " +
-            "WHERE b.user = :user " +
+            "WHERE (:excludeUser = TRUE OR b.user = :user) " +
             "AND (:visibility IS NULL OR b.visibility = :visibility) " +
             "ORDER BY b.createTime DESC")
-    Page<BookEntity> findAllByCreateTimeDesc(@Param("user") UserEntity user,
-            @Param("visibility") Boolean visibility,
+    Page<BookEntity> findAllByCreateTimeDesc(@Param(value = "user") UserEntity user,
+            @Param(value = "visibility") Boolean visibility,
+            @Param(value = "excludeUser") Boolean excludeUser,
             Pageable pageable);
 
     Optional<BookEntity> findByIdentify(String identify);
+
+    @Query("SELECT b " +
+            "FROM BookEntity b " +
+            "WHERE b.visibility = TRUE " +
+            "ORDER BY b.createTime DESC")
+    List<BookEntity> findTopByCreateTime(Pageable pageable);
 }

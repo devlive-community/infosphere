@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.Formula;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -69,4 +70,10 @@ public class BookEntity
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     @JsonIncludeProperties(value = {"id", "aliasName", "avatar", "email", "username"})
     private UserEntity user;
+
+    @Formula(value = "(SELECT COUNT(d.id) " +
+            "FROM infosphere_document d " +
+            "LEFT JOIN infosphere_document_book_relation dbr ON dbr.document_id = d.id " +
+            "WHERE dbr.book_id = id)")
+    private Long documentCount;
 }

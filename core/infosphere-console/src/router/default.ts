@@ -20,6 +20,14 @@ const createDefaultRouter = (router: Router): void => {
                 component: () => import('@/views/pages/index/IndexHome.vue')
             },
             {
+                name: 'Explore',
+                path: 'explore',
+                meta: {
+                    title: '探索'
+                },
+                component: () => import('@/views/pages/explore/ExploreHome.vue')
+            },
+            {
                 name: 'Login',
                 path: 'login',
                 meta: {

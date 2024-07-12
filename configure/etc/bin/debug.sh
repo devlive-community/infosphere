@@ -47,17 +47,8 @@ job_runner_start_server() {
     printf "============================================\n"
     printf "启动服务                             | %s\n" "$APPLICATION_NAME"
     cd "$HOME"
-    nohup "$JAVA_HOME"/bin/java -cp "$HOME/lib/*" "$APPLICATION_NAME" \
+    "$JAVA_HOME"/bin/java -cp "$HOME/lib/*" "$APPLICATION_NAME" \
                   --spring.config.location="$HOME/configure/"
-    sleep 5
-    job_before_apply_server
-    if test -z "$APPLICATION_PID"; then
-        printf "服务启动失败                        | %s\n"
-    else
-        echo "$APPLICATION_PID" >pid
-        printf "服务启动成功                         | %s\n"
-    fi
-    printf "============================================\n\n"
 }
 
 check_java_version

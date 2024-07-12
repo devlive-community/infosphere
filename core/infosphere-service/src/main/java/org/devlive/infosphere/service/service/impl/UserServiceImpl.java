@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
@@ -72,8 +73,18 @@ public class UserServiceImpl
     @Override
     public CommonResponse<UserEntity> save(UserEntity configure)
     {
-        if (!configure.getPassword().equals(configure.getConformPassword())) {
+        if (!configure.getPassword().equals(configure.getConfirmPassword())) {
             return CommonResponse.failure("两次输入的密码不一致");
+        }
+
+        Optional<UserEntity> existingEmailUser = repository.findByEmail(configure.getEmail());
+        if (existingEmailUser.isPresent()) {
+            return CommonResponse.failure(String.format("用户邮箱 [ %s ] 已存在", configure.getEmail()));
+        }
+
+        Optional<UserEntity> existingUsernameUser = repository.findByUsername(configure.getUsername());
+        if (existingUsernameUser.isPresent()) {
+            return CommonResponse.failure(String.format("用户名称 [ %s ] 已存在", configure.getUsername()));
         }
 
         // 设置用户基本信息

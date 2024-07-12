@@ -96,7 +96,7 @@ export default defineComponent({
     const formSchema = toTypedSchema(validator)
     const tip = ref<string | null>(null)
 
-    const { handleSubmit, setValues } = useForm({
+    const { handleSubmit } = useForm({
       validationSchema: formSchema
     })
 
