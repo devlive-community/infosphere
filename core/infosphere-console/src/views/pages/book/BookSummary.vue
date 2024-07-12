@@ -13,13 +13,18 @@
       <div class="flex w-full">
         <div class="w-44 h-64">
           <AspectRatio class="w-full h-64">
-            <img :src="info.cover ? info.cover : '/images/default-cover.png'" :alt="info.name" class="rounded-md w-full h-full border-2"/>
+            <img :src="info.cover ? info.cover : '/static/images/default-cover.png'" :alt="info.name" class="rounded-md w-full h-full border-2"/>
           </AspectRatio>
         </div>
         <div class="flex-1 pl-10 space-y-3">
           <div class="flex items-center space-x-6">
             <Label class="text-gray-400">书籍作者:</Label>
             <span>{{ info.user?.username }}</span>
+          </div>
+          <Separator class="bg-gray-100"/>
+          <div class="flex items-center space-x-6">
+            <Label class="text-gray-400">文档数量:</Label>
+            <span>{{ info.documentCount }}</span>
           </div>
           <Separator class="bg-gray-100"/>
           <div class="flex items-center space-x-6">

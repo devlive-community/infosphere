@@ -13,4 +13,5 @@ export interface Pagination
     total?: number
     totalPage?: number
     visibility?: boolean
+    excludeUser?: boolean
 }

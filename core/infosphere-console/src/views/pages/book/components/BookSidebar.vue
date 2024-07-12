@@ -62,6 +62,11 @@ export default defineComponent({
                            selectItem.value = items.value.find(item => item.identify === documentIdentify) as any
                            emit('change', documentIdentify)
                          }
+                         else if (items.value.length > 0) {
+                           const fistItem = items.value[0]
+                           selectItem.value = fistItem
+                           emit('change', fistItem.identify)
+                         }
                        })
                        .finally(() => loading.value = false)
       }

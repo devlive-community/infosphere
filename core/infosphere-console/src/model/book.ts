@@ -10,5 +10,6 @@ export interface Book
     visibility?: boolean | string
     createTime?: string
     updateTime?: string
+    documentCount?: number
     user?: User
 }
