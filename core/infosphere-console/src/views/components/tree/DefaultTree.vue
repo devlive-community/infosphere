@@ -1,6 +1,6 @@
 <template>
   <div class="w-full">
-    <div v-for="item in items" :key="item.key">
+    <div v-for="item in items" :key="item.identify">
       <TreeNode :item="item" :selectedKey="selectedKey" @select-item="selectItem">
         <template v-if="$slots.node" #node="{ node }">
           <slot name="node" :node="node"/>
@@ -12,7 +12,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { Tree } from '@/views/components/tree/Tree.ts'
+import { Document } from '@/model/document.ts'
 import TreeNode from '@/views/components/tree/TreeNode.vue'
 
 export default defineComponent({
@@ -20,17 +20,16 @@ export default defineComponent({
   components: { TreeNode },
   props: {
     items: {
-      type: Array<Tree>,
+      type: Array as () => Document[],
       required: true
     },
     selectedKey: {
-      type: String as () => string | null | undefined,
+      type: Object as () => Document,
       required: false
     }
   },
   methods: {
-    selectItem(key: string)
-    {
+    selectItem(key: Document) {
       this.$emit('select-item', key)
     }
   }

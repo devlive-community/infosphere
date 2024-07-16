@@ -21,8 +21,10 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @ToString
@@ -53,6 +55,9 @@ public class DocumentEntity
     @Column(name = "sorting")
     private Integer sorting = 0;
 
+    @Column(name = "parent")
+    private Long parent = 0L;
+
     @Column(name = "create_time")
     @CreatedDate
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
@@ -76,4 +81,7 @@ public class DocumentEntity
             inverseJoinColumns = @JoinColumn(name = "book_id"))
     @JsonIncludeProperties(value = {"id", "name", "identify", "description", "createTime", "updateTime"})
     private BookEntity book;
+
+    @Transient
+    private List<DocumentEntity> children;
 }

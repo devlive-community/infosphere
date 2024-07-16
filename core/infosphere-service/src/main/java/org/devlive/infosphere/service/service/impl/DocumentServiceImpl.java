@@ -13,6 +13,7 @@ import org.springframework.util.ObjectUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentServiceImpl
@@ -55,8 +56,9 @@ public class DocumentServiceImpl
     @Override
     public CommonResponse<List<DocumentEntity>> getCatalogByBook(String identify)
     {
+
         Optional<BookEntity> existingBook = bookRepository.findByIdentify(identify);
-        return existingBook.map(book -> CommonResponse.success(repository.findAllByBookOrderBySortingAsc(book)))
+        return existingBook.map(book -> CommonResponse.success(buildDocumentTree(book)))
                 .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
     }
 
@@ -66,5 +68,34 @@ public class DocumentServiceImpl
         return repository.findByIdentify(identify)
                 .map(CommonResponse::success)
                 .orElseGet(() -> CommonResponse.failure(String.format("文档 [ %s ] 不存在", identify)));
+    }
+
+    /**
+     * 构建树形结构文档数据
+     *
+     * @param book 书籍信息
+     * @return 树形文档
+     */
+    public List<DocumentEntity> buildDocumentTree(BookEntity book)
+    {
+        List<DocumentEntity> documents = repository.findAllByBookOrderBySortingAsc(book);
+        List<DocumentEntity> rootDocuments = documents.stream()
+                .filter(doc -> doc.getParent() == 0L)
+                .collect(Collectors.toList());
+        for (DocumentEntity root : rootDocuments) {
+            root.setChildren(getChildren(root, documents));
+        }
+        return rootDocuments;
+    }
+
+    private List<DocumentEntity> getChildren(DocumentEntity parent, List<DocumentEntity> documents)
+    {
+        List<DocumentEntity> children = documents.stream()
+                .filter(doc -> doc.getParent().equals(parent.getId()))
+                .collect(Collectors.toList());
+        for (DocumentEntity child : children) {
+            child.setChildren(getChildren(child, documents));
+        }
+        return children;
     }
 }

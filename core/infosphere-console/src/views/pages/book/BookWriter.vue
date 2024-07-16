@@ -47,7 +47,7 @@
       </div>
     </CardContent>
   </Card>
-  <BookTitle v-if="visible" :is-visible="visible" :editor="editor" @close="visible = $event" @onSuccess="onSuccess"/>
+  <BookTitle v-if="visible" :is-visible="visible" :editor="editor" :item="item" @close="visible = $event" @onSuccess="onSuccess"/>
 </template>
 
 <script lang="ts">
@@ -155,8 +155,8 @@ export default defineComponent({
     },
     save()
     {
-      const { id, name, content, editor, sorting, book, identify } = this.item
-      const payload = { id, name, content, editor, sorting, book, identify }
+      const { id, name, content, editor, sorting, book, identify, parent } = this.item
+      const payload = { id, name, content, editor, sorting, book, identify, parent }
       this.saving = true
       DocumentService.saveOrUpdate(payload)
                      .then((response) => {
