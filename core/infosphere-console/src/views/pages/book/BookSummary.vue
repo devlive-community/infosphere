@@ -1,6 +1,6 @@
 <template>
   <InfoSphereLoading v-if="loading" :show="loading"/>
-  <Card v-else class="w-full rounded-sm border-0 shadow-background">
+  <Card v-else-if="info" class="w-full rounded-sm border-0 shadow-background">
     <CardHeader class="space-y-1.5 p-0">
       <CardTitle class="space-x-4 flex items-center">
         <LockOpenIcon v-if="info.visibility" class="w-5 h-5"/>

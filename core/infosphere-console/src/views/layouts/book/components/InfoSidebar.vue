@@ -23,6 +23,12 @@ import { cn } from '@/lib/utils.ts'
 import { BookIcon } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 
+interface NavigationItem
+{
+  title: string
+  href: string
+}
+
 export default defineComponent({
   name: 'InfoSidebar',
   components: { BookIcon },
@@ -35,7 +41,7 @@ export default defineComponent({
   data()
   {
     return {
-      items: [] as any[]
+      items: [] as NavigationItem[]
     }
   },
   created()
@@ -49,12 +55,12 @@ export default defineComponent({
       const params = router.currentRoute.value.params
       const identify = params['identify'] as string
 
-      const items = []
+      const items: NavigationItem[] = []
       if (identify) {
         items.push({ title: '书籍摘要', href: `/book/summary/${ identify }` })
       }
       items.push({ title: '书籍设置', href: identify ? `/book/setting/${ identify }` : '/book/setting' })
-      this.items = [...items] as any[]
+      this.items = [...items]
     }
   }
 })

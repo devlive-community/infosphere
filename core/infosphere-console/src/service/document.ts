@@ -14,12 +14,7 @@ class DocumentService
 
     getByIdentify(identify: string): Promise<Response>
     {
-        return new HttpUtils().get(`${ DEFAULT_PATH }/${ identify }`)
-    }
-
-    getCatalogByBook(bookIdentify: string): Promise<Response>
-    {
-        return new HttpUtils().get(`${ DEFAULT_PATH }/catalog/${ bookIdentify }`)
+        return new HttpUtils().get(`${ DEFAULT_PATH }/info/${ identify }`)
     }
 }
 

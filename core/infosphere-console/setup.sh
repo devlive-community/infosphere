@@ -24,5 +24,6 @@ yes | npx shadcn-vue@latest add alert-dialog
 yes | npx shadcn-vue@latest add menubar
 yes | npx shadcn-vue@latest add resizable
 yes | npx shadcn-vue@latest add scroll-area
+yes | npx shadcn-vue@latest add context-menu
 
 echo "========== Done setup script =========="
