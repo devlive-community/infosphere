@@ -11,6 +11,8 @@ export interface Document
     sorting?: number
     createTime?: string
     updateTime?: string
+    children?: Array<Document>
+    parent?: number
     user?: User
     book?: Book
 }

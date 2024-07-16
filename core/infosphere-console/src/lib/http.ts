@@ -52,8 +52,8 @@ export class HttpUtils
         }
 
         // If the authorization key does not match, clear the local token reload page
-        if (response.code === 4003) {
-            router.push(`/common/403?redirect=${ router.currentRoute.value.fullPath }`)
+        if (response.code === 403) {
+            router.push(`/common/403`)
         }
         if (response.code === 5000) {
             this.handlerMessage(response.message as string)

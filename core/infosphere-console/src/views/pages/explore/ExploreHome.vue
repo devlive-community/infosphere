@@ -49,7 +49,7 @@ export default defineComponent({
     initialize()
     {
       this.loading = true
-      BookService.getAll(this.pagination)
+      BookService.getAllPublic(this.pagination)
                  .then(response => {
                    this.items = response.data.content
                    this.pagination = response.data.page

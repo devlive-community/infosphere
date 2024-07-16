@@ -26,6 +26,11 @@ public interface BookRepository
 
     Optional<BookEntity> findByIdentify(String identify);
 
+    @Query(value = "SELECT b " +
+            "FROM BookEntity b " +
+            "WHERE b.identify = :identify")
+    BookEntity findByIdentifyWithNotOptional(@Param(value = "identify") String identify);
+
     @Query("SELECT b " +
             "FROM BookEntity b " +
             "WHERE b.visibility = TRUE " +

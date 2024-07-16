@@ -14,7 +14,12 @@ class BookService
 
     getByIdentify(identify: string): Promise<Response>
     {
-        return new HttpUtils().get(`${ DEFAULT_PATH }/${ identify }`)
+        return new HttpUtils().get(`${ DEFAULT_PATH }/info/${ identify }`)
+    }
+
+    getCatalogByBook(bookIdentify: string): Promise<Response>
+    {
+        return new HttpUtils().get(`${ DEFAULT_PATH }/catalog/${ bookIdentify }`)
     }
 
     getLatest(top: number): Promise<Response>

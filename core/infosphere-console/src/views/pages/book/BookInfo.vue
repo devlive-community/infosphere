@@ -2,7 +2,7 @@
   <div class="flex flex-col space-y-8 lg:flex-row justify-center lg:space-x-12 lg:space-y-0 mt-5 min-h-[700px]">
     <div class="flex-1 max-w-7xl">
       <InfoSphereLoading v-if="loading" :show="loading"/>
-      <Card v-else class="w-full rounded-sm border-0 shadow-background">
+      <Card v-else-if="info" class="w-full rounded-sm border-0 shadow-background">
         <CardHeader class="p-3 space-y-1.5">
           <CardTitle class="space-x-4 flex items-center">
             <span class="font-bold text-2xl">{{ info.name }}</span>
@@ -117,7 +117,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { BookIcon, SettingsIcon, SquarePenIcon } from 'lucide-vue-next'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
-import DocumentService from '@/service/document.ts'
 import { Document } from '@/model/document.ts'
 import { TokenUtils } from '@/lib/token.ts'
 import { Auth } from '@/model/user.ts'
@@ -161,8 +160,8 @@ export default defineComponent({
                  .then(response => this.info = response.data)
                  .finally(() => this.loading = false)
 
-      DocumentService.getCatalogByBook(identify)
-                     .then(response => this.items = response.data)
+      BookService.getCatalogByBook(identify)
+                 .then(response => this.items = response.data)
     }
   }
 })

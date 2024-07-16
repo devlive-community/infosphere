@@ -5,7 +5,9 @@ import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.adapter.PageFilterAdapter;
 import org.devlive.infosphere.service.adapter.PageRequestAdapter;
 import org.devlive.infosphere.service.entity.BookEntity;
+import org.devlive.infosphere.service.entity.DocumentEntity;
 import org.devlive.infosphere.service.service.BookService;
+import org.devlive.infosphere.service.service.DocumentService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,10 +23,12 @@ import java.util.List;
 public class BookController
 {
     private final BookService service;
+    private final DocumentService documentService;
 
-    public BookController(BookService service)
+    public BookController(BookService service, DocumentService documentService)
     {
         this.service = service;
+        this.documentService = documentService;
     }
 
     @GetMapping
@@ -39,15 +43,27 @@ public class BookController
         return service.saveAndUpdate(configure);
     }
 
-    @GetMapping(value = "{identify}")
+    @GetMapping(value = "info/{identify}")
     public CommonResponse<BookEntity> info(@PathVariable(value = "identify") String identify)
     {
         return service.getByIdentify(identify);
+    }
+
+    @GetMapping(value = "catalog/{identify}")
+    public CommonResponse<List<DocumentEntity>> catalog(@PathVariable(value = "identify") String identify)
+    {
+        return documentService.getCatalogByBook(identify);
     }
 
     @GetMapping(value = "latest/{top}")
     public CommonResponse<List<BookEntity>> latest(@PathVariable(value = "top") Integer top)
     {
         return service.getTopByCreateTime(top);
+    }
+
+    @GetMapping(value = "public")
+    public CommonResponse<PageAdapter<BookEntity>> getAllPublic(@ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getAll(true, configure.getExcludeUser(), PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 }

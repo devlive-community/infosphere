@@ -15,6 +15,11 @@ export abstract class BaseService
         return new HttpUtils().get(`${ this.baseUrl }`, configure)
     }
 
+    getAllPublic(configure: Pagination): Promise<Response>
+    {
+        return new HttpUtils().get(`${ this.baseUrl }/public`, configure)
+    }
+
     /**
      * 保存或者更新数据，如果数据中 id>0 则更新，否则保存
      * @param configure

@@ -54,6 +54,7 @@ import { Loader2Icon } from 'lucide-vue-next'
 import { RadioGroup } from '@/components/ui/radio-group'
 import { Separator } from '@/components/ui/separator'
 import { useRouter } from 'vue-router'
+import { Document } from '@/model/document.ts'
 
 export default defineComponent({
   name: 'BookTitle',
@@ -64,6 +65,9 @@ export default defineComponent({
     },
     editor: {
       type: String
+    },
+    item: {
+      type: Object as () => Document
     }
   },
   computed: {
@@ -115,6 +119,9 @@ export default defineComponent({
     const submit = handleSubmit(() => {
       saving.value = true
       formState['book']['identify'] = identify.value
+      if (props.item) {
+        formState['parent'] = props.item?.id as number
+      }
       DocumentService.saveOrUpdate(formState)
                      .then((response) => {
                        if (response.status) {

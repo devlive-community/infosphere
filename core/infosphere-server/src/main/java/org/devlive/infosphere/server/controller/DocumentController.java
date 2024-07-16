@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping(value = "/api/v1/document")
 public class DocumentController
@@ -29,13 +27,7 @@ public class DocumentController
         return service.saveAndUpdate(configure);
     }
 
-    @GetMapping(value = "catalog/{identify}")
-    public CommonResponse<List<DocumentEntity>> catalog(@PathVariable(value = "identify") String identify)
-    {
-        return service.getCatalogByBook(identify);
-    }
-
-    @GetMapping(value = "{identify}")
+    @GetMapping(value = "info/{identify}")
     public CommonResponse<DocumentEntity> info(@PathVariable(value = "identify") String identify)
     {
         return service.getByIdentify(identify);
