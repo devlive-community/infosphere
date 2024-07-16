@@ -56,7 +56,6 @@ public class DocumentServiceImpl
     @Override
     public CommonResponse<List<DocumentEntity>> getCatalogByBook(String identify)
     {
-
         Optional<BookEntity> existingBook = bookRepository.findByIdentify(identify);
         return existingBook.map(book -> CommonResponse.success(buildDocumentTree(book)))
                 .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
