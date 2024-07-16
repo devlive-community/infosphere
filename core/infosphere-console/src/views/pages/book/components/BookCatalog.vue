@@ -19,8 +19,7 @@
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                <ContextMenuItem>Title: {{ node.name }}</ContextMenuItem>
-                <ContextMenuItem>Key: {{ node.identify }}</ContextMenuItem>
+                <ContextMenuItem>新建文档</ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
           </template>
