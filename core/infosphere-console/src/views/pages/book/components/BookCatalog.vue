@@ -5,9 +5,9 @@
       <TransitionGroup v-else name="list" appear>
         <DefaultTree :items="items" :selectedKey="selectItem" @select-item="change">
           <template #node="{ node }">
-            <ContextMenu @update:open="selectItem.identify = node.identify">
+            <ContextMenu @update:open="selectItem = node">
               <ContextMenuTrigger class="text-xs text-gray-500">
-                <div class="flex w-full flex-col pt-2 pb-2">
+                <div class="flex w-full flex-col pt-2 pb-2" :key="node.identify">
                   <div class="flex items-center">
                     <div class="flex items-center">
                       <div class="font-semibold">
@@ -18,8 +18,29 @@
                   </div>
                 </div>
               </ContextMenuTrigger>
-              <ContextMenuContent>
-                <ContextMenuItem>新建文档</ContextMenuItem>
+              <ContextMenuContent class="w-48">
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger class="cursor-pointer">
+                    <div class="flex items-center space-x-2">
+                      <FileIcon :size="18"/>
+                      <span>新建文档</span>
+                    </div>
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent class="w-48">
+                    <ContextMenuItem class="cursor-pointer" @click="createDocument(node, 'Markdown')">
+                      Markdown
+                      <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
+                    </ContextMenuItem>
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+                <ContextMenuSeparator/>
+                <ContextMenuItem class="cursor-pointer text-red-400 hover:text-red-700" @click="deleteDocument(node, true)">
+                  <div class="flex items-center space-x-2">
+                    <Trash2Icon :size="18"/>
+                    <span>删除文档</span>
+                  </div>
+                  <ContextMenuShortcut class="text-red-400">⇧⌘D</ContextMenuShortcut>
+                </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
           </template>
@@ -28,6 +49,7 @@
     </div>
     <ScrollBar orientation="horizontal"/>
   </ScrollArea>
+  <DocumentDelete v-if="deleteVisible" :identify="identify as string" :is-visible="deleteVisible" @close="deleteDocument(null, $event)"/>
 </template>
 
 <script lang="ts">
@@ -54,6 +76,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
+import { FileIcon, Trash2Icon } from 'lucide-vue-next'
+import DocumentDelete from '@/views/pages/book/components/DocumentDelete.vue'
 
 export default defineComponent({
   name: 'BookCatalog',
@@ -67,6 +91,7 @@ export default defineComponent({
     }
   },
   components: {
+    DocumentDelete,
     DefaultTree,
     InfoSphereLoading,
     ScrollBar, ScrollArea,
@@ -82,14 +107,18 @@ export default defineComponent({
     ContextMenuSub,
     ContextMenuSubContent,
     ContextMenuSubTrigger,
-    ContextMenuTrigger
+    ContextMenuTrigger,
+    FileIcon, Trash2Icon
   },
+  emits: ['change', 'create-document'],
   setup(props, { emit })
   {
     const loading = ref(false)
     const items = ref<Document[]>([])
     const selectItem = ref<Document>(props.item)
     const router = useRouter()
+    const identify = ref<string | null>(null)
+    const deleteVisible = ref(false)
 
     const initialize = () => {
       const params = router.currentRoute.value.params
@@ -110,6 +139,19 @@ export default defineComponent({
       emit('change', value)
     }
 
+    const createDocument = (value: Document, editor: string) => {
+      const emitValue = { parent: value, editor: editor }
+      emit('create-document', emitValue)
+    }
+
+    const deleteDocument = (value: Document | null, visible: boolean) => {
+      if (value) {
+        identify.value = value.identify as string
+      }
+      deleteVisible.value = visible
+      initialize()
+    }
+
     watch(() => props.changed, () => {
       selectItem.value = props.item
       initialize()
@@ -123,8 +165,12 @@ export default defineComponent({
       loading,
       items,
       selectItem,
+      identify,
+      deleteVisible,
       cn,
-      change
+      change,
+      createDocument,
+      deleteDocument
     }
   }
 })

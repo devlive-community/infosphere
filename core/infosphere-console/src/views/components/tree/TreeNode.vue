@@ -1,11 +1,10 @@
 <template>
   <div :id="item.identify" class="py-0.5">
     <div class="flex items-center gap-x-0.5 w-full">
-      <div v-if="(item.children as any[]).length > 0"
-           class="size-6 flex justify-center items-center rounded-md focus:outline-none focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none">
-        <button v-if="item.children" @click="toggleChildren">
-          <svg class="size-4 text-gray-800" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <div v-if="hasChildren" class="size-6 flex justify-center items-center rounded-md focus:outline-none focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none">
+        <button @click="toggleChildren">
+          <svg class="size-4 text-gray-800" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+               stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14"></path>
             <path v-if="!isExpanded" d="M12 5v14"></path>
           </svg>
@@ -17,8 +16,7 @@
                       selectedKey?.identify !== item.identify && 'hover:bg-gray-100')"
            @click="selectItem(item)">
         <div class="flex items-center gap-x-3">
-          <svg v-if="(item.children as any[]).length > 0" class="flex-shrink-0 size-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-               fill="none"
+          <svg v-if="hasChildren" class="flex-shrink-0 size-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
           </svg>
@@ -50,7 +48,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { defineComponent, ref, watch } from 'vue'
 import { cn } from '@/lib/utils.ts'
 import { Document } from '@/model/document.ts'
 
@@ -69,8 +67,9 @@ export default defineComponent({
   emits: ['select-item'],
   setup(props, { emit })
   {
-    console.debug(props)
     const isExpanded = ref(false)
+
+    const hasChildren = (props.item.children as any[]).length > 0
 
     const toggleChildren = () => {
       isExpanded.value = !isExpanded.value
@@ -84,8 +83,33 @@ export default defineComponent({
       selectItem(key)
     }
 
+    const isDescendant = (parent: Document, child: Document): boolean => {
+      if (!parent.children) {
+        return false
+      }
+      if (parent.children.some((c: Document) => c.identify === child.identify)) {
+        return true
+      }
+      return parent.children.some((c: Document) => isDescendant(c, child))
+    }
+
+    const expandParentNodes = (node: Document) => {
+      isExpanded.value = true
+      if (node.parent) {
+        console.debug(node.parent)
+      }
+    }
+
+    // Watch for changes to selectedKey and expand the path to the selected item
+    watch(() => props.selectedKey, (newVal) => {
+      if (newVal && isDescendant(props.item, newVal)) {
+        expandParentNodes(props.item)
+      }
+    }, { immediate: true })
+
     return {
       isExpanded,
+      hasChildren,
       toggleChildren,
       selectItem,
       onSelectItem,

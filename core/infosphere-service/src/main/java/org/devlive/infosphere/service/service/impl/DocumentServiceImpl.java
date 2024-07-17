@@ -9,6 +9,7 @@ import org.devlive.infosphere.service.repository.DocumentRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.DocumentService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
 import java.util.List;
@@ -66,6 +67,26 @@ public class DocumentServiceImpl
     {
         return repository.findByIdentify(identify)
                 .map(CommonResponse::success)
+                .orElseGet(() -> CommonResponse.failure(String.format("文档 [ %s ] 不存在", identify)));
+    }
+
+    @Override
+    public CommonResponse<DocumentEntity> getByIdentifyWithChildren(String identify)
+    {
+        return repository.findByIdentify(identify)
+                .map(value -> {
+                    value.setChildren(getChildren(value, repository.findByIdentifyWithChildren(identify, value.getId())));
+                    return CommonResponse.success(value);
+                })
+                .orElseGet(() -> CommonResponse.failure(String.format("文档 [ %s ] 不存在", identify)));
+    }
+
+    @Transactional
+    @Override
+    public CommonResponse<Integer> deleteByIdentify(String identify)
+    {
+        return repository.findByIdentify(identify)
+                .map(value -> CommonResponse.success(repository.deleteByIdentify(identify, value.getId())))
                 .orElseGet(() -> CommonResponse.failure(String.format("文档 [ %s ] 不存在", identify)));
     }
 

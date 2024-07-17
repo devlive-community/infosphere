@@ -34,7 +34,7 @@
     <CardContent class="p-0 space-y-6">
       <div class="flex flex-col lg:flex-row">
         <div class="w-[200px] overflow-x-auto overflow-y-auto h-screen" :style="{ height: 'calc(100vh - 36px)' }">
-          <BookCatalog :item="item" :changed="changed" @change="change"/>
+          <BookCatalog :item="item" :changed="changed" @change="change" @create-document="createDocument"/>
         </div>
         <div class="flex-1">
           <MarkdownEditor v-if="editor === 'Markdown' && item" :content="item.content ? item.content : ''" :style="{ height: 'calc(100vh - 36px)' }" @change="changeContent"/>
@@ -152,6 +152,13 @@ export default defineComponent({
       this.item = cloneDeep(value)
       this.editor = value.editor as string
       this.contentChanged = false
+    },
+    createDocument(value: { parent: Document, editor: string })
+    {
+      const { parent, editor } = value
+      this.editor = editor
+      this.item = parent
+      this.visible = true
     },
     save()
     {
