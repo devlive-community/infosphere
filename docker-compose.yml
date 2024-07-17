@@ -14,12 +14,12 @@ services:
   infosphere-app:
     image: devliveorg/infosphere:latest
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/infosphere
+      SPRING_DATASOURCE_URL: jdbc:mysql://infosphere-mysql:3306/infosphere
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 12345678
     restart: always
     ports:
-      - "9099:9099"
+      - "19099:19099"
     depends_on:
       - infosphere-mysql
     volumes:

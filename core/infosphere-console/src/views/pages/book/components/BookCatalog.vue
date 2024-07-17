@@ -5,7 +5,7 @@
       <TransitionGroup v-else name="list" appear>
         <DefaultTree :items="items" :selectedKey="selectItem" @select-item="change">
           <template #node="{ node }">
-            <ContextMenu @update:open="selectItem.identify = node.identify">
+            <ContextMenu @update:open="selectItem = node">
               <ContextMenuTrigger class="text-xs text-gray-500">
                 <div class="flex w-full flex-col pt-2 pb-2">
                   <div class="flex items-center">
@@ -19,7 +19,20 @@
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                <ContextMenuItem>新建文档</ContextMenuItem>
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger class="cursor-pointer">
+                    <div class="flex items-center space-x-2">
+                      <FileIcon :size="18"/>
+                      <span>新建文档</span>
+                    </div>
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent class="w-48">
+                    <ContextMenuItem class="cursor-pointer" @click="createDocument(node, 'Markdown')">
+                      Markdown
+                      <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
+                    </ContextMenuItem>
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
               </ContextMenuContent>
             </ContextMenu>
           </template>
@@ -54,6 +67,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
+import { FileIcon } from 'lucide-vue-next'
 
 export default defineComponent({
   name: 'BookCatalog',
@@ -82,7 +96,8 @@ export default defineComponent({
     ContextMenuSub,
     ContextMenuSubContent,
     ContextMenuSubTrigger,
-    ContextMenuTrigger
+    ContextMenuTrigger,
+    FileIcon
   },
   setup(props, { emit })
   {
@@ -110,6 +125,11 @@ export default defineComponent({
       emit('change', value)
     }
 
+    const createDocument = (value: Document, editor: string) => {
+      const emitValue = { parent: value, editor: editor }
+      emit('create-document', emitValue)
+    }
+
     watch(() => props.changed, () => {
       selectItem.value = props.item
       initialize()
@@ -124,7 +144,8 @@ export default defineComponent({
       items,
       selectItem,
       cn,
-      change
+      change,
+      createDocument
     }
   }
 })
