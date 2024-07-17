@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.devlive.infosphere.service.common.StateEnum;
 import org.hibernate.annotations.Formula;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -14,6 +15,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -53,6 +56,10 @@ public class BookEntity
 
     @Column(name = "visibility")
     private Boolean visibility = true;
+
+    @Column(name = "state")
+    @Enumerated(EnumType.STRING)
+    private StateEnum state = StateEnum.STARTED;
 
     @Column(name = "create_time")
     @CreatedDate

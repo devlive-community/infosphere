@@ -57,7 +57,8 @@ export default defineComponent({
 
       const items: NavigationItem[] = []
       if (identify) {
-        items.push({ title: '书籍摘要', href: `/book/summary/${ identify }` })
+        items.push({ title: '书籍摘要', href: `/book/setting/summary/${ identify }` })
+        items.push({ title: '书籍状态', href: `/book/setting/status/${ identify }` })
       }
       items.push({ title: '书籍设置', href: identify ? `/book/setting/${ identify }` : '/book/setting' })
       this.items = [...items]
