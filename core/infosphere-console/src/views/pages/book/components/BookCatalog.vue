@@ -18,7 +18,7 @@
                   </div>
                 </div>
               </ContextMenuTrigger>
-              <ContextMenuContent>
+              <ContextMenuContent class="w-48">
                 <ContextMenuSub>
                   <ContextMenuSubTrigger class="cursor-pointer">
                     <div class="flex items-center space-x-2">
@@ -33,6 +33,14 @@
                     </ContextMenuItem>
                   </ContextMenuSubContent>
                 </ContextMenuSub>
+                <ContextMenuSeparator/>
+                <ContextMenuItem class="cursor-pointer text-red-400 hover:text-red-700" @click="deleteDocument(node, true)">
+                  <div class="flex items-center space-x-2">
+                    <Trash2Icon :size="18"/>
+                    <span>删除文档</span>
+                  </div>
+                  <ContextMenuShortcut class="text-red-400">⇧⌘D</ContextMenuShortcut>
+                </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
           </template>
@@ -41,6 +49,7 @@
     </div>
     <ScrollBar orientation="horizontal"/>
   </ScrollArea>
+  <DocumentDelete v-if="deleteVisible" :identify="identify as string" :is-visible="deleteVisible" @close="deleteDocument(null, $event)"/>
 </template>
 
 <script lang="ts">
@@ -67,7 +76,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
-import { FileIcon } from 'lucide-vue-next'
+import { FileIcon, Trash2Icon } from 'lucide-vue-next'
+import DocumentDelete from '@/views/pages/book/components/DocumentDelete.vue'
 
 export default defineComponent({
   name: 'BookCatalog',
@@ -81,6 +91,7 @@ export default defineComponent({
     }
   },
   components: {
+    DocumentDelete,
     DefaultTree,
     InfoSphereLoading,
     ScrollBar, ScrollArea,
@@ -97,7 +108,7 @@ export default defineComponent({
     ContextMenuSubContent,
     ContextMenuSubTrigger,
     ContextMenuTrigger,
-    FileIcon
+    FileIcon, Trash2Icon
   },
   setup(props, { emit })
   {
@@ -105,6 +116,8 @@ export default defineComponent({
     const items = ref<Document[]>([])
     const selectItem = ref<Document>(props.item)
     const router = useRouter()
+    const identify = ref<string | null>(null)
+    const deleteVisible = ref(false)
 
     const initialize = () => {
       const params = router.currentRoute.value.params
@@ -130,6 +143,14 @@ export default defineComponent({
       emit('create-document', emitValue)
     }
 
+    const deleteDocument = (value: Document | null, visible: boolean) => {
+      if (value) {
+        identify.value = value.identify as string
+      }
+      deleteVisible.value = visible
+      initialize()
+    }
+
     watch(() => props.changed, () => {
       selectItem.value = props.item
       initialize()
@@ -143,9 +164,12 @@ export default defineComponent({
       loading,
       items,
       selectItem,
+      identify,
+      deleteVisible,
       cn,
       change,
-      createDocument
+      createDocument,
+      deleteDocument
     }
   }
 })

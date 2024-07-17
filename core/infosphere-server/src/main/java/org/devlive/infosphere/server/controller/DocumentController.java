@@ -3,11 +3,13 @@ package org.devlive.infosphere.server.controller;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.service.entity.DocumentEntity;
 import org.devlive.infosphere.service.service.DocumentService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,8 +30,20 @@ public class DocumentController
     }
 
     @GetMapping(value = "info/{identify}")
-    public CommonResponse<DocumentEntity> info(@PathVariable(value = "identify") String identify)
+    public CommonResponse<DocumentEntity> info(@PathVariable(value = "identify") String identify,
+            @RequestParam(value = "withChildren", required = false, defaultValue = "false") Boolean withChildren)
     {
-        return service.getByIdentify(identify);
+        if (withChildren) {
+            return service.getByIdentifyWithChildren(identify);
+        }
+        else {
+            return service.getByIdentify(identify);
+        }
+    }
+
+    @DeleteMapping(value = "{identify}")
+    public CommonResponse<Integer> delete(@PathVariable(value = "identify") String identify)
+    {
+        return service.deleteByIdentify(identify);
     }
 }
