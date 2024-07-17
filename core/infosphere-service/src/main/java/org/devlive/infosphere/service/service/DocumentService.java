@@ -24,4 +24,14 @@ public interface DocumentService
      * @return 文档
      */
     CommonResponse<DocumentEntity> getByIdentify(String identify);
+
+    CommonResponse<DocumentEntity> getByIdentifyWithChildren(String identify);
+
+    /**
+     * 根据文档标识删除文档
+     *
+     * @param identify 文档标识
+     * @return 删除行数
+     */
+    CommonResponse<Integer> deleteByIdentify(String identify);
 }

@@ -67,7 +67,8 @@ export default defineComponent({
       type: String
     },
     item: {
-      type: Object as () => Document
+      type: Object as () => Document,
+      required: false
     }
   },
   computed: {

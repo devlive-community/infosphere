@@ -12,9 +12,14 @@ class DocumentService
         super(DEFAULT_PATH)
     }
 
-    getByIdentify(identify: string): Promise<Response>
+    getByIdentify(identify: string, withChildren?: boolean): Promise<Response>
     {
-        return new HttpUtils().get(`${ DEFAULT_PATH }/info/${ identify }`)
+        return new HttpUtils().get(`${ DEFAULT_PATH }/info/${ identify }`, { withChildren })
+    }
+
+    deleteByIdentify(identify: string): Promise<Response>
+    {
+        return new HttpUtils().delete(`${ DEFAULT_PATH }/${ identify }`)
     }
 }
 
