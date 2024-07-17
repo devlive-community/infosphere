@@ -24,7 +24,10 @@ public interface BookRepository
             @Param(value = "excludeUser") Boolean excludeUser,
             Pageable pageable);
 
-    Optional<BookEntity> findByIdentify(String identify);
+    @Query(value = "SELECT b " +
+            "FROM BookEntity b " +
+            "WHERE b.identify = :identify")
+    Optional<BookEntity> findByIdentify(@Param(value = "identify") String identify);
 
     @Query(value = "SELECT b " +
             "FROM BookEntity b " +
