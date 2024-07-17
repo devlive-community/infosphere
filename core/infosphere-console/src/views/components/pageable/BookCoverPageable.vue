@@ -1,11 +1,11 @@
 <template>
   <div>
-    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-8 gap-4">
       <div v-for="item in items" :key="item.identify" class="flex flex-col items-center">
         <RouterLink :to="`/book/info/${item.identify}`">
           <InfoSphereTooltip position="top">
             <template #title>
-              <div class="w-full h-40">
+              <div class="w-full h-48">
                 <AspectRatio class="w-full h-full">
                   <img :src="item.cover ? item.cover : '/static/images/default-cover.png'" :alt="item.name" class="rounded-md w-full h-full border-2"/>
                 </AspectRatio>

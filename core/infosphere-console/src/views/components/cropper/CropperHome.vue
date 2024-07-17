@@ -18,10 +18,10 @@
     </div>
     <template #footer>
       <div class="space-x-2">
-        <Button @click="isShowModal = false">
+        <Button size="sm" @click="isShowModal = false">
           取消
         </Button>
-        <Button variant="destructive" @click="clear">
+        <Button variant="destructive" size="sm" @click="clear">
           清除
         </Button>
         <Button class="btn" size="sm" variant="destructive" @click="reset">
