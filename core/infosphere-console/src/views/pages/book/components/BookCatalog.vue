@@ -7,7 +7,7 @@
           <template #node="{ node }">
             <ContextMenu @update:open="selectItem = node">
               <ContextMenuTrigger class="text-xs text-gray-500">
-                <div class="flex w-full flex-col pt-2 pb-2">
+                <div class="flex w-full flex-col pt-2 pb-2" :key="node.identify">
                   <div class="flex items-center">
                     <div class="flex items-center">
                       <div class="font-semibold">
@@ -110,6 +110,7 @@ export default defineComponent({
     ContextMenuTrigger,
     FileIcon, Trash2Icon
   },
+  emits: ['change', 'create-document'],
   setup(props, { emit })
   {
     const loading = ref(false)
