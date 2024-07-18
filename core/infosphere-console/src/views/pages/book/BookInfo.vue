@@ -162,6 +162,9 @@ export default defineComponent({
 
       BookService.getCatalogByBook(identify)
                  .then(response => this.items = response.data)
+
+      BookService.access(identify)
+                 .then(response => console.log(`记录访问量：${ response.data?.id }`))
     }
   }
 })
