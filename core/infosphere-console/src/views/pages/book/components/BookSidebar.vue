@@ -7,7 +7,7 @@
           <template #node="{ node }">
             <ContextMenu @update:open="selectItem.identify = node.identify">
               <ContextMenuTrigger class="text-xs text-gray-500">
-                <div class="flex w-full flex-col pt-2 pb-2">
+                <div class="flex w-full flex-col pt-2 pb-2" :key="node.identify">
                   <div class="flex items-center">
                     <div class="flex items-center">
                       <div class="font-semibold">
@@ -35,7 +35,7 @@ import { Document } from '@/model/document.ts'
 import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
 import BookService from '@/service/book.ts'
 import DefaultTree from '@/views/components/tree/DefaultTree.vue'
-import { ContextMenu } from '@/components/ui/context-menu'
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 export default defineComponent({
   name: 'BookSidebar',
@@ -46,7 +46,7 @@ export default defineComponent({
     }
   },
   components: {
-    ContextMenu,
+    ContextMenu, ContextMenuTrigger,
     DefaultTree,
     InfoSphereLoading,
     ScrollBar, ScrollArea
