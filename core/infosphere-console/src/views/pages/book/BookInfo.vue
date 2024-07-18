@@ -85,10 +85,10 @@
         </CardContent>
       </Card>
       <InfoSphereSkeleton v-if="loadingCatalog" :show="loadingCatalog"/>
-      <Tabs v-else-if="info" default-value="content">
+      <Tabs v-else-if="info" v-model="activeTab" :default-value="activeTab">
         <TabsList>
           <TabsTrigger value="content">书籍目录</TabsTrigger>
-          <TabsTrigger value="access">访问记录</TabsTrigger>
+          <TabsTrigger v-if="loggedIn" value="access" @click="forwardAccess">访问记录</TabsTrigger>
         </TabsList>
         <TabsContent value="content" class="w-full">
           <div v-if="items?.length > 0" v-for="item in items" class="hover:bg-gray-100">
@@ -102,6 +102,10 @@
           <div v-else class="m-auto flex h-full w-full flex-col gap-2">
             <p class="text-muted-foreground m-6">暂无文档。</p>
           </div>
+        </TabsContent>
+        <TabsContent v-if="loggedIn" value="access" class="w-full">
+          <InfoSphereSkeleton v-if="loadingAccess" :show="loadingAccess"/>
+          <AvatarPageable v-else :pagination="pagination" :items="accessItems" @changePage="changePage"/>
         </TabsContent>
       </Tabs>
     </div>
@@ -126,10 +130,17 @@ import { Document } from '@/model/document.ts'
 import { TokenUtils } from '@/lib/token.ts'
 import { Auth } from '@/model/user.ts'
 import InfoSphereSkeleton from '@/views/components/skeleton/InfoSphereSkeleton.vue'
+import { useUserStore } from '@/stores/user.ts'
+import { Pagination } from '@/model/response.ts'
+import { Access } from '@/model/access.ts'
+import AvatarPageable from '@/views/components/pageable/AvatarPageable.vue'
+import BookCoverPageable from '@/views/components/pageable/BookCoverPageable.vue'
 
 export default defineComponent({
   name: 'BookInfo',
   components: {
+    BookCoverPageable,
+    AvatarPageable,
     InfoSphereSkeleton,
     Separator,
     Label,
@@ -145,15 +156,23 @@ export default defineComponent({
     return {
       loadingInfo: false,
       loadingCatalog: false,
+      loadingAccess: false,
+      loggedIn: false,
       info: null as unknown as Book,
       items: [] as Document[],
-      user: null as unknown as Auth
+      accessItems: [] as Access[],
+      user: null as unknown as Auth,
+      activeTab: 'content',
+      identify: null as unknown as string,
+      pagination: null as unknown as Pagination
     }
   },
   created()
   {
     this.user = TokenUtils.getAuthUser() as Auth
-
+    const userStore = useUserStore()
+    this.loggedIn = userStore.isLogin
+    this.pagination = { page: 1, size: 203 }
     this.initialize()
   },
   methods: {
@@ -164,19 +183,37 @@ export default defineComponent({
       const identify = params['identify'] as string
 
       if (identify) {
+        this.identify = identify
         this.loadingInfo = true
         this.loadingCatalog = true
         BookService.getByIdentify(identify)
                    .then(response => this.info = response.data)
                    .finally(() => this.loadingInfo = false)
-
+        // 获取书籍目录
         BookService.getCatalogByBook(identify)
                    .then(response => this.items = response.data)
                    .finally(() => this.loadingCatalog = false)
-
+        // 设置数据访问数据
         BookService.access(identify)
                    .then(response => console.log(`记录访问量：${ response.data?.id }`))
       }
+    },
+    forwardAccess()
+    {
+      this.loadingAccess = true
+      BookService.getAllAccessByBook(this.identify, this.pagination)
+                 .then(response => {
+                   if (response.status && response.data) {
+                     this.accessItems = response.data.content
+                     this.pagination = response.data.page
+                   }
+                 })
+                 .finally(() => this.loadingAccess = false)
+    },
+    changePage(value: Pagination)
+    {
+      this.pagination = value
+      this.forwardAccess()
     }
   }
 })

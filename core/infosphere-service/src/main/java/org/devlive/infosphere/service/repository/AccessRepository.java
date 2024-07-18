@@ -13,6 +13,7 @@ public interface AccessRepository
 {
     @Query(value = "SELECT e " +
             "FROM AccessEntity e " +
-            "WHERE e.book = :book")
+            "WHERE e.book = :book " +
+            "ORDER BY e.createTime DESC")
     Page<AccessEntity> findAllByBook(@Param(value = "book") BookEntity book, Pageable pageable);
 }
