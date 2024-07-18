@@ -60,37 +60,44 @@ CREATE TABLE IF NOT EXISTS `infosphere_user_article_relation`
     `article_id` BIGINT(20)
 ) COMMENT '用户与文章关系表';
 
-CREATE TABLE IF NOT EXISTS `infosphere_article_access`
+CREATE TABLE IF NOT EXISTS `infosphere_access`
 (
     `id`          BIGINT AUTO_INCREMENT PRIMARY KEY,
     `ip_address`  VARCHAR(255),
     `user_agent`  VARCHAR(255),
+    `client`      VARCHAR(255),
+    `type`        VARCHAR(255),
+    `duration`    BIGINT,
+    `location`    VARCHAR(255),
+    `device`      VARCHAR(255),
     `create_time` DATETIME
-) COMMENT '文章访问历史表';
+);
 
-CREATE TABLE IF NOT EXISTS `infosphere_article_access_article_relation`
+CREATE TABLE IF NOT EXISTS `infosphere_access_book_relation`
 (
     `access_id`  BIGINT,
-    `article_id` BIGINT
-) COMMENT '文章访问历史和文章关联表';
+    `book_id` BIGINT
+);
 
-CREATE TABLE IF NOT EXISTS `infosphere_article_access_user_relation`
+CREATE TABLE IF NOT EXISTS `infosphere_access_user_relation`
 (
     `access_id` BIGINT,
     `user_id`   BIGINT
-) COMMENT '文章访问历史和用户关联表';
+);
 
 CREATE TABLE IF NOT EXISTS `infosphere_book`
 (
     `id`          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `name`        VARCHAR(255)                         NULL,
-    `cover`       VARCHAR(255)                         NULL,
-    `identify`    VARCHAR(255)                         NULL,
-    `description` TEXT                                 NULL,
-    `visibility`  TINYINT(1) DEFAULT 1                 NULL,
-    `create_time` TIMESTAMP  DEFAULT CURRENT_TIMESTAMP NULL,
-    `update_time` TIMESTAMP  DEFAULT CURRENT_TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP
+    `name`        VARCHAR(255)                          NULL,
+    `cover`       VARCHAR(255)                          NULL,
+    `identify`    VARCHAR(255)                          NULL,
+    `description` TEXT                                  NULL,
+    `visibility`  TINYINT(1)  DEFAULT 1                 NULL,
+    `create_time` TIMESTAMP   DEFAULT CURRENT_TIMESTAMP NULL,
+    `update_time` TIMESTAMP   DEFAULT CURRENT_TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    `state`       VARCHAR(20) DEFAULT 'STARTED'         NOT NULL
 );
+
 
 CREATE TABLE IF NOT EXISTS `infosphere_book_user_relation`
 (
@@ -110,7 +117,8 @@ CREATE TABLE IF NOT EXISTS `infosphere_document`
     `create_time` TIMESTAMP    DEFAULT CURRENT_TIMESTAMP NULL,
     `update_time` TIMESTAMP    DEFAULT CURRENT_TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
     `editor`      VARCHAR(100) DEFAULT 'Markdown'        NULL,
-    `sorting`     INT          DEFAULT 0                 NULL
+    `sorting`     INT          DEFAULT 0                 NULL,
+    `parent`      INT          DEFAULT 0                 NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS `infosphere_document_book_relation`

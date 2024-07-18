@@ -83,4 +83,10 @@ public class BookEntity
             "LEFT JOIN infosphere_document_book_relation dbr ON dbr.document_id = d.id " +
             "WHERE dbr.book_id = id)")
     private Long documentCount;
+
+    @Formula(value = "(SELECT COUNT(v.id) " +
+            "FROM infosphere_access v " +
+            "LEFT JOIN infosphere_access_book_relation abr ON abr.access_id = v.id " +
+            "WHERE abr.book_id = id)")
+    private Long visitorCount;
 }

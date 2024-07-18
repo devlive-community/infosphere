@@ -26,6 +26,11 @@ class BookService
     {
         return new HttpUtils().get(`${ DEFAULT_PATH }/latest/${ top }`)
     }
+
+    access(identify: string): Promise<Response>
+    {
+        return new HttpUtils().post(`${ DEFAULT_PATH }/access/${ identify }`)
+    }
 }
 
 export default new BookService()

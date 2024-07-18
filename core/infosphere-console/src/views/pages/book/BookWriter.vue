@@ -47,7 +47,7 @@
       </div>
     </CardContent>
   </Card>
-  <BookTitle v-if="visible" :is-visible="visible" :editor="editor" :item="item" @close="visible = $event" @onSuccess="onSuccess"/>
+  <DocumentInfo v-if="visible" :is-visible="visible" :editor="editor" :item="item" @close="visible = $event" @onSuccess="onSuccess"/>
 </template>
 
 <script lang="ts">
@@ -71,7 +71,6 @@ import {
 import { Button } from '@/components/ui/button'
 import BookCatalog from '@/views/pages/book/components/BookCatalog.vue'
 import MarkdownEditor from '@/views/components/editor/MarkdownEditor.vue'
-import BookTitle from '@/views/pages/book/components/BookTitle.vue'
 import { Document } from '@/model/document.ts'
 import { cloneDeep } from 'lodash'
 import { BookOpenIcon, Loader2Icon, SaveIcon } from 'lucide-vue-next'
@@ -79,14 +78,15 @@ import { cn } from '@/lib/utils.ts'
 import DocumentService from '@/service/document.ts'
 import { toast } from 'vue3-toastify'
 import { useRouter } from 'vue-router'
+import DocumentInfo from '@/views/pages/book/components/DocumentInfo.vue'
 
 export default defineComponent({
   name: 'BookWriter',
   components: {
+    DocumentInfo,
     BookOpenIcon,
     Loader2Icon,
     SaveIcon,
-    BookTitle,
     MarkdownEditor,
     BookCatalog,
     Button,

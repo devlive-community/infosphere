@@ -1,5 +1,7 @@
 package org.devlive.infosphere.service.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIncludeProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,9 +27,9 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "infosphere_article_access")
+@Table(name = "infosphere_access")
 @EntityListeners(value = AuditingEntityListener.class)
-public class ArticleAccessEntity
+public class AccessEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,19 +42,37 @@ public class ArticleAccessEntity
     @Column(name = "user_agent")
     private String agent;
 
+    @Column(name = "client")
+    private String client;
+
+    @Column(name = "type")
+    private String type;
+
+    @Column(name = "duration")
+    private Long duration;
+
+    @Column(name = "location")
+    private String location;
+
+    @Column(name = "device")
+    private String device;
+
     @Column(name = "create_time")
     @CreatedDate
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Instant createTime;
 
     @ManyToOne
-    @JoinTable(name = "infosphere_article_access_article_relation",
+    @JoinTable(name = "infosphere_access_book_relation",
             joinColumns = @JoinColumn(name = "access_id"),
-            inverseJoinColumns = @JoinColumn(name = "article_id"))
-    private ArticleEntity article;
+            inverseJoinColumns = @JoinColumn(name = "book_id"))
+    @JsonIncludeProperties(value = {"name", "identify"})
+    private BookEntity book;
 
     @ManyToOne
-    @JoinTable(name = "infosphere_article_access_user_relation",
+    @JoinTable(name = "infosphere_access_user_relation",
             joinColumns = @JoinColumn(name = "access_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
+    @JsonIncludeProperties(value = {"id", "aliasName", "avatar", "email", "username"})
     private UserEntity user;
 }

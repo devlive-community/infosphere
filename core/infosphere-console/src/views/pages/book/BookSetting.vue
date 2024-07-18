@@ -130,7 +130,8 @@ export default defineComponent({
                  .max(50, '书籍名称在2-50个字符之间'),
           identify: z.string({ required_error: '书籍标记不能为空' })
                      .min(2, '书籍标记必须在2-100个字符之间')
-                     .max(100, '书籍标记必须在2-100个字符之间'),
+                     .max(100, '书籍标记必须在2-100个字符之间')
+                     .regex(/^[a-zA-Z0-9\-_]+$/, '书籍标记只能包含字母、数字、下划线和中横线'),
           visibility: z.enum(['true', 'false'], { required_error: '书籍可见性不能为空' })
         })
     const formSchema = toTypedSchema(validator)

@@ -10,6 +10,7 @@ import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.BookService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
 import java.util.List;
@@ -32,6 +33,7 @@ public class BookServiceImpl
         return CommonResponse.success(PageAdapter.of(repository.findAllByCreateTimeDesc(UserDetailsService.getUser(), visibility, excludeUser, pageable)));
     }
 
+    @Transactional
     @Override
     public CommonResponse<BookEntity> getByIdentify(String identify)
     {
