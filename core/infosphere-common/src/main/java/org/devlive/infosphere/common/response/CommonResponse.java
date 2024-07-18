@@ -29,7 +29,7 @@ public class CommonResponse<T>
     public static <T> CommonResponse<T> failure(String message)
     {
         CommonResponse<T> response = new CommonResponse<>();
-        response.code = 401;
+        response.code = 400;
         response.status = false;
         response.message = message;
         response.data = null;
@@ -39,7 +39,7 @@ public class CommonResponse<T>
     public static <T> CommonResponse<T> unauthorized(String message)
     {
         CommonResponse<T> response = new CommonResponse<>();
-        response.code = 400;
+        response.code = 403;
         response.status = false;
         response.message = message;
         response.data = null;

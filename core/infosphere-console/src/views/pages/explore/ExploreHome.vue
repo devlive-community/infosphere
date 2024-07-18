@@ -1,10 +1,10 @@
 <template>
   <div class="flex-col md:flex">
-    <div class="flex flex-col space-y-8 space-x-12 mt-3">
+    <div class="flex flex-col space-y-8 space-x-12 mt-3 mb-3">
       <div class="w-full max-w-7xl mx-auto">
         <div class="space-y-3">
           <div class="flex justify-between">
-            <Label class="text-xl">书籍列表 ({{ items?.length }})</Label>
+            <Label class="text-xl">书籍列表 ({{ pagination?.total }})</Label>
           </div>
           <Separator/>
           <div class="space-x-3">
@@ -42,7 +42,7 @@ export default defineComponent({
   },
   created()
   {
-    this.pagination = { page: 1, size: 100, visibility: true, excludeUser: true }
+    this.pagination = { page: 1, size: 32, visibility: true, excludeUser: true }
     this.initialize()
   },
   methods: {
