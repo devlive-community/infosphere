@@ -11,6 +11,7 @@ export interface Book
     createTime?: string
     updateTime?: string
     documentCount?: number
+    visitorCount?: number
     state?: string
     user?: User
 }

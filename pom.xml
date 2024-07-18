@@ -5,7 +5,7 @@
     <groupId>org.devlive.infosphere</groupId>
     <artifactId>infosphere</artifactId>
     <packaging>pom</packaging>
-    <version>2024.1.2</version>
+    <version>2024.1.3-SNAPSHOT</version>
 
     <modules>
         <module>core/infosphere-common</module>
@@ -50,6 +50,7 @@
         <guava.version>32.1.3-jre</guava.version>
         <jjwt.version>0.9.1</jjwt.version>
         <jaxb.version>2.3.1</jaxb.version>
+        <user-agent.version>1.21</user-agent.version>
         <environment.compile.java.version>1.8</environment.compile.java.version>
         <plugin.maven.compiler.version>3.2</plugin.maven.compiler.version>
         <plugin.maven.checkstyle.version>3.0.0</plugin.maven.checkstyle.version>
@@ -118,6 +119,11 @@
                 <groupId>javax.xml.bind</groupId>
                 <artifactId>jaxb-api</artifactId>
                 <version>${jaxb.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>eu.bitwalker</groupId>
+                <artifactId>UserAgentUtils</artifactId>
+                <version>${user-agent.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
