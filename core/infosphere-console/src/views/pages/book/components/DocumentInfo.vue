@@ -57,7 +57,7 @@ import { useRouter } from 'vue-router'
 import { Document } from '@/model/document.ts'
 
 export default defineComponent({
-  name: 'BookTitle',
+  name: 'DocumentInfo',
   components: { Separator, RadioGroup, Loader2Icon, FormField, FormControl, FormMessage, CropperHome, Input, FormLabel, Textarea, FormItem, InfoSphereDialog, Button },
   props: {
     isVisible: {
@@ -97,6 +97,7 @@ export default defineComponent({
           identify: z.string({ required_error: '文档标记不能为空' })
                      .min(2, '文档标记必须在2-100个字符之间')
                      .max(100, '文档标记必须在2-100个字符之间')
+                     .regex(/^[a-zA-Z0-9\-_]+$/, '文档标记只能包含字母、数字、下划线和中横线')
         })
     const formSchema = toTypedSchema(validator)
     const tip = ref<string | null>(null)
