@@ -4,7 +4,7 @@
     <div class="flex-1 space-y-4 min-h-[700px]">
       <RouterView/>
     </div>
-    <LayoutFooter/>
+    <LayoutFooter class="mt-2"/>
   </div>
 </template>
 

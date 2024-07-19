@@ -11,6 +11,7 @@
         </main>
       </div>
     </div>
+    <LayoutFooter class="mt-2"/>
   </div>
 </template>
 
@@ -20,9 +21,10 @@ import LayoutHeader from '@/views/layouts/basic/components/LayoutHeader.vue'
 import { BookIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import BookSidebar from '@/views/layouts/book/components/BookSidebar.vue'
+import LayoutFooter from '@/views/layouts/basic/components/LayoutFooter.vue'
 
 export default defineComponent({
   name: 'BookContainer',
-  components: { BookSidebar, Button, LayoutHeader, BookIcon }
+  components: { LayoutFooter, BookSidebar, Button, LayoutHeader, BookIcon }
 })
 </script>
