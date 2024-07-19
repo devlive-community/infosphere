@@ -26,5 +26,6 @@ yes | npx shadcn-vue@latest add resizable
 yes | npx shadcn-vue@latest add scroll-area
 yes | npx shadcn-vue@latest add context-menu
 yes | npx shadcn-vue@latest add select
+yes | npx shadcn-vue@latest add avatar
 
 echo "========== Done setup script =========="

@@ -7,10 +7,17 @@
 
       <div class="max-lg:hidden lg:!block max-lg:before:fixed max-lg:before:bg-black max-lg:before:opacity-50 max-lg:before:inset-0 max-lg:before:z-50 ml-3">
         <ul class="lg:flex lg:gap-x-5 max-lg:space-y-3 max-lg:fixed max-lg:bg-white max-lg:w-1/2 max-lg:min-w-[300px] max-lg:top-0 max-lg:left-0 max-lg:p-6 max-lg:h-full max-lg:shadow-md max-lg:overflow-auto z-50">
-          <li class="max-lg:border-b border-gray-300 max-lg:py-3 px-3">
+          <li class="order-gray-300 py-3 px-3">
             <RouterLink class="flex items-center space-x-2" to="/">
               <HomeIcon :size="18"/>
               <span>首页</span>
+            </RouterLink>
+          </li>
+          <li :class="cn('border-gray-300 py-3 px-3',
+                         $route.path === '/explore' && 'bg-muted hover:bg-muted rounded-sm')">
+            <RouterLink class="flex items-center space-x-2" to="/explore">
+              <BombIcon :size="18"/>
+              <span>探索</span>
             </RouterLink>
           </li>
         </ul>
@@ -34,13 +41,14 @@
 <script lang="ts">
 import { defineComponent, onMounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
-import { HomeIcon } from 'lucide-vue-next'
+import { BombIcon, HomeIcon } from 'lucide-vue-next'
 import NavigationUser from '@/views/layouts/basic/components/NavigationUser.vue'
 import { useUserStore } from '@/stores/user.ts'
+import { cn } from '@/lib/utils.ts'
 
 export default defineComponent({
   name: 'LayoutHeader',
-  components: { NavigationUser, Button, HomeIcon },
+  components: { NavigationUser, Button, HomeIcon, BombIcon },
   setup()
   {
     const userStore = useUserStore()
@@ -57,6 +65,7 @@ export default defineComponent({
     return {
       isLogin
     }
-  }
+  },
+  methods: { cn }
 })
 </script>

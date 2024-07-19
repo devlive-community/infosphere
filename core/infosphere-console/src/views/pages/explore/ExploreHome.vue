@@ -4,7 +4,7 @@
       <div class="w-full max-w-7xl mx-auto">
         <div class="space-y-3">
           <div class="flex justify-between">
-            <Label class="text-xl">书籍列表 ({{ pagination?.total }})</Label>
+            <Label class="text-xl">书籍列表</Label>
           </div>
           <Separator/>
           <div class="space-x-3">

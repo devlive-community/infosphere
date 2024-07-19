@@ -62,6 +62,13 @@ public class BookController
         return accessService.save(identify, request);
     }
 
+    @GetMapping(value = "access/{identify}")
+    public CommonResponse<PageAdapter<AccessEntity>> access(@PathVariable(value = "identify") String identify,
+            @ModelAttribute PageFilterAdapter configure)
+    {
+        return accessService.getAccessByBook(identify, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
+    }
+
     @GetMapping(value = "catalog/{identify}")
     public CommonResponse<List<DocumentEntity>> catalog(@PathVariable(value = "identify") String identify)
     {
