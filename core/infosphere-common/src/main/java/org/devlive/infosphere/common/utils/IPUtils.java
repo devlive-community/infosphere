@@ -1,15 +1,19 @@
 package org.devlive.infosphere.common.utils;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.lionsoul.ip2region.xdb.Searcher;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.env.Environment;
 import org.springframework.util.ObjectUtils;
 
 import javax.servlet.http.HttpServletRequest;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 @Slf4j
 public class IPUtils
@@ -78,21 +82,26 @@ public class IPUtils
         return outputStream.toByteArray();
     }
 
-    public static String getIP(HttpServletRequest request)
+    @SneakyThrows
+    public static String getIP(HttpServletRequest request, Environment environment)
     {
         String ip = getIpAddress(request);
         log.info("Search IP: {}", ip);
-        Searcher searcher;
-        try {
-            InputStream fileStream = new ClassPathResource("ip2region.xdb")
-                    .getInputStream();
+        Searcher searcher = null;
+        try (InputStream fileStream = Files.newInputStream(Paths.get(String.join(File.separator, environment.getProperty("spring.config.location"), "ip2region.xdb")))) {
             searcher = Searcher.newWithBuffer(toByteArray(fileStream));
             String region = searcher.search(ip);
             searcher.close();
             return region;
         }
         catch (Exception e) {
+            log.error("Search IP Error: ", e);
             return "未知";
+        }
+        finally {
+            if (searcher != null) {
+                searcher.close();
+            }
         }
     }
 }

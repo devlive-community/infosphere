@@ -11,6 +11,7 @@ import org.devlive.infosphere.service.repository.BookRepository;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.AccessService;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -20,12 +21,14 @@ import javax.servlet.http.HttpServletRequest;
 public class AccessServiceImpl
         implements AccessService
 {
+    private final Environment environment;
     private final AccessRepository repository;
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
 
-    public AccessServiceImpl(AccessRepository repository, BookRepository bookRepository, UserRepository userRepository)
+    public AccessServiceImpl(Environment environment, AccessRepository repository, BookRepository bookRepository, UserRepository userRepository)
     {
+        this.environment = environment;
         this.repository = repository;
         this.bookRepository = bookRepository;
         this.userRepository = userRepository;
@@ -51,7 +54,7 @@ public class AccessServiceImpl
                     entity.setDevice(agent.getBrowser().getName());
                     entity.setType("BOOK");
                     entity.setAgent(userAgent);
-                    entity.setLocation(IPUtils.getIP(request));
+                    entity.setLocation(IPUtils.getIP(request, environment));
                     return CommonResponse.success(repository.save(entity));
                 })
                 .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
