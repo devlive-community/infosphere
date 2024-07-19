@@ -1,5 +1,6 @@
 <template>
-  <div v-if="result.blobURL || pic" class="w-44 h-64">
+  <div v-if="result.blobURL || pic" :class="cn(type === 'cover' && 'w-44 h-64',
+                                               type === 'avatar' && 'w-32 h-32')">
     <AspectRatio class="w-full h-64">
       <img class="border-2 rounded-md w-full h-full" :src="result.blobURL ? result.blobURL : pic" alt="图片"/>
     </AspectRatio>
@@ -41,6 +42,7 @@ import VuePictureCropper, { cropper } from 'vue-picture-cropper'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import InfoSphereDialog from '@/views/components/dialog/InfoSphereDialog.vue'
+import { cn } from '@/lib/utils.ts'
 
 export default defineComponent({
   components: {
@@ -51,6 +53,10 @@ export default defineComponent({
   props: {
     pic: {
       type: String
+    },
+    type: {
+      type: String,
+      default: 'cover'
     }
   },
   setup(props, { emit })
@@ -132,6 +138,7 @@ export default defineComponent({
       reset,
       ready
     }
-  }
+  },
+  methods: { cn }
 })
 </script>

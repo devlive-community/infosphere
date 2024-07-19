@@ -18,7 +18,10 @@
       <DropdownMenuTrigger as-child>
         <Button size="icon" class="rounded-full" variant="outline">
           <Loader2Icon v-if="loading" class="w-5 h-5 animate-spin"/>
-          <span v-else>{{ info?.username?.substring(0, 2) }}</span>
+          <div v-else>
+            <img v-if="info?.avatar" :src="info?.avatar" :alt="info?.username?.substring(0, 2)" class="w-7 h-7 rounded-full"/>
+            <span v-else>{{ info?.username?.substring(0, 2) }}</span>
+          </div>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent v-if="!loading && info" class="w-56 mr-4">
