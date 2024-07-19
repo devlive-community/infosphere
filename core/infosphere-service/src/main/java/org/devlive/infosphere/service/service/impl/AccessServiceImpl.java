@@ -3,6 +3,7 @@ package org.devlive.infosphere.service.service.impl;
 import eu.bitwalker.useragentutils.UserAgent;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.utils.IPUtils;
+import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.entity.AccessEntity;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.AccessRepository;
@@ -10,6 +11,7 @@ import org.devlive.infosphere.service.repository.BookRepository;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.AccessService;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
@@ -52,6 +54,14 @@ public class AccessServiceImpl
                     entity.setLocation(IPUtils.getIP(request));
                     return CommonResponse.success(repository.save(entity));
                 })
+                .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
+    }
+
+    @Override
+    public CommonResponse<PageAdapter<AccessEntity>> getAccessByBook(String identify, Pageable pageable)
+    {
+        return bookRepository.findByIdentify(identify)
+                .map(value -> CommonResponse.success(PageAdapter.of(repository.findAllByBook(value, pageable))))
                 .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
     }
 }

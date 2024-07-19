@@ -12,15 +12,17 @@
       </div>
     </div>
   </div>
+  <LayoutFooter class="mt-2"/>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
 import LayoutHeader from '@/views/layouts/basic/components/LayoutHeader.vue'
 import InfoSidebar from '@/views/layouts/book/components/InfoSidebar.vue'
+import LayoutFooter from '@/views/layouts/basic/components/LayoutFooter.vue'
 
 export default defineComponent({
   name: 'InfoContainer',
-  components: { InfoSidebar, LayoutHeader }
+  components: { LayoutFooter, InfoSidebar, LayoutHeader }
 })
 </script>

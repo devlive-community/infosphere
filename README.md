@@ -31,9 +31,9 @@ InfoSphere 是一款面向企业和个人的开源 Wiki 系统，旨在提供简
 
 **范例**: [try.infosphere.devlive.org](http://try.infosphere.devlive.org)
 
-|     用户名      | 密码          |
-|:------------:|:------------|
-| `infosphere` | `123456789` |
+|           用户名            | 密码          |
+|:------------------------:|:------------|
+| `infosphere@devlive.org` | `123456789` |
 
 ## 贡献图谱
 
