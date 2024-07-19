@@ -95,7 +95,7 @@ public class IPUtils
             return region;
         }
         catch (Exception e) {
-            log.error("Search IP Error: ", e);
+            log.warn("Search IP Error: ", e);
             return "未知";
         }
         finally {

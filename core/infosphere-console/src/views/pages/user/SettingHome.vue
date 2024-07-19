@@ -2,12 +2,20 @@
   <div class="w-full">
     <div>
       <h3 class="text-lg font-medium">基本信息</h3>
-      <p class="text-sm text-muted-foreground">这里主要展示的是一些个人的基本信息，包含了一些头像，昵称等信息。</p>
     </div>
     <Separator class="my-4"/>
     <div>
       <Loader2Icon v-if="loading" class="w-5 h-5 animate-spin"/>
       <form class="space-y-8" v-else-if="formState">
+        <FormField name="avatar">
+          <FormItem>
+            <FormLabel>用户头像</FormLabel>
+            <FormControl>
+              <CropperHome :pic="formState.avatar" type="avatar" @update:value="cropper"/>
+            </FormControl>
+            <FormMessage/>
+          </FormItem>
+        </FormField>
         <FormField name="username">
           <FormItem>
             <FormLabel>用户名</FormLabel>
@@ -53,7 +61,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form'
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { User } from '@/model/user.ts'
 import { Input } from '@/components/ui/input'
 import { Loader2Icon } from 'lucide-vue-next'
@@ -62,10 +70,12 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'vue3-toastify'
+import CropperHome from '@/views/components/cropper/CropperHome.vue'
+import UploadService from '@/service/upload.ts'
 
 export default defineComponent({
   name: 'SettingHome',
-  components: { Textarea, Button, Separator, Input, FormControl, FormLabel, FormField, FormItem, Loader2Icon },
+  components: { FormMessage, CropperHome, Textarea, Button, Separator, Input, FormControl, FormLabel, FormField, FormItem, Loader2Icon },
   data()
   {
     return {
@@ -85,12 +95,25 @@ export default defineComponent({
       UserService.getInfo()
                  .then(response => {
                    if (response.status) {
-                     const { username, aliasName, email, signature } = response.data
-                     const payload = { username, aliasName, email, signature }
+                     const { username, aliasName, email, signature, avatar } = response.data
+                     const payload = { username, aliasName, email, signature, avatar }
                      this.formState = payload
                    }
                  })
                  .finally(() => this.loading = false)
+    },
+    cropper(value: any)
+    {
+      const configure = { mode: 'avatar', file: value }
+      UploadService.upload(configure)
+                   .then(response => {
+                     if (response.status) {
+                       this.formState!.avatar = response.data
+                     }
+                     else {
+                       toast(response.message as string, { type: 'error' })
+                     }
+                   })
     },
     submit()
     {

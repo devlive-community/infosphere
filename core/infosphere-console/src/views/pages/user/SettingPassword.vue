@@ -1,7 +1,6 @@
 <template>
   <div>
     <h3 class="text-lg font-medium">修改密码</h3>
-    <p class="text-sm text-muted-foreground">这里主要用于修改用户的登录密码。</p>
   </div>
   <Separator class="my-4"/>
   <form class="space-y-8" @submit="submit" v-if="formState">
