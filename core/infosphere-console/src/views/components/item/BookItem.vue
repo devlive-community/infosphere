@@ -4,7 +4,7 @@
       <template #title>
         <div class="w-full h-48 relative">
           <div class="absolute top-0 right-0 pl-1 pr-1 -mt-0.5 m-0.5 bg-white bg-opacity-30 rounded">
-            <span v-if="item.state === 'STARTED'" class="text-xs text-cyan-600 font-bold">开始中</span>
+            <span v-if="item.state === 'STARTED'" class="text-xs text-cyan-600 font-bold">进行中</span>
             <span v-else-if="item.state === 'PAUSED'" class="text-xs text-amber-600 font-bold">暂停中</span>
             <span v-else-if="item.state === 'STOPPED'" class="text-xs text-red-600 font-bold">已停止</span>
             <span v-else-if="item.state === 'FINISHED'" class="text-xs text-green-600 font-bold">已完成</span>

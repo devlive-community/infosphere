@@ -46,6 +46,9 @@ public class DocumentServiceImpl
             configure.setUser(UserDetailsService.getUser());
             configure.setBook(existingBook.get());
         }
+        else {
+            configure.setBook(existingBook.get());
+        }
 
         if (!ObjectUtils.isEmpty(configure.getId()) && existingDocument.isPresent()) {
             NullAwareBeanUtils.copyNullProperties(existingDocument.get(), configure);
