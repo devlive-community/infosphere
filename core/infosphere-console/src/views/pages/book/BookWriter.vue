@@ -37,7 +37,8 @@
           <BookCatalog :item="item" :changed="changed" @change="change" @create-document="createDocument"/>
         </div>
         <div class="flex-1">
-          <MarkdownEditor v-if="editor === 'Markdown' && item" :content="item.content ? item.content : ''" :style="{ height: 'calc(100vh - 36px)' }" @change="changeContent"/>
+          <InfoSphereLoading v-if="loadingInfo" :show="loadingInfo"/>
+          <MarkdownEditor v-else-if="editor === 'Markdown' && item" :content="item.content ? item.content : ''" :style="{ height: 'calc(100vh - 36px)' }" @change="changeContent"/>
           <div v-else :style="{ height: 'calc(100vh - 36px)' }">
             <div class='m-auto flex h-full w-full flex-col items-center justify-center gap-2'>
               <p class='text-center text-muted-foreground mt-6'>请在左侧选择文档或者在文件菜单下新建。</p>
@@ -72,17 +73,18 @@ import { Button } from '@/components/ui/button'
 import BookCatalog from '@/views/pages/book/components/BookCatalog.vue'
 import MarkdownEditor from '@/views/components/editor/MarkdownEditor.vue'
 import { Document } from '@/model/document.ts'
-import { cloneDeep } from 'lodash'
 import { BookOpenIcon, Loader2Icon, SaveIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils.ts'
 import DocumentService from '@/service/document.ts'
 import { toast } from 'vue3-toastify'
 import { useRouter } from 'vue-router'
 import DocumentInfo from '@/views/pages/book/components/DocumentInfo.vue'
+import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
 
 export default defineComponent({
   name: 'BookWriter',
   components: {
+    InfoSphereLoading,
     DocumentInfo,
     BookOpenIcon,
     Loader2Icon,
@@ -114,6 +116,7 @@ export default defineComponent({
     return {
       saving: false,
       visible: false,
+      loadingInfo: false,
       editor: null as unknown as string,
       changed: null as unknown as string,
       contentChanged: false,
@@ -149,9 +152,16 @@ export default defineComponent({
     },
     change(value: Document)
     {
-      this.item = cloneDeep(value)
-      this.editor = value.editor as string
-      this.contentChanged = false
+      this.loadingInfo = true
+      DocumentService.getByIdentify(value.identify as string)
+                     .then(response => {
+                       if (response.status && response.data) {
+                         this.item = response.data
+                         this.editor = response.data.editor
+                         this.contentChanged = false
+                       }
+                     })
+                     .finally(() => this.loadingInfo = false)
     },
     createDocument(value: { parent: Document, editor: string })
     {
