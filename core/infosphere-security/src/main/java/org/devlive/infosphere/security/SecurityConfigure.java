@@ -67,7 +67,8 @@ public class SecurityConfigure
                 .authorizeRequests()
                 .antMatchers("/", "/**/*.js", "/**/*.css", "/api/auth/**", "/fonts/**", "/static/**",
                         "/api/v1/user/signin", "/api/v1/user/register", "/favicon.ico", "/upload/**",
-                        "/api/v1/book/latest/**", "/api/v1/book/public/**", "/api/v1/book/access/**")
+                        "/api/v1/book/latest/**", "/api/v1/book/public/**", "/api/v1/book/access/**",
+                        "/api/v1/book/hottest", "/api/v1/book/newest", "/api/v1/book/user/**", "/api/v1/user/info/**")
                 .permitAll()
                 .anyRequest()
                 .authenticated();

@@ -21,6 +21,11 @@ class UserService
         return new HttpUtils().get(`${ DEFAULT_PATH }/info`)
     }
 
+    getByUsername(username: string): Promise<Response>
+    {
+        return new HttpUtils().get(`${ DEFAULT_PATH }/info/${ username }`)
+    }
+
     save(configure: User): Promise<Response>
     {
         return new HttpUtils().post(`${ DEFAULT_PATH }`, configure)

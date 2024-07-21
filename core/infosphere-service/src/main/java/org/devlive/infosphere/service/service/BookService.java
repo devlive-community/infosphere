@@ -9,6 +9,8 @@ public interface BookService
 {
     CommonResponse<PageAdapter<BookEntity>> getAll(Boolean visibility, Boolean excludeUser, Pageable pageable);
 
+    CommonResponse<PageAdapter<BookEntity>> getAllByUser(String username, Pageable pageable);
+
     CommonResponse<BookEntity> getByIdentify(String identify);
 
     CommonResponse<BookEntity> saveAndUpdate(BookEntity configure);
