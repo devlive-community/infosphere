@@ -34,7 +34,7 @@
     <CardContent class="p-0 space-y-6">
       <div class="flex flex-col lg:flex-row">
         <div class="w-[200px] overflow-x-auto overflow-y-auto h-screen" :style="{ height: 'calc(100vh - 36px)' }">
-          <BookCatalog :item="item" :changed="changed" @change="change" @create-document="createDocument"/>
+          <BookCatalog :item="item" :changed="changed" @change="change" @create-document="createDocument" @edit-document="editDocument"/>
         </div>
         <div class="flex-1">
           <InfoSphereLoading v-if="loadingInfo" :show="loadingInfo"/>
@@ -48,7 +48,7 @@
       </div>
     </CardContent>
   </Card>
-  <DocumentInfo v-if="visible" :is-visible="visible" :editor="editor" :item="item" @close="visible = $event" @onSuccess="onSuccess"/>
+  <DocumentInfo v-if="visible" :is-visible="visible" :editor="editor" :modify="modify" :item="item" @close="visible = $event" @onSuccess="onSuccess"/>
 </template>
 
 <script lang="ts">
@@ -80,6 +80,7 @@ import { toast } from 'vue3-toastify'
 import { useRouter } from 'vue-router'
 import DocumentInfo from '@/views/pages/book/components/DocumentInfo.vue'
 import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
+import router from '@/router'
 
 export default defineComponent({
   name: 'BookWriter',
@@ -119,6 +120,7 @@ export default defineComponent({
       loadingInfo: false,
       editor: null as unknown as string,
       changed: null as unknown as string,
+      modify: false,
       contentChanged: false,
       item: null as unknown as Document,
       identify: null as unknown as string
@@ -147,8 +149,8 @@ export default defineComponent({
     onSuccess(value: Document)
     {
       this.item = value
-      this.changed = Date.now()
-                         .toString()
+      this.changed = Date.now().toString()
+      router.push(`/book/writer/${ this.identify }/${ value.identify }`)
     },
     change(value: Document)
     {
@@ -169,6 +171,13 @@ export default defineComponent({
       this.editor = editor
       this.item = parent
       this.visible = true
+    },
+    editDocument(value: Document)
+    {
+      this.editor = value.editor as string
+      this.item = value
+      this.visible = true
+      this.modify = true
     },
     save()
     {

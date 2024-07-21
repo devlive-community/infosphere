@@ -69,6 +69,10 @@ export default defineComponent({
     item: {
       type: Object as () => Document,
       required: false
+    },
+    modify: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {
@@ -102,7 +106,7 @@ export default defineComponent({
     const formSchema = toTypedSchema(validator)
     const tip = ref<string | null>(null)
 
-    const { handleSubmit } = useForm({
+    const { handleSubmit, setValues } = useForm({
       validationSchema: formSchema
     })
 
@@ -111,6 +115,17 @@ export default defineComponent({
       const router = useRouter()
       const params = router.currentRoute.value.params
       identify.value = params['identify'] as string
+      const data = props.item
+      if (props.modify && data) {
+        const newValue = {
+          id: data.id,
+          name: data.name,
+          identify: data.identify,
+          parent: data.parent
+        }
+        setValues(newValue)
+        Object.assign(formState, newValue)
+      }
     })
 
     // 由于中文输入法问题，使用 v-model 未更新数据，需要手动更新
@@ -121,7 +136,7 @@ export default defineComponent({
     const submit = handleSubmit(() => {
       saving.value = true
       formState['book']['identify'] = identify.value
-      if (props.item) {
+      if (props.item && !props.modify) {
         formState['parent'] = props.item?.id as number
       }
       DocumentService.saveOrUpdate(formState)

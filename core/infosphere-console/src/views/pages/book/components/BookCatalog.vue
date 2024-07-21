@@ -33,6 +33,13 @@
                     </ContextMenuItem>
                   </ContextMenuSubContent>
                 </ContextMenuSub>
+                <ContextMenuItem class="cursor-pointer" @click="editDocument(node)">
+                  <div class="flex items-center space-x-2">
+                    <PencilIcon :size="18"/>
+                    <span>修改文档</span>
+                  </div>
+                  <ContextMenuShortcut>⇧⌘E</ContextMenuShortcut>
+                </ContextMenuItem>
                 <ContextMenuSeparator/>
                 <ContextMenuItem class="cursor-pointer text-red-400 hover:text-red-700" @click="deleteDocument(node, true)">
                   <div class="flex items-center space-x-2">
@@ -76,7 +83,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
-import { FileIcon, Trash2Icon } from 'lucide-vue-next'
+import { FileIcon, PencilIcon, Trash2Icon } from 'lucide-vue-next'
 import DocumentDelete from '@/views/pages/book/components/DocumentDelete.vue'
 
 export default defineComponent({
@@ -108,9 +115,9 @@ export default defineComponent({
     ContextMenuSubContent,
     ContextMenuSubTrigger,
     ContextMenuTrigger,
-    FileIcon, Trash2Icon
+    FileIcon, Trash2Icon, PencilIcon
   },
-  emits: ['change', 'create-document'],
+  emits: ['change', 'create-document', 'edit-document'],
   setup(props, { emit })
   {
     const loading = ref(false)
@@ -167,6 +174,10 @@ export default defineComponent({
       emit('create-document', emitValue)
     }
 
+    const editDocument = (value: Document) => {
+      emit('edit-document', value)
+    }
+
     const deleteDocument = (value: Document | null, visible: boolean) => {
       if (value) {
         identify.value = value.identify as string
@@ -193,6 +204,7 @@ export default defineComponent({
       cn,
       change,
       createDocument,
+      editDocument,
       deleteDocument
     }
   }

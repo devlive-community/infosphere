@@ -22,9 +22,14 @@ class BookService
         return new HttpUtils().get(`${ DEFAULT_PATH }/catalog/${ bookIdentify }`)
     }
 
-    getLatest(top: number): Promise<Response>
+    getNewest(configure: Pagination): Promise<Response>
     {
-        return new HttpUtils().get(`${ DEFAULT_PATH }/latest/${ top }`)
+        return new HttpUtils().get(`${ DEFAULT_PATH }/newest`, configure)
+    }
+
+    getHottest(configure: Pagination): Promise<Response>
+    {
+        return new HttpUtils().get(`${ DEFAULT_PATH }/hottest`, configure)
     }
 
     access(identify: string): Promise<Response>
