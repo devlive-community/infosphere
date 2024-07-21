@@ -9,6 +9,7 @@ import org.devlive.infosphere.service.service.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -57,6 +58,12 @@ public class UserController
     CommonResponse<UserEntity> info()
     {
         return service.getInfo(null);
+    }
+
+    @GetMapping(value = "info/{username}")
+    CommonResponse<UserEntity> getInfo(@PathVariable(value = "username") String username)
+    {
+        return service.getByUsername(username);
     }
 
     @PutMapping(value = "/change/password")

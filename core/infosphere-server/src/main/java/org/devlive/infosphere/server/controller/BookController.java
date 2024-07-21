@@ -44,6 +44,13 @@ public class BookController
         return service.getAll(configure.getVisibility(), configure.getExcludeUser(), PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 
+    @GetMapping(value = "user/{username}")
+    public CommonResponse<PageAdapter<BookEntity>> getAllByUser(@PathVariable(value = "username") String username,
+            @ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getAllByUser(username, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
+    }
+
     @RequestMapping(method = {RequestMethod.POST, RequestMethod.PUT})
     public CommonResponse<BookEntity> save(@RequestBody BookEntity configure)
     {

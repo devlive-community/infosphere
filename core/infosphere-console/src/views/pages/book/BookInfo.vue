@@ -40,7 +40,9 @@
             <div class="flex-1 pl-10 space-y-3">
               <div class="flex items-center space-x-6">
                 <Label class="text-gray-400">书籍作者:</Label>
-                <span>{{ info.user?.username }}</span>
+                <RouterLink :to="`/user/${info.user?.username}`" class="text-blue-400 hover:border-b hover:border-b-blue-400">
+                  {{ info.user?.username }}
+                </RouterLink>
               </div>
               <Separator class="bg-gray-100"/>
               <div class="flex items-center space-x-6">

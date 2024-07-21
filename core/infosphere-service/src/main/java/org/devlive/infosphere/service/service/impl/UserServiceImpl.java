@@ -113,4 +113,12 @@ public class UserServiceImpl
         return getUserById(requireNonNull(UserDetailsService.getUser())
                 .getId());
     }
+
+    @Override
+    public CommonResponse<UserEntity> getByUsername(String username)
+    {
+        return repository.findByUsername(username)
+                .map(CommonResponse::success)
+                .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
+    }
 }

@@ -9,6 +9,8 @@ export interface User
     email?: string
     signature?: string
     avatar?: string
+    createTime?: string
+    updateTime?: string
 }
 
 export interface Auth

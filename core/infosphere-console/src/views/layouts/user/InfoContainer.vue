@@ -1,12 +1,12 @@
 <template>
   <div>
     <LayoutHeader/>
-    <div class="flex flex-col space-y-8 lg:flex-row justify-center lg:space-x-12 lg:space-y-0 mt-5 min-h-[700px]">
-      <div class="hidden w-[200px] md:block">
-        <InfoSidebar/>
+    <div class="flex flex-row space-x-3 justify-center mt-5 min-h-[700px]">
+      <div class="w-[300px]">
+        <UserSidebar/>
       </div>
-      <div class="flex-1 lg:max-w-5xl">
-        <main class="flex flex-1 flex-col gap-4 lg:gap-6">
+      <div class="flex-1 max-w-5xl">
+        <main class="flex flex-1 flex-col gap-6">
           <RouterView/>
         </main>
       </div>
@@ -18,11 +18,11 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import LayoutHeader from '@/views/layouts/basic/components/LayoutHeader.vue'
-import InfoSidebar from '@/views/layouts/book/components/InfoSidebar.vue'
 import LayoutFooter from '@/views/layouts/basic/components/LayoutFooter.vue'
+import UserSidebar from '@/views/layouts/user/components/UserSidebar.vue'
 
 export default defineComponent({
   name: 'InfoContainer',
-  components: { LayoutFooter, InfoSidebar, LayoutHeader }
+  components: { UserSidebar, LayoutFooter, LayoutHeader }
 })
 </script>
