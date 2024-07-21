@@ -5,11 +5,18 @@
       <CardTitle class="space-x-4 flex items-center">
         <Menubar class="border-0 shadow-none w-full rounded-none pl-5 pt-7 pb-7 border-b flex justify-between">
           <div class="flex items-center space-x-4">
-            <RouterLink :to="`/book/info/${identify}`">
+            <RouterLink :to="`/book/info/${bookIdentify}`">
               <span>{{ info.name }}</span>
             </RouterLink>
           </div>
-          <div class="ml-auto"></div>
+          <div class="ml-auto" v-if="info.user?.id === user?.id">
+            <RouterLink :to="`/book/writer/${bookIdentify}/${documentIdentify}`" class="mr-6 hover:border-b">
+              <Button class="bg-transparent border-0 shadow-background text-black hover:bg-transparent space-x-2 p-0">
+                <PencilIcon class="w-3.5 h-3.5"/>
+                <span>编辑文档</span>
+              </Button>
+            </RouterLink>
+          </div>
         </Menubar>
       </CardTitle>
     </CardHeader>
@@ -38,7 +45,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { BookOpenIcon, Loader2Icon, SaveIcon } from 'lucide-vue-next'
+import { BookOpenIcon, Loader2Icon, PencilIcon, SaveIcon } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import MarkdownEditor from '@/views/components/editor/MarkdownEditor.vue'
 import { Menubar, MenubarShortcut } from '@/components/ui/menubar'
@@ -52,6 +59,8 @@ import BookSidebar from '@/views/pages/book/components/BookSidebar.vue'
 import { Document } from '@/model/document.ts'
 import DocumentService from '@/service/document.ts'
 import router from '@/router'
+import { Auth } from '@/model/user.ts'
+import { TokenUtils } from '@/lib/token.ts'
 
 export default defineComponent({
   name: 'BookReader',
@@ -69,7 +78,8 @@ export default defineComponent({
     Card,
     SaveIcon,
     CardContent,
-    BookOpenIcon
+    BookOpenIcon,
+    PencilIcon
   },
   data()
   {
@@ -77,28 +87,32 @@ export default defineComponent({
       loading: false,
       documentLoading: false,
       info: null as unknown as Book,
-      identify: null as unknown as string,
-      item: null as unknown as Document
+      bookIdentify: null as unknown as string,
+      documentIdentify: null as unknown as string,
+      item: null as unknown as Document,
+      user: null as unknown as Auth
     }
   },
   created()
   {
+    this.user = TokenUtils.getAuthUser() as Auth
     const router = useRouter()
     const params = router.currentRoute.value.params
-    this.identify = params['bookIdentify'] as string
+    this.bookIdentify = params['bookIdentify'] as string
+    this.documentIdentify = params['documentIdentify'] as string
     this.initialize()
   },
   methods: {
     initialize()
     {
       this.loading = true
-      BookService.getByIdentify(this.identify)
+      BookService.getByIdentify(this.bookIdentify)
                  .then(response => this.info = response.data)
                  .finally(() => this.loading = false)
     },
     change(value: string)
     {
-      router.push(`/book/reader/${ this.identify }/${ value }`)
+      router.push(`/book/reader/${ this.bookIdentify }/${ value }`)
       this.documentLoading = true
       DocumentService.getByIdentify(value)
                      .then(response => this.item = response.data)

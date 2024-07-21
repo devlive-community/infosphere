@@ -122,20 +122,43 @@ export default defineComponent({
 
     const initialize = () => {
       const params = router.currentRoute.value.params
-      const identify = params['identify'] as string
+      const bookIdentify = params['identify'] as string
+      const documentIdentify = params['documentIdentify'] as string
+      identify.value = bookIdentify
 
-      if (identify) {
+      if (bookIdentify) {
         loading.value = true
-        BookService.getCatalogByBook(identify)
+        BookService.getCatalogByBook(bookIdentify)
                    .then(response => {
                      items.value = response.data
+                     if (documentIdentify) {
+                       selectItem.value = getAllNodes(items.value)
+                           .find(item => item.identify === documentIdentify) as any
+                       emit('change', selectItem.value)
+                     }
                    })
                    .finally(() => loading.value = false)
       }
     }
 
+    const getAllNodes = (nodes: Document[]): Document[] => {
+      const result: Document[] = []
+
+      function traverse(node: Document)
+      {
+        result.push(node)
+        if (node.children) {
+          node.children.forEach(child => traverse(child))
+        }
+      }
+
+      nodes.forEach(node => traverse(node))
+      return result
+    }
+
     const change = (value: any) => {
       selectItem.value = value
+      router.push(`/book/writer/${ identify.value }/${ value.identify }`)
       emit('change', value)
     }
 
