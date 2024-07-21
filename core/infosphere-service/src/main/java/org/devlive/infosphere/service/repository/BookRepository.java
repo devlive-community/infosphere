@@ -23,6 +23,12 @@ public interface BookRepository
             @Param(value = "excludeUser") Boolean excludeUser,
             Pageable pageable);
 
+    @Query("SELECT b " +
+            "FROM BookEntity b " +
+            "WHERE b.user = :user AND b.visibility = TRUE " +
+            "ORDER BY b.createTime DESC")
+    Page<BookEntity> findAllByUser(@Param(value = "user") UserEntity user, Pageable pageable);
+
     @Query(value = "SELECT b " +
             "FROM BookEntity b " +
             "WHERE b.visibility = TRUE " +

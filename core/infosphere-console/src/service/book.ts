@@ -32,6 +32,11 @@ class BookService
         return new HttpUtils().get(`${ DEFAULT_PATH }/hottest`, configure)
     }
 
+    getByUsername(username: string, configure: Pagination): Promise<Response>
+    {
+        return new HttpUtils().get(`${ DEFAULT_PATH }/user/${ username }`, configure)
+    }
+
     access(identify: string): Promise<Response>
     {
         return new HttpUtils().post(`${ DEFAULT_PATH }/access/${ identify }`)

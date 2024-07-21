@@ -3,6 +3,7 @@ import LayoutContainer from '@/views/layouts/basic/LayoutContainer.vue'
 import SettingContainer from '@/views/layouts/setting/SettingContainer.vue'
 import { useUserStore } from '@/stores/user.ts'
 import DynamicContainer from '@/views/layouts/book/DynamicContainer.vue'
+import InfoContainer from '@/views/layouts/user/InfoContainer.vue'
 
 const createDefaultRouter = (router: Router): void => {
     router.addRoute({
@@ -67,6 +68,14 @@ const createDefaultRouter = (router: Router): void => {
                     title: '无权访问'
                 },
                 component: () => import('@/views/pages/common/AuthorizedHome.vue')
+            },
+            {
+                name: 'NotFound',
+                path: '404',
+                meta: {
+                    title: '页面不存在'
+                },
+                component: () => import('@/views/pages/common/NotFoundHome.vue')
             }
         ]
     })
@@ -165,6 +174,20 @@ const createDefaultRouter = (router: Router): void => {
                 path: 'reader/:bookIdentify?/:documentIdentify?',
                 meta: { title: '阅读书籍' },
                 component: () => import('@/views/pages/book/BookReader.vue')
+            }
+        ]
+    })
+
+    router.addRoute({
+        path: '/user',
+        name: 'User',
+        component: InfoContainer,
+        children: [
+            {
+                name: 'UserHome',
+                path: ':username?',
+                meta: { title: '个人主页' },
+                component: () => import('@/views/pages/user/UserHome.vue')
             }
         ]
     })

@@ -15,4 +15,6 @@ public interface UserService
     CommonResponse<UserEntity> saveAndUpdate(UserEntity configure);
 
     CommonResponse<UserEntity> getInfo(String code);
+
+    CommonResponse<UserEntity> getByUsername(String username);
 }

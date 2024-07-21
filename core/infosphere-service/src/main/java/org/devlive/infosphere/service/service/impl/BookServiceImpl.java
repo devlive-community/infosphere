@@ -5,6 +5,7 @@ import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.entity.BookEntity;
 import org.devlive.infosphere.service.repository.BookRepository;
+import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.BookService;
 import org.springframework.data.domain.Pageable;
@@ -19,16 +20,26 @@ public class BookServiceImpl
         implements BookService
 {
     private final BookRepository repository;
+    private final UserRepository userRepository;
 
-    public BookServiceImpl(BookRepository repository)
+    public BookServiceImpl(BookRepository repository, UserRepository userRepository)
     {
         this.repository = repository;
+        this.userRepository = userRepository;
     }
 
     @Override
     public CommonResponse<PageAdapter<BookEntity>> getAll(Boolean visibility, Boolean excludeUser, Pageable pageable)
     {
         return CommonResponse.success(PageAdapter.of(repository.findAllByCreateTimeDesc(UserDetailsService.getUser(), visibility, excludeUser, pageable)));
+    }
+
+    @Override
+    public CommonResponse<PageAdapter<BookEntity>> getAllByUser(String username, Pageable pageable)
+    {
+        return userRepository.findByUsername(username)
+                .map(value -> CommonResponse.success(PageAdapter.of(repository.findAllByUser(value, pageable))))
+                .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
     }
 
     @Transactional
