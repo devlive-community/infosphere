@@ -1,7 +1,7 @@
 <template>
   <div class="flex-col md:flex">
-    <div class="flex flex-col space-y-8 space-x-12 mt-3">
-      <div class="w-full max-w-7xl mx-auto">
+    <div class="flex flex-col space-y-8 space-x-12 mt-3 mb-3">
+      <div class="w-full max-w-7xl mx-auto space-y-5">
         <div class="space-y-3">
           <div class="flex justify-between">
             <Label class="text-xl">最新发布</Label>
@@ -10,23 +10,25 @@
             </RouterLink>
           </div>
           <Separator/>
-          <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
-            <div v-for="item in items" :key="item.identify" class="flex flex-col items-center">
-              <RouterLink :to="`/book/info/${item.identify}`">
-                <InfoSphereTooltip position="top">
-                  <template #title>
-                    <div class="w-full h-40">
-                      <AspectRatio class="w-full h-full">
-                        <img :src="item.cover ? item.cover : '/static/images/default-cover.png'" :alt="item.name" class="rounded-md w-full h-full border-2"/>
-                      </AspectRatio>
-                      <span class="font-normal text-gray-500 text-xs text-center">{{ item.name }}</span>
-                    </div>
-                  </template>
-                  <template #content>
-                    {{ item.name }}
-                  </template>
-                </InfoSphereTooltip>
-              </RouterLink>
+          <InfoSphereSkeleton v-if="loading" :show="loading"/>
+          <div v-else class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-8 gap-4">
+            <div v-for="item in newestItems" :key="item.identify" class="flex flex-col items-center">
+              <BookItem :item="item"/>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <div class="flex justify-between">
+            <Label class="text-xl">热门书籍</Label>
+            <RouterLink to="/explore">
+              <Button variant="ghost" class="font-normal text-gray-500 text-xs justify-center">查看更多</Button>
+            </RouterLink>
+          </div>
+          <Separator/>
+          <InfoSphereSkeleton v-if="loading" :show="loading"/>
+          <div v-else class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-8 gap-4">
+            <div v-for="item in hosttestItems" :key="item.identify" class="flex flex-col items-center">
+              <BookItem :item="item"/>
             </div>
           </div>
         </div>
@@ -42,25 +44,39 @@ import { Separator } from '@/components/ui/separator'
 import InfoSphereTooltip from '@/views/components/tooltip/InfoSphereTooltip.vue'
 import BookService from '@/service/book.ts'
 import { Book } from '@/model/book.ts'
+import { Pagination } from '@/model/response.ts'
+import BookItem from '@/views/components/item/BookItem.vue'
+import { HttpUtils } from '@/lib/http.ts'
+import InfoSphereSkeleton from '@/views/components/skeleton/InfoSphereSkeleton.vue'
 
 export default defineComponent({
   name: 'IndexHome',
-  components: { InfoSphereTooltip, Separator, Label },
+  components: { InfoSphereSkeleton, BookItem, InfoSphereTooltip, Separator, Label },
   data()
   {
     return {
-      items: [] as Book[]
+      loading: false,
+      newestItems: [] as Book[],
+      hosttestItems: [] as Book[],
+      pagination: null as unknown as Pagination
     }
   },
   created()
   {
+    this.pagination = { page: 1, size: 16 }
     this.initialize()
   },
   methods: {
     initialize()
     {
-      BookService.getLatest(10)
-                 .then(response => this.items = response.data)
+      this.loading = true
+      const axios = new HttpUtils().getAxios()
+      axios.all([BookService.getNewest(this.pagination), BookService.getHottest(this.pagination)])
+           .then(axios.spread((newest, hottest) => {
+             this.newestItems = newest.data.content
+             this.hosttestItems = hottest.data.content
+           }))
+           .finally(() => this.loading = false)
     }
   }
 })

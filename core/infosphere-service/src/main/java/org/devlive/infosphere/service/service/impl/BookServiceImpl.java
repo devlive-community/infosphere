@@ -61,8 +61,14 @@ public class BookServiceImpl
     }
 
     @Override
-    public CommonResponse<List<BookEntity>> getTopByCreateTime(Integer top)
+    public CommonResponse<PageAdapter<BookEntity>> getNewest(Pageable pageable)
     {
-        return CommonResponse.success(repository.findTopByCreateTime(PageRequestAdapter.of(0, top)));
+        return CommonResponse.success(PageAdapter.of(repository.findTopByCreateTime(pageable)));
+    }
+
+    @Override
+    public CommonResponse<PageAdapter<BookEntity>> getHottest(Pageable pageable)
+    {
+        return CommonResponse.success(PageAdapter.of(repository.findAllByVisitorCountDesc(pageable)));
     }
 }

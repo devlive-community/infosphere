@@ -15,5 +15,7 @@ public interface BookService
 
     CommonResponse<BookEntity> saveAndUpdate(BookEntity configure);
 
-    CommonResponse<List<BookEntity>> getTopByCreateTime(Integer top);
+    CommonResponse<PageAdapter<BookEntity>> getNewest(Pageable pageable);
+
+    CommonResponse<PageAdapter<BookEntity>> getHottest(Pageable pageable);
 }
