@@ -3,7 +3,6 @@ package org.devlive.infosphere.service.service.impl;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
 import org.devlive.infosphere.service.adapter.PageAdapter;
-import org.devlive.infosphere.service.adapter.PageRequestAdapter;
 import org.devlive.infosphere.service.entity.BookEntity;
 import org.devlive.infosphere.service.repository.BookRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
