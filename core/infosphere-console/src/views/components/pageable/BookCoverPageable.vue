@@ -2,21 +2,7 @@
   <div>
     <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-8 gap-4">
       <div v-for="item in items" :key="item.identify" class="flex flex-col items-center">
-        <RouterLink :to="`/book/info/${item.identify}`">
-          <InfoSphereTooltip position="top">
-            <template #title>
-              <div class="w-full h-48">
-                <AspectRatio class="w-full h-full">
-                  <img :src="item.cover ? item.cover : '/static/images/default-cover.png'" :alt="item.name" class="rounded-md w-full h-full border-2"/>
-                </AspectRatio>
-                <span class="font-normal text-gray-500 text-xs text-center">{{ item.name }}</span>
-              </div>
-            </template>
-            <template #content>
-              {{ item.name }}
-            </template>
-          </InfoSphereTooltip>
-        </RouterLink>
+        <BookItem :item="item"/>
       </div>
     </div>
     <div v-if="pagination && items?.length > 0" class="mt-3">
@@ -55,10 +41,12 @@ import { cloneDeep } from 'lodash'
 import { ClockIcon, CogIcon, EyeIcon, FileTextIcon, LockIcon, LockOpenIcon, PencilIcon, UserIcon } from 'lucide-vue-next'
 import { Separator } from '@/components/ui/separator'
 import InfoSphereTooltip from '@/views/components/tooltip/InfoSphereTooltip.vue'
+import BookItem from '@/views/components/item/BookItem.vue'
 
 export default defineComponent({
   name: 'BookCoverPageable',
   components: {
+    BookItem,
     InfoSphereTooltip,
     Separator,
     Button,

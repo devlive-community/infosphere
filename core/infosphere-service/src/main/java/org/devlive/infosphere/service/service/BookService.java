@@ -5,8 +5,6 @@ import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.entity.BookEntity;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
-
 public interface BookService
 {
     CommonResponse<PageAdapter<BookEntity>> getAll(Boolean visibility, Boolean excludeUser, Pageable pageable);
@@ -15,5 +13,7 @@ public interface BookService
 
     CommonResponse<BookEntity> saveAndUpdate(BookEntity configure);
 
-    CommonResponse<List<BookEntity>> getTopByCreateTime(Integer top);
+    CommonResponse<PageAdapter<BookEntity>> getNewest(Pageable pageable);
+
+    CommonResponse<PageAdapter<BookEntity>> getHottest(Pageable pageable);
 }

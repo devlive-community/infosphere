@@ -75,15 +75,21 @@ public class BookController
         return documentService.getCatalogByBook(identify);
     }
 
-    @GetMapping(value = "latest/{top}")
-    public CommonResponse<List<BookEntity>> latest(@PathVariable(value = "top") Integer top)
+    @GetMapping(value = "newest")
+    public CommonResponse<PageAdapter<BookEntity>> getNewest(@ModelAttribute PageFilterAdapter configure)
     {
-        return service.getTopByCreateTime(top);
+        return service.getNewest(PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 
     @GetMapping(value = "public")
     public CommonResponse<PageAdapter<BookEntity>> getAllPublic(@ModelAttribute PageFilterAdapter configure)
     {
         return service.getAll(true, configure.getExcludeUser(), PageRequestAdapter.of(configure.getPage(), configure.getSize()));
+    }
+
+    @GetMapping(value = "hottest")
+    public CommonResponse<PageAdapter<BookEntity>> getHottest(@ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getHottest(PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 }

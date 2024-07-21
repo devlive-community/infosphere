@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface BookRepository
@@ -26,6 +25,12 @@ public interface BookRepository
 
     @Query(value = "SELECT b " +
             "FROM BookEntity b " +
+            "WHERE b.visibility = TRUE " +
+            "ORDER BY b.visitorCount DESC")
+    Page<BookEntity> findAllByVisitorCountDesc(Pageable pageable);
+
+    @Query(value = "SELECT b " +
+            "FROM BookEntity b " +
             "WHERE b.identify = :identify")
     Optional<BookEntity> findByIdentify(@Param(value = "identify") String identify);
 
@@ -38,5 +43,5 @@ public interface BookRepository
             "FROM BookEntity b " +
             "WHERE b.visibility = TRUE " +
             "ORDER BY b.createTime DESC")
-    List<BookEntity> findTopByCreateTime(Pageable pageable);
+    Page<BookEntity> findTopByCreateTime(Pageable pageable);
 }
