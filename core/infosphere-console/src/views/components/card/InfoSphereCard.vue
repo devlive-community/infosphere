@@ -5,6 +5,9 @@
         <span v-if="title">{{ title }}</span>
         <slot v-else name="title"/>
       </CardTitle>
+      <CardDescription v-if="$slots.description">
+        <slot name="description"/>
+      </CardDescription>
     </CardHeader>
     <CardContent class="p-0">
       <slot/>
@@ -17,13 +20,14 @@
 
 <script lang="ts">
 import { defineComponent, ref, watchEffect } from 'vue'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils.ts'
 import { Shadow } from '@/views/components/card/Shadow.ts'
 
 export default defineComponent({
   name: 'InfoSphereCard',
   components: {
+    CardDescription,
     CardFooter, Card, CardContent, CardHeader, CardTitle
   },
   props: {

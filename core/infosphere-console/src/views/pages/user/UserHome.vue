@@ -1,7 +1,7 @@
 <template>
   <InfoSphereSkeleton v-if="loading" :show="loading"/>
   <div v-else class="space-y-3">
-    <BookPageable :items="items" :pagination="pagination" @changePage="changePage"/>
+    <BookListWithCoverPageable :items="items" :pagination="pagination" @changePage="changePage"/>
   </div>
 </template>
 
@@ -11,11 +11,11 @@ import BookService from '@/service/book.ts'
 import { Book } from '@/model/book.ts'
 import { Pagination } from '@/model/response.ts'
 import InfoSphereSkeleton from '@/views/components/skeleton/InfoSphereSkeleton.vue'
-import BookPageable from '@/views/components/pageable/BookPageable.vue'
+import BookListWithCoverPageable from '@/views/components/pageable/BookListWithCoverPageable.vue'
 
 export default defineComponent({
   name: 'UserHome',
-  components: { BookPageable, InfoSphereSkeleton },
+  components: { BookListWithCoverPageable, InfoSphereSkeleton },
   data()
   {
     return {
