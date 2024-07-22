@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.devlive.infosphere</groupId>
         <artifactId>infosphere</artifactId>
-        <version>2024.1.3-SNAPSHOT</version>
+        <version>2024.1.3</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
