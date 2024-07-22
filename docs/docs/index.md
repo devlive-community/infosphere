@@ -24,7 +24,7 @@ hide:
 
 <div style="text-align: center;">
     <img width="100" height="85" style="margin-top: -50px;" src="/assets/images/logo.png" />
-    <p/>InfoSphere 是一款面向企业和个人的开源 Wiki 系统，旨在提供简单而强大的知识管理解决方案。
+    <p/>InfoSphere 是一款面向企业和个人的开源知识管理系统，旨在提供简单而强大的知识管理解决方案。
     <p/>
     <a target="_blank" href="https://gitee.com/devlive-community/incubator-infosphere/members">
         <img src='https://gitee.com/devlive-community/incubator-infosphere/badge/fork.svg?theme=white' alt='fork'/>
