@@ -32,11 +32,11 @@ public class FollowServiceImpl
             Optional<BookEntity> bookOptional = bookRepository.findByIdentify(configure.getIdentify());
             if (bookOptional.isPresent()) {
                 configure.setUser(UserDetailsService.getUser());
-//                if (bookOptional.get()
-//                        .getUser()
-//                        .getId().equals(configure.getUser().getId())) {
-//                    return CommonResponse.failure("不能关注自己的书籍");
-//                }
+                if (bookOptional.get()
+                        .getUser()
+                        .getId().equals(configure.getUser().getId())) {
+                    return CommonResponse.failure("不能关注自己的书籍");
+                }
 
                 Optional<FollowEntity> existingFollow = repository.findByUserAndIdentifyAndType(configure.getUser(), configure.getIdentify(), configure.getType());
                 if (existingFollow.isPresent()) {
