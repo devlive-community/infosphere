@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS `infosphere_access`
 
 CREATE TABLE IF NOT EXISTS `infosphere_access_book_relation`
 (
-    `access_id`  BIGINT,
-    `book_id` BIGINT
+    `access_id` BIGINT,
+    `book_id`   BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS `infosphere_access_user_relation`
@@ -119,4 +119,19 @@ CREATE TABLE IF NOT EXISTS `infosphere_document_user_relation`
     CONSTRAINT `PRIMARY` PRIMARY KEY (`document_id`, `user_id`),
     CONSTRAINT `fk_document` FOREIGN KEY (`document_id`) REFERENCES `infosphere_document` (`id`),
     CONSTRAINT `fk_document_user_relation` FOREIGN KEY (`user_id`) REFERENCES `infosphere_user` (`id`)
+);
+
+CREATE TABLE IF NOT EXISTS `infosphere_follow`
+(
+    `id`              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `follow_identify` VARCHAR(255) NOT NULL,
+    `type`            VARCHAR(50)  NOT NULL DEFAULT 'BOOK',
+    `create_time`     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS `infosphere_follow_fc_relation`
+(
+    `follow_id` BIGINT NOT NULL,
+    `user_id`   BIGINT NOT NULL,
+    PRIMARY KEY (`follow_id`, `user_id`)
 );
