@@ -13,7 +13,16 @@
             <div class="flex items-center space-x-2">
               <span>{{ item.user?.username }}</span>
             </div>
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-1">
+              <span>IP 地址：</span>
+              <span>{{ item.address }}</span>
+            </div>
+            <div class="flex items-center space-x-1">
+              <span>访问地址：</span>
+              <span>{{ item.location }}</span>
+            </div>
+            <div class="flex items-center space-x-1">
+              <span>访问时间：</span>
               <span>{{ item.createTime }}</span>
             </div>
           </div>
