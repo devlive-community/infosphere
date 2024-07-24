@@ -69,13 +69,19 @@
           </div>
           <div class="flex w-full">
             <div class="w-44"></div>
-            <div class="flex-1 pl-10 space-y-3">
+            <div class="flex-1 pl-10 space-x-3">
               <RouterLink :to="`/book/reader/${info.identify}`">
                 <Button class="space-x-2">
                   <BookIcon class="w-4 h-4"/>
                   <span>立即阅读</span>
                 </Button>
               </RouterLink>
+              <Button v-if="loggedIn" :disabled="loadingFollow" class="space-x-2 bg-amber-400 hover:bg-amber-500" @click="follow">
+                <Loader2Icon v-if="loadingFollow" class="w-4 h-4 animate-spin"/>
+                <HeartOffIcon v-if="info.isFollowed && !loadingFollow" class="w-4 h-4"/>
+                <HeartIcon v-else-if="!loadingFollow" class="w-4 h-4"/>
+                <span>{{ info.isFollowed ? '取消关注' : '关注书籍' }}</span>
+              </Button>
             </div>
           </div>
           <div class="grid items-center w-full gap-4">
@@ -126,7 +132,7 @@ import InfoSphereLoading from '@/views/components/loading/InfoSphereLoading.vue'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
-import { BookIcon, SettingsIcon, SquarePenIcon } from 'lucide-vue-next'
+import { BookIcon, HeartIcon, HeartOffIcon, Loader2Icon, SettingsIcon, SquarePenIcon } from 'lucide-vue-next'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { Document } from '@/model/document.ts'
 import { TokenUtils } from '@/lib/token.ts'
@@ -137,10 +143,14 @@ import { Pagination } from '@/model/response.ts'
 import { Access } from '@/model/access.ts'
 import AvatarPageable from '@/views/components/pageable/AvatarPageable.vue'
 import BookCoverPageable from '@/views/components/pageable/BookCoverPageable.vue'
+import { Follow } from '@/model/follow.ts'
+import FollowService from '@/service/follow.ts'
+import { toast } from 'vue3-toastify'
 
 export default defineComponent({
   name: 'BookInfo',
   components: {
+    Loader2Icon,
     BookCoverPageable,
     AvatarPageable,
     InfoSphereSkeleton,
@@ -151,7 +161,7 @@ export default defineComponent({
     Button, InfoSphereTooltip,
     Tabs, TabsContent, TabsList, TabsTrigger,
     AspectRatio,
-    SettingsIcon, SquarePenIcon, BookIcon
+    SettingsIcon, SquarePenIcon, BookIcon, HeartIcon, HeartOffIcon
   },
   data()
   {
@@ -159,6 +169,7 @@ export default defineComponent({
       loadingInfo: false,
       loadingCatalog: false,
       loadingAccess: false,
+      loadingFollow: false,
       loggedIn: false,
       info: null as unknown as Book,
       items: [] as Document[],
@@ -216,6 +227,40 @@ export default defineComponent({
     {
       this.pagination = value
       this.forwardAccess()
+    },
+    follow()
+    {
+      const configure: Follow = {
+        identify: this.info.identify,
+        type: 'BOOK'
+      }
+      this.loadingFollow = true
+      if (this.info.isFollowed) {
+        FollowService.delete(configure)
+                     .then(response => {
+                       if (response.status) {
+                         toast(`取消关注书籍 [ ${ this.info.name } ] 成功`, { type: 'success' })
+                         this.info.isFollowed = false
+                       }
+                       else {
+                         toast(response.message as string, { type: 'error' })
+                       }
+                     })
+                     .finally(() => this.loadingFollow = false)
+      }
+      else {
+        FollowService.saveOrUpdate(configure)
+                     .then((response) => {
+                       if (response.status) {
+                         toast(`关注书籍 [ ${ this.info.name } ] 成功`, { type: 'success' })
+                         this.info.isFollowed = true
+                       }
+                       else {
+                         toast(response.message as string, { type: 'error' })
+                       }
+                     })
+                     .finally(() => this.loadingFollow = false)
+      }
     }
   }
 })

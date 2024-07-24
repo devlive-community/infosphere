@@ -12,6 +12,7 @@ export interface Book
     updateTime?: string
     documentCount?: number
     visitorCount?: number
+    isFollowed?: boolean
     state?: string
     user?: User
 }
