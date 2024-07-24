@@ -3,8 +3,11 @@ package org.devlive.infosphere.service.service.impl;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
 import org.devlive.infosphere.service.adapter.PageAdapter;
+import org.devlive.infosphere.service.common.FollowType;
 import org.devlive.infosphere.service.entity.BookEntity;
+import org.devlive.infosphere.service.entity.FollowEntity;
 import org.devlive.infosphere.service.repository.BookRepository;
+import org.devlive.infosphere.service.repository.FollowRepository;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.BookService;
@@ -21,11 +24,13 @@ public class BookServiceImpl
 {
     private final BookRepository repository;
     private final UserRepository userRepository;
+    private final FollowRepository followRepository;
 
-    public BookServiceImpl(BookRepository repository, UserRepository userRepository)
+    public BookServiceImpl(BookRepository repository, UserRepository userRepository, FollowRepository followRepository)
     {
         this.repository = repository;
         this.userRepository = userRepository;
+        this.followRepository = followRepository;
     }
 
     @Override
@@ -47,7 +52,11 @@ public class BookServiceImpl
     public CommonResponse<BookEntity> getByIdentify(String identify)
     {
         return repository.findByIdentify(identify)
-                .map(CommonResponse::success)
+                .map(value -> {
+                    Optional<FollowEntity> existingFollow = followRepository.findByUserAndIdentifyAndType(UserDetailsService.getUser(), value.getIdentify(), FollowType.BOOK);
+                    value.setIsFollowed(existingFollow.isPresent());
+                    return CommonResponse.success(value);
+                })
                 .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
     }
 
@@ -79,5 +88,13 @@ public class BookServiceImpl
     public CommonResponse<PageAdapter<BookEntity>> getHottest(Pageable pageable)
     {
         return CommonResponse.success(PageAdapter.of(repository.findAllByVisitorCountDesc(pageable)));
+    }
+
+    @Override
+    public CommonResponse<PageAdapter<BookEntity>> getFollow(String username, Pageable pageable)
+    {
+        return userRepository.findByUsername(username)
+                .map(value -> CommonResponse.success(PageAdapter.of(repository.findAllByUserAndIsFollowed(value, pageable))))
+                .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
     }
 }

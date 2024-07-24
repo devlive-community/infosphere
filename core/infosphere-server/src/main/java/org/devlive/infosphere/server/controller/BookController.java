@@ -51,6 +51,13 @@ public class BookController
         return service.getAllByUser(username, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 
+    @GetMapping(value = "followed/{username}")
+    public CommonResponse<PageAdapter<BookEntity>> getFollow(@PathVariable(value = "username") String username,
+            @ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getFollow(username, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
+    }
+
     @RequestMapping(method = {RequestMethod.POST, RequestMethod.PUT})
     public CommonResponse<BookEntity> save(@RequestBody BookEntity configure)
     {

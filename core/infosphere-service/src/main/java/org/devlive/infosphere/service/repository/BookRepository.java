@@ -50,4 +50,11 @@ public interface BookRepository
             "WHERE b.visibility = TRUE " +
             "ORDER BY b.createTime DESC")
     Page<BookEntity> findTopByCreateTime(Pageable pageable);
+
+    @Query("SELECT b " +
+            "FROM BookEntity b " +
+            "WHERE b.visibility = TRUE " +
+            "AND (SELECT COUNT(1) FROM FollowEntity f WHERE f.user = :user AND f.identify = b.identify) > 0 " +
+            "ORDER BY b.createTime DESC")
+    Page<BookEntity> findAllByUserAndIsFollowed(@Param(value = "user") UserEntity user, Pageable pageable);
 }

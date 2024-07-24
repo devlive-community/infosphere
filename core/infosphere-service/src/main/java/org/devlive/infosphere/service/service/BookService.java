@@ -18,4 +18,6 @@ public interface BookService
     CommonResponse<PageAdapter<BookEntity>> getNewest(Pageable pageable);
 
     CommonResponse<PageAdapter<BookEntity>> getHottest(Pageable pageable);
+
+    CommonResponse<PageAdapter<BookEntity>> getFollow(String username, Pageable pageable);
 }

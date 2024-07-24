@@ -53,22 +53,19 @@ public class AuthTokenFilterService
 
                 if (existsBook != null && existsBook.getVisibility()) {
                     log.info("Book with identify [{}] is visible, proceeding without authentication", identify);
-                    this.setAnonymous(request);
+                    if (parseJwt(request) == null) {
+                        this.setAnonymous(request);
+                    }
+                    else {
+                        // 如果已经登录，则设置为当前登录的用户
+                        this.setUser(request);
+                    }
                     filterChain.doFilter(request, response);
                     return;
                 }
             }
 
-            String jwt = parseJwt(request);
-            if (jwt != null && service.validateJwtToken(jwt)) {
-                String username = service.getUserNameFromJwtToken(jwt);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext()
-                        .setAuthentication(authentication);
-            }
+            this.setUser(request);
         }
         catch (Exception e) {
             logger.error("Cannot set user authentication: {}", e);
@@ -100,5 +97,19 @@ public class AuthTokenFilterService
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext()
                 .setAuthentication(authentication);
+    }
+
+    private void setUser(HttpServletRequest request)
+    {
+        String jwt = parseJwt(request);
+        if (jwt != null && service.validateJwtToken(jwt)) {
+            String username = service.getUserNameFromJwtToken(jwt);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
+        }
     }
 }

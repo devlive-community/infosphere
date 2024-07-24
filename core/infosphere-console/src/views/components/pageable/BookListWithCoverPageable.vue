@@ -1,10 +1,13 @@
 <template>
-  <div class="space-y-3">
+  <div v-if="items?.length > 0" class="space-y-3">
     <div v-for="item in items">
       <BookWithCoverItem :item="item"/>
     </div>
+    <BasePageable :pagination="pagination" @changePage="changePage"/>
   </div>
-  <BasePageable :pagination="pagination" @changePage="changePage"/>
+  <div v-else>
+    <p class="text-muted-foreground m-6">暂无书籍。</p>
+  </div>
 </template>
 
 <script lang="ts">

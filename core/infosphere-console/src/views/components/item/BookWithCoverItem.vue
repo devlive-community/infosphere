@@ -1,6 +1,6 @@
 <template>
   <div v-if="item" class="flex p-1 space-x-2">
-    <div class="w-32 h-48">
+    <div class="w-36 h-48">
       <AspectRatio class="w-full h-48">
         <img :src="item.cover ? item.cover : '/static/images/default-cover.png'" :alt="item.name" class="rounded-md w-full h-full border-2"/>
       </AspectRatio>
