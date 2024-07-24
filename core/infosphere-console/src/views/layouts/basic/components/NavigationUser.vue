@@ -32,6 +32,12 @@
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator/>
+        <RouterLink :to="`/user/${info.username}`">
+          <DropdownMenuItem class="cursor-pointer">
+            <span>我的主页</span>
+            <DropdownMenuShortcut>⌘H</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </RouterLink>
         <RouterLink to="/book">
           <DropdownMenuItem class="cursor-pointer">
             <span>我的书籍</span>
