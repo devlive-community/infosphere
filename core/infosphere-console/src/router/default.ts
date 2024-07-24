@@ -188,6 +188,12 @@ const createDefaultRouter = (router: Router): void => {
                 path: ':username?',
                 meta: { title: '个人主页' },
                 component: () => import('@/views/pages/user/UserHome.vue')
+            },
+            {
+                name: 'UserFollow',
+                path: ':username/follow',
+                meta: { title: '关注列表' },
+                component: () => import('@/views/pages/user/FollowHome.vue')
             }
         ]
     })

@@ -25,6 +25,7 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 import java.time.Instant;
 
@@ -90,11 +91,11 @@ public class BookEntity
             "WHERE abr.book_id = id)")
     private Long visitorCount;
 
-    @Formula(value = "(SELECT IF(COUNT(f.id) = 0, 0, 1) " +
-            "FROM infosphere_follow f " +
-            "INNER JOIN infosphere_book b ON b.identify = f.follow_identify " +
-            "INNER JOIN infosphere_book_user_relation bur ON b.id = bur.book_id " +
-            "INNER JOIN infosphere_follow_fc_relation ffr ON ffr.follow_id = f.id " +
-            "WHERE f.follow_identify = identify AND ffr.user_id = bur.user_id)")
+    //    @Formula(value = "(SELECT IF(COUNT(f.id) = 0, 0, 1) " +
+//            "FROM infosphere_follow f " +
+//            "INNER JOIN infosphere_book b ON b.identify = f.follow_identify " +
+//            "INNER JOIN infosphere_follow_fc_relation ffr ON ffr.follow_id = f.id " +
+//            "WHERE f.follow_identify = identify)")
+    @Transient
     private Boolean isFollowed;
 }
