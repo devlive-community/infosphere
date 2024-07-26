@@ -19,14 +19,23 @@ router.beforeEach((to, from, next) => {
     }
 
     const userStore = useUserStore()
-    if (to.path === '/login' || to.path === '/register') {
-        if (userStore.isLogin) {
-            next({ path: '/common/logged' })
-            return
+    if (to.matched.some(record => record.meta.requiresAuth)) {
+        if (!userStore.isLogin) {
+            next('/common/403')
+        }
+        else {
+            next()
         }
     }
-
-    next()
+    else {
+        if (to.path === '/login' || to.path === '/register') {
+            if (userStore.isLogin) {
+                next({ path: '/common/logged' })
+                return
+            }
+        }
+        next()
+    }
 })
 
 export default router
