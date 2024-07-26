@@ -1,4 +1,5 @@
 import { User } from '@/model/user.ts'
+import { Field } from '@/model/field.ts'
 
 export interface Book
 {
@@ -14,5 +15,6 @@ export interface Book
     visitorCount?: number
     isFollowed?: boolean
     state?: string
+    originate?: Field
     user?: User
 }

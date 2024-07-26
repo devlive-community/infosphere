@@ -37,7 +37,7 @@
                 <img :src="info.cover ? info.cover : '/static/images/default-cover.png'" :alt="info.name" class="rounded-md w-full h-full border-2"/>
               </AspectRatio>
             </div>
-            <div class="flex-1 pl-10 space-y-3">
+            <div class="flex-1 pl-10 space-y-2.5">
               <div class="flex items-center space-x-6">
                 <Label class="text-gray-400">书籍作者:</Label>
                 <RouterLink :to="`/user/${info.user?.username}`" class="text-blue-400 hover:border-b hover:border-b-blue-400">
@@ -53,6 +53,13 @@
               <div class="flex items-center space-x-6">
                 <Label class="text-gray-400">阅读人次:</Label>
                 <span>{{ info.visitorCount }}</span>
+              </div>
+              <Separator class="bg-gray-100"/>
+              <div class="flex items-center space-x-6">
+                <Label class="text-gray-400">书籍来源:</Label>
+                <div v-if="info.originate">
+                  <a :href="info.originate.value" target="_blank" class="text-sm text-blue-400 hover:border-b hover:border-b-blue-400">{{ info.originate.field }}</a>
+                </div>
               </div>
               <Separator class="bg-gray-100"/>
               <div class="flex items-center space-x-6">
