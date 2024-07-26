@@ -39,6 +39,26 @@
             <FormMessage/>
           </FormItem>
         </FormField>
+        <FormField name="originate">
+          <div class="flex space-x-2">
+            <FormItem class="w-full">
+              <FormLabel>书籍来源</FormLabel>
+              <FormControl>
+                <Input v-model="formState.originate.field" :default-value="formState.originate.field as string" placeholder="来源名称"
+                       @input="updateModelValue('originate.field', $event.target.value)"/>
+              </FormControl>
+              <FormMessage/>
+            </FormItem>
+            <FormItem class="w-full">
+              <FormLabel>&nbsp;</FormLabel>
+              <FormControl>
+                <Input v-model="formState.originate.value" :default-value="formState.originate.value as string" placeholder="来源链接"
+                       @input="updateModelValue('originate.value', $event.target.value)"/>
+              </FormControl>
+              <FormMessage/>
+            </FormItem>
+          </div>
+        </FormField>
         <FormField v-slot="{ componentField }" name="visibility">
           <FormItem class="space-y-2">
             <FormLabel>书籍可见性</FormLabel>
@@ -122,7 +142,15 @@ export default defineComponent({
   {
     const loading = ref(false)
     const saving = ref(false)
-    const formState = reactive<Record<string, any>>({ id: undefined, name: undefined, cover: undefined, identify: undefined, description: undefined, visibility: undefined })
+    const formState = reactive<Record<string, any>>({
+      id: undefined,
+      name: undefined,
+      cover: undefined,
+      identify: undefined,
+      description: undefined,
+      visibility: undefined,
+      originate: { field: undefined, value: undefined }
+    })
     const validator = z
         .object({
           name: z.string({ required_error: '书籍名称不能为空' })
@@ -131,7 +159,7 @@ export default defineComponent({
           identify: z.string({ required_error: '书籍标记不能为空' })
                      .min(2, '书籍标记必须在2-100个字符之间')
                      .max(100, '书籍标记必须在2-100个字符之间')
-                     .regex(/^[a-zA-Z0-9\-_]+$/, '书籍标记只能包含字母、数字、下划线和中横线'),
+                     .regex(/^[a-zA-Z0-9\-_\\.]+$/, '书籍标记只能包含字母、数字、下划线和中横线'),
           visibility: z.enum(['true', 'false'], { required_error: '书籍可见性不能为空' })
         })
     const formSchema = toTypedSchema(validator)
@@ -158,7 +186,8 @@ export default defineComponent({
                        cover: data.cover,
                        identify: data.identify,
                        description: data.description,
-                       visibility: data.visibility.toString()
+                       visibility: data.visibility.toString(),
+                       originate: { field: data.originate?.field, value: data.originate?.value }
                      }
                      setValues(newValue)
                      Object.assign(formState, newValue)
@@ -170,7 +199,13 @@ export default defineComponent({
 
     // 由于中文输入法问题，使用 v-model 未更新数据，需要手动更新
     const updateModelValue = (field: string, value: any) => {
-      formState[field] = value
+      const newValue = field.split('.')
+      if (newValue.length > 1) {
+        formState[newValue[0]][newValue[1]] = value
+      }
+      else {
+        formState[field] = value
+      }
     }
 
     // 上传书籍封面

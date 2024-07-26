@@ -177,6 +177,12 @@ const createDefaultRouter = (router: Router): void => {
                 path: 'reader/:bookIdentify?/:documentIdentify?',
                 meta: { title: '阅读书籍' },
                 component: () => import('@/views/pages/book/BookReader.vue')
+            },
+            {
+                name: 'BookFollow',
+                path: 'follow',
+                meta: { title: '我的关注' },
+                component: () => import('@/views/pages/book/BookFollow.vue')
             }
         ]
     })

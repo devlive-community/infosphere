@@ -32,12 +32,6 @@ interface NavigationItem
 export default defineComponent({
   name: 'InfoSidebar',
   components: { BookIcon },
-  setup()
-  {
-    return {
-      cn
-    }
-  },
   data()
   {
     return {
@@ -49,6 +43,7 @@ export default defineComponent({
     this.initialize()
   },
   methods: {
+    cn,
     initialize()
     {
       const router = useRouter()

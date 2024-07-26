@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS `infosphere_book`
     `visibility`  TINYINT(1)  DEFAULT 1                 NULL,
     `create_time` TIMESTAMP   DEFAULT CURRENT_TIMESTAMP NULL,
     `update_time` TIMESTAMP   DEFAULT CURRENT_TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
-    `state`       VARCHAR(20) DEFAULT 'STARTED'         NOT NULL
+    `state`       VARCHAR(20) DEFAULT 'STARTED'         NOT NULL,
+    `originate`   VARCHAR(1000)
 );
 
 CREATE TABLE IF NOT EXISTS `infosphere_book_user_relation`

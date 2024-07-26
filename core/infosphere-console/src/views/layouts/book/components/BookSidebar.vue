@@ -21,6 +21,7 @@
 import { defineComponent } from 'vue'
 import { cn } from '@/lib/utils.ts'
 import { BookIcon } from 'lucide-vue-next'
+import { useUserStore } from '@/stores/user.ts'
 
 export default defineComponent({
   name: 'BookSidebar',
@@ -44,11 +45,17 @@ export default defineComponent({
   methods: {
     initialize()
     {
+      const userStore = useUserStore()
+      const loggedIn = userStore.isLogin
       const items = [
         { title: '所有书籍', href: '/book/index' },
         { title: '公开书籍', href: '/book/public' },
         { title: '私有书籍', href: '/book/private' }
       ]
+
+      if (loggedIn) {
+        items.push({ title: '我的关注', href: '/book/follow' })
+      }
       this.items = [...items] as any[]
     }
   }

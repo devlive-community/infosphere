@@ -70,18 +70,20 @@
           </div>
         </CardContent>
         <CardFooter class="flex space-x-2 p-3">
-          <RouterLink :to="`/book/info/${item.identify}`">
-            <Button variant="outline" class="space-x-2">
-              <EyeIcon class="w-4 h-4"/>
-              <span>查看书籍</span>
-            </Button>
-          </RouterLink>
-          <RouterLink :to="`/book/setting/${item.identify}`">
-            <Button variant="outline" class="space-x-2">
-              <CogIcon class="w-4 h-4"/>
-              <span>书籍设置</span>
-            </Button>
-          </RouterLink>
+          <div v-if="!isFollowed" class="space-x-2">
+            <RouterLink :to="`/book/info/${item.identify}`">
+              <Button variant="outline" class="space-x-2">
+                <EyeIcon class="w-4 h-4"/>
+                <span>查看书籍</span>
+              </Button>
+            </RouterLink>
+            <RouterLink :to="`/book/setting/${item.identify}`">
+              <Button variant="outline" class="space-x-2">
+                <CogIcon class="w-4 h-4"/>
+                <span>书籍设置</span>
+              </Button>
+            </RouterLink>
+          </div>
         </CardFooter>
       </Card>
     </div>
@@ -140,6 +142,10 @@ export default defineComponent({
     pagination: {
       type: Object as PropType<PaginationEntity>,
       required: true
+    },
+    isFollowed: {
+      type: Boolean,
+      default: false
     }
   },
   methods: {
