@@ -1,10 +1,11 @@
 <template>
-  <nav class="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1">
+  <nav class="flex max-h-screen flex-col gap-2">
     <div v-for="item in items">
-      <div v-if="item.isDriver" class="mt-2 mb-2">
+      <div v-if="item.isDriver">
         <Separator class="right"/>
       </div>
-      <Button v-else :key="item.title" variant="ghost" :class="cn('w-full text-left justify-start', $route.path === `${item.href}` && 'bg-muted hover:bg-muted',)">
+      <Button v-else :key="item.title" variant="ghost" :class="cn('w-full text-left justify-start',
+                                                                  $route.path === `${item.href}` && 'bg-muted hover:bg-muted',)">
         <RouterLink :to="item.href as string" class="w-full">{{ item.title }}</RouterLink>
       </Button>
     </div>

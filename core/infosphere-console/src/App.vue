@@ -1,5 +1,5 @@
 <template>
-  <div class="min-w-[1024px]">
+  <div>
     <RouterView/>
   </div>
 </template>
