@@ -4,8 +4,10 @@ import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.service.common.FollowType;
 import org.devlive.infosphere.service.entity.BookEntity;
 import org.devlive.infosphere.service.entity.FollowEntity;
+import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.BookRepository;
 import org.devlive.infosphere.service.repository.FollowRepository;
+import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.FollowService;
 import org.springframework.stereotype.Service;
@@ -18,11 +20,13 @@ public class FollowServiceImpl
 {
     private final FollowRepository repository;
     private final BookRepository bookRepository;
+    private final UserRepository userRepository;
 
-    public FollowServiceImpl(FollowRepository repository, BookRepository bookRepository)
+    public FollowServiceImpl(FollowRepository repository, BookRepository bookRepository, UserRepository userRepository)
     {
         this.repository = repository;
         this.bookRepository = bookRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -47,6 +51,25 @@ public class FollowServiceImpl
             }
             else {
                 return CommonResponse.failure(String.format("书籍 [ %s ] 不存在", configure.getIdentify()));
+            }
+        }
+        else if (configure.getType().equals(FollowType.USER)) {
+            Optional<UserEntity> userOptional = userRepository.findByUsername(configure.getIdentify());
+            if (userOptional.isPresent()) {
+                configure.setUser(UserDetailsService.getUser());
+                if (userOptional.get()
+                        .getId().equals(configure.getUser().getId())) {
+                    return CommonResponse.failure("不能关注自己");
+                }
+                Optional<FollowEntity> existingFollow = repository.findByUserAndIdentifyAndType(configure.getUser(), configure.getIdentify(), configure.getType());
+                if (existingFollow.isPresent()) {
+                    return CommonResponse.failure(String.format("用户 [ %s ] 已关注", configure.getIdentify()));
+                }
+                FollowEntity savedConfigure = repository.save(configure);
+                return CommonResponse.success(savedConfigure);
+            }
+            else {
+                return CommonResponse.failure(String.format("用户 [ %s ] 不存在", configure.getIdentify()));
             }
         }
         else {

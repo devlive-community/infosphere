@@ -18,7 +18,15 @@
           <div class="text-lg font-bold">{{ info.aliasName }}</div>
           <div class="text-xs text-gray-400">(@{{ info.username }})</div>
         </div>
-        <Separator class="text-gray-300 my-2"/>
+        <div class="space-x-2 my-3">
+          <Button :disabled="loadingFollow" class="space-x-2 bg-green-500 hover:bg-green-600 text-white" @click="follow">
+            <Loader2Icon v-if="loadingFollow" class="w-4 h-4 animate-spin"/>
+            <HeartOffIcon v-if="info.isFollowed && !loadingFollow" class="w-4 h-4"/>
+            <HeartIcon v-else-if="!loadingFollow" class="w-4 h-4"/>
+            <span>{{ info.isFollowed ? '取消关注' : '关注作者' }}</span>
+          </Button>
+        </div>
+        <Separator class="text-gray-300 my-3"/>
         <div class="text-gray-400 space-x-3">
           <span>加入 InfoSphere : </span>
           <span class="text-red-500">{{ calculateDaysBetweenDates(new Date(info.createTime as string), new Date()) }}</span>
@@ -38,10 +46,18 @@ import { User } from '@/model/user.ts'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { calculateDaysBetweenDates } from '@/lib/date.ts'
+import { Button } from '@/components/ui/button'
+import { HeartIcon, HeartOffIcon, Loader2Icon } from 'lucide-vue-next'
+import { Follow } from '@/model/follow.ts'
+import FollowService from '@/service/follow.ts'
+import { toast } from 'vue3-toastify'
 
 export default defineComponent({
   name: 'UserSidebar',
   components: {
+    HeartIcon,
+    Loader2Icon, HeartOffIcon,
+    Button,
     Separator,
     InfoSphereSkeleton, InfoSphereCard,
     Avatar, AvatarFallback, AvatarImage
@@ -50,6 +66,7 @@ export default defineComponent({
   {
     return {
       loading: false,
+      loadingFollow: false,
       info: null as unknown as User
     }
   },
@@ -75,6 +92,40 @@ export default defineComponent({
       }
       else {
         this.$router.push('/common/404')
+      }
+    },
+    follow()
+    {
+      const configure: Follow = {
+        identify: this.info.username,
+        type: 'USER'
+      }
+      this.loadingFollow = true
+      if (this.info.isFollowed) {
+        FollowService.delete(configure)
+                     .then(response => {
+                       if (response.status) {
+                         toast(`取消关注用户 [ ${ this.info.username } ] 成功`, { type: 'success' })
+                         this.info.isFollowed = false
+                       }
+                       else {
+                         toast(response.message as string, { type: 'error' })
+                       }
+                     })
+                     .finally(() => this.loadingFollow = false)
+      }
+      else {
+        FollowService.saveOrUpdate(configure)
+                     .then((response) => {
+                       if (response.status) {
+                         toast(`关注用户 [ ${ this.info.username } ] 成功`, { type: 'success' })
+                         this.info.isFollowed = true
+                       }
+                       else {
+                         toast(response.message as string, { type: 'error' })
+                       }
+                     })
+                     .finally(() => this.loadingFollow = false)
       }
     }
   }
