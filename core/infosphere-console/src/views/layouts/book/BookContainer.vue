@@ -1,7 +1,7 @@
 <template>
   <div>
     <LayoutHeader/>
-    <div class="flex flex-col space-y-8 lg:flex-row justify-center lg:space-x-12 lg:space-y-0 mt-5 min-h-[700px]">
+    <div class="flex flex-col space-y-8 lg:flex-row justify-center lg:space-x-12 lg:space-y-0 mt-5 min-h-[700px] px-3">
       <div class="hidden lg:w-[200px] md:block">
         <BookSidebar/>
       </div>
