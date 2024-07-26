@@ -79,7 +79,7 @@ public class DocumentEntity
     @JoinTable(name = "infosphere_document_book_relation",
             joinColumns = @JoinColumn(name = "document_id"),
             inverseJoinColumns = @JoinColumn(name = "book_id"))
-    @JsonIncludeProperties(value = {"id", "name", "identify", "description", "createTime", "updateTime"})
+    @JsonIncludeProperties(value = {"id", "name", "identify", "description", "originate", "createTime", "updateTime"})
     private BookEntity book;
 
     @Transient

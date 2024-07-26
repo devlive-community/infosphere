@@ -30,13 +30,28 @@
           <div v-else-if="item">
             <InfoSphereCard>
               <template #title>
-                <div class="p-4 border-b items-center justify-center text-center">{{ item.name }}</div>
+                <div class="flex-row">
+                  <div class="p-4 border-b items-center justify-between text-center">{{ item.name }}</div>
+                  <div class="flex text-sm text-gray-400 p-0 font-normal pl-3 pr-3 justify-between">
+                    <div class="flex space-x-3">
+                      <div class="hover:text-blue-300 cursor-pointer">
+                        来源: <a :href="item.book?.originate?.value" target="_blank">{{ item.book?.originate?.field }}</a>
+                      </div>
+                      <div class="hover:text-blue-300 cursor-pointer">
+                        <RouterLink :to="`/user/${item.user?.username}`">
+                          作者: {{ item.user?.username }}
+                        </RouterLink>
+                      </div>
+                    </div>
+                    <div class="pr-36">更新时间: {{ item.updateTime }}</div>
+                  </div>
+                </div>
               </template>
-              <div class="flex">
+              <div class="flex" :style="{ height: 'calc(100vh - 128px)' }">
                 <MarkdownEditor v-if="item.editor === 'Markdown'" :id="item.identify" :content="item.content ? item.content : ''" :preview="true"
-                                :style="{ height: 'calc(100vh - 108px)', width: 'calc(100vw - 350px)' }"/>
+                                :style="{ width: 'calc(100vw - 350px)' }"/>
                 <div class="w-[150px]">
-                  <InfoSphereCard :style="{ height: 'calc(100vh - 108px)' }" class="rounded-none border-t-0">
+                  <InfoSphereCard class="rounded-none border-t-0 -mt-5 h-full border-0">
                     <template #title>
                       <div class="p-2 border-b items-center justify-center text-center">目录</div>
                     </template>
