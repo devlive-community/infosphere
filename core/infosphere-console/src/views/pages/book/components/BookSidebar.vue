@@ -1,21 +1,13 @@
 <template>
   <ScrollArea class="rounded-none border w-full h-full whitespace-nowrap border-t-0">
-    <div class="flex-1 flex flex-col pt-2 pb-2">
+    <div class="pt-2 pb-2">
       <InfoSphereLoading v-if="loading" :show="loading"/>
       <TransitionGroup v-else name="list" appear>
         <DefaultTree :items="items" :selectedKey="selectItem" @select-item="change">
           <template #node="{ node }">
             <ContextMenu @update:open="selectItem.identify = node.identify">
               <ContextMenuTrigger class="text-xs text-gray-500">
-                <div class="flex w-full flex-col pt-2 pb-2" :key="node.identify">
-                  <div class="flex items-center">
-                    <div class="flex items-center">
-                      <div class="font-semibold">
-                        {{ node.name }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <div class="w-full pt-2 pb-2" :key="node.identify">{{ node.name }}</div>
               </ContextMenuTrigger>
             </ContextMenu>
           </template>

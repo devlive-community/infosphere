@@ -21,21 +21,30 @@
       </CardTitle>
     </CardHeader>
     <CardContent class="p-0 space-y-6">
-      <div class="flex flex-col lg:flex-row">
+      <div class="flex flex-row">
         <div class="w-[200px] overflow-x-auto overflow-y-auto h-screen border-t-0" :style="{ height: 'calc(100vh - 57px)' }">
           <BookSidebar :item="item" @change="change"/>
         </div>
-        <div class="flex-1">
+        <div class="flex-auto flex flex-col">
           <InfoSphereLoading v-if="documentLoading" :show="documentLoading"/>
-          <div v-else>
-            <Card class="w-full rounded-sm border-0 shadow-background">
-              <CardHeader class="p-4 border-b items-center">
-                <CardTitle>{{ item?.name }}</CardTitle>
-              </CardHeader>
-              <CardContent class="p-0">
-                <MarkdownEditor v-if="item?.editor === 'Markdown'" :content="item.content ? item.content : ''" :preview="true" :style="{ height: 'calc(100vh - 106px)' }"/>
-              </CardContent>
-            </Card>
+          <div v-else-if="item">
+            <InfoSphereCard>
+              <template #title>
+                <div class="p-4 border-b items-center justify-center text-center">{{ item.name }}</div>
+              </template>
+              <div class="flex">
+                <MarkdownEditor v-if="item.editor === 'Markdown'" :id="item.identify" :content="item.content ? item.content : ''" :preview="true"
+                                :style="{ height: 'calc(100vh - 108px)', width: 'calc(100vw - 350px)' }"/>
+                <div class="w-[150px]">
+                  <InfoSphereCard :style="{ height: 'calc(100vh - 108px)' }" class="rounded-none border-t-0">
+                    <template #title>
+                      <div class="p-2 border-b items-center justify-center text-center">目录</div>
+                    </template>
+                    <MdCatalog :editor-id="item.identify" class="text-sm text-gray-500"/>
+                  </InfoSphereCard>
+                </div>
+              </div>
+            </InfoSphereCard>
           </div>
         </div>
       </div>
@@ -61,10 +70,14 @@ import DocumentService from '@/service/document.ts'
 import router from '@/router'
 import { Auth } from '@/model/user.ts'
 import { TokenUtils } from '@/lib/token.ts'
+import InfoSphereCard from '@/views/components/card/InfoSphereCard.vue'
+import { MdCatalog } from 'md-editor-v3'
 
 export default defineComponent({
   name: 'BookReader',
   components: {
+    MdCatalog,
+    InfoSphereCard,
     BookSidebar,
     InfoSphereLoading,
     BookCatalog,
