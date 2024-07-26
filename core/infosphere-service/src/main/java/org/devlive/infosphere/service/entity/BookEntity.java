@@ -7,12 +7,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.devlive.infosphere.service.common.StateEnum;
+import org.devlive.infosphere.service.converter.FieldConverter;
 import org.hibernate.annotations.Formula;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.Column;
+import javax.persistence.Convert;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
 import javax.persistence.EnumType;
@@ -62,6 +64,10 @@ public class BookEntity
     @Enumerated(EnumType.STRING)
     private StateEnum state = StateEnum.STARTED;
 
+    @Column(name = "originate")
+    @Convert(converter = FieldConverter.class)
+    private FieldEntity originate;
+
     @Column(name = "create_time")
     @CreatedDate
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
@@ -91,11 +97,6 @@ public class BookEntity
             "WHERE abr.book_id = id)")
     private Long visitorCount;
 
-    //    @Formula(value = "(SELECT IF(COUNT(f.id) = 0, 0, 1) " +
-//            "FROM infosphere_follow f " +
-//            "INNER JOIN infosphere_book b ON b.identify = f.follow_identify " +
-//            "INNER JOIN infosphere_follow_fc_relation ffr ON ffr.follow_id = f.id " +
-//            "WHERE f.follow_identify = identify)")
     @Transient
     private Boolean isFollowed;
 }
