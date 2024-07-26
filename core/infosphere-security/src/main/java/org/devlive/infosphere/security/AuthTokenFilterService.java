@@ -53,7 +53,8 @@ public class AuthTokenFilterService
 
                 if (existsBook != null && existsBook.getVisibility()) {
                     log.info("Book with identify [{}] is visible, proceeding without authentication", identify);
-                    if (parseJwt(request) == null) {
+                    String jwt = parseJwt(request);
+                    if (jwt == null || !service.validateJwtToken(jwt)) {
                         this.setAnonymous(request);
                     }
                     else {

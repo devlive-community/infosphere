@@ -49,7 +49,7 @@ hide:
     <a href="https://github.com/devlive-community/incubator-infosphere" target="_blank" title="在 GitHub 上加入我们" class="md-button md-button--primary">
       在 GitHub 上加入我们
     </a>
-    <a href="http://try.infosphere.edurt.io/" target="_blank" title="查看在线 Demo" class="md-button md-button--primary">
+    <a href="http://try.infosphere.devlive.org/" target="_blank" title="查看在线 Demo" class="md-button md-button--primary">
       查看在线 Demo
     </a>
     <p/><p/><p/><p/>

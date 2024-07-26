@@ -87,4 +87,7 @@ public class UserEntity
 
     @Transient
     private String confirmPassword;
+
+    @Transient
+    private Boolean isFollowed;
 }

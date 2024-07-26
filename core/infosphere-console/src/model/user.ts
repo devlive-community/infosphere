@@ -8,7 +8,8 @@ export interface User
     confirmPassword?: string
     email?: string
     signature?: string
-    avatar?: string
+    avatar?: string,
+    isFollowed?: boolean
     createTime?: string
     updateTime?: string
 }

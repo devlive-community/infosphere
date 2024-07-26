@@ -4,8 +4,11 @@ import com.google.common.collect.Lists;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
+import org.devlive.infosphere.service.common.FollowType;
+import org.devlive.infosphere.service.entity.FollowEntity;
 import org.devlive.infosphere.service.entity.RoleEntity;
 import org.devlive.infosphere.service.entity.UserEntity;
+import org.devlive.infosphere.service.repository.FollowRepository;
 import org.devlive.infosphere.service.repository.RoleRepository;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.JwtService;
@@ -32,14 +35,16 @@ public class UserServiceImpl
 {
     private final UserRepository repository;
     private final RoleRepository roleRepository;
+    private final FollowRepository followRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final PasswordEncoder encoder;
 
-    public UserServiceImpl(UserRepository repository, RoleRepository roleRepository, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder encoder)
+    public UserServiceImpl(UserRepository repository, RoleRepository roleRepository, FollowRepository followRepository, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder encoder)
     {
         this.repository = repository;
         this.roleRepository = roleRepository;
+        this.followRepository = followRepository;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.encoder = encoder;
@@ -118,7 +123,11 @@ public class UserServiceImpl
     public CommonResponse<UserEntity> getByUsername(String username)
     {
         return repository.findByUsername(username)
-                .map(CommonResponse::success)
+                .map(value -> {
+                    Optional<FollowEntity> existingFollow = followRepository.findByUserAndIdentifyAndType(UserDetailsService.getUser(), value.getUsername(), FollowType.USER);
+                    value.setIsFollowed(existingFollow.isPresent());
+                    return CommonResponse.success(value);
+                })
                 .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
     }
 }

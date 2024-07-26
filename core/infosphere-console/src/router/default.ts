@@ -50,7 +50,6 @@ const createDefaultRouter = (router: Router): void => {
     router.addRoute({
         path: '/common',
         name: 'common',
-        redirect: '/common/not_network',
         component: LayoutContainer,
         children: [
             {
@@ -72,10 +71,14 @@ const createDefaultRouter = (router: Router): void => {
             {
                 name: 'NotFound',
                 path: '404',
-                meta: {
-                    title: '页面不存在'
-                },
+                meta: { title: '页面不存在' },
                 component: () => import('@/views/pages/common/NotFoundHome.vue')
+            },
+            {
+                name: 'BadGateway',
+                path: '502',
+                meta: { title: '服务不可用' },
+                component: () => import('@/views/pages/common/BadGatewayHome.vue')
             }
         ]
     })
