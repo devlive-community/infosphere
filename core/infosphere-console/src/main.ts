@@ -7,6 +7,8 @@ import Vue3Toasity, { type ToastContainerOptions } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
 
 const app = createApp(App)
+// 忽略控制台警告信息
+app.config.warnHandler = () => null
 app.use(createPinia())
 app.use(router)
 app.use(Vue3Toasity, { autoClose: 2000, position: 'top-center', hideProgressBar: true, transition: 'flip', theme: 'colored' } as ToastContainerOptions)
