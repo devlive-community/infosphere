@@ -2,5 +2,6 @@ package org.devlive.infosphere.service.common;
 
 public enum FollowType
 {
-    BOOK
+    BOOK,
+    USER
 }
