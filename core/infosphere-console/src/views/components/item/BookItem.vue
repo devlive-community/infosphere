@@ -9,9 +9,9 @@
             <span v-else-if="item.state === 'STOPPED'" class="text-xs text-red-600 font-bold">已停止</span>
             <span v-else-if="item.state === 'FINISHED'" class="text-xs text-green-600 font-bold">已完成</span>
           </div>
-          <AspectRatio class="w-full h-full">
+          <div class="w-full h-full">
             <img :src="item.cover ? item.cover : '/static/images/default-cover.png'" :alt="item.name" class="rounded-md w-full h-full border-2"/>
-          </AspectRatio>
+          </div>
           <span class="font-normal text-gray-500 text-xs text-center">{{ item.name }}</span>
         </div>
       </template>

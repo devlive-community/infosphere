@@ -1,5 +1,5 @@
 <template>
-  <MdPreview v-if="preview" editor-id="container" :model-value="content" :code-foldable="false"/>
+  <MdPreview v-if="preview" :editor-id="id" :model-value="content" :code-foldable="false"/>
   <MdEditor v-else :model-value="content" :toolbars="toolbars as any" :code-foldable="false" @onChange="change"/>
 </template>
 
@@ -12,6 +12,10 @@ export default defineComponent({
   name: 'MarkdownEditor',
   components: { MdPreview, MdEditor },
   props: {
+    id: {
+      type: String,
+      default: 'container'
+    },
     content: {
       type: String
     },

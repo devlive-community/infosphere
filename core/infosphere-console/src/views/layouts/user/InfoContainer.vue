@@ -1,7 +1,7 @@
 <template>
   <div>
     <LayoutHeader/>
-    <div class="flex flex-row space-x-3 justify-center mt-5 min-h-[700px]">
+    <div class="flex flex-row space-x-3 justify-center mt-5 min-h-[700px] px-3">
       <div class="w-[300px]">
         <UserSidebar/>
       </div>
