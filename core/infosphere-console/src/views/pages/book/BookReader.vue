@@ -28,7 +28,7 @@
         <div class="flex-auto flex flex-col">
           <InfoSphereLoading v-if="documentLoading" :show="documentLoading"/>
           <div v-else-if="item">
-            <InfoSphereCard>
+            <InfoSphereCard class="border-0 rounded-none">
               <template #title>
                 <div class="flex-row">
                   <div class="p-4 border-b items-center justify-between text-center">{{ item.name }}</div>

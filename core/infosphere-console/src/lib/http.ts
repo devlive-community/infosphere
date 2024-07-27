@@ -20,6 +20,7 @@ export class HttpUtils
         else {
             axios.defaults.baseURL = window.location.protocol + '//' + window.location.hostname + (window.location.port ? ':' + window.location.port : '')
         }
+
         const auth: Auth | undefined = TokenUtils.getAuthUser()
         if (auth) {
             this.configure = {
@@ -31,6 +32,32 @@ export class HttpUtils
                 params: undefined
             }
         }
+
+        this.setupInterceptors()
+    }
+
+    // 检查 Token 是否有效
+    private setupInterceptors()
+    {
+        axios.interceptors
+             .request
+             .use((config) => {
+                     const auth: Auth | undefined = TokenUtils.getAuthUser()
+                     if (auth) {
+                         if (!TokenUtils.isTokenValid(auth.token)) {
+                             TokenUtils.removeAuthUser()
+                             router.push(`/common/403`)
+                         }
+                         else {
+                             config.headers['Authorization'] = `${ auth.type } ${ auth.token }`
+                         }
+                     }
+                     return config
+                 },
+                 (error) => {
+                     return Promise.reject(error)
+                 }
+             )
     }
 
     handlerSuccessful(result: any): Response

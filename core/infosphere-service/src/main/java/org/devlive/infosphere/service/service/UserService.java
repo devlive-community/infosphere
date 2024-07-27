@@ -2,7 +2,9 @@ package org.devlive.infosphere.service.service;
 
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.response.JwtResponse;
+import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.entity.UserEntity;
+import org.springframework.data.domain.Pageable;
 
 public interface UserService
 {
@@ -17,4 +19,6 @@ public interface UserService
     CommonResponse<UserEntity> getInfo(String code);
 
     CommonResponse<UserEntity> getByUsername(String username);
+
+    CommonResponse<PageAdapter<UserEntity>> getFollow(String username, Pageable pageable);
 }
