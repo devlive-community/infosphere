@@ -15,10 +15,17 @@
             </RouterLink>
           </li>
           <li :class="cn('border-gray-300 py-1.5 px-3',
-                         $route.path === `/user/${username}/follow` && 'bg-muted hover:bg-muted rounded-sm')">
-            <RouterLink class="flex items-center space-x-2" :to="`/user/${username}/follow`">
-              <HeartIcon :size="18"/>
-              <span>关注</span>
+                         $route.path === `/user/${username}/follow/books` && 'bg-muted hover:bg-muted rounded-sm')">
+            <RouterLink class="flex items-center space-x-2" :to="`/user/${username}/follow/books`">
+              <BookIcon :size="18"/>
+              <span>关注 (书籍)</span>
+            </RouterLink>
+          </li>
+          <li :class="cn('border-gray-300 py-1.5 px-3',
+                          $route.path === `/user/${username}/follow/users` && 'bg-muted hover:bg-muted rounded-sm')">
+            <RouterLink class="flex items-center space-x-2" :to="`/user/${username}/follow/users`">
+              <UserIcon :size="18"/>
+              <span>关注 (用户)</span>
             </RouterLink>
           </li>
         </ul>
@@ -34,14 +41,14 @@ import { defineComponent } from 'vue'
 import LayoutHeader from '@/views/layouts/basic/components/LayoutHeader.vue'
 import LayoutFooter from '@/views/layouts/basic/components/LayoutFooter.vue'
 import UserSidebar from '@/views/layouts/user/components/UserSidebar.vue'
-import { HeartIcon, ShareIcon } from 'lucide-vue-next'
+import { BookIcon, ShareIcon, UserIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils.ts'
 
 export default defineComponent({
   name: 'InfoContainer',
   methods: { cn },
   components: {
-    HeartIcon, ShareIcon,
+    UserIcon, ShareIcon, BookIcon,
     UserSidebar,
     LayoutFooter, LayoutHeader
   },
