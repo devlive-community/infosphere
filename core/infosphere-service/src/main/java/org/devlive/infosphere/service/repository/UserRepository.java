@@ -1,6 +1,8 @@
 package org.devlive.infosphere.service.repository;
 
 import org.devlive.infosphere.service.entity.UserEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -184,4 +186,17 @@ public interface UserRepository
             "where users.id = :id")
     Integer updateByPassword(@Param(value = "id") Long id,
             @Param(value = "password") String password);
+
+    /**
+     * 查询用户关注的用户
+     *
+     * @param user 当前登录用户
+     * @param pageable 分页配置
+     * @return 用户关注的用户
+     */
+    @Query("SELECT u " +
+            "FROM UserEntity u " +
+            "WHERE (SELECT COUNT(1) FROM FollowEntity f WHERE f.user = :user AND f.identify = u.username) > 0 " +
+            "ORDER BY u.createTime DESC")
+    Page<UserEntity> findAllByUserAndIsFollowed(@Param(value = "user") UserEntity user, Pageable pageable);
 }

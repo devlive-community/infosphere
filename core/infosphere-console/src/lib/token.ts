@@ -34,4 +34,15 @@ export class TokenUtils
     {
         return TOKEN
     }
+
+    public static isTokenValid(token: string): boolean
+    {
+        if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]))
+            const expiry = payload.exp
+            const now = Math.floor(Date.now() / 1000)
+            return expiry > now
+        }
+        return true
+    }
 }

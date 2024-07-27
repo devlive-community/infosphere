@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.common.utils.NullAwareBeanUtils;
+import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.common.FollowType;
 import org.devlive.infosphere.service.entity.FollowEntity;
 import org.devlive.infosphere.service.entity.RoleEntity;
@@ -14,6 +15,7 @@ import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.JwtService;
 import org.devlive.infosphere.service.security.UserDetailsService;
 import org.devlive.infosphere.service.service.UserService;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -128,6 +130,14 @@ public class UserServiceImpl
                     value.setIsFollowed(existingFollow.isPresent());
                     return CommonResponse.success(value);
                 })
+                .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
+    }
+
+    @Override
+    public CommonResponse<PageAdapter<UserEntity>> getFollow(String username, Pageable pageable)
+    {
+        return repository.findByUsername(username)
+                .map(value -> CommonResponse.success(PageAdapter.of(repository.findAllByUserAndIsFollowed(value, pageable))))
                 .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
     }
 }

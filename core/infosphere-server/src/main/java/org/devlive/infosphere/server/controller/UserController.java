@@ -2,6 +2,9 @@ package org.devlive.infosphere.server.controller;
 
 import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.common.response.JwtResponse;
+import org.devlive.infosphere.service.adapter.PageAdapter;
+import org.devlive.infosphere.service.adapter.PageFilterAdapter;
+import org.devlive.infosphere.service.adapter.PageRequestAdapter;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
@@ -9,6 +12,7 @@ import org.devlive.infosphere.service.service.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -81,5 +85,12 @@ public class UserController
         else {
             return CommonResponse.failure("用户不存在");
         }
+    }
+
+    @GetMapping(value = "followed/{username}")
+    public CommonResponse<PageAdapter<UserEntity>> getFollow(@PathVariable(value = "username") String username,
+            @ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getFollow(username, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 }

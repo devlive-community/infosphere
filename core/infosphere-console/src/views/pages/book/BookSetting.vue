@@ -215,6 +215,7 @@ export default defineComponent({
                    .then(response => {
                      if (response.status) {
                        formState['cover'] = response.data
+                       toast('封面上传成功', { type: 'success' })
                      }
                      else {
                        toast(response.message as string, { type: 'error' })

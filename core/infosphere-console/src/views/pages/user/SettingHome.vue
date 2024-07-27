@@ -109,6 +109,7 @@ export default defineComponent({
                    .then(response => {
                      if (response.status) {
                        this.formState!.avatar = response.data
+                       toast('头像上传成功', { type: 'success' })
                      }
                      else {
                        toast(response.message as string, { type: 'error' })

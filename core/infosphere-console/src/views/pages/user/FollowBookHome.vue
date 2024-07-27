@@ -14,7 +14,7 @@ import { Pagination } from '@/model/response.ts'
 import BookService from '@/service/book.ts'
 
 export default defineComponent({
-  name: 'FollowHome',
+  name: 'FollowBookHome',
   components: { BookListWithCoverPageable, InfoSphereSkeleton },
   data()
   {
