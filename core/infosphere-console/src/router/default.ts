@@ -146,7 +146,7 @@ const createDefaultRouter = (router: Router): void => {
             {
                 name: 'BookWriter',
                 path: 'writer/:identify?/:documentIdentify?',
-                meta: { title: '书籍写作' },
+                meta: { title: '书籍写作', requiresAuth: true },
                 component: () => import('@/views/pages/book/BookWriter.vue')
             },
             {
