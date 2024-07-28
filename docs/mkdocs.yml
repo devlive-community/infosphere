@@ -9,7 +9,7 @@ repo_url: https://github.com/devlive-community/incubator-infosphere
 edit_uri: "https://github.com/devlive-community/incubator-infosphere/blob/dev/docs/docs"
 
 banners:
-  - title: InfoSphere 2024.1.3 已经发布。
+  - title: InfoSphere 2024.1.4 已经发布。
     link: /release-latest.html
     description: <a href="https://github.com/devlive-community/incubator-infosphere" class="text-white"> 如果您喜欢 InfoSphere ? 请前往 GitHub 给我们点击一个 🌟</a>
 
@@ -69,7 +69,8 @@ nav:
       - reference/getStarted/installFromDocker.md
       - reference/getStarted/installFromDockerCompose.md
   - 更新日志:
-      - 2024.1.3 (latest): release/latest.md
+      - 2024.1.4 (latest): release/latest.md
+      - 2024.1.3: release/2024.1.3.md
       - 2024.1.2: release/2024.1.2.md
       - 2024.01.1: release/2024.01.1.md
       - 1.5.0 (Old): release/1.5.0.md
