@@ -93,4 +93,11 @@ public class UserController
     {
         return service.getFollow(username, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
+
+    @GetMapping(value = "fans/{username}")
+    public CommonResponse<PageAdapter<UserEntity>> getFans(@PathVariable(value = "username") String username,
+            @ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getFans(username, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
+    }
 }

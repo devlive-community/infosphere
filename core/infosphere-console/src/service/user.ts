@@ -40,6 +40,11 @@ class UserService
     {
         return new HttpUtils().get(`${ DEFAULT_PATH }/followed/${ username }`, configure)
     }
+
+    getByUsernameAndFans(username: string, configure: Pagination): Promise<Response>
+    {
+        return new HttpUtils().get(`${ DEFAULT_PATH }/fans/${ username }`, configure)
+    }
 }
 
 export default new UserService()
