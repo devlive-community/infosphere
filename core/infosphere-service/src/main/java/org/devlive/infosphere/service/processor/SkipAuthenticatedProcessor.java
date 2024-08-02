@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.devlive.infosphere.service.annotation.SkipAuthenticated;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
+import org.springframework.web.servlet.mvc.condition.PatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
@@ -41,11 +43,13 @@ public class SkipAuthenticatedProcessor
 
     private Set<String> getPatternsCondition(RequestMappingInfo requestMappingInfo)
     {
-        if (requestMappingInfo.getPatternsCondition() != null) {
-            return requestMappingInfo.getPatternsCondition().getPatterns();
+        PatternsRequestCondition patternsCondition = requestMappingInfo.getPatternsCondition();
+        PathPatternsRequestCondition patternsRequestCondition = requestMappingInfo.getPathPatternsCondition();
+        if (patternsCondition != null) {
+            return patternsCondition.getPatterns();
         }
-        else if (requestMappingInfo.getPathPatternsCondition() != null) {
-            return requestMappingInfo.getPathPatternsCondition().getPatternValues();
+        else if (patternsRequestCondition != null) {
+            return patternsRequestCondition.getPatternValues();
         }
         else {
             return Sets.newHashSet();
