@@ -5,6 +5,7 @@ import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.adapter.PageFilterAdapter;
 import org.devlive.infosphere.service.adapter.PageRequestAdapter;
+import org.devlive.infosphere.service.annotation.SkipAuthenticated;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
@@ -95,6 +96,7 @@ public class UserController
     }
 
     @GetMapping(value = "fans/{username}")
+    @SkipAuthenticated
     public CommonResponse<PageAdapter<UserEntity>> getFans(@PathVariable(value = "username") String username,
             @ModelAttribute PageFilterAdapter configure)
     {
