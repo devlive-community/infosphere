@@ -16,19 +16,26 @@ export default defineComponent({
   {
     const route = useRoute()
 
+    // 路径前缀常量
+    const PATH_PREFIXES = {
+      info: ['/book/info', '/book/access', '/book/follow'],
+      setting: ['/book/setting'],
+      writer: ['/book/writer', '/book/reader']
+    }
+
+    // 计算当前组件
     const currentComponent = computed(() => {
-      if (route.path.startsWith('/book/info') || route.path.startsWith('/book/access')) {
+      const path = route.path
+      if (PATH_PREFIXES.info.some(prefix => path.startsWith(prefix))) {
         return InfoContainer
       }
-      if (route.path.startsWith('/book/setting')) {
+      if (PATH_PREFIXES.setting.some(prefix => path.startsWith(prefix))) {
         return SettingContainer
       }
-      if (route.path.startsWith('/book/writer') || route.path.startsWith('/book/reader')) {
+      if (PATH_PREFIXES.writer.some(prefix => path.startsWith(prefix))) {
         return WriterContainer
       }
-      else {
-        return BookContainer
-      }
+      return BookContainer
     })
 
     return {

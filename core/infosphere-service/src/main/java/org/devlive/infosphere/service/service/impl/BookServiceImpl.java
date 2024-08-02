@@ -6,6 +6,7 @@ import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.common.FollowType;
 import org.devlive.infosphere.service.entity.BookEntity;
 import org.devlive.infosphere.service.entity.FollowEntity;
+import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.BookRepository;
 import org.devlive.infosphere.service.repository.FollowRepository;
 import org.devlive.infosphere.service.repository.UserRepository;
@@ -96,5 +97,13 @@ public class BookServiceImpl
         return userRepository.findByUsername(username)
                 .map(value -> CommonResponse.success(PageAdapter.of(repository.findAllByUserAndIsFollowed(value, pageable))))
                 .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
+    }
+
+    @Override
+    public CommonResponse<PageAdapter<UserEntity>> getFans(String identify, Pageable pageable)
+    {
+        return repository.findByIdentify(identify)
+                .map(value -> CommonResponse.success(PageAdapter.of(repository.findFansByBook(value.getIdentify(), pageable))))
+                .orElseGet(() -> CommonResponse.failure(String.format("书籍 [ %s ] 不存在", identify)));
     }
 }

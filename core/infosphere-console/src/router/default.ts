@@ -166,6 +166,12 @@ const createDefaultRouter = (router: Router): void => {
                 path: 'access/:identify?',
                 meta: { title: '书籍访问记录', requiresAuth: true },
                 component: () => import('@/views/pages/book/BookAccess.vue')
+            },
+            {
+                name: 'BookFollowed',
+                path: 'follow/:identify?',
+                meta: { title: '已关注用户列表' },
+                component: () => import('@/views/pages/book/BookFollowed.vue')
             }
         ]
     })
