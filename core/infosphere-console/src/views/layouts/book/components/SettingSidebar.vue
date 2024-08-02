@@ -30,7 +30,7 @@ interface NavigationItem
 }
 
 export default defineComponent({
-  name: 'InfoSidebar',
+  name: 'SettingSidebar',
   components: { BookIcon },
   data()
   {
