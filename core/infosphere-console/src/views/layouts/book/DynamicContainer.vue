@@ -6,7 +6,7 @@
 import { computed, defineComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import BookContainer from '@/views/layouts/book/BookContainer.vue'
-import InfoContainer from '@/views/layouts/book/InfoContainer.vue'
+import SettingContainer from '@/views/layouts/book/SettingContainer.vue'
 import LayoutContainer from '@/views/layouts/basic/LayoutContainer.vue'
 import WriterContainer from '@/views/layouts/book/WriterContainer.vue'
 
@@ -14,7 +14,7 @@ export default defineComponent({
   name: 'DynamicContainer',
   components: {
     BookContainer,
-    InfoContainer
+    SettingContainer
   },
   setup()
   {
@@ -25,7 +25,7 @@ export default defineComponent({
         return LayoutContainer
       }
       if (route.path.startsWith('/book/setting')) {
-        return InfoContainer
+        return SettingContainer
       }
       if (route.path.startsWith('/book/writer') || route.path.startsWith('/book/reader')) {
         return WriterContainer
