@@ -28,6 +28,13 @@
               <span>关注 (用户)</span>
             </RouterLink>
           </li>
+          <li :class="cn('border-gray-300 py-1.5 px-3',
+                          $route.path === `/user/${username}/fans` && 'bg-muted hover:bg-muted rounded-sm')">
+            <RouterLink class="flex items-center space-x-2" :to="`/user/${username}/fans`">
+              <UsersIcon :size="18"/>
+              <span>粉丝</span>
+            </RouterLink>
+          </li>
         </ul>
         <RouterView/>
       </div>
@@ -41,14 +48,14 @@ import { defineComponent } from 'vue'
 import LayoutHeader from '@/views/layouts/basic/components/LayoutHeader.vue'
 import LayoutFooter from '@/views/layouts/basic/components/LayoutFooter.vue'
 import UserSidebar from '@/views/layouts/user/components/UserSidebar.vue'
-import { BookIcon, ShareIcon, UserIcon } from 'lucide-vue-next'
+import { BookIcon, ShareIcon, UserIcon, UsersIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils.ts'
 
 export default defineComponent({
   name: 'InfoContainer',
   methods: { cn },
   components: {
-    UserIcon, ShareIcon, BookIcon,
+    UserIcon, ShareIcon, BookIcon, UsersIcon,
     UserSidebar,
     LayoutFooter, LayoutHeader
   },

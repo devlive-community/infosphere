@@ -199,4 +199,17 @@ public interface UserRepository
             "WHERE (SELECT COUNT(1) FROM FollowEntity f WHERE f.user = :user AND f.identify = u.username) > 0 " +
             "ORDER BY u.createTime DESC")
     Page<UserEntity> findAllByUserAndIsFollowed(@Param(value = "user") UserEntity user, Pageable pageable);
+
+    /**
+     * 查询用户粉丝
+     *
+     * @param identify 当前用户
+     * @param pageable 分页配置
+     * @return 用户粉丝
+     */
+    @Query("SELECT u " +
+            "FROM UserEntity u " +
+            "WHERE (SELECT COUNT(1) FROM FollowEntity f WHERE f.identify = :identify AND f.user = u) > 0 " +
+            "ORDER BY u.createTime DESC")
+    Page<UserEntity> findAllByUserAndIsFollows(@Param(value = "identify") String identify, Pageable pageable);
 }

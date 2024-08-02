@@ -21,4 +21,6 @@ public interface UserService
     CommonResponse<UserEntity> getByUsername(String username);
 
     CommonResponse<PageAdapter<UserEntity>> getFollow(String username, Pageable pageable);
+
+    CommonResponse<PageAdapter<UserEntity>> getFans(String username, Pageable pageable);
 }

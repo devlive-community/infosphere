@@ -140,4 +140,12 @@ public class UserServiceImpl
                 .map(value -> CommonResponse.success(PageAdapter.of(repository.findAllByUserAndIsFollowed(value, pageable))))
                 .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
     }
+
+    @Override
+    public CommonResponse<PageAdapter<UserEntity>> getFans(String username, Pageable pageable)
+    {
+        return repository.findByUsername(username)
+                .map(value -> CommonResponse.success(PageAdapter.of(repository.findAllByUserAndIsFollows(value.getUsername(), pageable))))
+                .orElseGet(() -> CommonResponse.failure(String.format("用户 [ %s ] 不存在", username)));
+    }
 }

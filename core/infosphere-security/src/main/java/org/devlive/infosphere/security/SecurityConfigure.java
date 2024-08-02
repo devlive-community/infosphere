@@ -1,5 +1,6 @@
 package org.devlive.infosphere.security;
 
+import org.devlive.infosphere.service.processor.SkipAuthenticatedProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,11 +23,13 @@ public class SecurityConfigure
 {
     private final UserDetailsService userDetailsService;
     private final JwtAuthEntryPoint unauthorizedHandler;
+    private final SkipAuthenticatedProcessor skipAuthenticatedProcessor;
 
-    public SecurityConfigure(UserDetailsService userDetailsService, JwtAuthEntryPoint unauthorizedHandler)
+    public SecurityConfigure(UserDetailsService userDetailsService, JwtAuthEntryPoint unauthorizedHandler, SkipAuthenticatedProcessor skipAuthenticatedProcessor)
     {
         this.userDetailsService = userDetailsService;
         this.unauthorizedHandler = unauthorizedHandler;
+        this.skipAuthenticatedProcessor = skipAuthenticatedProcessor;
     }
 
     @Bean
@@ -70,6 +73,8 @@ public class SecurityConfigure
                         "/api/v1/book/latest/**", "/api/v1/book/public/**", "/api/v1/book/access/**",
                         "/api/v1/book/hottest", "/api/v1/book/newest", "/api/v1/book/user/**", "/api/v1/user/info/**", "/api/v1/book/followed/**",
                         "/api/v1/user/followed/**")
+                .permitAll()
+                .antMatchers(skipAuthenticatedProcessor.getSkipUrls().toArray(new String[0]))
                 .permitAll()
                 .anyRequest()
                 .authenticated();
