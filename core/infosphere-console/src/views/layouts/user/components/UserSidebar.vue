@@ -18,8 +18,14 @@
           <div class="text-lg font-bold">{{ info.aliasName }}</div>
           <div class="text-xs text-gray-400">(@{{ info.username }})</div>
         </div>
-        <div class="space-x-2 my-3">
-          <Button :disabled="loadingFollow" class="space-x-2 bg-green-500 hover:bg-green-600 text-white" @click="follow">
+        <div class="flex space-x-2 my-3">
+          <RouterLink v-if="loggedIn && loggedUser.id === info.id" to="/setting/index">
+            <Button class="space-x-2 bg-gray-500 hover:bg-gray-600 text-white px-2.5 h-8">
+              <CogIcon class="w-4 h-4"/>
+              <span>个人设置</span>
+            </Button>
+          </RouterLink>
+          <Button :disabled="loadingFollow" class="space-x-2 bg-green-500 hover:bg-green-600 text-white px-2.5 h-8" @click="follow">
             <Loader2Icon v-if="loadingFollow" class="w-4 h-4 animate-spin"/>
             <HeartOffIcon v-if="info.isFollowed && !loadingFollow" class="w-4 h-4"/>
             <HeartIcon v-else-if="!loadingFollow" class="w-4 h-4"/>
@@ -42,21 +48,21 @@ import { defineComponent } from 'vue'
 import InfoSphereCard from '@/views/components/card/InfoSphereCard.vue'
 import InfoSphereSkeleton from '@/views/components/skeleton/InfoSphereSkeleton.vue'
 import UserService from '@/service/user.ts'
-import { User } from '@/model/user.ts'
+import { Auth, User } from '@/model/user.ts'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { calculateDaysBetweenDates } from '@/lib/date.ts'
 import { Button } from '@/components/ui/button'
-import { HeartIcon, HeartOffIcon, Loader2Icon } from 'lucide-vue-next'
+import { CogIcon, HeartIcon, HeartOffIcon, Loader2Icon } from 'lucide-vue-next'
 import { Follow } from '@/model/follow.ts'
 import FollowService from '@/service/follow.ts'
 import { toast } from 'vue3-toastify'
+import { TokenUtils } from '@/lib/token.ts'
 
 export default defineComponent({
   name: 'UserSidebar',
   components: {
-    HeartIcon,
-    Loader2Icon, HeartOffIcon,
+    HeartIcon, CogIcon, Loader2Icon, HeartOffIcon,
     Button,
     Separator,
     InfoSphereSkeleton, InfoSphereCard,
@@ -67,8 +73,13 @@ export default defineComponent({
     return {
       loading: false,
       loadingFollow: false,
+      loggedIn: false,
+      loggedUser: null as unknown as Auth,
       info: null as unknown as User
     }
+  },
+  watch: {
+    '$route.params.username': 'initialize'
   },
   created()
   {
@@ -78,6 +89,9 @@ export default defineComponent({
     calculateDaysBetweenDates,
     initialize()
     {
+      this.loggedIn = TokenUtils.isLoggedIn()
+      this.loggedUser = TokenUtils.getAuthUser() as Auth
+
       this.loading = true
       const username = this.$route.params.username
       if (username) {
