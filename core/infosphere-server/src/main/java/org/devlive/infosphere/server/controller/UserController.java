@@ -81,6 +81,7 @@ public class UserController
     }
 
     @PutMapping(value = "/change/password")
+    @CheckPermission(value = PermissionType.USER)
     CommonResponse<UserEntity> changePassword(@RequestBody @Validated UserEntity configure)
     {
         Optional<UserEntity> optionalUser = repository.findById(requireNonNull(UserDetailsService.getUser()).getId());
