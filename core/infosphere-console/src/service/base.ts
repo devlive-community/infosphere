@@ -26,7 +26,7 @@ export abstract class BaseService
      */
     saveOrUpdate(configure: any): Promise<Response>
     {
-        if (configure['id'] > 0 || configure['email'] !== null) {
+        if (configure['id'] > 0) {
             return new HttpUtils().put(this.baseUrl, configure)
         }
         else {
