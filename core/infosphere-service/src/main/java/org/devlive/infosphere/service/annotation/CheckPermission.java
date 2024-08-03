@@ -1,0 +1,15 @@
+package org.devlive.infosphere.service.annotation;
+
+import org.devlive.infosphere.service.common.PermissionType;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface CheckPermission
+{
+    PermissionType value();
+}

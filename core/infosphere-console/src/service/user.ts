@@ -1,11 +1,18 @@
 import { User } from '@/model/user.ts'
 import { HttpUtils } from '@/lib/http.ts'
 import { Pagination, Response } from '@/model/response.ts'
+import { BaseService } from '@/service/base.ts'
 
 const DEFAULT_PATH = '/api/v1/user'
 
 class UserService
+    extends BaseService
 {
+    constructor()
+    {
+        super(DEFAULT_PATH)
+    }
+
     login(configure: User): Promise<Response>
     {
         return new HttpUtils().post(`${ DEFAULT_PATH }/signin`, configure)
@@ -24,11 +31,6 @@ class UserService
     getByUsername(username: string): Promise<Response>
     {
         return new HttpUtils().get(`${ DEFAULT_PATH }/info/${ username }`)
-    }
-
-    save(configure: User): Promise<Response>
-    {
-        return new HttpUtils().post(`${ DEFAULT_PATH }`, configure)
     }
 
     changePassword(configure: User): Promise<Response>

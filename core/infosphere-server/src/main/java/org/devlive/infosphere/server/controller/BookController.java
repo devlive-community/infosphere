@@ -4,7 +4,9 @@ import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.adapter.PageFilterAdapter;
 import org.devlive.infosphere.service.adapter.PageRequestAdapter;
+import org.devlive.infosphere.service.annotation.CheckPermission;
 import org.devlive.infosphere.service.annotation.SkipAuthenticated;
+import org.devlive.infosphere.service.common.PermissionType;
 import org.devlive.infosphere.service.entity.AccessEntity;
 import org.devlive.infosphere.service.entity.BookEntity;
 import org.devlive.infosphere.service.entity.DocumentEntity;
@@ -16,9 +18,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
@@ -60,8 +62,15 @@ public class BookController
         return service.getFollow(username, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 
-    @RequestMapping(method = {RequestMethod.POST, RequestMethod.PUT})
+    @PostMapping
     public CommonResponse<BookEntity> save(@RequestBody BookEntity configure)
+    {
+        return service.saveAndUpdate(configure);
+    }
+
+    @PutMapping
+    @CheckPermission(value = PermissionType.BOOK)
+    public CommonResponse<BookEntity> update(@RequestBody BookEntity configure)
     {
         return service.saveAndUpdate(configure);
     }

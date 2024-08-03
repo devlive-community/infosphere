@@ -5,7 +5,9 @@ import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.adapter.PageFilterAdapter;
 import org.devlive.infosphere.service.adapter.PageRequestAdapter;
+import org.devlive.infosphere.service.annotation.CheckPermission;
 import org.devlive.infosphere.service.annotation.SkipAuthenticated;
+import org.devlive.infosphere.service.common.PermissionType;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
@@ -47,6 +49,13 @@ public class UserController
         return this.service.saveAndUpdate(configure);
     }
 
+    @PutMapping
+    @CheckPermission(value = PermissionType.USER)
+    public CommonResponse<UserEntity> update(@RequestBody UserEntity configure)
+    {
+        return this.service.saveAndUpdate(configure);
+    }
+
     @PostMapping("/signin")
     public CommonResponse<JwtResponse> signing(@RequestBody UserEntity configure)
     {
@@ -72,6 +81,7 @@ public class UserController
     }
 
     @PutMapping(value = "/change/password")
+    @CheckPermission(value = PermissionType.USER)
     CommonResponse<UserEntity> changePassword(@RequestBody @Validated UserEntity configure)
     {
         Optional<UserEntity> optionalUser = repository.findById(requireNonNull(UserDetailsService.getUser()).getId());
