@@ -68,15 +68,20 @@ public class CheckPermissionAspect
         // 检查是否拥有修改文档权限
         if (checkPermission.value().equals(PermissionType.DOCUMENT)) {
             Object object = joinPoint.getArgs()[0];
+            String identify = null;
             if (object instanceof DocumentEntity) {
                 DocumentEntity configure = (DocumentEntity) object;
-                documentRepository.findByIdentify(configure.getIdentify())
-                        .ifPresent(value -> {
-                            if (!entity.getId().equals(value.getUser().getId())) {
-                                throw new InsufficientAuthenticationException("无效的用户权限");
-                            }
-                        });
+                identify = configure.getIdentify();
             }
+            else if (object instanceof String) {
+                identify = (String) object;
+            }
+            documentRepository.findByIdentify(identify)
+                    .ifPresent(value -> {
+                        if (!entity.getId().equals(value.getUser().getId())) {
+                            throw new InsufficientAuthenticationException("无效的用户权限");
+                        }
+                    });
         }
     }
 }

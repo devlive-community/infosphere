@@ -52,6 +52,7 @@ public class DocumentController
     }
 
     @DeleteMapping(value = "{identify}")
+    @CheckPermission(value = PermissionType.DOCUMENT)
     public CommonResponse<Integer> delete(@PathVariable(value = "identify") String identify)
     {
         return service.deleteByIdentify(identify);
