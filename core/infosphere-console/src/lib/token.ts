@@ -1,4 +1,5 @@
 import { Auth } from '@/model/user.ts'
+import { useUserStore } from '@/stores/user.ts'
 
 const TOKEN = 'Token'
 
@@ -44,5 +45,14 @@ export class TokenUtils
             return expiry > now
         }
         return true
+    }
+
+    /**
+     * 用户是否登录
+     */
+    public static isLoggedIn(): boolean
+    {
+        const userStore = useUserStore()
+        return userStore.isLogin
     }
 }
