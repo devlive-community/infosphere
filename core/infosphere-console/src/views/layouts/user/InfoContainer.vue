@@ -50,6 +50,7 @@ import LayoutFooter from '@/views/layouts/basic/components/LayoutFooter.vue'
 import UserSidebar from '@/views/layouts/user/components/UserSidebar.vue'
 import { BookIcon, ShareIcon, UserIcon, UsersIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils.ts'
+import { RouterUtils } from '@/lib/router.ts'
 
 export default defineComponent({
   name: 'InfoContainer',
@@ -65,9 +66,15 @@ export default defineComponent({
       username: null as unknown as string
     }
   },
+  watch: {
+    '$route.params.username'(newUsername: string)
+    {
+      this.username = newUsername
+    }
+  },
   created()
   {
-    this.username = this.$route.params.username as string
+    this.username = RouterUtils.getParams('username')
   }
 })
 </script>

@@ -1,19 +1,21 @@
 <template>
   <InfoSphereCard v-if="item" class="p-2 border-0">
     <div class="space-y-2">
-      <div class="w-20 h-20">
-        <Avatar class="w-full h-full">
-          <AvatarImage :src="item.avatar as string" :alt="item.aliasName"/>
-          <AvatarFallback>{{ splitName(item.aliasName) }}</AvatarFallback>
-        </Avatar>
+      <div class="w-20 h-20 cursor-pointer">
+        <RouterLink :to="`/user/${item.username}`">
+          <Avatar class="w-full h-full">
+            <AvatarImage :src="item.avatar as string" :alt="item.aliasName"/>
+            <AvatarFallback>{{ splitName(item.aliasName) }}</AvatarFallback>
+          </Avatar>
+        </RouterLink>
       </div>
       <div class="text-sm text-center text-gray-500">{{ item.username }}</div>
       <div class="flex justify-center">
-        <Button class="bg-green-400 hover:bg-green-500 space-x-1" size="sm" @click="follow">
-          <Loader2Icon v-if="loadingFollow" class="w-4 h-4 animate-spin"/>
-          <HeartOffIcon v-if="item.isFollowed && !loadingFollow" class="w-4 h-4"/>
-          <HeartIcon v-else-if="!loadingFollow" class="w-4 h-4"/>
-          <span>{{ item.isFollowed ? '取消关注' : '关注作者' }}</span>
+        <Button class="bg-green-400 hover:bg-green-500 space-x-1 h-6 px-2" size="sm" @click="follow">
+          <Loader2Icon v-if="loadingFollow" class="w-2.5 h-2.5 animate-spin"/>
+          <HeartOffIcon v-if="item.isFollowed && !loadingFollow" class="w-2.5 h-2.5"/>
+          <HeartIcon v-else-if="!loadingFollow" class="w-2.5 h-2.5"/>
+          <span class="text-xs">{{ item.isFollowed ? '取消关注' : '关注作者' }}</span>
         </Button>
       </div>
     </div>

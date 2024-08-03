@@ -4,9 +4,11 @@ import org.devlive.infosphere.common.response.CommonResponse;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.adapter.PageFilterAdapter;
 import org.devlive.infosphere.service.adapter.PageRequestAdapter;
+import org.devlive.infosphere.service.annotation.SkipAuthenticated;
 import org.devlive.infosphere.service.entity.AccessEntity;
 import org.devlive.infosphere.service.entity.BookEntity;
 import org.devlive.infosphere.service.entity.DocumentEntity;
+import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.service.AccessService;
 import org.devlive.infosphere.service.service.BookService;
 import org.devlive.infosphere.service.service.DocumentService;
@@ -105,5 +107,13 @@ public class BookController
     public CommonResponse<PageAdapter<BookEntity>> getHottest(@ModelAttribute PageFilterAdapter configure)
     {
         return service.getHottest(PageRequestAdapter.of(configure.getPage(), configure.getSize()));
+    }
+
+    @GetMapping(value = "fans/{identify}")
+    @SkipAuthenticated
+    public CommonResponse<PageAdapter<UserEntity>> getFans(@PathVariable(value = "identify") String identify,
+            @ModelAttribute PageFilterAdapter configure)
+    {
+        return service.getFans(identify, PageRequestAdapter.of(configure.getPage(), configure.getSize()));
     }
 }

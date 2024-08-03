@@ -57,4 +57,9 @@ public interface BookRepository
             "AND (SELECT COUNT(1) FROM FollowEntity f WHERE f.user = :user AND f.identify = b.identify) > 0 " +
             "ORDER BY b.createTime DESC")
     Page<BookEntity> findAllByUserAndIsFollowed(@Param(value = "user") UserEntity user, Pageable pageable);
+
+    @Query("SELECT u " +
+            "FROM UserEntity u " +
+            "WHERE (SELECT COUNT(1) FROM FollowEntity f WHERE f.identify = :identify AND u = f.user) > 0 ")
+    Page<UserEntity> findFansByBook(@Param(value = "identify") String identify, Pageable pageable);
 }

@@ -51,6 +51,11 @@ class BookService
     {
         return new HttpUtils().get(`${ DEFAULT_PATH }/access/${ identify }`, configure)
     }
+
+    getFans(identify: string, configure: Pagination): Promise<Response>
+    {
+        return new HttpUtils().get(`${ DEFAULT_PATH }/fans/${ identify }`, configure)
+    }
 }
 
 export default new BookService()
