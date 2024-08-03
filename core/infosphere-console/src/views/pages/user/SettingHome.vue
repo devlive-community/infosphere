@@ -95,8 +95,8 @@ export default defineComponent({
       UserService.getInfo()
                  .then(response => {
                    if (response.status) {
-                     const { username, aliasName, email, signature, avatar } = response.data
-                     const payload = { username, aliasName, email, signature, avatar }
+                     const { id, username, aliasName, email, signature, avatar } = response.data
+                     const payload = { id, username, aliasName, email, signature, avatar }
                      this.formState = payload
                    }
                  })
