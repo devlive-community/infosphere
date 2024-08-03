@@ -18,6 +18,7 @@ export default defineComponent({
 
     // 路径前缀常量
     const PATH_PREFIXES = {
+      noSpecified: ['/book/followed'],
       info: ['/book/info', '/book/access', '/book/follow'],
       setting: ['/book/setting'],
       writer: ['/book/writer', '/book/reader']
@@ -26,6 +27,9 @@ export default defineComponent({
     // 计算当前组件
     const currentComponent = computed(() => {
       const path = route.path
+      if (PATH_PREFIXES.noSpecified.some(prefix => path.startsWith(prefix))) {
+        return BookContainer
+      }
       if (PATH_PREFIXES.info.some(prefix => path.startsWith(prefix))) {
         return InfoContainer
       }

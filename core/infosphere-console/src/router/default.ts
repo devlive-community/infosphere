@@ -156,10 +156,10 @@ const createDefaultRouter = (router: Router): void => {
                 component: () => import('@/views/pages/book/BookReader.vue')
             },
             {
-                name: 'BookFollow',
-                path: 'follow',
+                name: 'BookFollowed',
+                path: 'followed',
                 meta: { title: '我的关注', requiresAuth: true },
-                component: () => import('@/views/pages/book/BookFollow.vue')
+                component: () => import('@/views/pages/book/BookFollowed.vue')
             },
             {
                 name: 'BookAccess',
@@ -168,10 +168,10 @@ const createDefaultRouter = (router: Router): void => {
                 component: () => import('@/views/pages/book/BookAccess.vue')
             },
             {
-                name: 'BookFollowed',
+                name: 'BookFollow',
                 path: 'follow/:identify?',
                 meta: { title: '已关注用户列表' },
-                component: () => import('@/views/pages/book/BookFollowed.vue')
+                component: () => import('@/views/pages/book/BookFollow.vue')
             }
         ]
     })

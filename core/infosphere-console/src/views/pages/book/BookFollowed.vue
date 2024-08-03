@@ -1,48 +1,54 @@
 <template>
   <div class="w-full">
+    <div>
+      <h3 class="text-lg font-medium">书籍列表</h3>
+    </div>
+    <Separator class="my-4"/>
     <InfoSphereSkeleton v-if="loading" :show="loading"/>
-    <UserPageable :items="items" :pagination="pagination" @changePage="changePage" @change="initialize"/>
+    <BookPageable v-else :items="items" :pagination="pagination" :is-followed="true" @changePage="changePage"/>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { Pagination } from '@/model/response.ts'
-import { RouterUtils } from '@/lib/router.ts'
 import BookService from '@/service/book.ts'
-import { User } from '@/model/user.ts'
+import { Separator } from '@/components/ui/separator'
+import { Book } from '@/model/book.ts'
+import BookPageable from '@/views/components/pageable/BookPageable.vue'
+import { Pagination } from '@/model/response.ts'
 import InfoSphereSkeleton from '@/views/components/skeleton/InfoSphereSkeleton.vue'
-import UserPageable from '@/views/components/pageable/UserPageable.vue'
+import { useUserStore } from '@/stores/user.ts'
 
 export default defineComponent({
   name: 'BookFollowed',
-  components: { UserPageable, InfoSphereSkeleton },
+  components: {
+    InfoSphereSkeleton,
+    BookPageable,
+    Separator
+  },
   data()
   {
     return {
       loading: false,
-      items: [] as User[],
-      identify: null as unknown as string,
+      items: [] as Array<Book>,
       pagination: null as unknown as Pagination
     }
   },
   created()
   {
-    this.identify = RouterUtils.getParams('identify')
-    this.pagination = { page: 1, size: 203 }
+    this.pagination = { page: 1, size: 10 }
     this.initialize()
   },
   methods: {
     initialize()
     {
-      if (this.identify) {
+      const userStore = useUserStore()
+      if (userStore.info) {
         this.loading = true
-        BookService.getFans(this.identify, this.pagination)
+        BookService.getByUsernameAndFollowed(userStore.info.username as string, this.pagination)
                    .then(response => {
-                     if (response.status && response.data) {
-                       this.items = response.data.content
-                       this.pagination = response.data.page
-                     }
+                     this.items = response.data.content
+                     this.pagination = response.data.page
                    })
                    .finally(() => this.loading = false)
       }
