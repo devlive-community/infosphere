@@ -5,7 +5,9 @@ import org.devlive.infosphere.common.response.JwtResponse;
 import org.devlive.infosphere.service.adapter.PageAdapter;
 import org.devlive.infosphere.service.adapter.PageFilterAdapter;
 import org.devlive.infosphere.service.adapter.PageRequestAdapter;
+import org.devlive.infosphere.service.annotation.CheckPermission;
 import org.devlive.infosphere.service.annotation.SkipAuthenticated;
+import org.devlive.infosphere.service.common.PermissionType;
 import org.devlive.infosphere.service.entity.UserEntity;
 import org.devlive.infosphere.service.repository.UserRepository;
 import org.devlive.infosphere.service.security.UserDetailsService;
@@ -43,6 +45,13 @@ public class UserController
 
     @PostMapping
     public CommonResponse<UserEntity> save(@RequestBody UserEntity configure)
+    {
+        return this.service.saveAndUpdate(configure);
+    }
+
+    @PutMapping
+    @CheckPermission(value = PermissionType.USER)
+    public CommonResponse<UserEntity> update(@RequestBody UserEntity configure)
     {
         return this.service.saveAndUpdate(configure);
     }

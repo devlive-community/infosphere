@@ -119,7 +119,7 @@ export default defineComponent({
     submit()
     {
       this.saving = true
-      UserService.save(this.formState as User)
+      UserService.saveOrUpdate(this.formState as User)
                  .then(response => {
                    if (response.status) {
                      toast(`保存 [ ${ this.formState?.username } ] 成功`, { type: 'success' })
