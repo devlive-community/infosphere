@@ -70,6 +70,9 @@ export default defineComponent({
       info: null as unknown as User
     }
   },
+  watch: {
+    '$route.params.username': 'initialize'
+  },
   created()
   {
     this.initialize()
