@@ -58,7 +58,7 @@ hide:
 ## 概述
 
 <div style="max-width: 60%; text-align: center;margin: 0 auto;">
-<p style="text-align: center;">InfoSphere 是一款面向企业和个人的开源 Wiki 系统，旨在提供简单而强大的知识管理解决方案。</p>
+<p style="text-align: center;">InfoSphere 是一款面向企业和个人的开源知识管理系统，旨在提供简单而强大的知识管理解决方案。</p>
 </div>
 
 <div style="max-width: 800px; margin: 0 auto" class="grid cards" markdown>
