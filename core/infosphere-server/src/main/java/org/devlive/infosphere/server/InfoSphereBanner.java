@@ -20,10 +20,11 @@ public class InfoSphereBanner
         try (FileReader reader = new FileReader(banner)) {
             int ch;
             while ((ch = reader.read()) != -1) {
-                out.print((char) ch);
+                out.print(ch);
             }
         }
         catch (IOException e) {
+            log.warn("Banner file not found", e);
             log.info("Banner closed");
         }
     }
