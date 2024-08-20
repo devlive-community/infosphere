@@ -16,7 +16,6 @@ import java.nio.file.Paths;
 public class InfoSphereBanner
         implements Banner
 {
-
     @Override
     public void printBanner(Environment environment, Class<?> sourceClass, PrintStream out)
     {
