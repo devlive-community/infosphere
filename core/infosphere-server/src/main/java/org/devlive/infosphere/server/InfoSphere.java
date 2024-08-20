@@ -20,7 +20,9 @@ public class InfoSphere
 {
     public void start(String[] args)
     {
-        SpringApplication.run(InfoSphere.class, args);
+        SpringApplication application = new SpringApplication(InfoSphere.class);
+        application.setBanner(new InfoSphereBanner());
+        application.run(args);
     }
 
     public static void main(String[] args)
