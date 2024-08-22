@@ -18,6 +18,13 @@ public interface DocumentRepository
     @Query(value = "SELECT d " +
             "FROM DocumentEntity d " +
             "WHERE d.identify = :identify " +
+            "AND d.book = :book")
+    Optional<DocumentEntity> findByIdentifyAndBook(@Param(value = "identify") String identify,
+            @Param(value = "book") BookEntity book);
+
+    @Query(value = "SELECT d " +
+            "FROM DocumentEntity d " +
+            "WHERE d.identify = :identify " +
             "OR d.parent = :parent")
     List<DocumentEntity> findByIdentifyWithChildren(@Param(value = "identify") String identify,
             @Param(value = "parent") Long parent);

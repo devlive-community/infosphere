@@ -33,6 +33,8 @@
                 <include>**/*.json</include>
                 <include>**/*.yaml</include>
                 <include>**/*.conf</include>
+                <include>**/*.txt</include>
+                <include>**/*.xdb</include>
             </includes>
             <filtered>true</filtered>
         </fileSet>
