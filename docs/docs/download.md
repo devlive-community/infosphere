@@ -20,7 +20,7 @@ hide:
 
 <div class="grid cards" markdown style="margin-top: 30px; padding: 50px;">
 
-- :fontawesome-brands-app-store-ios: __服务器软件包__
+-  __服务器软件包__
 
     ---
 
@@ -28,9 +28,9 @@ hide:
 
     <br />
 
-    [InfoSphere-2024.1.5.tar.gz](xxx){ .md-button .md-button-primary }
+    [infosphere-2024.1.6.tar.gz](https://cdn.north.devlive.org/applications/infosphere/2024.1.6/infosphere-2024.1.6.tar.gz){ .md-button .md-button-primary }
 
-- :material-more: __更多__
+- __更多__
 
     ---
 
@@ -38,7 +38,7 @@ hide:
 
     <br />
 
-    [源代码](https://github.com/devlive-community/datacap){ .md-button .md-button-primary }
+    [源代码](https://github.com/devlive-community/infosphere){ .md-button .md-button-primary }
 
 </div>
 
