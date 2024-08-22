@@ -5,7 +5,7 @@
     <groupId>org.devlive.infosphere</groupId>
     <artifactId>infosphere</artifactId>
     <packaging>pom</packaging>
-    <version>2024.1.6-SNAPSHOT</version>
+    <version>2024.1.6</version>
 
     <modules>
         <module>core/infosphere-common</module>
