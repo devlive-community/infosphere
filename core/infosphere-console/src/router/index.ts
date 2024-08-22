@@ -1,6 +1,16 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import { createDefaultRouter } from '@/router/default.ts'
 import { useUserStore } from '@/stores/user.ts'
+import NProgress from 'nprogress'
+import 'nprogress/nprogress.css'
+
+NProgress.configure({
+    easing: 'ease',
+    speed: 600,
+    showSpinner: true,
+    trickleSpeed: 200,
+    minimum: 0.3
+})
 
 const routes: Array<RouteRecordRaw> = []
 
@@ -12,6 +22,7 @@ const router = createRouter({
 createDefaultRouter(router)
 
 router.beforeEach((to, from, next) => {
+    NProgress.start()
     console.log(`from: ${ from.path }, to: ${ to.path }`)
     // 如果设置了标题，替换为当前访问的标题
     if (to.meta.title) {
@@ -37,5 +48,7 @@ router.beforeEach((to, from, next) => {
         next()
     }
 })
+
+router.afterEach(() => NProgress.done())
 
 export default router
