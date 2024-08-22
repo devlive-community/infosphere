@@ -38,11 +38,12 @@ public class DocumentServiceImpl
             return CommonResponse.failure(String.format("书籍 [ %s ] 不存在", configure.getIdentify()));
         }
 
-        Optional<DocumentEntity> existingDocument = repository.findByIdentify(configure.getIdentify());
+        Optional<DocumentEntity> existingDocument = repository.findByIdentifyAndBook(configure.getIdentify(), existingBook.get());
         if (ObjectUtils.isEmpty(configure.getId())) {
             if (existingDocument.isPresent()) {
                 return CommonResponse.failure(String.format("文档标记 [ %s ] 已存在", configure.getIdentify()));
             }
+            configure.setIdentify(String.join("-", configure.getBook().getIdentify(), configure.getIdentify()));
             configure.setUser(UserDetailsService.getUser());
             configure.setBook(existingBook.get());
         }
