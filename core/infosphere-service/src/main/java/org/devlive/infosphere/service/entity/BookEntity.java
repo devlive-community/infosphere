@@ -68,6 +68,9 @@ public class BookEntity
     @Convert(converter = FieldConverter.class)
     private FieldEntity originate;
 
+    @Column(name = "language")
+    private String language;
+
     @Column(name = "create_time")
     @CreatedDate
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")

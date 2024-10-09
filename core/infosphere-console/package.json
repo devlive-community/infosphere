@@ -13,7 +13,7 @@
   "dependencies": {
     "@radix-icons/vue": "^1.0.0",
     "@vee-validate/zod": "^4.13.2",
-    "@vueuse/core": "^11.0.1",
+    "@vueuse/core": "^11.1.0",
     "axios": "^1.7.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",

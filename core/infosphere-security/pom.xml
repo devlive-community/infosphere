@@ -30,6 +30,11 @@
         </dependency>
         <dependency>
             <groupId>org.devlive.infosphere</groupId>
+            <artifactId>infosphere-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.devlive.infosphere</groupId>
             <artifactId>infosphere-service</artifactId>
             <version>${project.version}</version>
         </dependency>

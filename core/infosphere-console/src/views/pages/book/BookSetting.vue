@@ -59,6 +59,25 @@
             </FormItem>
           </div>
         </FormField>
+        <FormField v-slot="{ componentField }" name="language">
+          <FormItem class="space-y-1">
+            <FormLabel>书籍语言</FormLabel>
+            <FormControl>
+              <Select v-model="formState.language" :default-value="formState.language" v-bind="componentField" placeholder="书籍语言">
+                <SelectTrigger class="w-[200px] cursor-pointer">
+                  <SelectValue class="cursor-pointer" placeholder="请选择书籍语言"/>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem class="cursor-pointer" value="en">英文</SelectItem>
+                  <SelectItem class="cursor-pointer" value="zh-CN">简体中文</SelectItem>
+                  <SelectItem class="cursor-pointer" value="zh-HK">繁体中文（香港）</SelectItem>
+                  <SelectItem class="cursor-pointer" value="zh-TW">繁体中文（台湾）</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormControl>
+            <FormMessage/>
+          </FormItem>
+        </FormField>
         <FormField v-slot="{ componentField }" name="visibility">
           <FormItem class="space-y-2">
             <FormLabel>书籍可见性</FormLabel>
@@ -126,17 +145,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import CropperHome from '@/views/components/cropper/CropperHome.vue'
 import UploadService from '@/service/upload.ts'
+import { Select, SelectContent, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default defineComponent({
   name: 'BookSetting',
   components: {
+    Select,
     CropperHome,
     CogIcon, Loader2Icon,
     CardContent, CardHeader, CardTitle, Card,
     InfoSphereLoading,
     Label, Separator, Textarea, Button, Input,
     RadioGroupItem, RadioGroup,
-    FormField, FormControl, FormMessage, FormLabel, FormItem
+    FormField, FormControl, FormMessage, FormLabel, FormItem,
+    Select, SelectContent, SelectItem, SelectLabel, SelectTrigger, SelectValue
   },
   setup()
   {
@@ -149,7 +171,8 @@ export default defineComponent({
       identify: undefined,
       description: undefined,
       visibility: undefined,
-      originate: { field: undefined, value: undefined }
+      originate: { field: undefined, value: undefined },
+      language: undefined
     })
     const validator = z
         .object({
@@ -187,7 +210,8 @@ export default defineComponent({
                        identify: data.identify,
                        description: data.description,
                        visibility: data.visibility.toString(),
-                       originate: { field: data.originate?.field, value: data.originate?.value }
+                       originate: { field: data.originate?.field, value: data.originate?.value },
+                       language: data.language
                      }
                      setValues(newValue)
                      Object.assign(formState, newValue)
