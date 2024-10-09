@@ -150,7 +150,6 @@ import { Select, SelectContent, SelectItem, SelectLabel, SelectTrigger, SelectVa
 export default defineComponent({
   name: 'BookSetting',
   components: {
-    Select,
     CropperHome,
     CogIcon, Loader2Icon,
     CardContent, CardHeader, CardTitle, Card,
