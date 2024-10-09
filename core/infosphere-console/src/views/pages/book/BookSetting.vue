@@ -69,9 +69,9 @@
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem class="cursor-pointer" value="en">英文</SelectItem>
-                  <SelectItem class="cursor-pointer" value="zh-CN">简体中文</SelectItem>
-                  <SelectItem class="cursor-pointer" value="zh-HK">繁体中文（香港）</SelectItem>
-                  <SelectItem class="cursor-pointer" value="zh-TW">繁体中文（台湾）</SelectItem>
+                  <SelectItem class="cursor-pointer" value="zh-cn">简体中文</SelectItem>
+                  <SelectItem class="cursor-pointer" value="zh-hk">繁体中文（香港）</SelectItem>
+                  <SelectItem class="cursor-pointer" value="zh-tw">繁体中文（台湾）</SelectItem>
                 </SelectContent>
               </Select>
             </FormControl>
