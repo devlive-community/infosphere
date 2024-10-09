@@ -16,5 +16,6 @@ export interface Book
     isFollowed?: boolean
     state?: string
     originate?: Field
+    language?: string
     user?: User
 }

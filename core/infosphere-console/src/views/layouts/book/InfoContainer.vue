@@ -34,10 +34,8 @@
           </template>
           <div class="p-3 pl-6 pr-6 space-y-6">
             <div class="flex w-full">
-              <div class="w-44 h-64">
-                <AspectRatio class="w-full h-64">
-                  <img :src="info.cover ? info.cover : '/static/images/default-cover.png'" :alt="info.name" class="rounded-md w-full h-full border-2"/>
-                </AspectRatio>
+              <div class="w-44 h-68">
+                <img :src="info.cover ? info.cover : '/static/images/default-cover.png'" :alt="info.name" class="rounded-md w-full h-full border-2"/>
               </div>
               <div class="flex-1 pl-10 space-y-2.5">
                 <div class="flex items-center space-x-6">
@@ -45,6 +43,16 @@
                   <RouterLink :to="`/user/${info.user?.username}`" class="text-blue-400 hover:border-b hover:border-b-blue-400">
                     {{ info.user?.username }}
                   </RouterLink>
+                </div>
+                <Separator class="bg-gray-100"/>
+                <div class="flex items-center space-x-6">
+                  <Label class="text-gray-400">书籍语言:</Label>
+                  <div class="text-sm text-gray-600">
+                    <span v-if="info.language === 'en'">英文</span>
+                    <span v-if="info.language === 'zh-cn'">简体中文</span>
+                    <span v-if="info.language === 'zh-hk'">繁体中文（香港）</span>
+                    <span v-if="info.language === 'zh-tw'">繁体中文（台湾）</span>
+                  </div>
                 </div>
                 <Separator class="bg-gray-100"/>
                 <div class="flex items-center space-x-6">
@@ -76,7 +84,7 @@
                 <Separator class="bg-gray-100"/>
               </div>
             </div>
-            <div class="flex w-full">
+            <div class="flex w-full space-y-2">
               <div class="w-44"></div>
               <div class="flex-1 pl-10 space-x-3">
                 <RouterLink :to="`/book/reader/${info.identify}`">
@@ -126,7 +134,6 @@ import { Follow } from '@/model/follow.ts'
 import FollowService from '@/service/follow.ts'
 import { toast } from 'vue3-toastify'
 import { Label } from '@/components/ui/label'
-import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { Separator } from '@/components/ui/separator'
 import { RouterUtils } from '@/lib/router.ts'
 import MenuSidebar from '@/views/layouts/book/components/MenuSidebar.vue'
@@ -135,17 +142,9 @@ export default defineComponent({
   name: 'InfoContainer',
   components: {
     MenuSidebar,
-    Separator,
-    AspectRatio,
-    Label,
-    Loader2Icon,
-    BookIcon,
-    HeartOffIcon, Button,
-    HeartIcon,
-    InfoSphereTooltip,
-    SettingsIcon, SquarePenIcon,
-    InfoSphereCard,
-    InfoSphereLoading,
+    Separator, Label, Button,
+    Loader2Icon, BookIcon, HeartOffIcon, HeartIcon, SettingsIcon, SquarePenIcon,
+    InfoSphereTooltip, InfoSphereCard, InfoSphereLoading,
     LayoutFooter, LayoutHeader
   },
   data()
