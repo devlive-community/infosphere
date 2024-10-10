@@ -51,13 +51,14 @@
         <jjwt.version>0.9.1</jjwt.version>
         <jaxb.version>2.3.1</jaxb.version>
         <user-agent.version>1.21</user-agent.version>
-        <environment.compile.java.version>1.8</environment.compile.java.version>
+        <environment.compile.java.version>11</environment.compile.java.version>
         <plugin.maven.compiler.version>3.2</plugin.maven.compiler.version>
         <plugin.maven.checkstyle.version>3.0.0</plugin.maven.checkstyle.version>
         <plugin.maven.findbugs.version>3.0.5</plugin.maven.findbugs.version>
         <plugin.maven.assembly.version>3.6.0</plugin.maven.assembly.version>
         <plugin.maven.clean.version>3.0.0</plugin.maven.clean.version>
         <plugin.maven.frontend.version>1.13.4</plugin.maven.frontend.version>
+        <plugin.java.version>11</plugin.java.version>
     </properties>
 
     <dependencies>
