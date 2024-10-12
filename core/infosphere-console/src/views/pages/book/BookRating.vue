@@ -63,7 +63,7 @@ export default defineComponent({
           rating: 0, review: undefined, book: { identify: this.identify }
         }
         this.loading = true
-        RatingService.getByBookIdentify(this.identify)
+        RatingService.getByBookIdentify(this.identify, this.pagination)
                      .then(response => {
                        if (response.status) {
                          this.items = response.data.content
