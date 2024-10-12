@@ -172,6 +172,12 @@ const createDefaultRouter = (router: Router): void => {
                 path: 'follow/:identify?',
                 meta: { title: '已关注用户列表' },
                 component: () => import('@/views/pages/book/BookFollow.vue')
+            },
+            {
+                name: 'BookComment',
+                path: 'comment/:identify?',
+                meta: { title: '书籍评论', requiresAuth: true },
+                component: () => import('@/views/pages/book/BookComment.vue')
             }
         ]
     })

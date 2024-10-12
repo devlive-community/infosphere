@@ -19,7 +19,7 @@ export default defineComponent({
     // 路径前缀常量
     const PATH_PREFIXES = {
       noSpecified: ['/book/followed'],
-      info: ['/book/info', '/book/access', '/book/follow'],
+      info: ['/book/info', '/book/access', '/book/follow', '/book/comment'],
       setting: ['/book/setting'],
       writer: ['/book/writer', '/book/reader']
     }
