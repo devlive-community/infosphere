@@ -6,10 +6,10 @@ ALTER TABLE `infosphere_book`
 CREATE TABLE `infosphere_ratings`
 (
     `id`          BIGINT PRIMARY KEY AUTO_INCREMENT,
-    `user_id`     BIGINT  NOT NULL,
-    `book_id`     BIGINT  NOT NULL,
-    `rating`      TINYINT NOT NULL, -- 评分范围可以是 1 到 5
-    `review`      TEXT,             -- 可选的用户评价
+    `user_id`     BIGINT NOT NULL,
+    `book_id`     BIGINT NOT NULL,
+    `rating` DOUBLE NOT NULL, -- 评分范围可以是 0.5 到 5
+    `review`      TEXT,       -- 可选的用户评价
     `create_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `update_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT `fk_user_id` FOREIGN KEY (`user_id`) REFERENCES `infosphere_user` (`id`) ON DELETE CASCADE,

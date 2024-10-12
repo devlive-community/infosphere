@@ -16,9 +16,7 @@
       </div>
     </div>
     <InfoSphereSkeleton v-if="loading" :show="loading"/>
-    <div class="space-y-2" v-else>
-      <div class="border-b-2"></div>
-    </div>
+    <RatingPageable v-else :pagination="pagination" :items="items" @changePage="changePage"/>
   </div>
 </template>
 
@@ -34,34 +32,54 @@ import { RouterUtils } from '@/lib/router.ts'
 import { Loader2Icon } from 'lucide-vue-next'
 import { toast } from 'vue3-toastify'
 import RatingService from '@/service/rating.ts'
+import { Pagination } from '@/model/response.ts'
+import RatingPageable from '@/views/components/pageable/RatingPageable.vue'
 
 export default defineComponent({
   name: 'BookComment',
-  components: { Loader2Icon, Button, Textarea, Label, InfoSphereSkeleton, VueStarRating },
+  components: { RatingPageable, Loader2Icon, Button, Textarea, Label, InfoSphereSkeleton, VueStarRating },
   data()
   {
     return {
       loading: false,
       submitted: false,
       identify: null as unknown as string,
-      formState: null as unknown as Rating
+      items: [] as Rating[],
+      formState: null as unknown as Rating,
+      pagination: null as unknown as Pagination
     }
   },
   created()
   {
+    this.identify = RouterUtils.getParams('identify')
+    this.pagination = { page: 1, size: 10 }
     this.initialize()
   },
   methods: {
     initialize()
     {
-      const identify = RouterUtils.getParams('identify')
-      if (identify) {
-        this.identify = identify
+      if (this.identify) {
         this.formState = {
           rating: 0, review: undefined, book: { identify: this.identify }
         }
-        // this.loading = true
+        this.loading = true
+        RatingService.getByBookIdentify(this.identify)
+                     .then(response => {
+                       if (response.status) {
+                         this.items = response.data.content
+                         this.pagination = response.data.page
+                       }
+                       else {
+                         toast(response.message as string, { type: 'error' })
+                       }
+                     })
+                     .finally(() => this.loading = false)
       }
+    },
+    changePage(value: Pagination)
+    {
+      this.pagination = value
+      this.initialize()
     },
     submitRating()
     {

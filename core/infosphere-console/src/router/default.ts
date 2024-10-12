@@ -177,7 +177,7 @@ const createDefaultRouter = (router: Router): void => {
                 name: 'BookComment',
                 path: 'comment/:identify?',
                 meta: { title: '书籍评论', requiresAuth: true },
-                component: () => import('@/views/pages/book/BookComment.vue')
+                component: () => import('@/views/pages/book/BookRating.vue')
             }
         ]
     })

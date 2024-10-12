@@ -1,6 +1,7 @@
 package org.devlive.infosphere.service.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIncludeProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -36,7 +37,7 @@ public class RatingEntity
     private Long id;
 
     @Column(name = "rating")
-    private Integer rating;
+    private Double rating;
 
     @Column(name = "review")
     private String review;
@@ -44,11 +45,13 @@ public class RatingEntity
     // 与 UserEntity 关联，使用 @ManyToOne
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
+    @JsonIncludeProperties(value = {"username", "aliasName", "avatar", "email"})
     private UserEntity user;
 
     // 与 BookEntity 关联，使用 @ManyToOne
     @ManyToOne
     @JoinColumn(name = "book_id", referencedColumnName = "id", nullable = false)
+    @JsonIncludeProperties(value = {"name", "identify"})
     private BookEntity book;
 
     @Column(name = "create_time")
