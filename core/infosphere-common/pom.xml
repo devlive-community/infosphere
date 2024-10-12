@@ -29,5 +29,10 @@
             <artifactId>ip2region</artifactId>
             <version>${ip2region.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>findbugs</artifactId>
+            <version>${findbugs.version}</version>
+        </dependency>
     </dependencies>
 </project>

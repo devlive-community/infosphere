@@ -9,6 +9,6 @@ public class UserCacheLoader
     @Override
     public JwtResponse load(Long key)
     {
-        return null;
+        throw new CacheLoader.InvalidCacheLoadException("Cannot load JwtResponse for user ID: " + key);
     }
 }

@@ -100,6 +100,11 @@ public class BookEntity
             "WHERE abr.book_id = id)")
     private Long visitorCount;
 
+    @Formula(value = "(SELECT AVG(r.rating) " +
+            "FROM infosphere_ratings r " +
+            "WHERE r.book_id = id)")
+    private Double ratingAvg;
+
     @Transient
     private Boolean isFollowed;
 }

@@ -34,10 +34,15 @@
           </template>
           <div class="p-3 pl-6 pr-6 space-y-6">
             <div class="flex w-full">
-              <div class="w-44 h-68">
+              <div class="w-48 h-72">
                 <img :src="info.cover ? info.cover : '/static/images/default-cover.png'" :alt="info.name" class="rounded-md w-full h-full border-2"/>
               </div>
               <div class="flex-1 pl-10 space-y-2.5">
+                <div class="flex items-center space-x-6">
+                  <Label class="text-gray-400">书籍评分:</Label>
+                  <VueStarRating class="-mt-2" :rating="info.ratingAvg as number" :read-only="true" :increment="0.5" :star-size="20"/>
+                </div>
+                <Separator class="bg-gray-100"/>
                 <div class="flex items-center space-x-6">
                   <Label class="text-gray-400">书籍作者:</Label>
                   <RouterLink :to="`/user/${info.user?.username}`" class="text-blue-400 hover:border-b hover:border-b-blue-400">
@@ -137,6 +142,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { RouterUtils } from '@/lib/router.ts'
 import MenuSidebar from '@/views/layouts/book/components/MenuSidebar.vue'
+import VueStarRating from 'vue-star-rating'
 
 export default defineComponent({
   name: 'InfoContainer',
@@ -145,7 +151,8 @@ export default defineComponent({
     Separator, Label, Button,
     Loader2Icon, BookIcon, HeartOffIcon, HeartIcon, SettingsIcon, SquarePenIcon,
     InfoSphereTooltip, InfoSphereCard, InfoSphereLoading,
-    LayoutFooter, LayoutHeader
+    LayoutFooter, LayoutHeader,
+    VueStarRating
   },
   data()
   {

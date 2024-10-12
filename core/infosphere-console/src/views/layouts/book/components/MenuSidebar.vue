@@ -22,6 +22,13 @@
           <span>关注用户</span>
         </RouterLink>
       </li>
+      <li :class="cn('border-gray-300 py-1.5 px-3',
+                     $route.path === `/book/comment/${identify}` && 'bg-muted hover:bg-muted rounded-sm')">
+        <RouterLink class="flex items-center space-x-2" :to="`/book/comment/${identify}`">
+          <MessageSquare :size="18"/>
+          <span>书籍评论</span>
+        </RouterLink>
+      </li>
     </ul>
     <RouterView/>
   </div>
@@ -29,14 +36,14 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { HistoryIcon, ListIcon, UserIcon } from 'lucide-vue-next'
+import { HistoryIcon, ListIcon, MessageSquare, UserIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils.ts'
 import { RouterUtils } from '@/lib/router.ts'
 import { useUserStore } from '@/stores/user.ts'
 
 export default defineComponent({
   name: 'MenuSidebar',
-  components: { ListIcon, HistoryIcon, UserIcon },
+  components: { ListIcon, HistoryIcon, UserIcon, MessageSquare },
   data()
   {
     return {

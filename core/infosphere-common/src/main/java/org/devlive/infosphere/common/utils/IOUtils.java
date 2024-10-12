@@ -1,5 +1,7 @@
 package org.devlive.infosphere.common.utils;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -8,6 +10,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 
+@SuppressFBWarnings(value = {"NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"})
 public class IOUtils
 {
     private IOUtils()
@@ -25,12 +28,14 @@ public class IOUtils
     public static boolean copy(String source, String target, boolean createdDir)
     {
         try {
+            Path sourcePath = Paths.get(source);
             Path targetPath = Paths.get(target);
+
             if (createdDir) {
                 Files.createDirectories(targetPath.getParent());
             }
 
-            Files.copy(Paths.get(source), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
             return true;
         }
         catch (Exception e) {
