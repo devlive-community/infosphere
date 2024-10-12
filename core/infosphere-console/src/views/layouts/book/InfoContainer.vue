@@ -40,7 +40,7 @@
               <div class="flex-1 pl-10 space-y-2.5">
                 <div class="flex items-center space-x-6">
                   <Label class="text-gray-400">书籍评分:</Label>
-                  <StarRating class="-mt-2" :read-only="true" :star-size="20"/>
+                  <VueStarRating class="-mt-2" :rating="info.ratingAvg as number" :read-only="true" :increment="0.5" :star-size="20"/>
                 </div>
                 <Separator class="bg-gray-100"/>
                 <div class="flex items-center space-x-6">
@@ -142,7 +142,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { RouterUtils } from '@/lib/router.ts'
 import MenuSidebar from '@/views/layouts/book/components/MenuSidebar.vue'
-import StarRating from 'vue-star-rating'
+import VueStarRating from 'vue-star-rating'
 
 export default defineComponent({
   name: 'InfoContainer',
@@ -152,7 +152,7 @@ export default defineComponent({
     Loader2Icon, BookIcon, HeartOffIcon, HeartIcon, SettingsIcon, SquarePenIcon,
     InfoSphereTooltip, InfoSphereCard, InfoSphereLoading,
     LayoutFooter, LayoutHeader,
-    StarRating
+    VueStarRating
   },
   data()
   {

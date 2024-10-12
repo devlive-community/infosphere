@@ -13,6 +13,7 @@ export interface Book
     updateTime?: string
     documentCount?: number
     visitorCount?: number
+    ratingAvg?: number
     isFollowed?: boolean
     state?: string
     originate?: Field
