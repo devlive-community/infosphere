@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title + ' - ' + site.name || 'InfoSphere' %></title>
+
+    <!-- SEO 配置 -->
+    <meta name="description" content="<%= typeof meta.description !== 'undefined' ? meta.description : site.description %>">
+    <meta name="keywords" content="<%= typeof meta.keywords !== 'undefined' ? meta.keywords : site.keywords %>">
+    <meta name="author" content="<%= typeof meta.author !== 'undefined' ? meta.author : site.name %>">
+
+    <!-- 浏览器相关配置 -->
+    <link rel="icon" href="/images/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/images/logo.svg">
+    <link rel="stylesheet" href="/css/infosphere.css"/>
+    <link rel="stylesheet" href="/css/fontawesome.min.css"/>
+</head>
+
+<body class="bg-white min-h-screen flex flex-col">
+
+<main class="flex-grow">
