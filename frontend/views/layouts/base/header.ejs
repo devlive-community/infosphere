@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title + ' - ' + site.name || 'InfoSphere' %></title>
+    <title><%= (typeof title !== 'undefined' ? title : '') + (typeof site !== 'undefined' && site.name ? ' - ' + site.name : '') || 'InfoSphere' %></title>
 
     <!-- SEO 配置 -->
-    <meta name="description" content="<%= typeof meta.description !== 'undefined' ? meta.description : site.description %>">
-    <meta name="keywords" content="<%= typeof meta.keywords !== 'undefined' ? meta.keywords : site.keywords %>">
-    <meta name="author" content="<%= typeof meta.author !== 'undefined' ? meta.author : site.name %>">
+    <meta name="description" content="<%= typeof meta !== 'undefined' && meta.description ? meta.description : (typeof site !== 'undefined' && site.description ? site.description : '') %>">
+    <meta name="keywords" content="<%= typeof meta !== 'undefined' && meta.keywords ? meta.keywords : (typeof site !== 'undefined' && site.keywords ? site.keywords : '') %>">
+    <meta name="author" content="<%= typeof meta !== 'undefined' && meta.author ? meta.author : (typeof site !== 'undefined' && site.name ? site.name : '') %>">
 
     <!-- 浏览器相关配置 -->
     <link rel="icon" href="/images/logo.svg" type="image/svg+xml">
