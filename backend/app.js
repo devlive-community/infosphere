@@ -9,13 +9,16 @@ const PORT = process.env.PORT || 6969;
 
 // 配置视图
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'src', 'views'));
+app.set('views', path.join(__dirname, '../frontend/views'))
 app.set('trust proxy', 1);
 
 // 配置中间件
 app.use(bodyParser.json({limit: '10mb'}));
 app.use(bodyParser.urlencoded({limit: '10mb', extended: true}));
 app.use(express.static(path.join(__dirname, 'frontend/public')));
+
+// 注册路由
+app.use('/', require('./routes/index'))
 
 // 启动服务
 server.listen(PORT, () => {
