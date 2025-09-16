@@ -25,15 +25,15 @@
                         </label>
                         <%- include('../components/input', { name: 'SITE_NAME', placeholder: '输入您的站点名称', value: 'InfoSphere', required: true }) %>
                     </div>
+                </div>
 
-                    <!-- 站点描述 -->
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">
-                            <i class="fas fa-info-circle mr-2 text-indigo-500"></i>
-                            站点描述
-                        </label>
-                        <%- include('../components/input', { name: 'SITE_DESCRIPTION', placeholder: '简要描述您的站点', value: 'InfoSphere 是一款面向企业和个人的开源知识管理系统，旨在提供简单而强大的知识管理解决方案。', required: true }) %>
-                    </div>
+                <!-- 站点描述 -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">
+                        <i class="fas fa-info-circle mr-2 text-indigo-500"></i>
+                        站点描述
+                    </label>
+                    <%- include('../components/textarea', { name: 'SITE_DESCRIPTION', placeholder: '简要描述您的站点', value: 'InfoSphere 是一款面向企业和个人的开源知识管理系统，旨在提供简单而强大的知识管理解决方案。', required: true }) %>
                 </div>
 
                 <!-- 数据库配置 -->

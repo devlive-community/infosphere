@@ -29,8 +29,7 @@ const disabledClass = isDisabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed
 <input id="<%= inputId %>"
        type="<%= inputType %>"
        name="<%= inputName %>"
-       <% if (isRequired) { %>required<% } %>
-       <% if (isDisabled) { %>disabled<% } %>
+       <% if (isRequired) { %>required<% } %> <% if (isDisabled) { %>disabled<% } %>
        <% if (inputValue) { %>value="<%= inputValue %>"<% } %>
        class="w-full <%= inputMinWidth %> px-4 py-3 border border-gray-200 rounded-lg hover:border-blue-400 focus:border-blue-600 focus:outline-none focus:ring-0 focus:ring-blue-600 transition-colors duration-200 <%= disabledClass %> <%= extraClass %>"
        placeholder="<%= inputPlaceholder %>"/>
