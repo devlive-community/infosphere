@@ -31,6 +31,7 @@ const handleError = (err, req, res, next) => {
 
     // 500错误直接渲染独立页面
     if (status >= 500) {
+        console.log('----',err)
         return res.status(500).render('pages/error/500', {
             title: '服务器错误',
             error: {

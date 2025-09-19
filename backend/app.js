@@ -48,15 +48,15 @@ const installChecker = createInstallationChecker({
 })
 app.use(installChecker.middleware())
 
-// 错误处理中间件
-app.use(handle404)
-app.use(handleError)
-
 // 模板基础信息中间件
 app.use(require('./middleware/template-inject'))
 
 // 注册路由
 app.use('/', require('./routes/index'))
+
+// 错误处理中间件
+app.use(handle404)
+app.use(handleError)
 
 // 启动服务
 server.listen(PORT, () => {

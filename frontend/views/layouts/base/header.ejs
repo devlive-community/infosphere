@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= (typeof title !== 'undefined' ? title : '') + (typeof site !== 'undefined' && site.name ? ' - ' + site.name : '') || 'InfoSphere' %></title>
+    <title><%= (typeof title !== 'undefined' ? title : '') + (typeof site !== 'undefined' && site.site_name ? ' - ' + site.site_name : '') || 'InfoSphere' %></title>
 
     <!-- SEO 配置 -->
-    <meta name="description" content="<%= typeof meta !== 'undefined' && meta.description ? meta.description : (typeof site !== 'undefined' && site.description ? site.description : '') %>">
-    <meta name="keywords" content="<%= typeof meta !== 'undefined' && meta.keywords ? meta.keywords : (typeof site !== 'undefined' && site.keywords ? site.keywords : '') %>">
-    <meta name="author" content="<%= typeof meta !== 'undefined' && meta.author ? meta.author : (typeof site !== 'undefined' && site.name ? site.name : '') %>">
+    <meta name="description"
+          content="<%= typeof meta !== 'undefined' && meta.site_description ? meta.site_description : (typeof site !== 'undefined' && site.site_description ? site.site_description : '') %>">
+    <meta name="keywords"
+          content="<%= typeof meta !== 'undefined' && meta.site_keywords ? meta.site_keywords : (typeof site !== 'undefined' && site.site_keywords ? site.site_keywords : '') %>">
+    <meta name="author" content="<%= typeof meta !== 'undefined' && meta.site_author ? meta.site_author : (typeof site !== 'undefined' && site.site_name ? site.site_name : '') %>">
 
     <!-- 浏览器相关配置 -->
     <link rel="icon" href="/images/logo.png" type="image/svg+xml">
@@ -18,5 +20,9 @@
 </head>
 
 <body class="bg-white min-h-screen flex flex-col">
+
+<% if (typeof hideNav === 'undefined' || !hideNav) { %>
+    <%- include('./nav') %>
+<% } %>
 
 <main class="flex-grow">

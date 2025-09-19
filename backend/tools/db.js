@@ -171,7 +171,7 @@ const initializeDatabase = async (siteConfig, adminConfig) => {
             ['version', version, '系统版本']
         ]
 
-        const SiteConfig = require('../models/site-configs')
+        const SiteConfig = require('../models/site-config')
         for (const [key, value, desc] of siteConfigs) {
             await SiteConfig.update(key, value, desc)
         }

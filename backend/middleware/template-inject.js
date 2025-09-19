@@ -3,7 +3,7 @@
  * 为所有模板提供通用的局部变量
  */
 const moment = require('moment')
-const SiteConfig = require('../models/site-configs')
+const SiteConfig = require('../models/site-config')
 
 const templateInject = async (req, res, next) => {
     try {
