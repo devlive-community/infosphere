@@ -1,6 +1,6 @@
 {
   "name": "infosphere",
-  "version": "25..0.0",
+  "version": "25.0.0",
   "description": "InfoSphere 是一款面向企业和个人的开源知识管理系统，旨在提供简单而强大的知识管理解决方案。",
   "main": "backend/app.js",
   "scripts": {
@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "axios": "^1.12.2",
+    "bcrypt": "^6.0.0",
     "body-parser": "^1.20.3",
+    "connect-flash": "^0.1.1",
     "crypto": "^1.0.1",
     "dotenv": "^17.2.2",
     "ejs": "^3.1.10",
@@ -21,7 +23,7 @@
     "express-mysql-session": "^3.0.3",
     "express-session": "^1.18.2",
     "method-override": "^3.0.0",
-    "mysql2": "^3.14.5",
+    "mysql2": "^3.15.0",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "pm2": "^5.4.3",

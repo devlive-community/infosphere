@@ -19,17 +19,21 @@ const inputPlaceholder = typeof placeholder !== 'undefined' ? placeholder : '';
 const inputValue = typeof value !== 'undefined' ? value : '';
 const isRequired = typeof required !== 'undefined' ? required : false;
 const isDisabled = typeof disabled !== 'undefined' ? disabled : false;
+const isReadonly = typeof readonly !== 'undefined' ? readonly : false;
 const extraClass = typeof className !== 'undefined' ? className : '';
 const inputMinWidth = typeof minWidth !== 'undefined' ? minWidth : '';
 
 // 禁用状态样式
 const disabledClass = isDisabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '';
+const readonlyClass = isReadonly ? 'text-gray-500 cursor-not-allowed' : '';
 %>
 
 <input id="<%= inputId %>"
        type="<%= inputType %>"
        name="<%= inputName %>"
-       <% if (isRequired) { %>required<% } %> <% if (isDisabled) { %>disabled<% } %>
+       <% if (isRequired) { %>required<% } %>
+       <% if (isDisabled) { %>disabled<% } %>
+       <% if (isReadonly) { %>readonly<% } %>
        <% if (inputValue) { %>value="<%= inputValue %>"<% } %>
-       class="w-full <%= inputMinWidth %> px-4 py-3 border border-gray-200 rounded-lg hover:border-blue-400 focus:border-blue-600 focus:outline-none focus:ring-0 focus:ring-blue-600 transition-colors duration-200 <%= disabledClass %> <%= extraClass %>"
+       class="w-full <%= inputMinWidth %> px-4 py-3 border border-gray-200 rounded-lg hover:border-blue-400 focus:border-blue-600 focus:outline-none focus:ring-0 focus:ring-blue-600 transition-colors duration-200 <%= disabledClass %> <%= readonlyClass %> <%= extraClass %>"
        placeholder="<%= inputPlaceholder %>"/>

@@ -2,6 +2,8 @@ const express = require('express')
 const http = require('http')
 const path = require('path')
 const bodyParser = require('body-parser')
+const flash = require('connect-flash')
+const session = require('express-session')
 const { createInstallationChecker } = require('./middleware/installation-checker')
 
 const app = express()
@@ -18,7 +20,21 @@ app.use(bodyParser.json({ limit: '10mb' }))
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
 app.use(express.static(path.join(__dirname, '../frontend/public')))
 
-// 创建安装检查中间件
+// 配置 session
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'InfoSphere-Secret-Key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        sameSite: 'lax'
+    }
+}))
+app.use(flash())
+
+// 应用安装中间件
 const installChecker = createInstallationChecker({
     envPath: '.env',
     setupRoute: '/setup',
@@ -29,9 +45,10 @@ const installChecker = createInstallationChecker({
         '/images/*'
     ]
 })
-
-// 应用安装检查中间件
 app.use(installChecker.middleware())
+
+// 模板基础信息中间件
+app.use(require('./middleware/template-inject'))
 
 // 注册路由
 app.use('/', require('./routes/index'))

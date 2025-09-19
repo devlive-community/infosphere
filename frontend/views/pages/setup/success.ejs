@@ -1,0 +1,154 @@
+<%- include('../../layouts/base/header', { title: '安装完成' }) %>
+
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl w-full space-y-8">
+        <!-- 成功图标 -->
+        <div class="text-center">
+            <div class="mx-auto h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-check text-green-600 text-3xl"></i>
+            </div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                安装完成！
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                恭喜您，<%= locals.site?.site_name || 'InfoSphere' %> 已成功安装并配置完毕
+            </p>
+        </div>
+
+        <!-- 安装信息卡片 -->
+        <div class="bg-white rounded-lg border shadow-md p-6 space-y-4">
+            <div class="border-b border-gray-200 pb-4">
+                <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+                    安装信息
+                </h3>
+            </div>
+
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-globe mr-2"></i>
+                        站点名称
+                    </span>
+                    <span class="text-sm font-medium text-gray-900"><%= locals.site?.site_name || 'InfoSphere' %></span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-database mr-2"></i>
+                        数据库
+                    </span>
+                    <span class="text-sm font-medium text-gray-900">已连接</span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-user-shield mr-2"></i>
+                        管理员账户
+                    </span>
+                    <span class="text-sm font-medium text-gray-900"><%= locals.site?.admin_username || 'admin' %></span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-clock mr-2"></i>
+                        时区
+                    </span>
+                    <span class="text-sm font-medium text-gray-900">
+                        <%= locals.timezone === 'Asia/Shanghai' ? '中国标准时间' :
+                                locals.timezone === 'UTC' ? '世界标准时间' :
+                                        locals.timezone || '中国标准时间' %>
+                    </span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-calendar mr-2"></i>
+                        安装时间
+                    </span>
+                    <span class="text-sm font-medium text-gray-900">
+                        <%= moment().format('YYYY-MM-DD HH:mm:ss') %>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 重要提示 -->
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-yellow-800">
+                        重要提示
+                    </h3>
+                    <div class="mt-2 text-sm text-yellow-700">
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>请妥善保管您的管理员账户信息</li>
+                            <li>建议定期备份您的数据和配置文件</li>
+                            <li>如需修改配置，请联系系统管理员</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速入门指南 -->
+        <div class="bg-white rounded-lg shadow-md border p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <i class="fas fa-rocket mr-2 text-purple-500"></i>
+                快速入门
+            </h3>
+
+            <div class="space-y-3">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                        <span class="text-xs font-medium text-blue-600">1</span>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-700">登录系统并完善个人资料</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                        <span class="text-xs font-medium text-blue-600">2</span>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-700">创建您的第一个项目或知识库</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                        <span class="text-xs font-medium text-blue-600">3</span>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-700">邀请团队成员加入协作</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="space-y-3">
+            <%- include('../../components/button', { text: '立即开始使用', icon: 'fas fa-arrow-right', iconPosition: 'right', variant: 'primary', className: 'w-full', href: '/' }) %>
+
+            <div class="flex space-x-3">
+                <%- include('../../components/button', { text: '查看文档', icon: 'fas fa-book', variant: 'outline', className: 'flex-1', href: 'https://infosphere.devlive.org/docs', target: '_blank' }) %>
+
+                <%- include('../../components/button', { text: '技术支持', icon: 'fas fa-life-ring', variant: 'ghost', className: 'flex-1', href: 'https://infosphere.devlive.org/support', target: '_blank' }) %>
+            </div>
+        </div>
+
+        <!-- 版权信息 -->
+        <div class="text-center">
+            <p class="text-xs text-gray-500">
+                Powered by InfoSphere © <%= new Date().getFullYear() %>
+            </p>
+        </div>
+    </div>
+</div>
+
+<%- include('../../layouts/base/footer') %>
