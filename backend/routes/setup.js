@@ -128,6 +128,12 @@ INSTALLED=true
         return res.redirect('/setup')
     }
 
+    res.locals.site = {
+        site_name: site_name,
+        site_description: site_description,
+        admin_username: admin_username,
+        timezone: 'Asia/Shanghai'
+    }
     res.render('pages/setup/success', { title: '系统安装完成' })
 }))
 
