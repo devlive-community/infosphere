@@ -4,6 +4,12 @@ const router = express.Router()
 const User = require('../models/user')
 
 router.get('/login', asyncHandler(async (req, res) => {
+    if (req.user) {
+        return res.render('pages/user/already-logged-in', {
+            user: req.user
+        })
+    }
+
     res.render('pages/user/login')
 }))
 
