@@ -18,8 +18,9 @@
         </div>
 
         <!-- 导航菜单 -->
-        <nav class="space-y-1">
-            <%- include('../../components/nav', { href: '/user/profile', text: '基本信息', icon: 'fas fa-user', className: 'w-full' }) %>
+        <nav class="space-y-2">
+            <%- include('../../components/nav', { href: '/user/profile', text: '基本信息', icon: 'fas fa-user', className: 'w-full py-3' }) %>
+            <%- include('../../components/nav', { href: '/user/security', text: '账户安全', icon: 'fas fa-shield-alt', className: 'w-full py-3' }) %>
         </nav>
 
         <!-- 统计信息 -->

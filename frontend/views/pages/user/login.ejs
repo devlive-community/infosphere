@@ -16,6 +16,8 @@
     <div class="mt-6 w-full max-w-sm mx-auto sm:mt-8 sm:max-w-md">
         <div class="bg-white border border-gray-200 space-y-4 py-6 px-4 rounded-lg sm:py-8 sm:px-10">
             <%- include('../../components/alert', { type: 'error', message: error }) %>
+            <%- include('../../components/alert', { type: 'success', message: success }) %>
+
             <form class="space-y-5 sm:space-y-6" action="/auth/login" method="POST">
                 <!-- 用户名/邮箱输入 -->
                 <div class="space-y-2">
