@@ -28,6 +28,7 @@ const iconPos = typeof iconPosition !== 'undefined' ? iconPosition : 'left';
 const isDisabled = typeof disabled !== 'undefined' ? disabled : false;
 const isLoading = typeof loading !== 'undefined' ? loading : false;
 const extraClass = typeof className !== 'undefined' ? className : '';
+const iconExtraClass = typeof iconClass !== 'undefined' ? iconClass : '';
 const buttonId = typeof id !== 'undefined' ? id : '';
 const clickHandler = typeof onclick !== 'undefined' ? onclick : '';
 const buttonName = typeof name !== 'undefined' ? name : '';
@@ -85,13 +86,13 @@ const allClasses = `${baseClasses} ${currentVariant} ${currentSize} ${disabledCl
         <% } else { %>
             <!-- 正常状态 -->
             <% if (buttonIcon && iconPos === 'left') { %>
-                <i class="<%= buttonIcon %> mr-2"></i>
+                <i class="<%= buttonIcon %> <%= iconExtraClass %> mr-2"></i>
             <% } %>
 
             <span><%= buttonText %></span>
 
             <% if (buttonIcon && iconPos === 'right') { %>
-                <i class="<%= buttonIcon %> ml-2"></i>
+                <i class="<%= buttonIcon %> <%= iconExtraClass %> ml-2"></i>
             <% } %>
         <% } %>
     </a>
@@ -112,13 +113,13 @@ const allClasses = `${baseClasses} ${currentVariant} ${currentSize} ${disabledCl
         <% } else { %>
             <!-- 正常状态 -->
             <% if (buttonIcon && iconPos === 'left') { %>
-                <i class="<%= buttonIcon %> mr-2"></i>
+                <i class="<%= buttonIcon %> <%= iconExtraClass %> mr-2"></i>
             <% } %>
 
             <span><%= buttonText %></span>
 
             <% if (buttonIcon && iconPos === 'right') { %>
-                <i class="<%= buttonIcon %> ml-2"></i>
+                <i class="<%= buttonIcon %> <%= iconExtraClass %> ml-2"></i>
             <% } %>
         <% } %>
     </button>

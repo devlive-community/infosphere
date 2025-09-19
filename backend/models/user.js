@@ -198,7 +198,7 @@ class User {
             const pool = getPool()
             const connection = await pool.getConnection()
             const [rows] = await connection.execute(
-                'SELECT * FROM users WHERE (username = ? OR email = ?) AND is_active = 1',
+                'SELECT * FROM users WHERE (username = ? OR email = ?)',
                 [usernameOrEmail, usernameOrEmail]
             )
             connection.release()
@@ -512,6 +512,46 @@ class User {
         }
         catch (error) {
             console.error('验证密码失败:', error)
+            throw error
+        }
+    }
+
+
+    /**
+     * 用户登录
+     * @param {string} usernameOrEmail 用户名或邮箱
+     * @param {string} password 密码
+     * @returns {Promise<Object|null>} 登录成功返回用户信息，失败返回null
+     */
+    static async login(usernameOrEmail, password) {
+        try {
+            if (!usernameOrEmail || !password) {
+                throw new Error('请输入用户名和密码!')
+            }
+
+            // 查找用户
+            const user = await this.findForAuth(usernameOrEmail)
+
+            if (!user) {
+                throw new Error('无效的账户信息！')
+            }
+
+            // 验证密码
+            const isValidPassword = await this.verifyPassword(password, user.password)
+
+            if (!isValidPassword) {
+                throw new Error('用户密码错误！')
+            }
+
+            if (user.is_active === 0) {
+                throw new Error('账户已被禁用，请联系管理员!')
+            }
+
+            const { password: _, ...userInfo } = user
+            return userInfo
+        }
+        catch (error) {
+            console.error(`用户登录失败 ${ usernameOrEmail }:`, error)
             throw error
         }
     }

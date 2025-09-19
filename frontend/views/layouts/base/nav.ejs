@@ -1,13 +1,13 @@
 <!-- 顶部导航 -->
-<nav class="bg-white shadow-lg border-b">
+<nav class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
             <!-- Logo区域 -->
             <div class="flex items-center">
                 <a href="/" class="flex items-center group">
                     <div class="flex items-center space-x-3">
-                        <img src="/images/logo.png" alt="<%= site.site_name %>" class="h-10 w-auto transition-transform duration-300 group-hover:scale-110">
-                        <span class="text-2xl font-bold text-gray-800"><%= site.site_name %></span>
+                        <img src="/images/logo.png" alt="<%= locals.site?.site_name || 'InfoSphere' %>" class="h-10 w-auto transition-transform duration-300 group-hover:scale-110">
+                        <span class="text-2xl font-bold text-gray-800"><%= locals.site?.site_name || 'InfoSphere' %></span>
                     </div>
                 </a>
             </div>
@@ -22,7 +22,7 @@
 
             <!-- 桌面端用户操作区域 -->
             <div class="hidden md:flex items-center space-x-4">
-                <%- include('../../components/button', { href: '/login', text: '登录', variant: 'outline', icon: 'fas fa-sign-in-alt', className: '!py-2 px-5' }) %>
+                <%- include('../../components/button', { href: '/auth/login', text: '登录', variant: 'outline', icon: 'fas fa-sign-in-alt', className: '!py-2 px-5' }) %>
                 <%- include('../../components/button', { href: '/', text: '开始使用', className: '!py-2 px-5' }) %>
             </div>
 
@@ -46,7 +46,7 @@
                 <%- include('../../components/nav', { href: '/about', text: '关于', icon: 'fas fa-info', className: 'w-full justify-start px-3 py-3 text-base' }) %>
             </div>
             <div class="px-2 py-3 border-t border-gray-200 space-y-2">
-                <%- include('../../components/button', { href: '/login', text: '登录', variant: 'outline', icon: 'fas fa-sign-in-alt', className: 'w-full py-3 px-4 justify-center' }) %>
+                <%- include('../../components/button', { href: '/auth/login', text: '登录', variant: 'outline', icon: 'fas fa-sign-in-alt', className: 'w-full py-3 px-4 justify-center' }) %>
                 <%- include('../../components/button', { href: '/', text: '开始使用', className: 'w-full py-3 px-4 justify-center' }) %>
             </div>
         </div>
