@@ -1,0 +1,71 @@
+<%- include('../../layouts/base/header', { title: '账户安全' }) %>
+
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
+            <%- include('../../layouts/user/nav', { user: user }) %>
+
+            <div class="flex-1 space-y-6">
+                <div id="security" class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">账户安全</h3>
+                        <p class="mt-1 text-sm text-gray-500">管理您的密码和安全设置</p>
+                    </div>
+
+                    <div class="px-6 py-6 space-y-6">
+                        <!-- 修改密码 -->
+                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900">密码</h4>
+                                <p class="text-sm text-gray-500">修改密码后需要重新登录</p>
+                            </div>
+                            <button onclick="openChangePasswordModal()"
+                                    class="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors duration-200">
+                                修改密码
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow border-l-4 border-red-500">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-red-600">危险操作</h3>
+                        <p class="mt-1 text-sm text-gray-500">这些操作无法撤销，请谨慎操作</p>
+                    </div>
+
+                    <div class="px-6 py-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900">删除账户</h4>
+                                <p class="text-sm text-gray-500">永久删除您的账户和所有相关数据</p>
+                            </div>
+                            <button class="px-4 py-2 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 transition-colors duration-200">
+                                删除账户
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../../components/modal', { modalId: 'changePasswordModal', content: include('../../partials/change-password') }) %>
+
+<script>
+    function openChangePasswordModal() {
+        const modal = document.getElementById('changePasswordModal')
+        const content = document.getElementById('changePasswordModalContent')
+        modal.classList.remove('opacity-0', 'invisible')
+        content.classList.remove('scale-90')
+        content.classList.add('scale-100')
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        <% if (locals.error || locals.success) { %>
+            openChangePasswordModal()
+        <% } %>
+    })
+</script>
+
+<%- include('../../layouts/base/footer') %>
