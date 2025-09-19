@@ -584,6 +584,176 @@ class User {
             throw error
         }
     }
+
+    static async findByProvider(provider, providerId) {
+        try {
+            const pool = getPool()
+            const [rows] = await pool.query(
+                `SELECT u.*, ua.provider, ua.provider_id, ua.provider_username, ua.is_primary
+                 FROM users u
+                          INNER JOIN user_authentications ua ON u.id = ua.user_id
+                 WHERE ua.provider = ?
+                   AND ua.provider_id = ?`,
+                [provider, providerId.toString()]
+            )
+            return rows[0] || null
+        }
+        catch (error) {
+            console.error('Query user by provider error:', error.message)
+            throw error
+        }
+    }
+
+    static async createWithAuth(userData, authData) {
+        const pool = getPool()
+        const connection = await pool.getConnection()
+        try {
+            await connection.beginTransaction()
+
+            const {
+                username,
+                email,
+                avatar
+            } = userData
+
+            const [userResult] = await connection.query(
+                'INSERT INTO users (username, email, avatar, last_login_at) VALUES (?, ?, ?, NOW())',
+                [username, email, avatar]
+            )
+
+            const userId = userResult.insertId
+
+            const {
+                provider,
+                provider_id,
+                provider_username,
+                provider_email,
+                access_token,
+                refresh_token,
+                token_expires_at
+            } = authData
+
+            await connection.query(
+                `INSERT INTO user_authentications
+                 (user_id, provider, provider_id, provider_username, provider_email, access_token, refresh_token, token_expires_at, is_primary)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
+                [userId, provider, provider_id.toString(), provider_username, provider_email, access_token, refresh_token, token_expires_at]
+            )
+
+            await connection.commit()
+            return this.findById(userId)
+        }
+        catch (error) {
+            await connection.rollback()
+            console.error('Create user with auth error:', error.message)
+            throw error
+        }
+        finally {
+            connection.release()
+        }
+    }
+
+    static async addAuthentication(userId, authData) {
+        try {
+            const {
+                provider,
+                provider_id,
+                provider_username,
+                provider_email,
+                access_token,
+                refresh_token,
+                token_expires_at
+            } = authData
+
+            const pool = getPool()
+
+            const [existing] = await pool.query(
+                'SELECT id FROM user_authentications WHERE user_id = ? AND provider = ?',
+                [userId, provider]
+            )
+
+            if (existing.length > 0) {
+                throw new Error(`${ provider } 帐户已链接到此用户`)
+            }
+
+            const [conflictRows] = await pool.query(
+                'SELECT user_id FROM user_authentications WHERE provider = ? AND provider_id = ?',
+                [provider, provider_id.toString()]
+            )
+
+            if (conflictRows.length > 0) {
+                throw new Error(`${ provider } 帐户已链接到其他用户`)
+            }
+
+            await pool.query(
+                `INSERT INTO user_authentications
+                 (user_id, provider, provider_id, provider_username, provider_email, access_token, refresh_token, token_expires_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [userId, provider, provider_id.toString(), provider_username, provider_email, access_token, refresh_token, token_expires_at]
+            )
+
+            return this.findById(userId)
+        }
+        catch (error) {
+            console.error('Add authentication error:', error)
+            throw error
+        }
+    }
+
+    static async updateAuthTokens(userId, provider, tokens) {
+        try {
+            const { access_token, refresh_token, token_expires_at } = tokens
+            const pool = getPool()
+
+            await pool.query(
+                `UPDATE user_authentications
+                 SET access_token     = ?,
+                     refresh_token    = ?,
+                     token_expires_at = ?,
+                     updated_at       = NOW()
+                 WHERE user_id = ?
+                   AND provider = ?`,
+                [access_token, refresh_token, token_expires_at, userId, provider]
+            )
+        }
+        catch (error) {
+            console.error('Update auth tokens error:', error.message)
+            throw error
+        }
+    }
+
+    static async removeAuthentication(userId, provider) {
+        try {
+            const pool = getPool()
+
+            await pool.query(
+                'DELETE FROM user_authentications WHERE user_id = ? AND provider = ?',
+                [userId, provider]
+            )
+
+            return this.findById(userId)
+        }
+        catch (error) {
+            console.error('Remove authentication error:', error.message)
+            throw error
+        }
+    }
+
+    static async getAuthentications(userId) {
+        try {
+            const pool = getPool()
+            const [rows] = await pool.query(
+                'SELECT provider, provider_username, provider_email, is_primary, created_at FROM user_authentications WHERE user_id = ? ORDER BY is_primary DESC, created_at ASC',
+                [userId]
+            )
+            return rows
+        }
+        catch (error) {
+            console.error('Get authentications error:', error.message)
+            throw error
+        }
+    }
+
 }
 
 module.exports = User
