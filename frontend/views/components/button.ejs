@@ -14,6 +14,9 @@
  * @param {String} onclick - 点击事件，可选
  * @param {String} name - button的name属性，可选
  * @param {String} value - button的value属性，可选
+ * @param {String} href - 链接地址，设置后会渲染为 <a> 标签，可选
+ * @param {String} target - a标签的target属性，默认为 '_self' (_self|_blank|_parent|_top)
+ * @param {String} rel - a标签的rel属性，可选
  */
 
 const buttonType = typeof type !== 'undefined' ? type : 'button';
@@ -29,6 +32,9 @@ const buttonId = typeof id !== 'undefined' ? id : '';
 const clickHandler = typeof onclick !== 'undefined' ? onclick : '';
 const buttonName = typeof name !== 'undefined' ? name : '';
 const buttonValue = typeof value !== 'undefined' ? value : '';
+const buttonHref = typeof href !== 'undefined' ? href : '';
+const linkTarget = typeof target !== 'undefined' ? target : '_self';
+const linkRel = typeof rel !== 'undefined' ? rel : '';
 
 // 样式变体配置
 const variantClasses = {
@@ -63,28 +69,57 @@ const baseClasses = 'inline-flex items-center justify-center border font-medium 
 const allClasses = `${baseClasses} ${currentVariant} ${currentSize} ${disabledClass} ${extraClass}`.trim();
 %>
 
-<button type="<%= buttonType %>"
-        <% if (buttonId) { %>id="<%= buttonId %>"<% } %>
-        <% if (buttonName) { %>name="<%= buttonName %>"<% } %>
-        <% if (buttonValue) { %>value="<%= buttonValue %>"<% } %>
-        <% if (clickHandler) { %>onclick="<%= clickHandler %>"<% } %>
-        <% if (isDisabled || isLoading) { %>disabled<% } %>
-        class="<%= allClasses %>">
+<% if (buttonHref) { %>
+    <!-- 链接形式的按钮 -->
+    <a href="<%= buttonHref %>"
+       <% if (buttonId) { %>id="<%= buttonId %>"<% } %>
+       target="<%= linkTarget %>"
+       <% if (linkRel) { %>rel="<%= linkRel %>"<% } else if (linkTarget === '_blank') { %>rel="noopener noreferrer"<% } %>
+       <% if (isDisabled || isLoading) { %>aria-disabled="true" style="pointer-events: none;"<% } %>
+       class="<%= allClasses %>">
 
-    <% if (isLoading) { %>
-        <!-- 加载状态 -->
-        <i class="fas fa-spinner fa-spin mr-2"></i>
-        <span>加载中</span>
-    <% } else { %>
-        <!-- 正常状态 -->
-        <% if (buttonIcon && iconPos === 'left') { %>
-            <i class="<%= buttonIcon %> mr-2"></i>
+        <% if (isLoading) { %>
+            <!-- 加载状态 -->
+            <i class="fas fa-spinner fa-spin mr-2"></i>
+            <span>加载</span>
+        <% } else { %>
+            <!-- 正常状态 -->
+            <% if (buttonIcon && iconPos === 'left') { %>
+                <i class="<%= buttonIcon %> mr-2"></i>
+            <% } %>
+
+            <span><%= buttonText %></span>
+
+            <% if (buttonIcon && iconPos === 'right') { %>
+                <i class="<%= buttonIcon %> ml-2"></i>
+            <% } %>
         <% } %>
+    </a>
+<% } else { %>
+    <!-- 普通按钮 -->
+    <button type="<%= buttonType %>"
+            <% if (buttonId) { %>id="<%= buttonId %>"<% } %>
+            <% if (buttonName) { %>name="<%= buttonName %>"<% } %>
+            <% if (buttonValue) { %>value="<%= buttonValue %>"<% } %>
+            <% if (clickHandler) { %>onclick="<%= clickHandler %>"<% } %>
+            <% if (isDisabled || isLoading) { %>disabled<% } %>
+            class="<%= allClasses %>">
 
-        <span><%= buttonText %></span>
+        <% if (isLoading) { %>
+            <!-- 加载状态 -->
+            <i class="fas fa-spinner fa-spin mr-2"></i>
+            <span>加载</span>
+        <% } else { %>
+            <!-- 正常状态 -->
+            <% if (buttonIcon && iconPos === 'left') { %>
+                <i class="<%= buttonIcon %> mr-2"></i>
+            <% } %>
 
-        <% if (buttonIcon && iconPos === 'right') { %>
-            <i class="<%= buttonIcon %> ml-2"></i>
+            <span><%= buttonText %></span>
+
+            <% if (buttonIcon && iconPos === 'right') { %>
+                <i class="<%= buttonIcon %> ml-2"></i>
+            <% } %>
         <% } %>
-    <% } %>
-</button>
+    </button>
+<% } %>

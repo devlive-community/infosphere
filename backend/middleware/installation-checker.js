@@ -1,5 +1,7 @@
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
+const { asyncHandler } = require('./async-handler')
 
 /**
  * 安装检测中间件
@@ -163,7 +165,19 @@ function createInstallationChecker(options = {}) {
         middleware: checker.middleware.bind(checker),
         resetCache: checker.resetCache.bind(checker),
         setInstallationStatus: checker.setInstallationStatus.bind(checker),
-        checkStatus: checker.performInstallationCheck.bind(checker)
+        checkStatus: checker.performInstallationCheck.bind(checker),
+        // 反向中间件：如果已安装则重定向
+        preventReinstall: () => {
+            return asyncHandler(async (req, res, next) => {
+                const installationStatus = await checker.performInstallationCheck()
+                if (installationStatus) {
+                    return res.render('pages/setup/installed', { title: '系统已安装' })
+                }
+
+                // 未安装，继续执行
+                next()
+            })
+        }
     }
 }
 
