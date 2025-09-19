@@ -177,6 +177,26 @@ function createInstallationChecker(options = {}) {
                 // 未安装，继续执行
                 next()
             })
+        },
+        isInstalled: () => {
+            // 检查 .env 文件是否存在且包含必要配置
+            const fs = require('fs')
+            const path = require('path')
+
+            try {
+                const envPath = path.resolve(options.envPath || '.env')
+                if (!fs.existsSync(envPath)) {
+                    return false
+                }
+
+                const envContent = fs.readFileSync(envPath, 'utf8')
+                return envContent.includes('DB_HOST') &&
+                    envContent.includes('DB_USER') &&
+                    envContent.includes('DB_NAME')
+            }
+            catch {
+                return false
+            }
         }
     }
 }

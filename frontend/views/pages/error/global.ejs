@@ -1,39 +1,39 @@
 <%- include('../../layouts/base/header', { title: typeof title !== 'undefined' ? title : (error && error.title ? error.title : '错误') }) %>
 
-<main class="flex-grow min-h-screen">
+<main class="flex-grow flex items-center justify-center" style="height: 80vh;">
     <div class="container mx-auto px-4 py-6">
-        <div class="flex flex-col items-center justify-center py-16 px-4">
-            <div class="text-center">
-                <!-- 错误状态码 -->
-                <h1 class="text-7xl font-bold text-gray-800 mb-4">
-                    <%= error.status || '500' %>
-                </h1>
+        <div class="text-center">
+            <!-- 错误状态码 -->
+            <h1 class="text-7xl font-bold text-gray-800 mb-4">
+                <%= error.status || '500' %>
+            </h1>
 
-                <!-- 错误标题 -->
-                <p class="text-2xl font-semibold text-gray-700 mb-6">
-                    <%= error.title || '发生错误' %>
-                </p>
+            <!-- 错误标题 -->
+            <p class="text-2xl font-semibold text-gray-700 mb-6">
+                <%= error.title || '发生错误' %>
+            </p>
 
-                <div class="w-16 h-1 bg-blue-600 mx-auto mb-8 rounded"></div>
+            <div class="w-16 h-1 bg-blue-600 mx-auto mb-8 rounded"></div>
 
-                <!-- 错误描述 -->
-                <p class="text-gray-600 mb-10 max-w-md mx-auto">
-                    <%= error.message || '抱歉，发生了未知错误。' %>
-                </p>
+            <!-- 错误描述 -->
+            <p class="text-gray-600 mb-10 max-w-md mx-auto">
+                <%= error.message || '抱歉，发生了未知错误。' %>
+            </p>
 
-                <!-- 操作按钮 -->
-                <div class="space-y-4">
-                    <% if (error.status == 404) { %>
-                        <!-- 404特殊按钮 -->
-                        <a href="/"
-                           class="px-5 py-2 space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 inline-flex items-center shadow-lg">
-                            <i class="fas fa-home"></i>
-                            <span>返回首页</span>
-                        </a>
-                    <% } else if (error.status == 401) { %>
-                        <!-- 401特殊按钮 -->
+            <!-- 操作按钮 -->
+            <div class="space-y-4">
+                <% if (error.status == 404) { %>
+                    <!-- 404特殊按钮 -->
+                    <a href="/"
+                       class="px-5 py-2 space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 inline-flex items-center shadow-lg">
+                        <i class="fas fa-home"></i>
+                        <span>返回首页</span>
+                    </a>
+                <% } else if (error.status == 401) { %>
+                    <!-- 401特殊按钮 -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
                         <a href="/auth/login"
-                           class="px-5 py-2 space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 inline-flex items-center shadow-lg mr-4">
+                           class="px-5 py-2 space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 inline-flex items-center shadow-lg">
                             <i class="fas fa-right-to-bracket"></i>
                             <span>登录系统</span>
                         </a>
@@ -42,56 +42,59 @@
                             <i class="fas fa-home"></i>
                             <span>返回首页</span>
                         </a>
-                    <% } else if (error.status == 403) { %>
-                        <!-- 403特殊按钮 -->
-                        <div class="flex space-x-4">
-                            <button onclick="history.back()"
-                                    class="px-5 py-2 space-x-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-300 inline-flex items-center shadow-lg mr-4">
-                                <i class="fas fa-arrow-left"></i>
-                                <span>返回上页</span>
-                            </button>
-                            <a href="/"
-                               class="px-5 py-2 space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 inline-flex items-center shadow-lg">
-                                <i class="fas fa-home"></i>
-                                <span>返回首页</span>
-                            </a>
-                        </div>
-
-                        <!-- 显示当前用户信息 -->
-                        <% if (user) { %>
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6 max-w-sm mx-auto">
-                                <div class="flex items-center">
-                                    <img src="<%= user.avatar_url || '/images/default-avatar.svg' %>"
-                                         alt="<%= user.username %>"
-                                         class="h-10 w-10 rounded-full mr-3">
-                                    <div class="text-left">
-                                        <p class="text-sm font-medium text-blue-900">当前用户: <%= user.username %></p>
-                                        <p class="text-xs text-blue-600">权限等级: <%= user.permissions || 'user' %></p>
-                                    </div>
-                                </div>
-                            </div>
-                        <% } %>
-                    <% } else { %>
-                        <!-- 默认按钮 (500等其他错误) -->
-                        <button onclick="location.reload()"
-                                class="px-5 py-2 space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 inline-flex items-center shadow-lg mr-4">
-                            <i class="fas fa-redo"></i>
-                            <span>重新尝试</span>
+                    </div>
+                <% } else if (error.status == 403) { %>
+                    <!-- 403特殊按钮 -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button onclick="history.back()"
+                                class="px-5 py-2 space-x-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-300 inline-flex items-center shadow-lg">
+                            <i class="fas fa-arrow-left"></i>
+                            <span>返回上页</span>
                         </button>
-                        <a href="/" class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-300 inline-flex items-center shadow-lg">
+                        <a href="/"
+                           class="px-5 py-2 space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 inline-flex items-center shadow-lg">
                             <i class="fas fa-home"></i>
                             <span>返回首页</span>
                         </a>
-                    <% } %>
-                </div>
+                    </div>
 
-                <!-- 额外提示信息 -->
-                <% if (error.status == 403) { %>
-                    <div class="text-xs text-gray-500 mt-6">
-                        如需申请更高权限，请联系系统管理员
+                    <!-- 显示当前用户信息 -->
+                    <% if (user) { %>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6 max-w-sm mx-auto">
+                            <div class="flex items-center">
+                                <img src="<%= user.avatar_url || '/images/default-avatar.svg' %>"
+                                     alt="<%= user.username %>"
+                                     class="h-10 w-10 rounded-full mr-3">
+                                <div class="text-left">
+                                    <p class="text-sm font-medium text-blue-900">当前用户: <%= user.username %></p>
+                                    <p class="text-xs text-blue-600">权限等级: <%= user.permissions || 'user' %></p>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+                <% } else { %>
+                    <!-- 默认按钮 (500等其他错误) -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button onclick="location.reload()"
+                                class="px-5 py-2 space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 inline-flex items-center shadow-lg">
+                            <i class="fas fa-redo"></i>
+                            <span>重新尝试</span>
+                        </button>
+                        <a href="/"
+                           class="px-5 py-2 space-x-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-300 inline-flex items-center shadow-lg">
+                            <i class="fas fa-home"></i>
+                            <span>返回首页</span>
+                        </a>
                     </div>
                 <% } %>
             </div>
+
+            <!-- 额外提示信息 -->
+            <% if (error.status == 403) { %>
+                <div class="text-xs text-gray-500 mt-6">
+                    如需申请更高权限，请联系系统管理员
+                </div>
+            <% } %>
         </div>
     </div>
 </main>

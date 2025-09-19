@@ -4,6 +4,7 @@ const path = require('path')
 const bodyParser = require('body-parser')
 const flash = require('connect-flash')
 const session = require('express-session')
+const MySQLStore = require('express-mysql-session')(session)
 const { createInstallationChecker } = require('./middleware/installation-checker')
 const { handle404, handleError } = require('./middleware/error-handlers')
 
@@ -21,20 +22,6 @@ app.use(bodyParser.json({ limit: '10mb' }))
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
 app.use(express.static(path.join(__dirname, '../frontend/public')))
 
-// 配置 session
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'InfoSphere-Secret-Key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        sameSite: 'lax'
-    }
-}))
-app.use(flash())
-
 // 应用安装中间件
 const installChecker = createInstallationChecker({
     envPath: '.env',
@@ -46,6 +33,48 @@ const installChecker = createInstallationChecker({
         '/images/*'
     ]
 })
+
+// 检查是否已安装，决定是否初始化数据库连接
+const isInstalled = installChecker.isInstalled()
+let sessionStore
+
+if (isInstalled) {
+    // 只有在已安装的情况下才初始化数据库连接
+    try {
+        const { getPool } = require('./tools/db')
+        const pool = getPool()
+        sessionStore = new MySQLStore({}, pool)
+        console.log('数据库连接池已初始化')
+    }
+    catch (error) {
+        console.error('初始化数据库连接失败:', error.message)
+        // 使用内存存储作为后备
+        sessionStore = null
+    }
+}
+
+// 配置 session
+const sessionConfig = {
+    secret: process.env.SESSION_SECRET || 'InfoSphere-Secret-Key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        sameSite: 'lax'
+    }
+}
+
+// 只有在已安装且数据库连接成功时才使用MySQL存储
+if (sessionStore) {
+    sessionConfig.store = sessionStore
+}
+
+app.use(session(sessionConfig))
+app.use(flash())
+
+// 应用安装检查中间件
 app.use(installChecker.middleware())
 
 // 模板基础信息中间件
@@ -61,4 +90,10 @@ app.use(handleError)
 // 启动服务
 server.listen(PORT, () => {
     console.log(`🚀 服务运行在 http://localhost:${ PORT }`)
+    if (isInstalled) {
+        console.log('✅ 系统已安装，数据库连接正常')
+    }
+    else {
+        console.log('⚠️  系统未安装，请访问 /setup 进行安装')
+    }
 })
