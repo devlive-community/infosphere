@@ -8,8 +8,8 @@ const SiteConfig = require('../models/site-config')
 const templateInject = async (req, res, next) => {
     try {
         // 用户认证信息
-        res.locals.user = req.user || null
-        res.locals.isAuthenticated = !!req.user
+        res.locals.user = req.user || req.session.user || null
+        res.locals.isAuthenticated = !!req.user || !!req.session.user
 
         // 站点配置 - 检查系统是否已安装
         try {
