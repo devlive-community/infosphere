@@ -1,0 +1,77 @@
+<%- include('../../layouts/base/header', { title: '个人资料' }) %>
+
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
+            <%- include('../../layouts/user/nav', { user: user }) %>
+
+            <!-- 主要内容区域 -->
+            <div class="flex-1">
+                <!-- 基本信息表单 -->
+                <div id="profile" class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">基本信息</h3>
+                        <p class="mt-1 text-sm text-gray-500">更新您的个人信息</p>
+                    </div>
+
+                    <form class="px-6 py-6 space-y-6" action="/user/profile" method="POST">
+                        <%- include('../../components/alert', { type: 'error', message: error }) %>
+                        <%- include('../../components/alert', { type: 'success', message: success }) %>
+                        <input type="hidden" name="_method" value="PUT">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 用户名 -->
+                            <div>
+                                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                                <%- include('../../components/input', { type: 'text', name: 'username', readonly: true, id: 'username', value: user.username, placeholder: '请输入用户名' }) %>
+                            </div>
+
+                            <!-- 邮箱 -->
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">邮箱地址</label>
+                                <%- include('../../components/input', { type: 'email', name: 'email', id: 'email', value: user.email, placeholder: '请输入邮箱地址' }) %>
+                            </div>
+                        </div>
+
+                        <!-- 角色显示 -->
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">账户角色</label>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium <%= user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800' %>">
+                                <i class="fas <%= user.role === 'admin' ? 'fa-crown' : 'fa-user' %> mr-2"></i>
+                                <%= user.role === 'admin' ? '管理员' : '普通用户' %>
+                            </span>
+                        </div>
+
+                        <!-- 个人简介 -->
+                        <div>
+                            <label for="bio" class="block text-sm font-medium text-gray-700 mb-1">个人简介</label>
+                            <%- include('../../components/textarea', { name: 'bio', id: 'bio', placeholder: '写点什么介绍一下自己...', value: user.bio }) %>
+                        </div>
+
+                        <!-- 社交链接 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">社交账户</label>
+                            <div class="space-y-3">
+                                <!-- GitHub -->
+                                <div class="flex items-center space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <i class="fab fa-github text-gray-800 text-xl w-6"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <%- include('../../components/input', { type: 'url', name: 'github_url', id: 'github_url', placeholder: 'https://github.com/username' }) %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 按钮组 -->
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <%- include('../../components/button', { type: 'submit', text: '保存更改', icon: 'fas fa-save', className: 'px-6 py-2' }) %>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../../layouts/base/footer') %>

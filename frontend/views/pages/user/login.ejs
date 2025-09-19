@@ -59,7 +59,9 @@
 
                 <!-- 第三方登录按钮 -->
                 <div class="pt-4 space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
-                    <%- include('../../components/button', { href: '/auth/github', text: 'GitHub', variant: 'outline', icon: 'fab fa-github', className: 'w-full justify-center text-gray-600 border-gray-300 hover:bg-gray-50 hover:border-gray-300 py-3 text-base' }) %>
+                    <% if (enableGitHub) { %>
+                        <%- include('../../components/button', { href: '/auth/github', text: 'GitHub', variant: 'outline', icon: 'fab fa-github', className: 'w-full justify-center text-gray-600 border-gray-300 hover:bg-gray-50 hover:border-gray-300 py-3 text-base' }) %>
+                    <% } %>
                     <%- include('../../components/button', { href: '/auth/google', text: 'Google', disabled: true, variant: 'outline', icon: 'fab fa-google', iconClass: 'text-red-500 text-base', className: 'w-full justify-center text-gray-600 border-gray-300 hover:bg-gray-50 hover:border-gray-300 py-3 text-base' }) %>
                 </div>
             </form>

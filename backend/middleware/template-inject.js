@@ -47,6 +47,7 @@ const templateInject = async (req, res, next) => {
 
         // 第三方
         res.locals.moment = moment
+        res.locals.enableGitHub=(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET)
 
         next()
     }
