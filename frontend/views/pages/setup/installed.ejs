@@ -1,0 +1,194 @@
+<%- include('../../layouts/base/header', { title: '系统已安装', hideNav: true }) %>
+
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl w-full space-y-8">
+        <!-- 警告图标 -->
+        <div class="text-center">
+            <div class="mx-auto h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-shield-alt text-orange-600 text-3xl"></i>
+            </div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                系统已安装
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                <%= locals.site?.site_name || 'InfoSphere' %> 已经成功安装并正在运行中
+            </p>
+        </div>
+
+        <!-- 系统状态卡片 -->
+        <div class="rounded-lg border shadow-md p-6 space-y-4">
+            <div class="border-b border-gray-200 pb-4">
+                <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+                    系统状态
+                </h3>
+            </div>
+
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-check-circle mr-2 text-green-500"></i>
+                        安装状态
+                    </span>
+                    <span class="text-sm font-medium text-green-600">已完成</span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-database mr-2 text-blue-500"></i>
+                        数据库连接
+                    </span>
+                    <span class="text-sm font-medium text-green-600">正常</span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-cog mr-2 text-gray-500"></i>
+                        系统配置
+                    </span>
+                    <span class="text-sm font-medium text-green-600">已加载</span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-globe mr-2 text-indigo-500"></i>
+                        站点名称
+                    </span>
+                    <span class="text-sm font-medium text-gray-900">
+                        <%= locals.site?.site_name || 'InfoSphere' %>
+                    </span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-clock mr-2 text-purple-500"></i>
+                        运行时间
+                    </span>
+                    <span class="text-sm font-medium text-gray-900">
+                        <%= Math.floor(process.uptime() / 3600) %> 小时 <%= Math.floor((process.uptime() % 3600) / 60) %> 分钟
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 安全提示 -->
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-yellow-800">
+                        安全提示
+                    </h3>
+                    <div class="mt-2 text-sm text-yellow-700">
+                        <p>系统已经完成安装，为了安全起见：</p>
+                        <ul class="list-disc list-inside space-y-1 mt-2">
+                            <li>请勿重复安装系统</li>
+                            <li>如需重新配置，请联系管理员</li>
+                            <li>建议定期更新和维护系统</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作选项 -->
+        <div class="space-y-3">
+            <!-- 返回首页按钮 -->
+            <%- include('../../components/button', { text: '返回首页', icon: 'fas fa-home', variant: 'primary', className: 'w-full', href: '/' }) %>
+
+            <!-- 其他操作 -->
+            <div class="grid grid-cols-2 gap-3">
+                <%- include('../../components/button', { text: '系统管理', icon: 'fas fa-cogs', variant: 'outline', className: 'flex-1', href: '/admin', target: '_blank' }) %>
+
+                <%- include('../../components/button', { text: '用户手册', icon: 'fas fa-book-open', variant: 'ghost', className: 'flex-1', href: 'https://infosphere.devlive.org/docs', target: '_blank' }) %>
+            </div>
+        </div>
+
+        <!-- 重新安装指南 -->
+        <div class="border-t border-gray-200 pt-6">
+            <details class="text-center">
+                <summary class="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+                    <i class="fas fa-question-circle mr-1"></i>
+                    需要重新安装？
+                </summary>
+                <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
+                    <h4 class="text-sm font-medium text-blue-800 mb-3">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        重新安装系统指南
+                    </h4>
+
+                    <div class="space-y-3 text-sm text-blue-700">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                                <span class="text-xs font-medium text-blue-600">1</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">停止应用服务</p>
+                                <p class="text-xs text-blue-600 mt-1">使用 Ctrl+C 或 pm2 stop 命令</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                                <span class="text-xs font-medium text-blue-600">2</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">删除配置文件</p>
+                                <div class="text-xs text-blue-600 mt-1 space-y-1">
+                                    <div class="bg-blue-100 p-2 rounded font-mono">
+                                        <div class="mb-1">Linux/Mac: rm .env</div>
+                                        <div>Windows: del .env</div>
+                                    </div>
+                                    <p class="text-blue-600">或直接在文件管理器中删除项目根目录下的 .env 文件</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                                <span class="text-xs font-medium text-blue-600">3</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">清理数据库（可选）</p>
+                                <p class="text-xs text-blue-600 mt-1">删除或清空相关数据库表</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                                <span class="text-xs font-medium text-blue-600">4</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">重新启动应用</p>
+                                <p class="text-xs text-blue-600 mt-1">系统将自动跳转到安装页面</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p class="text-xs text-yellow-700 flex items-start">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 mr-2 mt-0.5"></i>
+                            <span>
+                                <strong>重要提醒：</strong>删除 .env 文件将清除所有系统配置，包括应用密钥。请确保在删除前备份重要数据。
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- 版权信息 -->
+        <div class="text-center border-t border-gray-200 pt-6">
+            <p class="text-xs text-gray-500">
+                <%= locals.site?.site_name || 'InfoSphere' %> v<span class="text-base text-slate-900"><%= locals.site?.version || '1.0.0' %></span> © <%= new Date().getFullYear() %>
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+                Node.js <%= process.version %> | 进程 PID: <%= process.pid %>
+            </p>
+        </div>
+    </div>
+</div>
+
+<%- include('../../layouts/base/footer') %>

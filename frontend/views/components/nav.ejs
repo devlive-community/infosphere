@@ -1,0 +1,49 @@
+<%
+/**
+ * Nav Link 组件
+ * @param {String} href - 链接地址，默认为 '#'
+ * @param {String} text - 链接文本
+ * @param {String} icon - FontAwesome图标类名，可选
+ * @param {String} activePath - 当前页面路径，用于判断激活状态
+ * @param {String} target - 链接目标，默认为 '_self'
+ * @param {Boolean} disabled - 是否禁用，默认false
+ * @param {String} className - 额外的CSS类，可选
+ * @param {String} size - 尺寸，可选 'sm', 'md', 'lg'，默认'md'
+ */
+
+const linkHref = typeof href !== 'undefined' ? href : '#';
+const linkText = typeof text !== 'undefined' ? text : '链接';
+const linkIcon = typeof icon !== 'undefined' ? icon : '';
+const currentRoute = typeof activePath !== 'undefined' ? activePath : '';
+const linkTarget = typeof target !== 'undefined' ? target : '_self';
+const isDisabled = typeof disabled !== 'undefined' ? disabled : false;
+const extraClass = typeof className !== 'undefined' ? className : '';
+const linkSize = typeof size !== 'undefined' ? size : 'md';
+
+// 判断是否为当前页面
+const isActive = currentRoute === linkHref;
+
+// 尺寸样式
+const sizeClass = linkSize === 'sm' ? 'px-3 py-1.5 text-sm' :
+        linkSize === 'lg' ? 'px-6 py-3 text-lg' :
+                'px-4 py-2';
+
+// 激活状态样式
+const activeClass = isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700';
+
+// 禁用状态样式
+const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
+
+// 图标间距
+const iconSpacing = linkIcon ? 'space-x-2' : '';
+%>
+
+<a href="<%= linkHref %>"
+   target="<%= linkTarget %>"
+   <% if (isDisabled) { %>aria-disabled="true"<% } %>
+   class="font-medium <%= sizeClass %> rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200 inline-flex items-center <%= iconSpacing %> <%= activeClass %> <%= disabledClass %> <%= extraClass %>">
+    <% if (linkIcon) { %>
+        <i class="<%= linkIcon %>"></i>
+    <% } %>
+    <span><%= linkText %></span>
+</a>

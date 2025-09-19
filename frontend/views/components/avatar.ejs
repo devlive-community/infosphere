@@ -1,0 +1,21 @@
+<%
+/**
+ 参数:
+ - user: 用户对象 (必需)
+ - size: 尺寸类名 (可选，默认 'w-12 h-12')
+ - classes: 额外的CSS类 (可选)
+ **/
+%>
+<%
+// 设置默认值
+const avatarSize = typeof size !== 'undefined' ? size : 'w-12 h-12';
+const extraClasses = typeof classes !== 'undefined' ? classes : '';
+const avatarUrl = user.avatar_url || '/images/default-avatar.svg';
+const avatarAlt = user.name || user.username || 'User Avatar';
+%>
+
+<img src="<%= avatarUrl %>"
+     alt="<%= avatarAlt %>"
+     class="<%= avatarSize %> <%= extraClasses %>"
+     onerror="this.src='/images/default-avatar.svg'; this.onerror=null;"
+     loading="lazy"/>
