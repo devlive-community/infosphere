@@ -5,6 +5,7 @@ const bodyParser = require('body-parser')
 const flash = require('connect-flash')
 const session = require('express-session')
 const { createInstallationChecker } = require('./middleware/installation-checker')
+const { handle404, handleError } = require('./middleware/error-handlers')
 
 const app = express()
 const server = http.createServer(app)
@@ -46,6 +47,10 @@ const installChecker = createInstallationChecker({
     ]
 })
 app.use(installChecker.middleware())
+
+// 错误处理中间件
+app.use(handle404)
+app.use(handleError)
 
 // 模板基础信息中间件
 app.use(require('./middleware/template-inject'))
