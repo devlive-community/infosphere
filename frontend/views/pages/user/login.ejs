@@ -1,0 +1,80 @@
+<%- include('../../layouts/base/header', { title: '用户登录' }) %>
+
+<div class="min-h-screen flex flex-col justify-center py-6 px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-sm mx-auto sm:max-w-md">
+        <!-- Logo区域 -->
+        <div class="text-center">
+            <img src="/images/logo.png" alt="<%= site.site_name %>" class="mx-auto h-10 w-auto sm:h-12">
+            <h2 class="mt-4 text-2xl font-bold text-gray-900 sm:mt-6 sm:text-3xl">登录到 <%= site.site_name %></h2>
+            <p class="mt-2 text-sm text-gray-600">
+                还没有账号？
+                <a href="/register" class="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200">立即注册</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="mt-6 w-full max-w-sm mx-auto sm:mt-8 sm:max-w-md">
+        <div class="bg-white border border-gray-200 space-y-4 py-6 px-4 rounded-lg sm:py-8 sm:px-10">
+            <%- include('../../components/alert', { type: 'error', message: error }) %>
+            <form class="space-y-5 sm:space-y-6" action="/auth/login" method="POST">
+                <!-- 用户名/邮箱输入 -->
+                <div class="space-y-2">
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">用户名或邮箱</label>
+                    <%- include('../../components/input', { type: 'text', name: 'username', id: 'username', placeholder: '请输入用户名或邮箱', required: true }) %>
+                </div>
+
+                <!-- 密码输入 -->
+                <div class="space-y-2">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                    <%- include('../../components/input', { type: 'password', name: 'password', id: 'password', placeholder: '请输入密码', required: true }) %>
+                </div>
+
+                <!-- 记住我和忘记密码 -->
+                <div class="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                    <div class="flex items-center space-x-2">
+                        <%- include('../../components/input', { type: 'checkbox', name: 'remember_me', id: 'remember_me', className: '!h-4 !w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded' }) %>
+                        <label for="remember_me" class="text-sm text-gray-900 whitespace-nowrap">记住我</label>
+                    </div>
+                    <div class="text-sm">
+                        <a href="/user/forgot-password" class="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200">忘记密码？</a>
+                    </div>
+                </div>
+
+                <!-- 登录按钮 -->
+                <div class="pt-2">
+                    <%- include('../../components/button', { type: 'submit', text: '登录', icon: 'fas fa-sign-in-alt', className: 'w-full justify-center py-3 text-base' }) %>
+                </div>
+
+                <!-- 或者分割线 -->
+                <div class="pt-4">
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-white text-gray-500">或者使用</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 第三方登录按钮 -->
+                <div class="pt-4 space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
+                    <%- include('../../components/button', { href: '/auth/github', text: 'GitHub', variant: 'outline', icon: 'fab fa-github', className: 'w-full justify-center text-gray-600 border-gray-300 hover:bg-gray-50 hover:border-gray-300 py-3 text-base' }) %>
+                    <%- include('../../components/button', { href: '/auth/google', text: 'Google', variant: 'outline', icon: 'fab fa-google', iconClass: 'text-red-500 text-base', className: 'w-full justify-center text-gray-600 border-gray-300 hover:bg-gray-50 hover:border-gray-300 py-3 text-base' }) %>
+                </div>
+            </form>
+        </div>
+
+        <!-- 页面底部链接 -->
+        <div class="mt-6 text-center sm:mt-8">
+            <div class="text-sm text-gray-600">
+                <a href="/" class="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200">
+                    <i class="fas fa-arrow-left mr-1"></i>
+                    返回首页
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../../layouts/base/footer') %>

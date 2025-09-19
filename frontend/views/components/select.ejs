@@ -1,0 +1,153 @@
+<%
+/**
+ * Select 组件 - 自定义下拉选择器
+ * @param {String} name - select的name属性
+ * @param {Array} options - 选项数组 [{value: '', label: ''}, ...]
+ * @param {String} value - 默认选中值，可选
+ * @param {Boolean} required - 是否必填，默认false
+ * @param {String} className - 额外的CSS类，可选
+ * @param {String} id - select的id，用于唯一标识
+ */
+
+const selectId = typeof id !== 'undefined' ? id : 'select_' + Math.random().toString(36).substr(2, 9);
+const selectName = typeof name !== 'undefined' ? name : '';
+const selectOptions = typeof options !== 'undefined' ? options : [];
+const selectedValue = typeof value !== 'undefined' ? value : '';
+const isRequired = typeof required !== 'undefined' ? required : false;
+const extraClass = typeof className !== 'undefined' ? className : '';
+
+// 找到默认选中的选项
+const defaultOption = selectOptions.find(opt => opt.value === selectedValue) || selectOptions[0] || {value: '', label: '请选择'};
+%>
+
+<div class="relative" id="<%= selectId %>_container">
+    <!-- 隐藏的原生select，用于表单提交 -->
+    <select name="<%= selectName %>"
+            id="<%= selectId %>"
+            <% if (isRequired) { %>required<% } %>
+            class="hidden">
+        <% selectOptions.forEach(option => { %>
+            <option value="<%= option.value %>" <%= selectedValue === option.value ? 'selected' : '' %>>
+                <%= option.label %>
+            </option>
+        <% }); %>
+    </select>
+
+    <!-- 自定义选择器 -->
+    <div class="relative">
+        <!-- 选择框 -->
+        <button type="button"
+                id="<%= selectId %>_trigger"
+                class="w-full px-4 py-3.5 text-sm border border-gray-200 rounded-lg hover:border-blue-400 focus:ring-0 focus:ring-blue-600 transition-all duration-200 bg-white text-left flex items-center justify-between <%= extraClass %>"
+                onclick="toggleSelect('<%= selectId %>')">
+            <span id="<%= selectId %>_selected" class="block truncate"><%= defaultOption.label %></span>
+            <i id="<%= selectId %>_arrow" class="fas fa-chevron-down text-gray-400 transition-transform duration-300"></i>
+        </button>
+
+        <!-- 下拉选项列表 -->
+        <div id="<%= selectId %>_options"
+             class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible transform scale-95 transition-all duration-200 max-h-60 overflow-y-auto">
+            <% selectOptions.forEach((option, index) => { %>
+                <div class="px-4 py-3 my-1 text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors duration-150 flex items-center justify-between group <%= selectedValue === option.value ? 'bg-blue-50 text-blue-700' : 'text-gray-900' %>"
+                     onclick="selectOption('<%= selectId %>', '<%= option.value %>', '<%= option.label %>')">
+                    <span class="block truncate"><%= option.label %></span>
+                    <% if (selectedValue === option.value) { %>
+                        <i class="fas fa-check text-blue-600"></i>
+                    <% } %>
+                </div>
+            <% }); %>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleSelect(selectId) {
+        const options = document.getElementById(selectId + '_options');
+        const arrow = document.getElementById(selectId + '_arrow');
+        const trigger = document.getElementById(selectId + '_trigger');
+
+        if (options.classList.contains('invisible')) {
+            // 打开下拉列表
+            options.classList.remove('opacity-0', 'invisible', 'scale-95');
+            options.classList.add('opacity-100', 'visible', 'scale-100');
+            arrow.style.transform = 'rotate(180deg)';
+            arrow.classList.remove('text-gray-400');
+            arrow.classList.add('text-blue-600');
+            trigger.classList.add('ring-0', 'ring-blue-600', 'border-blue-600');
+        } else {
+            // 关闭下拉列表
+            options.classList.remove('opacity-100', 'visible', 'scale-100');
+            options.classList.add('opacity-0', 'invisible', 'scale-95');
+            arrow.style.transform = 'rotate(0deg)';
+            arrow.classList.remove('text-blue-600');
+            arrow.classList.add('text-gray-400');
+            trigger.classList.remove('ring-0', 'ring-blue-600', 'border-blue-600');
+        }
+    }
+
+    function selectOption(selectId, value, label) {
+        // 更新显示文本
+        document.getElementById(selectId + '_selected').textContent = label;
+
+        // 更新隐藏的select值
+        const hiddenSelect = document.getElementById(selectId);
+        hiddenSelect.value = value;
+
+        // 触发change事件
+        hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // 更新选中状态
+        const allOptions = document.querySelectorAll(`#${selectId}_options > div`);
+        allOptions.forEach(opt => {
+            opt.classList.remove('bg-blue-50', 'text-blue-700');
+            opt.classList.add('text-gray-900');
+            const checkIcon = opt.querySelector('.fa-check');
+            if (checkIcon) checkIcon.remove();
+        });
+
+        // 添加选中样式和图标
+        event.target.closest('div').classList.add('bg-blue-50', 'text-blue-700');
+        event.target.closest('div').classList.remove('text-gray-900');
+        const checkIcon = document.createElement('i');
+        checkIcon.className = 'fas fa-check text-blue-600';
+        event.target.closest('div').appendChild(checkIcon);
+
+        // 关闭下拉列表
+        toggleSelect(selectId);
+    }
+
+    // 点击外部关闭下拉列表
+    document.addEventListener('click', function(event) {
+        const allSelects = document.querySelectorAll('[id$="_container"]');
+        allSelects.forEach(container => {
+            if (!container.contains(event.target)) {
+                const selectId = container.id.replace('_container', '');
+                const options = document.getElementById(selectId + '_options');
+                const arrow = document.getElementById(selectId + '_arrow');
+                const trigger = document.getElementById(selectId + '_trigger');
+
+                if (options && !options.classList.contains('invisible')) {
+                    options.classList.remove('opacity-100', 'visible', 'scale-100');
+                    options.classList.add('opacity-0', 'invisible', 'scale-95');
+                    arrow.style.transform = 'rotate(0deg)';
+                    arrow.classList.remove('text-blue-600');
+                    arrow.classList.add('text-gray-400');
+                    trigger.classList.remove('ring-0', 'ring-blue-600', 'border-blue-600');
+                }
+            }
+        });
+    });
+
+    // ESC键关闭
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const allSelects = document.querySelectorAll('[id$="_options"]');
+            allSelects.forEach(options => {
+                if (!options.classList.contains('invisible')) {
+                    const selectId = options.id.replace('_options', '');
+                    toggleSelect(selectId);
+                }
+            });
+        }
+    });
+</script>

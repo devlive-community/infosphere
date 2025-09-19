@@ -1,0 +1,39 @@
+<%
+/**
+ * Input 组件
+ * @param {String} type - input类型，默认为 'text'
+ * @param {String} name - input的name属性
+ * @param {String} placeholder - placeholder文本
+ * @param {String} value - input的值，可选
+ * @param {Boolean} required - 是否必填，默认false
+ * @param {Boolean} disabled - 是否禁用，默认false
+ * @param {String} className - 额外的CSS类，可选
+ * @param {String} minWidth - 最小宽度类，可选
+ * @param {String} id - input的id属性，可选
+ */
+
+const inputId = typeof id !== 'undefined' ? id : 'input_' + Math.random().toString(36).substr(2, 9);
+const inputType = typeof type !== 'undefined' ? type : 'text';
+const inputName = typeof name !== 'undefined' ? name : '';
+const inputPlaceholder = typeof placeholder !== 'undefined' ? placeholder : '';
+const inputValue = typeof value !== 'undefined' ? value : '';
+const isRequired = typeof required !== 'undefined' ? required : false;
+const isDisabled = typeof disabled !== 'undefined' ? disabled : false;
+const isReadonly = typeof readonly !== 'undefined' ? readonly : false;
+const extraClass = typeof className !== 'undefined' ? className : '';
+const inputMinWidth = typeof minWidth !== 'undefined' ? minWidth : '';
+
+// 禁用状态样式
+const disabledClass = isDisabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '';
+const readonlyClass = isReadonly ? 'text-gray-500 cursor-not-allowed' : '';
+%>
+
+<input id="<%= inputId %>"
+       type="<%= inputType %>"
+       name="<%= inputName %>"
+       <% if (isRequired) { %>required<% } %>
+       <% if (isDisabled) { %>disabled<% } %>
+       <% if (isReadonly) { %>readonly<% } %>
+       <% if (inputValue) { %>value="<%= inputValue %>"<% } %>
+       class="w-full <%= inputMinWidth %> px-4 py-3 border border-gray-200 rounded-lg hover:border-blue-400 focus:border-blue-600 focus:outline-none focus:ring-0 focus:ring-blue-600 transition-colors duration-200 <%= disabledClass %> <%= readonlyClass %> <%= extraClass %>"
+       placeholder="<%= inputPlaceholder %>"/>
