@@ -7,7 +7,6 @@ const session = require('express-session')
 const MySQLStore = require('express-mysql-session')(session)
 const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
-
 const { createInstallationChecker } = require('./middleware/installation-checker')
 const { handle404, handleError } = require('./middleware/error-handlers')
 
