@@ -21,7 +21,7 @@ const initial = (user.name || user.username || 'U')[0].toUpperCase();
          onerror="this.src='/images/default.svg'; this.onerror=null;"
          loading="lazy"/>
 <% } else { %>
-    <div class="<%= avatarSize %> <%= extraClasses %> rounded-full bg-gray-400 flex items-center justify-center text-white font-medium">
+    <div class="<%= avatarSize %> <%= extraClasses %> rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
         <%= initial %>
     </div>
 <% } %>

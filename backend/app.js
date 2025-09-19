@@ -7,6 +7,7 @@ const session = require('express-session')
 const MySQLStore = require('express-mysql-session')(session)
 const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
+const methodOverride = require('method-override')
 const { createInstallationChecker } = require('./middleware/installation-checker')
 const { handle404, handleError } = require('./middleware/error-handlers')
 
@@ -23,6 +24,15 @@ app.set('trust proxy', 1)
 app.use(bodyParser.json({ limit: '10mb' }))
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
 app.use(express.static(path.join(__dirname, '../frontend/public')))
+
+// 转换 _method 为指定请求
+app.use(methodOverride(function (req, res) {
+    if (req.body && typeof req.body === 'object' && '_method' in req.body) {
+        const method = req.body._method
+        delete req.body._method
+        return method
+    }
+}))
 
 // 应用安装中间件
 const installChecker = createInstallationChecker({
