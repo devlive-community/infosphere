@@ -5,6 +5,9 @@ const bodyParser = require('body-parser')
 const flash = require('connect-flash')
 const session = require('express-session')
 const MySQLStore = require('express-mysql-session')(session)
+const passport = require('passport')
+const LocalStrategy = require('passport-local').Strategy
+
 const { createInstallationChecker } = require('./middleware/installation-checker')
 const { handle404, handleError } = require('./middleware/error-handlers')
 
@@ -37,13 +40,14 @@ const installChecker = createInstallationChecker({
 // 检查是否已安装，决定是否初始化数据库连接
 const isInstalled = installChecker.isInstalled()
 let sessionStore
+let User = null // 延迟加载用户模型
 
 if (isInstalled) {
-    // 只有在已安装的情况下才初始化数据库连接
     try {
         const { getPool } = require('./tools/db')
         const pool = getPool()
         sessionStore = new MySQLStore({}, pool)
+        User = require('./models/user') // 假设有 User.findById / User.login
         console.log('数据库连接池已初始化')
     }
     catch (error) {
@@ -73,6 +77,42 @@ if (sessionStore) {
 
 app.use(session(sessionConfig))
 app.use(flash())
+
+// ==================== Passport 配置 ====================
+if (isInstalled && User) {
+    app.use(passport.initialize())
+    app.use(passport.session())
+
+    passport.serializeUser((user, done) => {
+        done(null, user.id) // 存入 session
+    })
+
+    passport.deserializeUser(async (id, done) => {
+        try {
+            const user = await User.findById(id)
+            done(null, user)
+        }
+        catch (err) {
+            done(err)
+        }
+    })
+
+    passport.use(new LocalStrategy(
+        { usernameField: 'username', passwordField: 'password' },
+        async (username, password, done) => {
+            try {
+                const user = await User.login(username, password)
+                if (!user) {
+                    return done(null, false, { message: '用户名或密码错误' })
+                }
+                return done(null, user)
+            }
+            catch (err) {
+                return done(err)
+            }
+        }
+    ))
+}
 
 // 应用安装检查中间件
 app.use(installChecker.middleware())
