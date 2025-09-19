@@ -50,14 +50,7 @@ class User {
             const pool = getPool()
             const connection = await pool.getConnection()
             const [rows] = await connection.execute(`
-                  SELECT id,
-                         username,
-                         email,
-                         role,
-                         avatar,
-                         created_at,
-                         updated_at,
-                         is_active,
+                  SELECT *,
                          DATE_FORMAT(last_login_at, '%Y-%m-%d %H:%i:%s') AS last_login_at
                   FROM users
                   WHERE id = ?
@@ -288,6 +281,14 @@ class User {
             if (userData.is_active !== undefined) {
                 fields.push('is_active = ?')
                 values.push(userData.is_active)
+            }
+            if (userData.bio !== undefined) {
+                fields.push('bio = ?')
+                values.push(userData.bio)
+            }
+            if (userData.github_url !== undefined) {
+                fields.push('github_url = ?')
+                values.push(userData.github_url)
             }
 
             if (fields.length === 0) {

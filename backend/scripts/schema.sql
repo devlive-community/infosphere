@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS users
 (
     id            INT AUTO_INCREMENT PRIMARY KEY,
-    username      VARCHAR(50) UNIQUE  NOT NULL COMMENT '用户名',
+    username      VARCHAR(50) UNIQUE NOT NULL COMMENT '用户名',
     email         VARCHAR(100) UNIQUE COMMENT '邮箱',
     password      VARCHAR(255) COMMENT '密码哈希',
     role          ENUM ('admin', 'user') DEFAULT 'user' COMMENT '用户角色',
@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS users
     last_login_at TIMESTAMP              DEFAULT NULL COMMENT '最后登录时间',
     created_at    TIMESTAMP              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at    TIMESTAMP              DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    is_active     BOOLEAN                DEFAULT TRUE COMMENT '账户状态'
+    is_active     BOOLEAN                DEFAULT TRUE COMMENT '账户状态',
+    bio           VARCHAR(1000)          DEFAULT NULL COMMENT '个人简介',
+    github_url    VARCHAR(255)           DEFAULT NULL COMMENT 'GitHub 链接'
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='用户表';
