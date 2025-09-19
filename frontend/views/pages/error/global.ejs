@@ -62,7 +62,7 @@
                     <% if (user) { %>
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6 max-w-sm mx-auto">
                             <div class="flex items-center">
-                                <img src="<%= user.avatar_url || '/images/default-avatar.svg' %>"
+                                <img src="<%= user.avatar || '/images/default-avatar.svg' %>"
                                      alt="<%= user.username %>"
                                      class="h-10 w-10 rounded-full mr-3">
                                 <div class="text-left">

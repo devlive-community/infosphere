@@ -7,15 +7,21 @@
  **/
 %>
 <%
-// 设置默认值
 const avatarSize = typeof size !== 'undefined' ? size : 'w-12 h-12';
 const extraClasses = typeof classes !== 'undefined' ? classes : '';
-const avatarUrl = user.avatar_url || '/images/default-avatar.svg';
-const avatarAlt = user.name || user.username || 'User Avatar';
+const avatarUrl = user.avatar || null;
+const avatarAlt = user.name || user.username || 'Avatar';
+const initial = (user.name || user.username || 'U')[0].toUpperCase();
 %>
 
-<img src="<%= avatarUrl %>"
-     alt="<%= avatarAlt %>"
-     class="<%= avatarSize %> <%= extraClasses %>"
-     onerror="this.src='/images/default-avatar.svg'; this.onerror=null;"
-     loading="lazy"/>
+<% if (avatarUrl) { %>
+    <img src="<%= avatarUrl %>"
+         alt="<%= avatarAlt %>"
+         class="<%= avatarSize %> <%= extraClasses %> rounded-full object-cover"
+         onerror="this.src='/images/default.svg'; this.onerror=null;"
+         loading="lazy"/>
+<% } else { %>
+    <div class="<%= avatarSize %> <%= extraClasses %> rounded-full bg-gray-400 flex items-center justify-center text-white font-medium">
+        <%= initial %>
+    </div>
+<% } %>
