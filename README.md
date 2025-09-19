@@ -1,6 +1,6 @@
 <div align="center">
 
-<img width=80 src="docs/docs/assets/images/logo.png" />
+<img width=80 src="frontend/public/images/logo.png" />
 
 # InfoSphere
 
