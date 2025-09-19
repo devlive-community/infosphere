@@ -49,8 +49,19 @@ class User {
         try {
             const pool = getPool()
             const connection = await pool.getConnection()
-            const [rows] = await connection.execute(
-                'SELECT id, username, email, role, avatar, created_at, updated_at, is_active FROM users WHERE id = ?',
+            const [rows] = await connection.execute(`
+                  SELECT id,
+                         username,
+                         email,
+                         role,
+                         avatar,
+                         created_at,
+                         updated_at,
+                         is_active,
+                         DATE_FORMAT(last_login_at, '%Y-%m-%d %H:%i:%s') AS last_login_at
+                  FROM users
+                  WHERE id = ?
+                `,
                 [id]
             )
             connection.release()
@@ -197,8 +208,11 @@ class User {
         try {
             const pool = getPool()
             const connection = await pool.getConnection()
-            const [rows] = await connection.execute(
-                'SELECT * FROM users WHERE (username = ? OR email = ?)',
+            const [rows] = await connection.execute(`
+                  SELECT *
+                  FROM users
+                  WHERE (username = ? OR email = ?)
+                `,
                 [usernameOrEmail, usernameOrEmail]
             )
             connection.release()
@@ -516,6 +530,19 @@ class User {
         }
     }
 
+    static async updateLastLogin(id) {
+        try {
+            const pool = getPool()
+            await pool.query(
+                'UPDATE users SET last_login_at = NOW() WHERE id = ?',
+                [id]
+            )
+        }
+        catch (error) {
+            console.error('更新最后登录时间错误:', error.message)
+            throw error
+        }
+    }
 
     /**
      * 用户登录
@@ -546,6 +573,8 @@ class User {
             if (user.is_active === 0) {
                 throw new Error('账户已被禁用，请联系管理员!')
             }
+
+            await this.updateLastLogin(user.id)
 
             const { password: _, ...userInfo } = user
             return userInfo
