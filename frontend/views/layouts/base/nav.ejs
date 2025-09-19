@@ -1,26 +1,27 @@
 <!-- 顶部导航 -->
 <nav class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-            <!-- Logo区域 -->
-            <div class="flex items-center">
+        <div class="flex items-center h-16 justify-between w-full">
+            <!-- 左侧: Logo + 菜单 -->
+            <div class="flex items-center space-x-8">
+                <!-- Logo -->
                 <a href="/" class="flex items-center group">
                     <div class="flex items-center space-x-3">
                         <img src="/images/logo.png" alt="<%= locals.site?.site_name || 'InfoSphere' %>" class="h-10 w-auto transition-transform duration-300 group-hover:scale-110">
                         <span class="text-2xl font-bold text-gray-800"><%= locals.site?.site_name || 'InfoSphere' %></span>
                     </div>
                 </a>
+
+                <!-- 桌面端菜单 -->
+                <div class="hidden md:flex items-center space-x-6">
+                    <%- include('../../components/nav', { href: '/', text: '首页', icon: 'fas fa-home' }) %>
+                    <%- include('../../components/nav', { href: '/knowledge', text: '知识库', icon: 'fas fa-book' }) %>
+                    <%- include('../../components/nav', { href: '/document', text: '文档', icon: 'fas fa-file' }) %>
+                    <%- include('../../components/nav', { href: '/about', text: '关于', icon: 'fas fa-info' }) %>
+                </div>
             </div>
 
-            <!-- 桌面端导航菜单 -->
-            <div class="hidden md:flex items-center space-x-8">
-                <%- include('../../components/nav', { href: '/', text: '首页', icon: 'fas fa-home' }) %>
-                <%- include('../../components/nav', { href: '/knowledge', text: '知识库', icon: 'fas fa-book' }) %>
-                <%- include('../../components/nav', { href: '/document', text: '文档', icon: 'fas fa-file' }) %>
-                <%- include('../../components/nav', { href: '/about', text: '关于', icon: 'fas fa-info' }) %>
-            </div>
-
-            <!-- 桌面端用户操作区域 -->
+            <!-- 右侧用户操作区域 -->
             <div class="hidden md:flex items-center space-x-4">
                 <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated && user) { %>
                     <!-- 已登录用户 -->
@@ -75,7 +76,7 @@
                 <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated && user) { %>
                     <!-- 移动端已登录用户 -->
                     <div class="flex items-center px-3 py-2 mb-2">
-                        <img src="<%= user.avatar_url %>" alt="<%= user.username %>" class="w-8 h-8 rounded-full mr-3">
+                        <img src="<%= user.avatar %>" alt="<%= user.username %>" class="w-8 h-8 rounded-full mr-3">
                         <div>
                             <p class="text-sm font-medium text-gray-900"><%= user.name || user.username %></p>
                             <p class="text-xs text-gray-500">@<%= user.username %></p>

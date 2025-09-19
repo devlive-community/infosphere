@@ -2,6 +2,7 @@ const express = require('express')
 const { asyncHandler } = require('../middleware/async-handler')
 const router = express.Router()
 const User = require('../models/user')
+const githubPassport = require('../services/passport/github')
 
 router.get('/login', asyncHandler(async (req, res) => {
     if (req.user) {
@@ -9,6 +10,26 @@ router.get('/login', asyncHandler(async (req, res) => {
             user: req.user
         })
     }
+
+    const error = req.query.error
+    let errorMessage
+    switch (error) {
+        case 'github_auth_failed':
+            errorMessage = 'GitHub 身份验证失败'
+            break
+        case 'github_login_failed':
+            errorMessage = 'GitHub 登录失败'
+            break
+        case 'auth_failed':
+            errorMessage = '身份验证失败'
+            break
+        case 'login_failed':
+            errorMessage = '登录失败'
+            break
+        default:
+            errorMessage = ''
+    }
+    req.flash('error', errorMessage)
 
     res.render('pages/user/login')
 }))
@@ -38,6 +59,31 @@ router.post('/login', asyncHandler(async (req, res, next) => {
         return res.redirect('/auth/login')
     }
 }))
+
+router.get('/github', githubPassport.authenticate('github', {
+    scope: ['user:email']
+}))
+
+router.get('/github/callback',
+    githubPassport.authenticate('github', {
+        failureRedirect: '/auth/login?error=github_auth_failed'
+    }),
+    async (req, res) => {
+        try {
+            if (req.user && req.user.id) {
+                await User.updateLastLogin(req.user.id)
+            }
+
+            const returnTo = req.session.returnTo || '/'
+            delete req.session.returnTo
+            res.redirect(returnTo)
+        }
+        catch (error) {
+            console.error('GitHub callback error:', error)
+            res.redirect('/auth/login?error=github_login_failed')
+        }
+    }
+)
 
 router.get('/logout', (req, res, next) => {
     req.logout((err) => {
