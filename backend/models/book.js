@@ -251,6 +251,21 @@ class Book {
             throw error
         }
     }
+
+    static async incrementViewCount(id) {
+        try {
+            const pool = getPool()
+            await pool.query(
+                `UPDATE books
+                 SET view_count = view_count + 1
+                 WHERE id = ?`,
+                [id]
+            )
+        }
+        catch (error) {
+            console.error('Increment view count error:', error)
+        }
+    }
 }
 
 module.exports = Book
