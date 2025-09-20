@@ -3,11 +3,36 @@ const { asyncHandler } = require('../middleware/async-handler')
 const Book = require('../models/book')
 const { ensureAuthenticated } = require('../middleware/auth-handler')
 const coverUpload = require('../services/upload/cover')
+const PaginationHelper = require('../tools/pagination')
 const router = express.Router()
 
-router.get('/create', ensureAuthenticated, (req, res) => {
+router.get('/', ensureAuthenticated, asyncHandler(async (req, res) => {
+    const paginationParams = PaginationHelper.parseParams(req.query, {
+        defaultLimit: 10,
+        allowedLimits: [10, 20, 50, 100]
+    })
+
+    const searchParams = {
+        user_id: req.user.id
+    }
+
+    const [bookResponse, summaryResponse] = await Promise.all([
+        Book.findAllByConditions(paginationParams, searchParams),
+        Book.summaryByUser(req.user.id)
+    ])
+    delete searchParams.user_id
+
+    res.render('pages/book/self', {
+        data: bookResponse.data,
+        searchParams: searchParams,
+        summary: summaryResponse,
+        pagination: bookResponse.pagination
+    })
+}))
+
+router.get('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
     res.render('pages/book/info', { isEdit: false })
-})
+}))
 
 router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
     try {
@@ -37,7 +62,7 @@ router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
                 coverType: 'buffer'
             })
         }
-        res.redirect(`/book/${ book.slug }`)
+        res.redirect(`/book/info/${ book.slug }`)
     }
     catch (error) {
         console.error('创建书籍失败:', error)
@@ -186,12 +211,12 @@ router.delete('/:slug', ensureAuthenticated, asyncHandler(async (req, res) => {
     try {
         await Book.deleteById(book.id)
         req.flash('success', `书籍 ${ book.title } 删除成功`)
-        res.redirect('/book/my')
+        res.redirect('/book')
     }
     catch (error) {
         console.error('删除书籍失败:', error)
         req.flash('error', `书籍 ${ book.title } 删除失败：${ error }`)
-        res.redirect('/book/my')
+        res.redirect('/book')
     }
 }))
 

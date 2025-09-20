@@ -1,4 +1,5 @@
 const { getPool } = require('../tools/db')
+const PaginationHelper = require('../tools/pagination')
 
 class Book {
     /**
@@ -81,25 +82,126 @@ class Book {
         }
     }
 
-    /**
-     * 根据用户ID查找书籍
-     * @param {number} userId 用户ID
-     * @returns {Promise<Array>} 书籍数组
-     */
-    static async findByUserId(userId) {
+    static async findAllByConditions(paginationParams = null, searchParams = {}) {
         try {
             const pool = getPool()
-            const connection = await pool.getConnection()
-            const [rows] = await connection.execute(
-                'SELECT * FROM books WHERE user_id = ? ORDER BY created_at DESC',
-                [userId]
-            )
-            connection.release()
 
-            return rows
+            let whereConditions = []
+            let params = []
+
+            // 根据用户ID过滤
+            if (searchParams.user_id) {
+                whereConditions.push('b.user_id = ?')
+                params.push(searchParams.user_id)
+            }
+
+            // 根据标题搜索
+            if (searchParams.title) {
+                whereConditions.push('b.title LIKE ?')
+                params.push(`%${ searchParams.title }%`)
+            }
+
+            // 根据状态过滤
+            if (searchParams.status) {
+                whereConditions.push('b.status = ?')
+                params.push(searchParams.status)
+            }
+
+            // 根据可见性过滤
+            if (searchParams.is_public !== undefined) {
+                whereConditions.push('b.is_public = ?')
+                params.push(searchParams.is_public)
+            }
+
+            // 根据作者用户名搜索
+            if (searchParams.username) {
+                whereConditions.push('u.username LIKE ?')
+                params.push(`%${ searchParams.username }%`)
+            }
+
+            // 根据描述搜索
+            if (searchParams.description) {
+                whereConditions.push('b.description LIKE ?')
+                params.push(`%${ searchParams.description }%`)
+            }
+
+            // 根据slug搜索
+            if (searchParams.slug) {
+                whereConditions.push('b.slug LIKE ?')
+                params.push(`%${ searchParams.slug }%`)
+            }
+
+            const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
+
+            const baseQuery = `
+                SELECT b.id,
+                       b.title,
+                       b.description,
+                       b.cover_image,
+                       b.slug,
+                       b.status,
+                       b.is_public,
+                       b.view_count,
+                       DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                       DATE_FORMAT(b.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
+                       b.user_id,
+                       u.username,
+                       u.avatar,
+                       u.email
+                FROM books b
+                         LEFT JOIN users u ON b.user_id = u.id
+                    ${ whereClause }
+                ORDER BY b.created_at DESC
+            `
+
+            const countQuery = `
+                SELECT COUNT(*) as total
+                FROM books b
+                         LEFT JOIN users u ON b.user_id = u.id
+                    ${ whereClause }
+            `
+
+            let result
+            if (paginationParams) {
+                result = await PaginationHelper.executePaginatedQuery(
+                    pool, baseQuery, countQuery, params, paginationParams
+                )
+            }
+            else {
+                const connection = await pool.getConnection()
+                const [rows] = await connection.execute(baseQuery, params)
+                connection.release()
+
+                result = { data: rows, pagination: null }
+            }
+
+            return result
         }
         catch (error) {
-            console.error(`根据用户ID查找书籍失败 ${ userId }:`, error)
+            console.error(`根据条件查找书籍失败:`, error)
+            throw error
+        }
+    }
+
+    static async summaryByUser(user_id) {
+        try {
+            const pool = getPool()
+            const [rows] = await pool.query(`
+                SELECT COUNT(*)                                                       as total_books,
+                       SUM(view_count)                                                as total_views,
+                       SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END)          as published_count,
+                       SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END)              as draft_count,
+                       SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END)           as archived_count,
+                       SUM(CASE WHEN status = 'published' THEN view_count ELSE 0 END) as published_views,
+                       SUM(CASE WHEN status = 'draft' THEN view_count ELSE 0 END)     as draft_views,
+                       SUM(CASE WHEN status = 'archived' THEN view_count ELSE 0 END)  as archived_views
+                FROM books
+                WHERE user_id = ?
+            `, [user_id])
+
+            return rows[0]
+        }
+        catch (error) {
             throw error
         }
     }
