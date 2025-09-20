@@ -17,8 +17,7 @@
                                         <i class="fas fa-book text-gray-300 text-2xl md:text-4xl opacity-50"></i>
                                     </div>
                                 <% } %>
-
-                                <a href="/book/info/<%= book.slug %>">
+                                <a href="/book/<%= book.username %>/<%= book.slug %>">
                                     <div class="hidden md:flex absolute inset-0 bg-gray-700 bg-opacity-80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-col justify-center items-center text-center p-4 lg:p-6">
                                         <div class="text-white font-bold text-sm mb-3 leading-tight">
                                             <%= book.title %>
@@ -35,10 +34,8 @@
                                         </div>
                                     </div>
                                 </a>
-
-                                <a href="/book/info/<%= book.slug %>" class="md:hidden absolute inset-0 z-10"></a>
+                                <a href="/book/<%= book.username %>/<%= book.slug %>" class="md:hidden absolute inset-0 z-10"></a>
                             </div>
-
                             <div class="md:hidden p-3">
                                 <h3 class="text-sm font-medium text-gray-900 truncate mb-2">
                                     <%= book.title %>
@@ -69,11 +66,8 @@
                 </div>
             <% } %>
         </div>
-
         <% if (pagination?.totalItems > 0) { %>
-            <div class="mt-6 md:mt-8">
-                <%- include('../../components/pagination', { pagination: pagination }) %>
-            </div>
+            <%- include('../../components/pagination', { pagination: pagination }) %>
         <% } %>
     </div>
 </div>

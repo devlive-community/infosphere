@@ -1,0 +1,207 @@
+<%- include('../../layouts/base/header', { title: book.title }) %>
+
+<div class="min-h-screen py-4 md:py-8 bg-gradient-to-br from-gray-50 to-white">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div class="flex flex-col lg:flex-row gap-3 md:gap-8 max-w-7xl mx-auto">
+            <%- include('../../layouts/book/detail-nav', { book }) %>
+            <div class="flex-1 space-y-3 md:space-y-4">
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-3 md:p-6 space-y-4 md:space-y-6 backdrop-blur-sm bg-white/95">
+                    <!-- 标题和操作按钮区域 -->
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 md:gap-6">
+                        <div class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight break-words"><%= book.title %></div>
+                        <div class="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+                            <% if (isOwner) { %>
+                                <%- include('../../components/button', { href: `/book/${book.username}/${book.slug}/edit`, size: 'sm', text: '编辑书籍', icon: 'fas fa-edit' }) %>
+                                <form action="/book/<%= book.slug %>" method="POST" class="inline">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <%- include('../../components/button', { type: 'submit', size: 'sm', variant: 'danger', icon: 'fas fa-trash', text: '删除书籍' }) %>
+                                </form>
+                            <% } %>
+                            <%- include('../../components/button', { onclick: 'shareBook()', size: 'sm', text: '分享书籍', icon: 'fas fa-share-alt', variant: 'outline' }) %>
+                        </div>
+                    </div>
+                    <!-- 书籍信息网格 -->
+                    <div class="space-y-4">
+                        <!-- 第一行：作者和发布时间 -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- 作者信息 -->
+                            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+                                <h3 class="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3 flex items-center">
+                                    <i class="fas fa-user mr-1"></i>作者
+                                </h3>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-sm">
+                                        <i class="fas fa-user text-white text-sm"></i>
+                                    </div>
+                                    <span class="text-gray-900 font-medium break-words"><%= book.username || '未知作者' %></span>
+                                </div>
+                            </div>
+                            <!-- 发布时间 -->
+                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-100">
+                                <h3 class="text-xs font-semibold text-green-600 uppercase tracking-wider mb-3 flex items-center">
+                                    <i class="fas fa-calendar mr-1"></i>发布时间
+                                </h3>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-sm">
+                                        <i class="fas fa-calendar text-white text-sm"></i>
+                                    </div>
+                                    <span class="text-gray-900 font-medium text-sm"><%= book.created_at %></span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 第二行：状态、可见性、浏览量 -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <!-- 状态 -->
+                            <div class="bg-gradient-to-r from-purple-50 to-violet-50 p-4 rounded-lg border border-purple-100">
+                                <h3 class="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-3 flex items-center">
+                                    <i class="fas fa-circle mr-1"></i>状态
+                                </h3>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-violet-600 rounded-full flex items-center justify-center shadow-sm">
+                                        <i class="fas fa-circle text-white text-sm"></i>
+                                    </div>
+                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium shadow-sm
+                                    <% if (book.status === 'published') { %>bg-green-100 text-green-800 border border-green-200
+                                    <% } else if (book.status === 'draft') { %>bg-yellow-100 text-yellow-800 border border-yellow-200
+                                    <% } else { %>bg-gray-100 text-gray-800 border border-gray-200<% } %>">
+                                        <% if (book.status === 'published') { %>
+                                            <i class="fas fa-check-circle mr-1"></i>已发布
+                                        <% } else if (book.status === 'draft') { %>
+                                            <i class="fas fa-edit mr-1"></i>草稿
+                                        <% } else { %>
+                                            <i class="fas fa-archive mr-1"></i>已归档
+                                        <% } %>
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- 可见性 -->
+                            <div class="bg-gradient-to-r from-<%= book.is_public ? 'blue' : 'gray' %>-50 to-<%= book.is_public ? 'cyan' : 'slate' %>-50 p-4 rounded-lg border border-<%= book.is_public ? 'blue' : 'gray' %>-100">
+                                <h3 class="text-xs font-semibold text-<%= book.is_public ? 'blue' : 'gray' %>-600 uppercase tracking-wider mb-3 flex items-center">
+                                    <i class="<%= book.is_public ? 'fas fa-globe' : 'fas fa-lock' %> mr-1"></i>可见性
+                                </h3>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-<%= book.is_public ? 'blue-500 to-cyan-600' : 'gray-500 to-slate-600' %> rounded-full flex items-center justify-center shadow-sm">
+                                        <i class="<%= book.is_public ? 'fas fa-globe' : 'fas fa-lock' %> text-white text-sm"></i>
+                                    </div>
+                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium shadow-sm border
+                                    <% if (book.is_public) { %>bg-blue-100 text-blue-800 border-blue-200<% } else { %>bg-gray-100 text-gray-800 border-gray-200<% } %>">
+                                    <%= book.is_public ? '公开访问' : '私有访问' %>
+                                </span>
+                                </div>
+                            </div>
+                            <!-- 查看次数 -->
+                            <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg border border-amber-100">
+                                <h3 class="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-3 flex items-center">
+                                    <i class="fas fa-eye mr-1"></i>浏览量
+                                </h3>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-600 rounded-full flex items-center justify-center shadow-sm">
+                                        <i class="fas fa-eye text-white text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <span class="font-bold text-lg text-gray-900"><%= book.view_count || 0 %></span>
+                                        <span class="text-gray-600 text-sm ml-1">次查看</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 内容简介部分 -->
+                    <% if (book.description) { %>
+                        <div class="prose max-w-none">
+                            <div class="border-l-4 border-blue-500 pl-4 md:pl-6 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 p-4 md:p-6 rounded-r-lg">
+                                <h3 class="text-lg md:text-xl font-semibold text-gray-900 mb-3 md:mb-4 flex items-center">
+                                    <i class="fas fa-book-open text-blue-500 mr-2 text-lg"></i>
+                                    内容简介
+                                </h3>
+                                <div class="text-gray-700 leading-relaxed text-sm md:text-base whitespace-pre-wrap bg-white/80 p-4 md:p-6 rounded-lg shadow-sm border border-gray-100 backdrop-blur-sm"><%= book.description %></div>
+                            </div>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-12 md:py-16 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border-2 border-dashed border-gray-200">
+                            <div class="max-w-sm mx-auto px-4">
+                                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                    <i class="fas fa-file-text text-gray-400 text-2xl"></i>
+                                </div>
+                                <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">暂无内容简介</h3>
+                                <p class="text-sm md:text-base text-gray-500">作者还没有添加这本书的简介信息</p>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+                <!-- 阅读统计卡片 -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 md:p-6 backdrop-blur-sm bg-white/95">
+                    <div class="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6 flex items-center">
+                        <i class="fas fa-chart-bar text-indigo-500 mr-2 text-lg"></i>
+                        阅读统计
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+                        <!-- 浏览次数 -->
+                        <div class="text-center bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-6 rounded-xl border border-blue-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                            <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3 shadow-sm">
+                                <i class="fas fa-eye text-white text-sm md:text-base"></i>
+                            </div>
+                            <div class="text-xl md:text-2xl font-bold text-gray-900"><%= book.view_count || 0 %></div>
+                            <div class="text-xs md:text-sm text-blue-600 font-medium">浏览次数</div>
+                        </div>
+                        <!-- 收藏次数 -->
+                        <div class="text-center bg-gradient-to-br from-green-50 to-emerald-50 p-4 md:p-6 rounded-xl border border-green-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                            <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3 shadow-sm">
+                                <i class="fas fa-heart text-white text-sm md:text-base"></i>
+                            </div>
+                            <div class="text-xl md:text-2xl font-bold text-gray-900">0</div>
+                            <div class="text-xs md:text-sm text-green-600 font-medium">收藏次数</div>
+                        </div>
+                        <!-- 分享次数 -->
+                        <div class="text-center bg-gradient-to-br from-purple-50 to-violet-50 p-4 md:p-6 rounded-xl border border-purple-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                            <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3 shadow-sm">
+                                <i class="fas fa-share-alt text-white text-sm md:text-base"></i>
+                            </div>
+                            <div class="text-xl md:text-2xl font-bold text-gray-900">0</div>
+                            <div class="text-xs md:text-sm text-purple-600 font-medium">分享次数</div>
+                        </div>
+                        <!-- 最后更新 -->
+                        <div class="text-center bg-gradient-to-br from-amber-50 to-orange-50 p-4 md:p-6 rounded-xl border border-amber-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                            <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-amber-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3 shadow-sm">
+                                <i class="fas fa-clock text-white text-sm md:text-base"></i>
+                            </div>
+                            <div class="text-lg md:text-2xl font-bold text-gray-900">刚刚</div>
+                            <div class="text-xs md:text-sm text-amber-600 font-medium">最后更新</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function shareBook() {
+        if (navigator.share) {
+            navigator.share({
+                title: '<%= book.title %>',
+                text: '<%= book.description ? book.description.substring(0, 100) + "..." : "推荐一本好书" %>',
+                url: window.location.href
+            })
+        }
+        else {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                // 创建一个更美观的提示
+                const toast = document.createElement('div')
+                toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform transition-all duration-300'
+                toast.textContent = '链接已复制到剪贴板'
+                document.body.appendChild(toast)
+
+                setTimeout(() => {
+                    toast.style.transform = 'translateY(-100%)'
+                    toast.style.opacity = '0'
+                    setTimeout(() => document.body.removeChild(toast), 300)
+                }, 2000)
+            }).catch(() => {
+                alert('链接已复制到剪贴板')
+            })
+        }
+    }
+</script>
+
+<%- include('../../layouts/base/footer') %>
