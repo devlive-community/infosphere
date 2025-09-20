@@ -67,6 +67,8 @@ router.get(['/info/:slug', '/slug/:slug'], asyncHandler(async (req, res) => {
     // 获取文档树
     // const documents = await Document.getDocumentTree(bookId)
 
+    await Book.incrementViewCount(book.id)
+
     res.render('pages/book/detail', {
         book,
         // documents,
