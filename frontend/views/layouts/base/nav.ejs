@@ -1,5 +1,5 @@
 <!-- 顶部导航 -->
-<nav class="bg-white border-b">
+<nav class="bg-white border-b sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center h-16 justify-between w-full">
             <!-- 左侧: Logo + 菜单 -->
@@ -15,9 +15,7 @@
                 <!-- 桌面端菜单 -->
                 <div class="hidden md:flex items-center space-x-6">
                     <%- include('../../components/nav', { href: '/', text: '首页', icon: 'fas fa-home' }) %>
-                    <%- include('../../components/nav', { href: '/knowledge', text: '知识库', icon: 'fas fa-book' }) %>
-                    <%- include('../../components/nav', { href: '/document', text: '文档', icon: 'fas fa-file' }) %>
-                    <%- include('../../components/nav', { href: '/about', text: '关于', icon: 'fas fa-info' }) %>
+                    <%- include('../../components/nav', { href: '/books', text: '书籍', icon: 'fas fa-book' }) %>
                 </div>
             </div>
 
@@ -78,9 +76,7 @@
         <div class="hidden" id="mobile-menu">
             <div class="px-2 pt-2 pb-3 space-y-1 border-t border-gray-200 bg-white">
                 <%- include('../../components/nav', { href: '/', text: '首页', icon: 'fas fa-home', className: 'w-full justify-start px-3 py-3 text-base' }) %>
-                <%- include('../../components/nav', { href: '/knowledge', text: '知识库', icon: 'fas fa-book', className: 'w-full justify-start px-3 py-3 text-base' }) %>
-                <%- include('../../components/nav', { href: '/document', text: '文档', icon: 'fas fa-file', className: 'w-full justify-start px-3 py-3 text-base' }) %>
-                <%- include('../../components/nav', { href: '/about', text: '关于', icon: 'fas fa-info', className: 'w-full justify-start px-3 py-3 text-base' }) %>
+                <%- include('../../components/nav', { href: '/books', text: '书籍', icon: 'fas fa-book', className: 'w-full justify-start px-3 py-3 text-base' }) %>
             </div>
             <div class="px-2 py-3 border-t border-gray-200 space-y-2">
                 <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated && user) { %>

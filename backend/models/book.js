@@ -240,7 +240,7 @@ class Book {
                    u.email
             FROM books b
                      LEFT JOIN users u ON b.user_id = u.id
---             WHERE b.is_public = TRUE AND b.status = 'published'
+            WHERE b.is_public = TRUE AND b.status = 'published'
             ORDER BY b.view_count DESC LIMIT 6
         `)
 
