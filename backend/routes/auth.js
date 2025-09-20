@@ -3,6 +3,7 @@ const { asyncHandler } = require('../middleware/async-handler')
 const router = express.Router()
 const User = require('../models/user')
 const githubPassport = require('../services/passport/github')
+const { ensureAuthenticated, ensureOwnerOrAdmin } = require('../middleware/auth-handler')
 
 router.get('/login', asyncHandler(async (req, res) => {
     if (req.user) {
@@ -111,6 +112,39 @@ router.get('/github/callback',
         }
     }
 )
+
+router.delete('/unlink/:provider', ensureAuthenticated, asyncHandler(async (req, res) => {
+    const { provider } = req.params
+    const userId = req.user.id
+
+    try {
+        // 检查用户是否绑定了该第三方账号
+        const authentications = await User.getAuthentications(userId)
+        const targetAuth = authentications.find(auth => auth.provider === provider)
+
+        if (!targetAuth) {
+            req.flash('error', `未找到绑定的 ${ provider } 账号`)
+            return res.redirect('/user/security')
+        }
+
+        // 检查是否是唯一登录方式
+        const user = await User.findForAuth(req.user.username || req.user.email)
+        if ((!user.password || user.password === '') && authentications.length === 1) {
+            req.flash('error', '这是您唯一的登录方式，请先设置密码后再解绑')
+            return res.redirect('/user/security')
+        }
+
+        await User.removeAuthentication(userId, provider)
+        req.flash('success', `${ provider.toUpperCase() } 账号解绑成功`)
+
+    }
+    catch (error) {
+        console.error(`Unlink ${ provider } error:`, error)
+        req.flash('error', error.message || `解绑 ${ provider } 账号失败`)
+    }
+
+    res.redirect('/user/security')
+}))
 
 router.get('/logout', (req, res, next) => {
     req.logout((err) => {

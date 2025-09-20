@@ -48,7 +48,10 @@
                                 </div>
                                 <span class="text-xs text-green-600 font-medium">
                                     <% if (user.authentications.some(auth => auth.provider === 'github')) { %>
-                                        <%- include('../../components/button', { text: '取消绑定', icon: 'fas fa-circle-xmark', variant: 'danger', className: '!px-3 !py-1.5' }) %>
+                                        <form action="/auth/unlink/github" method="POST">
+                                            <input type="hidden" name="_method" value="DELETE">
+                                            <%- include('../../components/button', { text: '取消绑定', type: 'submit', icon: 'fas fa-circle-xmark', variant: 'danger', className: '!px-3 !py-1.5' }) %>
+                                       </form>
                                     <% } else { %>
                                         <%- include('../../components/button', { text: '绑定', href: '/auth/github', icon: 'fas fa-circle-plus', className: '!px-3 !py-1.5' }) %>
                                     <% } %>
@@ -94,7 +97,7 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         <% if (locals.customError || locals.customSuccess) { %>
-            openChangePasswordModal()
+        openChangePasswordModal()
         <% } %>
     })
 </script>

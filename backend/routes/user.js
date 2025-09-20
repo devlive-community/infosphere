@@ -13,7 +13,7 @@ router.get('/profile', ensureAuthenticated, asyncHandler(async (req, res) => {
     })
 }))
 
-router.put('/profile', ensureAuthenticated, ensureOwnerOrAdmin, asyncHandler(async (req, res) => {
+router.put('/profile', ensureAuthenticated, asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id)
     if (!user) {
         req.flash('error', '用户不存在')
@@ -34,7 +34,7 @@ router.get('/security', ensureAuthenticated, asyncHandler(async (req, res) => {
     })
 }))
 
-router.put('/security', ensureAuthenticated, ensureOwnerOrAdmin, asyncHandler(async (req, res, next) => {
+router.put('/security', ensureAuthenticated, asyncHandler(async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id)
         if (!user) {
