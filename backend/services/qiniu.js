@@ -2,6 +2,7 @@ const qiniu = require('qiniu')
 const axios = require('axios')
 const crypto = require('crypto')
 const User = require('../models/user')
+const Book = require('../models/book')
 
 class QiniuService {
     constructor() {
@@ -34,7 +35,20 @@ class QiniuService {
     }
 
     /**
-     * Get file extension from URL
+     * Generate file key for book cover
+     * @param {string} bookId Book ID
+     * @param {string} provider Provider (manual, douban, amazon, etc.)
+     * @param {string} originalUrl Original cover URL or filename
+     * @returns {string} File key
+     */
+    generateCoverKey(bookId, provider, originalUrl) {
+        const ext = this.getFileExtension(originalUrl)
+        const randomId = crypto.randomBytes(8).toString('hex')
+        return `infosphere/images/cover/${ provider }/${ randomId }.${ ext }`
+    }
+
+    /**
+     * Get file extension from URL or filename
      * @param {string} url
      * @returns {string}
      */
@@ -43,7 +57,7 @@ class QiniuService {
             return 'jpg'
         }
 
-        // Extract extension from URL
+        // Extract extension from URL or filename
         const match = url.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i)
         if (match) {
             return match[1].toLowerCase()
@@ -113,7 +127,7 @@ class QiniuService {
                 }
             }
 
-            // Validate buffer size (limit to 10MB for thumbnails)
+            // Validate buffer size (limit to 10MB for images)
             if (buffer.length > 10 * 1024 * 1024) {
                 throw new Error('File too large, exceeds 10MB limit')
             }
@@ -220,6 +234,56 @@ class QiniuService {
     }
 
     /**
+     * Process book cover upload task
+     * @param {Object} task Task information from cover uploader
+     * @returns {Promise<string>} Returns new cover URL
+     */
+    async processCoverTask(task) {
+        try {
+            const { bookId, userId, provider, title, cover, coverType } = task
+
+            if (!cover) {
+                console.log(`Book ${ bookId } does not have a valid cover, skipping upload`)
+                return null
+            }
+
+            // Check if it's already a Qiniu Cloud URL
+            if (typeof cover === 'string' && cover.includes(this.domain)) {
+                console.log(`Book ${ bookId } cover is already on Qiniu Cloud, skipping upload`)
+                return cover
+            }
+
+            const key = this.generateCoverKey(bookId, provider, typeof cover === 'string' ? cover : 'cover.jpg')
+            let qiniuUrl
+
+            if (coverType === 'buffer' && Buffer.isBuffer(cover)) {
+                // Upload from buffer (file upload)
+                qiniuUrl = await this.uploadBuffer(cover, key, true)
+            }
+            else if (typeof cover === 'string' && cover.startsWith('http')) {
+                // Upload from URL
+                qiniuUrl = await this.uploadFromUrl(cover, key, true)
+            }
+            else {
+                throw new Error('Invalid cover data type')
+            }
+
+            // Update book's cover in database if Book model exists
+            if (Book && Book.update) {
+                await Book.update(bookId, { cover_image: qiniuUrl })
+                console.log(`Successfully updated cover for book ${ bookId }: ${ qiniuUrl }`)
+            }
+
+            return qiniuUrl
+        }
+        catch (error) {
+            console.error(`Failed to process cover for book ${ task.bookId }:`, error.message)
+            // Return original URL if upload fails and it's a string
+            return typeof task.cover === 'string' ? task.cover : null
+        }
+    }
+
+    /**
      * Process user avatar (legacy method for backward compatibility)
      * @param {Object} user User information
      * @returns {Promise<string>} Returns new avatar URL
@@ -248,6 +312,47 @@ class QiniuService {
             console.error(`Failed to process avatar for user ${ user.id }:`, error.message)
             // Return original URL if upload fails
             return user.avatar
+        }
+    }
+
+    /**
+     * Process book cover (direct method)
+     * @param {Object} coverData Cover information
+     * @returns {Promise<string>} Returns new cover URL
+     */
+    async processCover(coverData) {
+        try {
+            const { bookId, provider = 'manual', cover, coverType = 'url' } = coverData
+
+            if (!cover) {
+                console.log('No cover data provided, skipping upload')
+                return null
+            }
+
+            // Check if it's already a Qiniu Cloud URL
+            if (typeof cover === 'string' && cover.includes(this.domain)) {
+                console.log('Cover is already on Qiniu Cloud, skipping upload')
+                return cover
+            }
+
+            const key = this.generateCoverKey(bookId, provider, typeof cover === 'string' ? cover : 'cover.jpg')
+            let qiniuUrl
+
+            if (coverType === 'buffer' && Buffer.isBuffer(cover)) {
+                qiniuUrl = await this.uploadBuffer(cover, key, true)
+            }
+            else if (typeof cover === 'string' && cover.startsWith('http')) {
+                qiniuUrl = await this.uploadFromUrl(cover, key, true)
+            }
+            else {
+                throw new Error('Invalid cover data type')
+            }
+
+            return qiniuUrl
+        }
+        catch (error) {
+            console.error(`Failed to process cover:`, error.message)
+            return typeof coverData.cover === 'string' ? coverData.cover : null
         }
     }
 }

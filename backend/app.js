@@ -2,6 +2,7 @@ const express = require('express')
 const http = require('http')
 const path = require('path')
 const bodyParser = require('body-parser')
+const multer = require('multer')
 const flash = require('connect-flash')
 const session = require('express-session')
 const MySQLStore = require('express-mysql-session')(session)
@@ -23,6 +24,25 @@ app.set('trust proxy', 1)
 // 配置中间件
 app.use(bodyParser.json({ limit: '10mb' }))
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
+// 处理 multipart/form-data
+const storage = multer.memoryStorage() // 使用内存存储，直接传给七牛云
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB
+        files: 5
+    }
+})
+app.use((req, res, next) => {
+    const contentType = req.headers['content-type']
+    if (contentType && contentType.includes('multipart/form-data')) {
+        upload.any()(req, res, next) // 接受任何字段的任何文件
+    }
+    else {
+        next()
+    }
+})
+
 app.use(express.static(path.join(__dirname, '../frontend/public')))
 
 // 转换 _method 为指定请求

@@ -9,6 +9,7 @@ router.get('/', asyncHandler(async (req, res) => {
 router.use('/setup', require('./setup'))
 router.use('/auth', require('./auth'))
 router.use('/user', require('./user'))
+router.use('/book', require('./book'))
 router.use('/system', require('./system'))
 
 module.exports = router
