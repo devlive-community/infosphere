@@ -44,6 +44,10 @@ const templateInject = async (req, res, next) => {
         const error = req.flash('error')
         res.locals.success = success.length > 0 ? success : null
         res.locals.error = error.length > 0 ? error : null
+        const customSuccess = req.flash('customSuccess')
+        const customError = req.flash('customError')
+        res.locals.customSuccess = customSuccess.length > 0 ? customSuccess : null
+        res.locals.customError = customError.length > 0 ? customError : null
 
         // 第三方
         res.locals.moment = moment

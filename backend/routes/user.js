@@ -1,5 +1,5 @@
 const express = require('express')
-const { ensureAuthenticated } = require('../middleware/auth-handler')
+const { ensureAuthenticated, ensureOwnerOrAdmin } = require('../middleware/auth-handler')
 const User = require('../models/user')
 const { asyncHandler } = require('../middleware/async-handler')
 const router = express.Router()
@@ -35,35 +35,41 @@ router.get('/security', ensureAuthenticated, asyncHandler(async (req, res) => {
 }))
 
 router.put('/security', ensureAuthenticated, asyncHandler(async (req, res, next) => {
-    const user = await User.findById(req.user.id)
-    if (!user) {
-        req.flash('error', '用户不存在')
-        return res.redirect('/user/security')
-    }
+    try {
+        const user = await User.findById(req.user.id)
+        if (!user) {
+            req.flash('customError', '用户不存在')
+            return res.redirect('/user/security')
+        }
 
-    const { old_password, new_password, confirm_password } = req.body
+        const { old_password, new_password, confirm_password } = req.body
 
-    if (new_password !== confirm_password) {
-        req.flash('error', '两次输入的密码不一致')
-        return res.redirect('/user/security')
-    }
+        if (new_password !== confirm_password) {
+            req.flash('customError', '两次输入的密码不一致')
+            return res.redirect('/user/security')
+        }
 
-    if (!await User.verifyPassword(old_password, user.password)) {
-        req.flash('error', '旧密码错误')
-        return res.redirect('/user/security')
-    }
+        if (!await User.verifyPassword(old_password, user.password)) {
+            req.flash('customError', '旧密码错误')
+            return res.redirect('/user/security')
+        }
 
-    if (await User.updatePassword(user.id, new_password)) {
-        req.logout((err) => {
-            if (err) {
-                return next(err)
-            }
-            req.flash('success', '密码更新成功，请重新登录！')
-            res.redirect('/auth/login')
-        })
+        if (await User.updatePassword(user.id, new_password)) {
+            req.logout((err) => {
+                if (err) {
+                    return next(err)
+                }
+                req.flash('customSuccess', '密码更新成功，请重新登录！')
+                res.redirect('/auth/login')
+            })
+        }
+        else {
+            req.flash('customError', '密码更新失败')
+            return res.redirect('/user/security')
+        }
     }
-    else {
-        req.flash('error', '密码更新失败')
+    catch (error) {
+        req.flash('customError', '密码更新失败: ' + error.message)
         return res.redirect('/user/security')
     }
 }))

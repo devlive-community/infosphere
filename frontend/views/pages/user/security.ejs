@@ -13,6 +13,8 @@
                     </div>
 
                     <div class="px-6 py-6 space-y-6">
+                        <%- include('../../components/alert', { type: 'error', message: error }) %>
+                        <%- include('../../components/alert', { type: 'success', message: success }) %>
                         <!-- 修改密码 -->
                         <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                             <div>
@@ -24,6 +26,38 @@
                                 修改密码
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900">登录方式</h4>
+                            <p class="text-sm text-gray-500">绑定其他登录方式</p>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <% if (enableGitHub) { %>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fab fa-github fa-2xl text-gray-600"></i>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">GitHub</p>
+                                        <p class="text-xs text-gray-500">连接您的 GitHub 账号</p>
+                                    </div>
+                                </div>
+                                <span class="text-xs text-green-600 font-medium">
+                                    <% if (user.authentications.some(auth => auth.provider === 'github')) { %>
+                                        <form action="/auth/unlink/github" method="POST">
+                                            <input type="hidden" name="_method" value="DELETE">
+                                            <%- include('../../components/button', { text: '取消绑定', type: 'submit', icon: 'fas fa-circle-xmark', variant: 'danger', className: '!px-3 !py-1.5' }) %>
+                                       </form>
+                                    <% } else { %>
+                                        <%- include('../../components/button', { text: '绑定', href: '/auth/github', icon: 'fas fa-circle-plus', className: '!px-3 !py-1.5' }) %>
+                                    <% } %>
+                                </span>
+                            </div>
+                        <% } %>
                     </div>
                 </div>
 
@@ -62,8 +96,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        <% if (locals.error || locals.success) { %>
-            openChangePasswordModal()
+        <% if (locals.customError || locals.customSuccess) { %>
+        openChangePasswordModal()
         <% } %>
     })
 </script>

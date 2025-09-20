@@ -8,8 +8,9 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     passport.use(new GitHubStrategy({
         clientID: process.env.GITHUB_CLIENT_ID,
         clientSecret: process.env.GITHUB_CLIENT_SECRET,
-        callbackURL: process.env.GITHUB_CALLBACK_URL || 'http://localhost:6969/auth/github/callback'
-    }, async (accessToken, refreshToken, profile, done) => {
+        callbackURL: process.env.GITHUB_CALLBACK_URL || 'http://localhost:6969/auth/github/callback',
+        passReqToCallback: true
+    }, async (req, accessToken, refreshToken, profile, done) => {
         try {
             const authData = {
                 provider: 'github',
@@ -27,10 +28,29 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
                 avatar: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : null
             }
 
-            // 您的现有逻辑...
             let user = await User.findByProvider('github', profile.id)
 
+            // 检查是否是绑定操作（用户已登录）
+            const isBinding = req.session.passport && req.session.passport.user
+
             if (user) {
+                if (isBinding && user.id !== req.session.passport.user) {
+                    // GitHub已被其他用户绑定，返回特殊对象而不是失败
+                    return done(null, {
+                        bindingError: 'github_already_linked',
+                        id: req.session.passport.user
+                    })
+                }
+
+                if (isBinding && user.id === req.session.passport.user) {
+                    // 用户尝试绑定自己已经绑定的GitHub
+                    return done(null, {
+                        bindingError: 'already_linked_self',
+                        id: req.session.passport.user
+                    })
+                }
+
+                // 正常登录流程
                 await User.updateLastLogin(user.id)
                 await User.updateAuthTokens(user.id, 'github', {
                     access_token: accessToken,
@@ -43,6 +63,17 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
                 }
             }
             else {
+                if (isBinding) {
+                    // 绑定新的GitHub账号，返回成功状态但标记为绑定操作
+                    return done(null, {
+                        bindingSuccess: true,
+                        id: req.session.passport.user,
+                        authData: authData,
+                        userData: userData
+                    })
+                }
+
+                // 正常注册/登录流程
                 if (userData.email) {
                     const existingUser = await User.findByEmail(userData.email)
                     if (existingUser) {
