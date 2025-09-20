@@ -21,7 +21,16 @@ const extraClass = typeof className !== 'undefined' ? className : '';
 const linkSize = typeof size !== 'undefined' ? size : 'md';
 
 // 判断是否为当前页面
-const isActive = currentRoute === linkHref;
+const getCurrentPath = (url) => {
+    try {
+        return new URL(url, window.location.origin).pathname;
+    }
+    catch {
+        return url.split('?')[0];
+    }
+};
+
+const isActive = getCurrentPath(currentRoute) === getCurrentPath(linkHref);
 
 // 尺寸样式
 const sizeClass = linkSize === 'sm' ? 'px-3 py-1.5 text-sm' :
@@ -40,7 +49,8 @@ const iconSpacing = linkIcon ? 'space-x-2' : '';
 
 <a href="<%= linkHref %>"
    target="<%= linkTarget %>"
-   <% if (isDisabled) { %>aria-disabled="true"<% } %>
+   <% if (isDisabled) { %>aria-disabled="true"
+        <% } %>
    class="font-medium <%= sizeClass %> rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200 inline-flex items-center <%= iconSpacing %> <%= activeClass %> <%= disabledClass %> <%= extraClass %>">
     <% if (linkIcon) { %>
         <i class="<%= linkIcon %>"></i>
