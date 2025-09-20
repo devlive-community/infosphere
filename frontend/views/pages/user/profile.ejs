@@ -1,6 +1,6 @@
 <%- include('../../layouts/base/header', { title: '个人资料' }) %>
 
-<div class="min-h-screen bg-gray-50 py-8">
+<div class="min-h-screen py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
             <%- include('../../layouts/user/nav', { user: user }) %>
@@ -8,7 +8,7 @@
             <!-- 主要内容区域 -->
             <div class="flex-1">
                 <!-- 基本信息表单 -->
-                <div id="profile" class="bg-white rounded-lg shadow">
+                <div id="profile" class="bg-white rounded-lg border">
                     <div class="px-6 py-4 border-b border-gray-200">
                         <h3 class="text-lg font-medium text-gray-900">基本信息</h3>
                         <p class="mt-1 text-sm text-gray-500">更新您的个人信息</p>

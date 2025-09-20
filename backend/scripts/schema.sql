@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS site_configs
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='站点配置表';
 
-CREATE TABLE user_authentications
+CREATE TABLE IF NOT EXISTS user_authentications
 (
     id                INT PRIMARY KEY AUTO_INCREMENT,
     user_id           INT                                                       NOT NULL,
@@ -51,3 +51,53 @@ CREATE TABLE user_authentications
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT '用户认证表';
+
+-- 书籍表
+CREATE TABLE IF NOT EXISTS books
+(
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(255) NOT NULL COMMENT '书籍标题',
+    description TEXT COMMENT '书籍描述',
+    cover_image VARCHAR(500) COMMENT '封面图片URL',
+    slug        VARCHAR(255) NOT NULL COMMENT 'URL路径标识符',
+    user_id     INT          NOT NULL COMMENT '作者ID',
+    status      ENUM ('draft', 'published', 'archived') DEFAULT 'draft' COMMENT '状态',
+    is_public   BOOLEAN                                 DEFAULT FALSE COMMENT '是否公开',
+    view_count  INT                                     DEFAULT 0 COMMENT '浏览次数',
+    created_at  TIMESTAMP                               DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP                               DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_slug (slug),
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status),
+    INDEX idx_is_public (is_public),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT '书籍表';
+
+-- 文档表（支持多级结构）
+CREATE TABLE IF NOT EXISTS documents
+(
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    book_id    INT          NOT NULL COMMENT '所属书籍ID',
+    parent_id  INT          NULL COMMENT '父文档ID，NULL表示顶级文档',
+    title      VARCHAR(255) NOT NULL COMMENT '文档标题',
+    slug       VARCHAR(255) NOT NULL COMMENT 'URL路径标识符',
+    content    LONGTEXT COMMENT '文档内容',
+    user_id    INT          NOT NULL COMMENT '创建者ID',
+    sort_order INT                                     DEFAULT 0 COMMENT '排序顺序',
+    status     ENUM ('draft', 'published', 'archived') DEFAULT 'draft' COMMENT '状态',
+    created_at TIMESTAMP                               DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP                               DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_book_id (book_id),
+    INDEX idx_parent_id (parent_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_sort_order (sort_order),
+    INDEX idx_status (status),
+    UNIQUE KEY unique_book_slug (book_id, slug),
+    FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES documents (id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT '文档表';
