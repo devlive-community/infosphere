@@ -1,3 +1,132 @@
 <%- include('../layouts/base/header', { title: '首页' }) %>
 
+<div class="min-h-screen">
+    <div class="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 relative overflow-hidden">
+        <div class="absolute inset-0 bg-black opacity-10"></div>
+        <div class="absolute inset-0">
+            <div class="absolute top-10 left-10 w-20 h-20 bg-white opacity-10 rounded-full animate-pulse"></div>
+            <div class="absolute top-32 right-20 w-16 h-16 bg-white opacity-5 rounded-full animate-bounce"></div>
+            <div class="absolute bottom-20 left-1/4 w-12 h-12 bg-white opacity-15 rounded-full animate-ping"></div>
+        </div>
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+            <div class="text-center">
+                <h1 class="text-5xl md:text-7xl font-bold text-white mb-8 tracking-tight drop-shadow-lg"><%= locals.site?.site_name %></h1>
+                <p class="text-xl md:text-3xl text-blue-100 mb-8 max-w-3xl mx-auto font-light drop-shadow-md"><%= locals.site?.site_description %></p>
+                <div class="flex flex-col sm:flex-row gap-6 justify-center">
+                    <% if (user) { %>
+                        <%- include('../components/button', { href: '/book/create', text: '创建书籍', target: '_blank', icon: 'fas fa-plus', size: 'lg', className: 'px-8 py-4 text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
+                        <%- include('../components/button', { href: '/books', text: '浏览书籍', icon: 'fas fa-book', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-white text-white hover:bg-white hover:text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
+                    <% } else { %>
+                        <%- include('../components/button', { href: '/auth/register', text: '开始创作', target: '_blank', icon: 'fas fa-rocket', size: 'lg', className: 'px-8 py-4 text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
+                        <%- include('../components/button', { href: '/books', text: '探索内容', icon: 'fas fa-compass', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-white text-white hover:bg-white hover:text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div class="text-center transform hover:scale-110 transition-transform duration-300 cursor-pointer">
+                    <div class="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        <%= stats?.total_books || 0 %>
+                    </div>
+                    <div class="text-gray-600 font-medium">书籍总数</div>
+                </div>
+                <div class="text-center transform hover:scale-110 transition-transform duration-300 cursor-pointer">
+                    <div class="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                        <%= stats?.total_users || 0 %>
+                    </div>
+                    <div class="text-gray-600 font-medium">注册用户</div>
+                </div>
+                <div class="text-center transform hover:scale-110 transition-transform duration-300 cursor-pointer">
+                    <div class="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                        <%= stats?.total_views || 0 %>
+                    </div>
+                    <div class="text-gray-600 font-medium">总浏览量</div>
+                </div>
+                <div class="text-center transform hover:scale-110 transition-transform duration-300 cursor-pointer">
+                    <div class="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                        <%= stats?.total_shares || 0 %>
+                    </div>
+                    <div class="text-gray-600 font-medium">分享次数</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-20 bg-gradient-to-b from-gray-50 to-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">热门书籍</h2>
+                <p class="text-xl text-gray-600">发现社区中最受欢迎的内容</p>
+            </div>
+
+            <% if (hotBooks && hotBooks.length > 0) { %>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                    <% hotBooks.forEach(book => { %>
+                        <div class="bg-white rounded-lg hover:-translate-y-2 transition-all duration-300 border border-gray-100 overflow-hidden group">
+                            <div class="p-8">
+                                <div class="flex flex-col space-y-6">
+                                    <div class="flex items-start space-x-6">
+                                        <div class="flex-shrink-0">
+                                            <% if (book.cover_image) { %>
+                                                <img src="<%= book.cover_image %>"
+                                                     alt="<%= book.title %>"
+                                                     class="min-w-32 max-w-32 min-h-44 max-h-44 sm:w-16 sm:h-full object-cover rounded-lg shadow-sm">
+                                            <% } else { %>
+                                                <div class="min-w-32 max-w-32 min-h-44 max-h-44 sm:w-16 sm:h-full bg-gray-200 rounded-lg flex items-center justify-center">
+                                                    <i class="fas fa-book fa-2x text-gray-400"></i>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="text-xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors duration-200 leading-tight">
+                                                <a href="/book/info/<%= book.slug %>" class="hover:text-blue-600">
+                                                    <%= book.title %>
+                                                </a>
+                                            </h3>
+                                            <p class="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                                                <%= book.description ? book.description.substring(0, 120) + '...' : '暂无描述' %>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                                        <span class="flex items-center font-medium text-gray-600">
+                                            <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                                <i class="fas fa-user text-blue-600 text-xs"></i>
+                                            </div>
+                                            <%= book.username || '匿名' %>
+                                        </span>
+                                        <span class="flex items-center font-medium text-gray-600">
+                                            <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mr-2">
+                                                <i class="fas fa-eye text-green-600 text-xs"></i>
+                                            </div>
+                                            <%= book.view_count || 0 %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } else { %>
+                <div class="text-center py-16 bg-white rounded-2xl shadow-lg border border-gray-100">
+                    <div class="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-book text-blue-500 text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">暂无推荐内容</h3>
+                    <p class="text-gray-500 text-lg">成为第一个创建书籍的用户吧！</p>
+                </div>
+            <% } %>
+
+            <div class="text-center">
+                <%- include('../components/button', { href: '/books', text: '查看更多书籍', icon: 'fas fa-arrow-right', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white shadow-lg transform hover:scale-105 transition-all duration-200' }) %>
+            </div>
+        </div>
+    </div>
+</div>
+
 <%- include('../layouts/base/footer') %>

@@ -2,13 +2,9 @@
 
 <div class="min-h-screen py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- 面包屑导航 -->
-        <%- include('../../layouts/book/breadcrumb', { book: book }) %>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- 左侧：封面和基本操作 -->
-            <div class="lg:col-span-1">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
+        <div class="flex flex-col lg:flex-row gap-4 md:gap-8 max-w-7xl mx-auto">
+            <div class="lg:w-80 flex-shrink-0">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <!-- 封面图片 -->
                     <div class="text-center mb-6">
                         <% if (book.cover_image) { %>
@@ -107,10 +103,9 @@
                 </div>
             </div>
 
-            <!-- 右侧：详细信息 -->
-            <div class="lg:col-span-2">
+            <div class="flex-1 space-y-4">
                 <!-- 标题和描述 -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div class="mb-6">
                         <h1 class="text-4xl font-bold text-gray-900 mb-4 leading-tight"><%= book.title %></h1>
 

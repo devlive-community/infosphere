@@ -27,19 +27,19 @@
                             </div>
                             <div class="text-center">
                                 <div class="text-xl md:text-2xl font-bold text-green-600">
-                                    <%= summary?.published_count %>
+                                    <%= summary?.published_count || 0 %>
                                 </div>
                                 <div class="text-xs md:text-sm text-gray-500">已发布</div>
                             </div>
                             <div class="text-center">
                                 <div class="text-xl md:text-2xl font-bold text-yellow-600">
-                                    <%= summary?.draft_count %>
+                                    <%= summary?.draft_count || 0 %>
                                 </div>
                                 <div class="text-xs md:text-sm text-gray-500">草稿</div>
                             </div>
                             <div class="text-center">
                                 <div class="text-xl md:text-2xl font-bold text-blue-600">
-                                    <%= summary?.total_views %>
+                                    <%= summary?.total_views || 0 %>
                                 </div>
                                 <div class="text-xs md:text-sm text-gray-500">总浏览量</div>
                             </div>

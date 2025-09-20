@@ -183,8 +183,24 @@ class Book {
         }
     }
 
-    static async summaryByUser(user_id) {
+    static async summaryByUser(user_id = null) {
         try {
+            const whereConditions = []
+            const values = []
+
+            if (user_id) {
+                whereConditions.push('user_id = ?')
+                values.push(user_id)
+            }
+            else {
+                whereConditions.push('is_public = ?')
+                values.push(1)
+                whereConditions.push('status = ?')
+                values.push('published')
+            }
+
+            const whereClause = 'WHERE ' + whereConditions.join(' AND ')
+
             const pool = getPool()
             const [rows] = await pool.query(`
                 SELECT COUNT(*)                                                       as total_books,
@@ -195,15 +211,40 @@ class Book {
                        SUM(CASE WHEN status = 'published' THEN view_count ELSE 0 END) as published_views,
                        SUM(CASE WHEN status = 'draft' THEN view_count ELSE 0 END)     as draft_views,
                        SUM(CASE WHEN status = 'archived' THEN view_count ELSE 0 END)  as archived_views
-                FROM books
-                WHERE user_id = ?
-            `, [user_id])
+                FROM books ${ whereClause }
+            `, values)
 
             return rows[0]
         }
         catch (error) {
             throw error
         }
+    }
+
+    static async findTop6ByView() {
+        const pool = getPool()
+        const [rows] = await pool.query(`
+            SELECT b.id,
+                   b.title,
+                   b.description,
+                   b.cover_image,
+                   b.slug,
+                   b.status,
+                   b.is_public,
+                   b.view_count,
+                   DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                   DATE_FORMAT(b.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
+                   b.user_id,
+                   u.username,
+                   u.avatar,
+                   u.email
+            FROM books b
+                     LEFT JOIN users u ON b.user_id = u.id
+--             WHERE b.is_public = TRUE AND b.status = 'published'
+            ORDER BY b.view_count DESC LIMIT 6
+        `)
+
+        return rows
     }
 
     /**
