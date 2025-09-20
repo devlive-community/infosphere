@@ -20,7 +20,7 @@ class Book {
             )
             connection.release()
 
-            return await this.findById(result.insertId)
+            return await this.findBySlug(slug)
         }
         catch (error) {
             console.error('创建书籍失败:', error)
@@ -72,6 +72,31 @@ class Book {
                 `,
                 [slug]
             )
+            connection.release()
+
+            return rows.length > 0 ? rows[0] : null
+        }
+        catch (error) {
+            console.error(`根据slug查找书籍失败 ${ slug }:`, error)
+            throw error
+        }
+    }
+
+    static async findByUsernameAndSlug(username, slug) {
+        try {
+            const pool = getPool()
+            const connection = await pool.getConnection()
+            const [rows] = await connection.execute(`
+                SELECT b.*,
+                       DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                       u.username,
+                       u.avatar,
+                       u.email
+                FROM books b
+                         LEFT JOIN users u ON b.user_id = u.id
+                WHERE u.username = ?
+                  AND b.slug = ?
+            `, [username, slug])
             connection.release()
 
             return rows.length > 0 ? rows[0] : null
@@ -240,7 +265,8 @@ class Book {
                    u.email
             FROM books b
                      LEFT JOIN users u ON b.user_id = u.id
-            WHERE b.is_public = TRUE AND b.status = 'published'
+            WHERE b.is_public = TRUE
+              AND b.status = 'published'
             ORDER BY b.view_count DESC LIMIT 6
         `)
 
