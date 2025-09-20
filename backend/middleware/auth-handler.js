@@ -8,4 +8,16 @@ const ensureAuthenticated = (req, res, next) => {
     res.redirect('/auth/login')
 }
 
-module.exports = { ensureAuthenticated }
+const ensureOwnerOrAdmin = (req, res, next) => {
+    const targetUserId = req.params.id || req.body.userId
+    const currentUserId = req.user.id
+
+    if (targetUserId === currentUserId.toString() || req.user.role === 'admin') {
+        return next()
+    }
+
+    req.flash('error', '您没有权限执行此操作')
+    return res.redirect('/user/profile')
+}
+
+module.exports = { ensureAuthenticated, ensureOwnerOrAdmin }

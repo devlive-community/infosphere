@@ -50,16 +50,58 @@ class User {
             const pool = getPool()
             const connection = await pool.getConnection()
             const [rows] = await connection.execute(`
-                  SELECT *,
-                         DATE_FORMAT(last_login_at, '%Y-%m-%d %H:%i:%s') AS last_login_at
-                  FROM users
-                  WHERE id = ?
-                `,
-                [id]
-            )
+                SELECT u.id,
+                       u.username,
+                       u.password,
+                       u.email,
+                       u.role,
+                       u.avatar,
+                       u.bio,
+                       u.is_active,
+                       u.created_at,
+                       u.updated_at,
+                       DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i:%s') AS last_login_at,
+                       ua.provider,
+                       ua.provider_username,
+                       ua.created_at                                     as linked_at
+                FROM users u
+                         LEFT JOIN user_authentications ua ON u.id = ua.user_id
+                WHERE u.id = ?
+            `, [id])
             connection.release()
 
-            return rows.length > 0 ? rows[0] : null
+            if (rows.length === 0) {
+                return null
+            }
+
+            // 处理多行结果（因为一个用户可能有多个第三方绑定）
+            const user = {
+                id: rows[0].id,
+                username: rows[0].username,
+                password: rows[0].password,
+                email: rows[0].email,
+                role: rows[0].role,
+                avatar: rows[0].avatar,
+                bio: rows[0].bio,
+                is_active: rows[0].is_active,
+                created_at: rows[0].created_at,
+                updated_at: rows[0].updated_at,
+                last_login_at: rows[0].last_login_at,
+                authentications: []
+            }
+
+            // 收集所有第三方绑定信息
+            rows.forEach(row => {
+                if (row.provider) {
+                    user.authentications.push({
+                        provider: row.provider,
+                        provider_username: row.provider_username,
+                        linked_at: row.linked_at
+                    })
+                }
+            })
+
+            return user
         }
         catch (error) {
             console.error(`根据ID查找用户失败 ${ id }:`, error)
@@ -754,7 +796,6 @@ class User {
             throw error
         }
     }
-
 }
 
 module.exports = User

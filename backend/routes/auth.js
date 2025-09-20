@@ -65,11 +65,38 @@ router.get('/github', githubPassport.authenticate('github', {
 }))
 
 router.get('/github/callback',
-    githubPassport.authenticate('github', {
-        failureRedirect: '/auth/login?error=github_auth_failed'
-    }),
+    githubPassport.authenticate('github', { failureRedirect: '/auth/login?error=github_auth_failed' }),
     async (req, res) => {
         try {
+            // 检查是否是绑定操作的结果
+            if (req.user && typeof req.user === 'object') {
+                // 检查绑定错误
+                if (req.user.bindingError) {
+                    if (req.user.bindingError === 'github_already_linked') {
+                        req.flash('error', '该 GitHub 账号已被其他用户绑定')
+                        return res.redirect('/user/security')
+                    }
+                    if (req.user.bindingError === 'already_linked_self') {
+                        req.flash('error', '您已经绑定了该 GitHub 账号')
+                        return res.redirect('/user/security')
+                    }
+                }
+
+                // 检查绑定成功
+                if (req.user.bindingSuccess) {
+                    try {
+                        await User.addAuthentication(req.user.id, req.user.authData)
+                        req.flash('success', 'GitHub 账号绑定成功')
+                    }
+                    catch (error) {
+                        console.error('绑定GitHub失败:', error)
+                        req.flash('error', '绑定失败: ' + error.message)
+                    }
+                    return res.redirect('/user/security')
+                }
+            }
+
+            // 正常登录流程
             if (req.user && req.user.id) {
                 await User.updateLastLogin(req.user.id)
             }
