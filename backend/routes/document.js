@@ -161,4 +161,43 @@ router.put('/writer/:username/:book_slug/:doc_slug', ensureAuthenticated, asyncH
     }
 }))
 
+router.delete('/writer/:username/:book_slug/:doc_slug', ensureAuthenticated, asyncHandler(async (req, res) => {
+    const { username, book_slug: slug, doc_slug } = req.params
+
+    const book = await Book.findByUsernameAndSlug(username, slug)
+    if (!book || book.user_id !== req.user.id) {
+        req.flash('error', '权限不足')
+        return res.redirect(`/document/writer/${ username }/${ slug }`)
+    }
+
+    const document = await Document.findByBookAndSlug(book.id, doc_slug)
+    if (!document) {
+        req.flash('error', '文档未找到')
+        return res.redirect(`/document/writer/${ username }/${ slug }`)
+    }
+
+    try {
+        // 删除文档
+        await Document.delete(document.id)
+
+        // Socket.IO 实时同步
+        const io = req.app.get('io')
+        if (io) {
+            io.to(`book-${ book.slug }-room`).emit('document-deleted', {
+                documentSlug: document.slug,
+                documentId: document.id,
+                user: { id: req.user.id, username: req.user.username }
+            })
+        }
+
+        req.flash('success', `文档 "${ document.title }" 删除成功`)
+        res.redirect(`/document/writer/${ username }/${ slug }`)
+    }
+    catch (error) {
+        console.error('删除文档失败:', error)
+        req.flash('error', '删除失败，请重试')
+        res.redirect(`/document/writer/${ username }/${ slug }/${ doc_slug }`)
+    }
+}))
+
 module.exports = router
