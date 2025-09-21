@@ -6,6 +6,8 @@ const { ensureAuthenticated } = require('../middleware/auth-handler')
 const coverUpload = require('../services/upload/cover')
 const PaginationHelper = require('../tools/pagination')
 const User = require('../models/user')
+const marked = require('../lib/extension/marked/marked')
+const { isEmpty } = require('lodash')
 const router = express.Router()
 
 router.get('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
@@ -59,6 +61,140 @@ router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
         console.error('创建书籍失败:', error)
         return res.render('pages/book/info', { isEdit: false, error: '创建书籍失败 ' + error })
     }
+}))
+
+router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, res) => {
+    const { username, book_slug, docs_slug } = req.params
+
+    const book = await Book.findByUsernameAndSlug(username, book_slug)
+
+    // 1. 书籍不存在 -> 404
+    if (!book) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '未找到书籍',
+                message: '您访问的书籍不存在或已被删除'
+            }
+        })
+    }
+
+    // 2. 书籍是草稿 & 当前用户不是作者 -> 403
+    if (book.status === 'draft' && (!req.user || book.user_id !== req.user.id)) {
+        return res.status(403).render('pages/error/global', {
+            error: {
+                status: 403,
+                title: '权限不足',
+                message: '该书籍尚未公开，您没有权限阅读'
+            }
+        })
+    }
+
+    // 3. 获取文档树
+    const documents = await Document.getDocumentTree(book.id)
+    if (documents.length === 0) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '无法阅读该书籍',
+                message: '该书籍没有任何章节可供阅读'
+            }
+        })
+    }
+
+    // 4. 定位要阅读的文档
+    let document = documents[0]
+    if (docs_slug) {
+        document = await Document.findBySlug(docs_slug)
+        if (!document) {
+            return res.status(404).render('pages/error/global', {
+                error: {
+                    status: 404,
+                    title: '未找到文档',
+                    message: '您访问的章节不存在'
+                }
+            })
+        }
+    }
+
+    // 5. 转换 markdown
+    document.html = isEmpty(document.content)
+        ? undefined
+        : `<script src='https://cdn.tailwindcss.com'></script>` + marked.parse(document.content || '')
+
+    res.render('pages/document/reader', {
+        book,
+        document,
+        documents
+    })
+}))
+
+router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, asyncHandler(async (req, res) => {
+    const { username, book_slug, doc_slug } = req.params
+
+    // 1. 查找书籍
+    const book = await Book.findByUsernameAndSlug(username, book_slug)
+    if (!book) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '书籍未找到',
+                message: '您请求的书籍不存在'
+            }
+        })
+    }
+
+    // 2. 权限校验（必须是作者）
+    if (book.user_id !== req.user.id) {
+        return res.status(403).render('pages/error/global', {
+            error: {
+                status: 403,
+                title: '权限不足',
+                message: '您没有权限编辑此书籍的文档'
+            }
+        })
+    }
+
+    // 3. 查找文档（如果有 doc_slug）
+    let document = null
+    let isEdit = false
+    if (doc_slug) {
+        document = await Document.findByBookAndSlug(book.id, doc_slug)
+        if (document) {
+            isEdit = true
+        }
+    }
+
+    // 4. 获取文档树
+    const documents = await Document.getDocumentTree(book.id)
+
+    // 5. Socket.IO 房间逻辑
+    const io = req.app.get('io')
+    if (io) {
+        const userSocket = io.sockets.sockets.get(req.user.socketId)
+        if (userSocket) {
+            // 加入书籍房间
+            userSocket.join(`book-${ book.slug }-room`)
+
+            // 如果编辑已有文档，加入文档房间并广播
+            if (document) {
+                userSocket.join(`doc-${ document.slug }-room`)
+                userSocket.to(`doc-${ document.slug }-room`).emit('user-joined', {
+                    userId: req.user.id,
+                    username: req.user.username,
+                    documentSlug: document.slug
+                })
+            }
+        }
+    }
+
+    // 6. 渲染写作页面
+    res.render('pages/document/writer', {
+        book,
+        document,
+        documents,
+        isEdit
+    })
 }))
 
 router.get('/:username', ensureAuthenticated, asyncHandler(async (req, res) => {

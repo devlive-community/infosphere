@@ -15,7 +15,7 @@ class Document {
 
             const [result] = await connection.execute(
                 'INSERT INTO documents (book_id, parent_id, title, slug, content, user_id, sort_order, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [book_id, parent_id, title, slug, content, user_id, sort_order, status]
+                [book_id, parent_id || null, title, slug, content, user_id, sort_order, status]
             )
             connection.release()
 
@@ -314,6 +314,33 @@ class Document {
             return rows || []
         }
         catch (error) {
+            throw error
+        }
+    }
+
+    static async findBySlug(slug) {
+        try {
+            const pool = getPool()
+            const connection = await pool.getConnection()
+            const [rows] = await connection.execute(`
+                  SELECT b.*,
+                         DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                         DATE_FORMAT(b.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
+                         u.username,
+                         u.avatar,
+                         u.email
+                  FROM documents b
+                           LEFT JOIN users u ON b.user_id = u.id
+                  WHERE b.slug = ?
+                `,
+                [slug]
+            )
+            connection.release()
+
+            return rows.length > 0 ? rows[0] : null
+        }
+        catch (error) {
+            console.error(`根据slug查找书籍失败 ${ slug }:`, error)
             throw error
         }
     }

@@ -17,6 +17,8 @@
  * @param {Object} customIcons - 自定义图标配置，可选
  *   - folder: 文件夹图标
  *   - document: 文档图标
+ * @param {String} linkPattern - 链接模式，默认'/document/writer/{username}/{bookSlug}/{docSlug}'
+ *   可用占位符：{username}, {bookSlug}, {docSlug}, {docId}
  */
 
 const treeDocuments = typeof documents !== 'undefined' ? documents : [];
@@ -31,6 +33,7 @@ const treeAutoExpandToCurrent = typeof autoExpandToCurrent !== 'undefined' ? aut
 const treeShowStatusBadge = typeof showStatusBadge !== 'undefined' ? showStatusBadge : true;
 const treeStatusField = typeof statusField !== 'undefined' ? statusField : 'status';
 const treeShowIcons = typeof showIcons !== 'undefined' ? showIcons : true;
+const treeLinkPattern = typeof linkPattern !== 'undefined' ? linkPattern : '/document/writer/{username}/{bookSlug}/{docSlug}';
 
 // 默认图标配置
 const defaultIcons = {
@@ -88,6 +91,14 @@ function shouldExpand(doc) {
     if (treeAutoExpandToCurrent && hasCurrentDocumentInSubtree(doc)) return true;
     return false;
 }
+
+function generateDocumentLink(doc) {
+    return treeLinkPattern
+            .replace('{username}', username)
+            .replace('{bookSlug}', slug)
+            .replace('{docSlug}', doc.slug)
+            .replace('{docId}', doc.id);
+}
 %>
 
 <div class="tree-container <%= extraClass %>">
@@ -129,7 +140,7 @@ function shouldExpand(doc) {
 
                     <!-- 文档信息 -->
                     <div class="flex-1 min-w-0">
-                        <a href="/document/writer/<%= username %>/<%= slug %>/<%= doc.slug %>"
+                        <a href="<%= generateDocumentLink(doc) %>"
                            class="document-link block transition-colors duration-200 <%= isCurrentDocument(doc) ? 'text-white' : 'text-gray-700 hover:text-blue-600' %>"
                            onclick="event.stopPropagation()">
 
