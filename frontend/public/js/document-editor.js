@@ -8,10 +8,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const previewPane = document.getElementById('previewPane')
     const saveStatus = document.getElementById('saveStatus')
     const saveData = document.getElementById('saveData')
-    const contextMenu = document.getElementById('contextMenu')
 
     let hasUnsavedChanges = false
-    let selectedDocumentItem = null
 
     // 从全局变量获取数据
     const bookData = window.bookData || {}
@@ -39,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // 新建模式 - 清空表单
             modalTitle.textContent = '新建文档'
             submitBtn.textContent = '创建'
-            form.action = `/document/writer/${ bookData.username }/${ bookData.slug }`
+            form.action = `/document/${ bookData.username }/${ bookData.slug }`
             form.querySelector('#title').value = ''
             form.querySelector('#doc_slug').value = ''
 
@@ -77,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // 编辑模式 - 填充数据
             modalTitle.textContent = '编辑文档'
             submitBtn.textContent = '保存'
-            form.action = `/document/writer/${ bookData.username }/${ bookData.slug }/${ docData.slug }`
+            form.action = `/document/${ bookData.username }/${ bookData.slug }/${ docData.slug }`
             form.querySelector('#title').value = docData.title
             form.querySelector('#doc_slug').value = docData.slug
 
@@ -187,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const form = document.createElement('form')
         form.method = 'POST'
-        form.action = `/document/writer/${ bookData.username }/${ bookData.slug }/${ documentData.slug }`
+        form.action = `/document/${ bookData.username }/${ bookData.slug }/${ documentData.slug }`
 
         const contentInput = document.createElement('input')
         contentInput.type = 'hidden'

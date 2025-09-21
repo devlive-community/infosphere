@@ -1,0 +1,291 @@
+<%- include('../../layouts/base/header', { title: '阅读 - ' + document.title, hideNav: true }) %>
+
+<div class="min-h-screen">
+    <!-- 顶部工具栏 -->
+    <div class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-full px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- 左侧导航 -->
+                <div class="flex items-center space-x-4">
+                    <a href="/book/<%= book.username %>/<%= book.slug %>"
+                       class="flex items-center space-x-3 text-gray-700 hover:text-gray-900 transition-colors group">
+                        <img src="<%= book.cover_image %>"
+                             alt="<%= book.title %>"
+                             class="w-8 h-8 border rounded-full object-cover shadow-sm group-hover:shadow-md transition-shadow"/>
+                        <h1 class="text-lg font-semibold truncate max-w-xs">
+                            <%= book.title %>
+                        </h1>
+                    </a>
+                </div>
+
+                <!-- 右侧操作 -->
+                <div class="flex items-center space-x-3">
+                    <!-- 阅读设置按钮 -->
+                    <button id="readingSettingsBtn"
+                            class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                            title="阅读设置">
+                        <i class="fas fa-cog"></i>
+                    </button>
+
+                    <!-- 全屏按钮 -->
+                    <button id="fullscreenBtn"
+                            class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                            title="全屏阅读">
+                        <i class="fas fa-expand"></i>
+                    </button>
+
+                    <% if (user && user.id === document.user_id) { %>
+                        <a href="/book/writer/<%= book.username %>/<%= book.slug %>/<%= document.slug %>"
+                           class="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors shadow-sm hover:shadow-md">
+                            <i class="fas fa-edit"></i>
+                            <span>编辑</span>
+                        </a>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex" style="height: calc(100vh - 4.3rem)">
+        <!-- 左侧文档列表 -->
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col h-full transition-all duration-300 relative">
+            <!-- 侧边栏头部 -->
+            <div class="flex-shrink-0 border-b border-gray-100">
+                <div class="flex items-center justify-between px-4 py-3">
+                    <h2 class="text-sm font-semibold text-gray-900 flex items-center space-x-2">
+                        <i class="fas fa-list text-gray-500"></i>
+                        <span>目录</span>
+                    </h2>
+                    <div class="flex items-center space-x-1">
+                        <button id="toggleSidebarBtn"
+                                class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                                title="收起侧边栏">
+                            <i class="fas fa-chevron-left text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文档树 -->
+            <div class="flex-1 overflow-y-auto overflow-x-hidden">
+                <div class="py-2">
+                    <%- include('../../components/tree', { linkPattern: '/book/reader/{username}/{bookSlug}/{docSlug}', documents: documents, currentDocument: document, bookUsername: book.username, bookSlug: book.slug, expandAll: true, showStatusBadge: false, showIcons: false, enableContextMenu: false }) %>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区域 -->
+        <main id="mainContent" class="flex-1 flex flex-col bg-white relative transition-all duration-300">
+            <!-- 内容工具栏 -->
+            <div class="flex-shrink-0 border-b px-6 py-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-center space-x-3">
+                        <!-- 显示侧边栏按钮（当侧边栏隐藏时显示） -->
+                        <button id="showSidebarBtn"
+                                class="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-md transition-colors shadow-sm hidden"
+                                title="显示目录">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <h3 class="text-lg text-center font-semibold text-gray-900 truncate max-w-md">
+                            <%= document.title %>
+                        </h3>
+                    </div>
+
+                    <!-- 阅读进度 -->
+                    <div class="flex items-center space-x-4 text-sm text-gray-500">
+                        <span id="readingProgress">0%</span>
+                        <span id="estimatedTime" title="预计阅读时间"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文档内容 -->
+            <div class="flex-1 overflow-hidden">
+                <div class="h-full px-4">
+                    <% if (document && document.html) { %>
+                        <div id="documentContent"
+                             class="prose prose-lg max-w-none h-full overflow-y-auto"
+                             style="line-height: 1.8;">
+                            <%- document.html %>
+                        </div>
+                    <% } else { %>
+                        <div class="flex items-center justify-center h-full text-gray-500">
+                            <div class="text-center">
+                                <i class="fas fa-file-alt text-4xl mb-4"></i>
+                                <p class="text-lg">文档内容为空</p>
+                                <p class="text-sm mt-2">该文档还没有内容</p>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- 阅读设置面板 -->
+<div id="readingSettingsPanel" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="absolute top-20 right-4 bg-white rounded-lg shadow-xl border border-gray-200 w-80">
+        <div class="p-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-900">阅读设置</h3>
+        </div>
+        <div class="p-4 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">字体大小</label>
+                <div class="flex items-center space-x-2">
+                    <button id="decreaseFontSize" class="p-1 text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <span id="currentFontSize" class="text-sm text-gray-600 w-12 text-center">16px</span>
+                    <button id="increaseFontSize" class="p-1 text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">行间距</label>
+                <div class="flex items-center space-x-2">
+                    <button id="decreaseLineHeight" class="p-1 text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <span id="currentLineHeight" class="text-sm text-gray-600 w-12 text-center">1.8</span>
+                    <button id="increaseLineHeight" class="p-1 text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button id="closeSettingsPanel" class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 侧边栏切换
+        const sidebar = document.getElementById('sidebar')
+        const mainContent = document.getElementById('mainContent')
+        const toggleSidebarBtn = document.getElementById('toggleSidebarBtn')
+        const showSidebarBtn = document.getElementById('showSidebarBtn')
+        let sidebarVisible = true
+
+        toggleSidebarBtn?.addEventListener('click', function () {
+            if (sidebarVisible) {
+                // 隐藏侧边栏
+                sidebar.style.width = '0'
+                sidebar.style.overflow = 'hidden'
+                sidebar.style.borderRight = 'none'
+                showSidebarBtn.classList.remove('hidden')
+                sidebarVisible = false
+            }
+        })
+
+        showSidebarBtn?.addEventListener('click', function () {
+            if (!sidebarVisible) {
+                // 显示侧边栏
+                sidebar.style.width = '16rem'
+                sidebar.style.overflow = 'visible'
+                sidebar.style.borderRight = '1px solid #e5e7eb'
+                showSidebarBtn.classList.add('hidden')
+                sidebarVisible = true
+            }
+        })
+
+        // 全屏功能
+        const fullscreenBtn = document.getElementById('fullscreenBtn')
+        fullscreenBtn?.addEventListener('click', function () {
+            if (document.fullscreenElement) {
+                document.exitFullscreen()
+            }
+            else {
+                document.documentElement.requestFullscreen()
+            }
+        })
+
+        // 阅读设置
+        const readingSettingsBtn = document.getElementById('readingSettingsBtn')
+        const readingSettingsPanel = document.getElementById('readingSettingsPanel')
+        const closeSettingsPanel = document.getElementById('closeSettingsPanel')
+
+        readingSettingsBtn?.addEventListener('click', function () {
+            readingSettingsPanel.classList.toggle('hidden')
+        })
+
+        closeSettingsPanel?.addEventListener('click', function () {
+            readingSettingsPanel.classList.add('hidden')
+        })
+
+        readingSettingsPanel?.addEventListener('click', function (e) {
+            if (e.target === readingSettingsPanel) {
+                readingSettingsPanel.classList.add('hidden')
+            }
+        })
+
+        // 字体大小调整
+        let currentFontSize = 16
+        const documentContent = document.getElementById('documentContent')
+        const currentFontSizeSpan = document.getElementById('currentFontSize')
+
+        document.getElementById('increaseFontSize')?.addEventListener('click', function () {
+            if (currentFontSize < 24) {
+                currentFontSize += 2
+                documentContent.style.fontSize = currentFontSize + 'px'
+                currentFontSizeSpan.textContent = currentFontSize + 'px'
+            }
+        })
+
+        document.getElementById('decreaseFontSize')?.addEventListener('click', function () {
+            if (currentFontSize > 12) {
+                currentFontSize -= 2
+                documentContent.style.fontSize = currentFontSize + 'px'
+                currentFontSizeSpan.textContent = currentFontSize + 'px'
+            }
+        })
+
+        // 行间距调整
+        let currentLineHeight = 1.8
+        const currentLineHeightSpan = document.getElementById('currentLineHeight')
+
+        document.getElementById('increaseLineHeight')?.addEventListener('click', function () {
+            if (currentLineHeight < 2.5) {
+                currentLineHeight += 0.1
+                currentLineHeight = Math.round(currentLineHeight * 10) / 10
+                documentContent.style.lineHeight = currentLineHeight
+                currentLineHeightSpan.textContent = currentLineHeight
+            }
+        })
+
+        document.getElementById('decreaseLineHeight')?.addEventListener('click', function () {
+            if (currentLineHeight > 1.2) {
+                currentLineHeight -= 0.1
+                currentLineHeight = Math.round(currentLineHeight * 10) / 10
+                documentContent.style.lineHeight = currentLineHeight
+                currentLineHeightSpan.textContent = currentLineHeight
+            }
+        })
+
+        // 阅读进度
+        function updateReadingProgress() {
+            const content = document.getElementById('documentContent')
+            if (content) {
+                const scrollTop = content.scrollTop
+                const scrollHeight = content.scrollHeight - content.clientHeight
+                const progress = scrollHeight > 0 ? Math.round((scrollTop / scrollHeight) * 100) : 0
+
+                const progressElement = document.getElementById('readingProgress')
+                if (progressElement) {
+                    progressElement.textContent = progress + '%'
+                }
+            }
+        }
+
+        document.getElementById('documentContent')?.addEventListener('scroll', updateReadingProgress)
+    })
+</script>
+
+<%- include('../../layouts/base/footer') %>

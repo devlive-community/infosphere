@@ -67,7 +67,7 @@
             <div class="flex-1 overflow-y-auto overflow-x-auto min-h-0">
                 <div class="space-y-1 min-w-max">
                     <%- include('../../components/tree', {
-                        documents: documents, currentDocument: document, bookUsername: book.username, bookSlug: book.slug, enableContextMenu: true, expandAll: false, showStatusBadge: true, showIcons: false,
+                        documents: documents, currentDocument: document, bookUsername: book.username, bookSlug: book.slug, enableContextMenu: true, expandAll: false, showStatusBadge: true, showIcons: false, linkPattern: '/book/writer/{username}/{bookSlug}/{docSlug}',
                         contextMenuItems: [ { action: 'add', label: '添加子文档', icon: 'fas fa-plus', className: 'text-gray-700 hover:bg-gray-100' }, { action: 'edit', label: '编辑文档', icon: 'fas fa-edit', className: 'text-gray-700 hover:bg-gray-100' }, { action: 'delete', label: '删除文档', icon: 'fas fa-trash', className: 'text-red-600 hover:bg-red-50' } ]
                     }) %>
                 </div>
@@ -168,7 +168,7 @@
         function deleteDocument(docSlug) {
             const deleteForm = document.createElement('form')
             deleteForm.method = 'POST'
-            deleteForm.action = `/document/writer/${ bookData.username }/${ bookData.slug }/${ docSlug }`
+            deleteForm.action = `/document/${ bookData.username }/${ bookData.slug }/${ docSlug }`
             deleteForm.style.display = 'none'
 
             const methodInput = document.createElement('input')
