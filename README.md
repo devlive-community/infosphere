@@ -29,12 +29,6 @@
 
 InfoSphere 是一款面向企业和个人的开源知识管理系统，旨在提供简单而强大的知识管理解决方案。
 
-**范例**: [try.infosphere.devlive.org](http://try.infosphere.devlive.org)
-
-|           用户名            | 密码          |
-|:------------------------:|:------------|
-| `infosphere@devlive.org` | `123456789` |
-
 ## 鸣谢
 
 ---
