@@ -37,8 +37,8 @@ const IssuesExtension = {
         if (match) {
             const [fullMatch, owner, repo, issueNumber] = match;
             const baseUrl = 'https://github.com/';
-            const defaultOwner = config.repo?.owner || 'devlive-community';
-            const defaultRepo = config.repo?.name || 'infosphere';
+            const defaultOwner = 'devlive-community';
+            const defaultRepo = 'infosphere';
 
             const href = owner && repo
                 ? `${baseUrl}${owner}/${repo}/issues/${issueNumber}`
