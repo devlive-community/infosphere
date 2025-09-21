@@ -4,6 +4,7 @@
     <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <div class="flex flex-col lg:flex-row gap-3 md:gap-8 max-w-7xl mx-auto">
             <%- include('../../layouts/book/detail-nav', { book }) %>
+
             <div class="flex-1 space-y-3 md:space-y-4">
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-3 md:p-6 space-y-4 md:space-y-6 backdrop-blur-sm bg-white/95">
                     <!-- 标题和操作按钮区域 -->
@@ -11,6 +12,7 @@
                         <div class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight break-words"><%= book.title %></div>
                         <div class="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
                             <% if (isOwner) { %>
+                                <%- include('../../components/button', { href: `/document/writer/${book.username}/${book.slug}`, size: 'sm', text: '添加章节', icon: 'fas fa-plus' }) %>
                                 <%- include('../../components/button', { href: `/book/${book.username}/${book.slug}/edit`, size: 'sm', text: '编辑书籍', icon: 'fas fa-edit' }) %>
                                 <form action="/book/<%= book.slug %>" method="POST" class="inline">
                                     <input type="hidden" name="_method" value="DELETE">
@@ -20,6 +22,7 @@
                             <%- include('../../components/button', { onclick: 'shareBook()', size: 'sm', text: '分享书籍', icon: 'fas fa-share-alt', variant: 'outline' }) %>
                         </div>
                     </div>
+
                     <!-- 书籍信息网格 -->
                     <div class="space-y-4">
                         <!-- 第一行：作者和发布时间 -->
@@ -108,6 +111,7 @@
                             </div>
                         </div>
                     </div>
+
                     <!-- 内容简介部分 -->
                     <% if (book.description) { %>
                         <div class="prose max-w-none">
@@ -131,6 +135,7 @@
                         </div>
                     <% } %>
                 </div>
+
                 <!-- 阅读统计卡片 -->
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-4 md:p-6 backdrop-blur-sm bg-white/95">
                     <div class="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6 flex items-center">

@@ -7,6 +7,59 @@ const PaginationHelper = require('../tools/pagination')
 const User = require('../models/user')
 const router = express.Router()
 
+router.get('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
+    res.render('pages/book/info', { isEdit: false })
+}))
+
+router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
+    try {
+        const { title, slug, description, status, is_public } = req.body
+        const user_id = req.user.id
+
+        if (!title || !slug) {
+            return res.render('pages/book/info', { isEdit: false, error: '标题和 URL 路径是必填项' })
+        }
+
+        const slugRegex = /^[a-z0-9-]+$/
+        if (!slugRegex.test(slug)) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径只能包含小写字母、数字和连字符' })
+        }
+
+        if (slug.startsWith('-') || slug.endsWith('-')) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径不能以连字符开头或结尾' })
+        }
+
+        if (slug.includes('--')) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径不能包含连续的连字符' })
+        }
+
+        const slugExists = await Book.slugExists(slug)
+        if (slugExists) {
+            return res.render('pages/book/info', { isEdit: false, error: `URL 路径 ${ slug } 已存在，请使用其他路径` })
+        }
+
+        const book = await Book.create({ title, description, slug, user_id, status, is_public })
+
+        const coverFile = req.files?.find(file => file.fieldname === 'cover_image')
+        if (coverFile) {
+            coverUpload.addTask({
+                bookId: book.id,
+                userId: user_id,
+                provider: 'manual',
+                title: title,
+                cover: coverFile.buffer,
+                coverType: 'buffer'
+            })
+        }
+
+        res.redirect(`/book/${ book.username }/${ book.slug }`)
+    }
+    catch (error) {
+        console.error('创建书籍失败:', error)
+        return res.render('pages/book/info', { isEdit: false, error: '创建书籍失败 ' + error })
+    }
+}))
+
 router.get('/:username', ensureAuthenticated, asyncHandler(async (req, res) => {
     const user = await User.findByUsername(req.params.username)
     if (!user) {
@@ -62,65 +115,6 @@ router.get('/:username/:slug', asyncHandler(async (req, res) => {
         // documents,
         isOwner: req.user && req.user.id === book.user_id
     })
-}))
-
-router.get('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
-    res.render('pages/book/info', { isEdit: false })
-}))
-
-router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
-    try {
-        const { title, slug, description, status, is_public } = req.body
-        const user_id = req.user.id
-
-        if (!title || !slug) {
-            return res.render('pages/book/info', { isEdit: false, error: '标题和 URL 路径是必填项' })
-        }
-
-        const slugRegex = /^[a-z0-9-]+$/
-        if (!slugRegex.test(slug)) {
-            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径只能包含小写字母、数字和连字符' })
-        }
-
-        if (slug.startsWith('-') || slug.endsWith('-')) {
-            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径不能以连字符开头或结尾' })
-        }
-
-        if (slug.includes('--')) {
-            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径不能包含连续的连字符' })
-        }
-
-        const slugExists = await Book.slugExists(slug)
-        if (slugExists) {
-            return res.render('pages/book/info', { isEdit: false, error: `URL 路径 ${ slug } 已存在，请使用其他路径` })
-        }
-
-        const book = await Book.create({ title, description, slug, user_id, status, is_public })
-
-        const coverFile = req.files?.find(file => file.fieldname === 'cover_image')
-        if (coverFile) {
-            coverUpload.addTask({
-                bookId: book.id,
-                userId: user_id,
-                provider: 'manual',
-                title: title,
-                cover: coverFile.buffer,
-                coverType: 'buffer'
-            })
-        }
-
-        res.redirect(`/book/${ book.username }/${ book.slug }`)
-    }
-    catch (error) {
-        console.error('创建书籍失败:', error)
-        return res.render('pages/book/info', { isEdit: false, error: '创建书籍失败 ' + error })
-    }
-}))
-
-router.get(['/info/:slug', '/slug/:slug'], asyncHandler(async (req, res) => {
-    // 获取文档树
-    // const documents = await Document.getDocumentTree(bookId)
-
 }))
 
 router.get('/:username/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => {

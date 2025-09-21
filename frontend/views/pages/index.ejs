@@ -15,10 +15,10 @@
                 <div class="flex flex-col sm:flex-row gap-6 justify-center">
                     <% if (user) { %>
                         <%- include('../components/button', { href: '/book/create', text: '创建书籍', target: '_blank', icon: 'fas fa-plus', size: 'lg', className: 'px-8 py-4 text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
-                        <%- include('../components/button', { href: '/books', text: '浏览书籍', icon: 'fas fa-book', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-white text-white hover:bg-white hover:text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
+                        <%- include('../components/button', { href: '/explore', text: '浏览书籍', icon: 'fas fa-book', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-white text-white hover:bg-white hover:text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
                     <% } else { %>
                         <%- include('../components/button', { href: '/auth/register', text: '开始创作', target: '_blank', icon: 'fas fa-rocket', size: 'lg', className: 'px-8 py-4 text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
-                        <%- include('../components/button', { href: '/books', text: '探索内容', icon: 'fas fa-compass', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-white text-white hover:bg-white hover:text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
+                        <%- include('../components/button', { href: '/explore', text: '探索内容', icon: 'fas fa-compass', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-white text-white hover:bg-white hover:text-blue-600 shadow-xl transform hover:scale-105 transition-all duration-200' }) %>
                     <% } %>
                 </div>
             </div>
@@ -123,7 +123,7 @@
             <% } %>
 
             <div class="text-center">
-                <%- include('../components/button', { href: '/books', text: '查看更多书籍', icon: 'fas fa-arrow-right', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white shadow-lg transform hover:scale-105 transition-all duration-200' }) %>
+                <%- include('../components/button', { href: '/explore', text: '查看更多书籍', icon: 'fas fa-arrow-right', variant: 'outline', size: 'lg', className: 'px-8 py-4 border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white shadow-lg transform hover:scale-105 transition-all duration-200' }) %>
             </div>
         </div>
     </div>

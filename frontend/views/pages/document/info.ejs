@@ -1,0 +1,397 @@
+<%- include('../../layouts/base/header', { title: isEdit ? '编辑文档 - ' + document.title : '新建文档', hideNav: true }) %>
+
+<div class="min-h-screen">
+    <!-- 顶部工具栏 -->
+    <div class="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-full px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- 左侧导航 -->
+                <div class="flex items-center space-x-4">
+                    <a href="/book/<%= book.username %>/<%= book.slug %>" class="space-x-2 text-gray-500 hover:text-gray-700 transition-colors">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="text-gray-300">|</div>
+                    <h1 class="flex items-center space-x-4 text-lg font-medium text-gray-900">
+                        <img src="<%= book.cover_image %>" class="w-8 h-8 border rounded-full"/>
+                        <span><%= book.title %></span>
+                    </h1>
+                </div>
+
+                <%- include('../../components/alert', { type: 'error', message: error }) %>
+                <%- include('../../components/alert', { type: 'success', message: success }) %>
+
+                <!-- 右侧操作 -->
+                <div class="flex items-center space-x-3">
+                    <% if (documents && documents.length > 0) { %>
+                        <!-- 保存状态 -->
+                        <div id="saveStatus" class="text-sm text-gray-500 space-x-0.5">
+                            <i class="fas fa-circle text-gray-400"></i>
+                            <span>未修改</span>
+                        </div>
+
+                        <!-- 预览切换 -->
+                        <button id="togglePreview" class="space-x-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors">
+                            <i class="fas fa-eye"></i>
+                            <span>预览</span>
+                        </button>
+                    <% } %>
+
+                    <!-- 保存按钮 -->
+                    <% if (isEdit) { %>
+                        <button id="saveData" class="px-4 py-2 space-x-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-md transition-colors">
+                            <i class="fas fa-save"></i>
+                            <span>保存</span>
+                        </button>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex h-screen" style="height: calc(100vh - 4.5rem)">
+        <!-- 左侧文档列表 -->
+        <div class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+            <div class="p-0 space-y-2">
+                <div class="flex items-center justify-between border-b border-gray-200 px-4 py-1">
+                    <h2 class="text-sm font-medium text-gray-900">文档列表</h2>
+                    <button id="newDocument" class="p-1 text-gray-400 hover:text-blue-600 transition-colors" title="新建文档">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-1">
+                    <% if (documents && documents.length > 0) { %>
+                        <% documents.forEach(doc => { %>
+                            <a href="/document/writer/<%= book.username %>/<%= book.slug %>/<%= doc.slug %>"
+                               class="block items-center px-3 py-2 text-sm transition-colors <%= document && doc.id === document.id ? 'bg-blue-400 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+                                <div class="font-medium truncate"><%= doc.title %> <span class="text-xs text-red-600">(<%= doc.slug %>)</span></div>
+                            </a>
+                        <% }) %>
+                    <% } else { %>
+                        <div class="text-sm text-gray-500 text-center py-8">
+                            <i class="fas fa-file-alt text-gray-300 text-2xl mb-2"></i>
+                            <div>暂无文档</div>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主编辑区域 -->
+        <div class="flex-1 flex flex-col">
+            <% if (isEdit) { %>
+                <!-- 编辑器容器 -->
+                <div class="flex h-full">
+                    <!-- Markdown编辑器 -->
+                    <div id="editorPane" class="w-full bg-white">
+                        <textarea id="markdownEditor" placeholder="开始编写你的文档...支持 Markdown 语法"
+                                  class="w-full h-full p-4 border-none outline-none resize-none font-mono text-sm leading-relaxed"><%- document.content %></textarea>
+                    </div>
+
+                    <!-- 预览面板 -->
+                    <div id="previewPane" class="w-1/2 bg-white border-l border-gray-200 p-4 overflow-y-auto hidden">
+                        <div id="markdownPreview">
+                            <div class="text-gray-800 leading-relaxed prose max-w-none">
+                                <%- document ? document.contentHtml : '' %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% } else { %>
+                <!-- 新建文档 -->
+                <div class="flex-1 flex items-center justify-center bg-white">
+                    <div class="text-center">
+                        <i class="fas fa-file-alt text-gray-300 text-6xl mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">开始编写文档</h3>
+                        <p class="text-gray-500 mb-6">创建第一个文档来开始编写你的书籍</p>
+                        <button id="createFirstDocBtn" class="space-x-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors">
+                            <i class="fas fa-plus"></i>
+                            <span>创建文档</span>
+                        </button>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- 新建文档模态框 -->
+<div id="newDocModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">新建文档</h3>
+            <form id="newDocForm" method="POST" action="/document/writer/<%= book.username %>/<%= book.slug %>">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">文档标题</label>
+                    <input type="text"
+                           name="title"
+                           id="newDocTitle"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="请输入文档标题"
+                           required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">文档路径</label>
+                    <input type="text"
+                           name="doc_slug"
+                           id="newDocSlug"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="document-slug"
+                           required>
+                    <p class="text-xs text-gray-500 mt-1">URL友好的路径，只能包含字母、数字和连字符</p>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button"
+                            id="cancelNewDoc"
+                            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                        取消
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors">
+                        创建
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const socket = io()
+
+        // DOM 元素
+        const editor = document.getElementById('markdownEditor')
+        const preview = document.getElementById('markdownPreview')
+        const togglePreviewBtn = document.getElementById('togglePreview')
+        const editorPane = document.getElementById('editorPane')
+        const previewPane = document.getElementById('previewPane')
+        const saveStatus = document.getElementById('saveStatus')
+        const saveData = document.getElementById('saveData')
+
+        // 模态框相关
+        const newDocModal = document.getElementById('newDocModal')
+        const newDocument = document.getElementById('newDocument')
+        const createFirstDocBtn = document.getElementById('createFirstDocBtn')
+        const cancelNewDoc = document.getElementById('cancelNewDoc')
+
+        let hasUnsavedChanges = false
+
+        // 加入书籍房间
+        socket.emit('join-book-room', { slug: '<%= book.slug %>', name: '<%= book.title %>' })
+
+        <% if (isEdit) { %>
+        socket.emit('join-document-room', {
+            bookSlug: '<%= book.slug %>',
+            slug: '<%= document.slug %>',
+            name: '<%= document.title %>'
+        })
+        <% } %>
+
+        // 初始化编辑器
+        function initEditor() {
+            if (!editor) return
+
+            // 内容变化监听
+            function handleContentChange() {
+                hasUnsavedChanges = true
+                updateSaveStatus('已修改未保存', 'text-orange-600')
+
+                <% if (isEdit) { %>
+                // 发送内容变化，包含预览请求
+                socket.emit('document-change', {
+                    documentSlug: '<%= document.slug %>',
+                    content: editor.value,
+                    needPreview: !previewPane.classList.contains('hidden')
+                })
+                <% } %>
+            }
+
+            // 事件监听
+            if (editor) {
+                editor.addEventListener('input', handleContentChange)
+            }
+        }
+
+        // 切换预览
+        function togglePreview() {
+            const isPreviewVisible = !previewPane.classList.contains('hidden')
+
+            if (isPreviewVisible) {
+                // 隐藏预览
+                previewPane.classList.add('hidden')
+                editorPane.classList.remove('w-1/2')
+                editorPane.classList.add('w-full')
+                togglePreviewBtn.innerHTML = '<i class="fas fa-eye"></i><span>预览</span>'
+            } else {
+                // 显示预览
+                previewPane.classList.remove('hidden')
+                editorPane.classList.remove('w-full')
+                editorPane.classList.add('w-1/2')
+                togglePreviewBtn.innerHTML = '<i class="fas fa-eye-slash"></i><span>隐藏预览</span>'
+
+                // 请求预览更新
+                <% if (isEdit) { %>
+                socket.emit('document-change', {
+                    documentSlug: '<%= document.slug %>',
+                    content: editor.value,
+                    needPreview: true
+                })
+                <% } %>
+            }
+        }
+
+        // 更新保存状态
+        function updateSaveStatus(text, className) {
+            const statusEl = saveStatus.querySelector('span')
+            const iconEl = saveStatus.querySelector('i')
+
+            statusEl.textContent = text
+            iconEl.className = `fas fa-circle ${className}`
+        }
+
+        // 保存文档
+        function saveDocument() {
+            updateSaveStatus('保存中...', 'text-blue-600')
+
+            // 创建隐藏表单进行提交
+            const form = document.createElement('form')
+            form.method = 'POST'
+            form.action = `/document/writer/<%= book?.username %>/<%= book?.slug %>/<%= document?.slug %>`
+
+            // 添加内容字段
+            const contentInput = document.createElement('input')
+            contentInput.type = 'hidden'
+            contentInput.name = 'content'
+            contentInput.value = editor.value
+            form.appendChild(contentInput)
+
+            // 添加方法覆盖
+            const methodInput = document.createElement('input')
+            methodInput.type = 'hidden'
+            methodInput.name = '_method'
+            methodInput.value = 'PUT'
+            form.appendChild(methodInput)
+
+            // 提交表单
+            document.body.appendChild(form)
+            form.submit()
+        }
+
+        // 新建文档相关
+        function showNewDocModal() {
+            newDocModal.classList.remove('hidden')
+            document.getElementById('newDocTitle').focus()
+        }
+
+        function hideNewDocModal() {
+            newDocModal.classList.add('hidden')
+        }
+
+        // 事件监听
+        if (togglePreviewBtn) {
+            togglePreviewBtn.addEventListener('click', togglePreview)
+        }
+        if (newDocument) {
+            newDocument.addEventListener('click', showNewDocModal)
+        }
+        if (createFirstDocBtn) {
+            createFirstDocBtn.addEventListener('click', showNewDocModal)
+        }
+        if (cancelNewDoc) {
+            cancelNewDoc.addEventListener('click', hideNewDocModal)
+        }
+
+        // 点击模态框背景关闭
+        newDocModal.addEventListener('click', function(e) {
+            if (e.target === newDocModal) {
+                hideNewDocModal()
+            }
+        })
+
+        // 保存按钮点击
+        if (saveData) {
+            saveData.addEventListener('click', function (e) {
+                e.preventDefault()
+                saveDocument()
+            })
+        }
+
+        // 标题自动生成 slug
+        const newDocTitleInput = document.getElementById('newDocTitle')
+        if (newDocTitleInput) {
+            newDocTitleInput.addEventListener('input', function () {
+                const title = this.value.trim()
+                const slug = title.toLowerCase()
+                    .replace(/[^a-z0-9\u4e00-\u9fa5]/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '')
+
+                document.getElementById('newDocSlug').value = slug
+            })
+        }
+
+        // Socket.IO 事件监听
+        socket.on('user-joined', function (data) {
+            console.log(`用户 ${data.username} 加入了编辑`)
+        })
+
+        socket.on('document-updated', function (data) {
+            if (data.documentSlug === '<%= document && document.slug %>') {
+                updateSaveStatus('文档已被其他用户更新', 'text-blue-600')
+            }
+        })
+
+        socket.on('document-preview-updated', function (data) {
+            if (data.documentSlug === '<%= document && document.slug %>') {
+                const previewDiv = preview.querySelector('.prose')
+                if (previewDiv) {
+                    previewDiv.innerHTML = data.html
+                }
+            }
+        })
+
+        // 页面离开前检查
+        window.addEventListener('beforeunload', function (e) {
+            if (hasUnsavedChanges) {
+                e.preventDefault()
+                e.returnValue = '您有未保存的更改，确定要离开吗？'
+            }
+        })
+
+        // 快捷键支持
+        document.addEventListener('keydown', function (e) {
+            // Ctrl+S 保存
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault()
+                if (saveData && hasUnsavedChanges) {
+                    saveData.click()
+                }
+            }
+
+            // Ctrl+P 预览切换
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault()
+                if (togglePreviewBtn) {
+                    togglePreview()
+                }
+            }
+        })
+
+        // 初始化
+        initEditor()
+
+        <% if (isEdit) { %>
+        // 初始发送当前内容
+        socket.emit('document-change', {
+            documentSlug: '<%= document.slug %>',
+            content: editor.value,
+            needPreview: false
+        })
+        <% } %>
+    })
+</script>
+
+<%- include('../../layouts/base/footer') %>
