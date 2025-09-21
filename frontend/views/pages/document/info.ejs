@@ -90,11 +90,11 @@
 
                     <!-- 预览面板 -->
                     <div id="previewPane" class="w-1/2 bg-white border-l border-gray-200 p-4 overflow-y-auto hidden">
-                        <div id="markdownPreview">
-                            <div class="text-gray-800 leading-relaxed prose max-w-none">
-                                <%- document ? document.contentHtml : '' %>
-                            </div>
-                        </div>
+                        <iframe id="markdownPreview"
+                                class="w-full h-full border-none bg-white"
+                                sandbox="allow-same-origin allow-scripts"
+                                srcdoc="">
+                        </iframe>
                     </div>
                 </div>
             <% } else { %>
@@ -192,7 +192,9 @@
 
         // 初始化编辑器
         function initEditor() {
-            if (!editor) return
+            if (!editor) {
+                return
+            }
 
             // 内容变化监听
             function handleContentChange() {
@@ -225,7 +227,8 @@
                 editorPane.classList.remove('w-1/2')
                 editorPane.classList.add('w-full')
                 togglePreviewBtn.innerHTML = '<i class="fas fa-eye"></i><span>预览</span>'
-            } else {
+            }
+            else {
                 // 显示预览
                 previewPane.classList.remove('hidden')
                 editorPane.classList.remove('w-full')
@@ -249,7 +252,7 @@
             const iconEl = saveStatus.querySelector('i')
 
             statusEl.textContent = text
-            iconEl.className = `fas fa-circle ${className}`
+            iconEl.className = `fas fa-circle ${ className }`
         }
 
         // 保存文档
@@ -305,7 +308,7 @@
         }
 
         // 点击模态框背景关闭
-        newDocModal.addEventListener('click', function(e) {
+        newDocModal.addEventListener('click', function (e) {
             if (e.target === newDocModal) {
                 hideNewDocModal()
             }
@@ -335,7 +338,7 @@
 
         // Socket.IO 事件监听
         socket.on('user-joined', function (data) {
-            console.log(`用户 ${data.username} 加入了编辑`)
+            console.log(`用户 ${ data.username } 加入了编辑`)
         })
 
         socket.on('document-updated', function (data) {
@@ -346,20 +349,22 @@
 
         socket.on('document-preview-updated', function (data) {
             if (data.documentSlug === '<%= document && document.slug %>') {
-                const previewDiv = preview.querySelector('.prose')
-                if (previewDiv) {
-                    previewDiv.innerHTML = data.html
+                const previewIframe = document.getElementById('markdownPreview')
+                if (previewIframe) {
+                    previewIframe.srcdoc = data.html
                 }
             }
         })
 
         // 页面离开前检查
+        <% if (!isEdit) { %>
         window.addEventListener('beforeunload', function (e) {
             if (hasUnsavedChanges) {
                 e.preventDefault()
                 e.returnValue = '您有未保存的更改，确定要离开吗？'
             }
         })
+        <% } %>
 
         // 快捷键支持
         document.addEventListener('keydown', function (e) {

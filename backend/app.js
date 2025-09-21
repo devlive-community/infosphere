@@ -10,7 +10,7 @@ const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
 const methodOverride = require('method-override')
 const socketIo = require('socket.io')
-const { marked } = require('marked')
+const marked = require('./lib/extension/marked/marked')
 const { createInstallationChecker } = require('./middleware/installation-checker')
 const { handle404, handleError } = require('./middleware/error-handlers')
 
@@ -41,7 +41,7 @@ io.on('connection', (socket) => {
 
         // 如果需要预览，渲染并返回
         if (data.needPreview) {
-            const html = marked.parse(data.content || '')
+            const html = `<script src='https://cdn.tailwindcss.com'></script>` + marked.parse(data.content || '')
             socket.emit('document-preview-updated', {
                 documentSlug: data.documentSlug,
                 html: html
