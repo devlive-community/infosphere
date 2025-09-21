@@ -1,113 +1,133 @@
 <%- include('../../layouts/base/header', { title: '我的书籍' }) %>
 
-<div class="min-h-screen py-4 md:py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col lg:flex-row gap-4 md:gap-8 max-w-7xl mx-auto">
+<div class="min-h-screen py-4 md:py-8 bg-gradient-to-br from-gray-50 to-white">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div class="flex flex-col lg:flex-row gap-3 md:gap-8 max-w-7xl mx-auto">
             <%- include('../../layouts/book/nav') %>
-
             <div class="flex-1">
-                <div class="bg-white rounded-lg border mb-4 md:mb-6">
-                    <div class="px-4 md:px-6 py-4 border-b border-gray-200">
+                <!-- 页面头部统计卡片 -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 mb-4 md:mb-6 backdrop-blur-sm bg-white/95">
+                    <div class="px-4 md:px-6 py-4 border-b border-gray-100">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
-                                <h3 class="text-lg font-medium text-gray-900">我的书籍</h3>
+                                <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                                    <i class="fas fa-books text-blue-500 mr-2"></i>
+                                    我的书籍
+                                </h3>
                                 <p class="mt-1 text-sm text-gray-500">管理您创建的所有书籍</p>
                             </div>
                             <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                                <%- include('../../components/button', { href: '/book/create', size: 'sm', target: '_blank', text: '创建新书籍', icon: 'fas fa-plus', variant: 'primary', className: 'w-full sm:w-auto' }) %>
+                                <%- include('../../components/button', { href: '/book/create', size: 'sm', target: '_blank', text: '创建新书籍', icon: 'fas fa-plus', variant: 'primary', className: 'w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow' }) %>
                             </div>
                         </div>
                     </div>
-
-                    <div class="px-4 md:px-6 py-4">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="text-center">
+                    <!-- 统计数据网格 -->
+                    <div class="px-4 md:px-6 py-6">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                            <!-- 总书籍数 -->
+                            <div class="text-center bg-gradient-to-br from-indigo-50 to-blue-50 p-4 md:p-6 rounded-xl border border-indigo-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                                <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3 shadow-sm">
+                                    <i class="fas fa-book text-white text-sm md:text-base"></i>
+                                </div>
                                 <div class="text-xl md:text-2xl font-bold text-gray-900"><%= summary?.total_books %></div>
-                                <div class="text-xs md:text-sm text-gray-500">总书籍数</div>
+                                <div class="text-xs md:text-sm text-indigo-600 font-medium">总书籍数</div>
                             </div>
-                            <div class="text-center">
+
+                            <!-- 已发布 -->
+                            <div class="text-center bg-gradient-to-br from-green-50 to-emerald-50 p-4 md:p-6 rounded-xl border border-green-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                                <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3 shadow-sm">
+                                    <i class="fas fa-check-circle text-white text-sm md:text-base"></i>
+                                </div>
                                 <div class="text-xl md:text-2xl font-bold text-green-600">
                                     <%= summary?.published_count || 0 %>
                                 </div>
-                                <div class="text-xs md:text-sm text-gray-500">已发布</div>
+                                <div class="text-xs md:text-sm text-green-600 font-medium">已发布</div>
                             </div>
-                            <div class="text-center">
+
+                            <!-- 草稿 -->
+                            <div class="text-center bg-gradient-to-br from-yellow-50 to-amber-50 p-4 md:p-6 rounded-xl border border-yellow-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                                <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3 shadow-sm">
+                                    <i class="fas fa-edit text-white text-sm md:text-base"></i>
+                                </div>
                                 <div class="text-xl md:text-2xl font-bold text-yellow-600">
                                     <%= summary?.draft_count || 0 %>
                                 </div>
-                                <div class="text-xs md:text-sm text-gray-500">草稿</div>
+                                <div class="text-xs md:text-sm text-yellow-600 font-medium">草稿</div>
                             </div>
-                            <div class="text-center">
-                                <div class="text-xl md:text-2xl font-bold text-blue-600">
+
+                            <!-- 总浏览量 -->
+                            <div class="text-center bg-gradient-to-br from-purple-50 to-violet-50 p-4 md:p-6 rounded-xl border border-purple-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                                <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3 shadow-sm">
+                                    <i class="fas fa-eye text-white text-sm md:text-base"></i>
+                                </div>
+                                <div class="text-xl md:text-2xl font-bold text-purple-600">
                                     <%= summary?.total_views || 0 %>
                                 </div>
-                                <div class="text-xs md:text-sm text-gray-500">总浏览量</div>
+                                <div class="text-xs md:text-sm text-purple-600 font-medium">总浏览量</div>
                             </div>
                         </div>
 
                         <% if (pagination) { %>
-                            <div class="mt-4 text-center text-sm text-gray-500 <%= pagination ? 'border-t border-gray-100 pt-4' : '' %>">
+                            <div class="mt-6 text-center text-sm text-gray-500 <%= pagination ? 'border-t border-gray-100 pt-4' : '' %>">
                                 <%- include('../../components/pagination-info', { pagination: pagination }) %>
                             </div>
                         <% } %>
                     </div>
                 </div>
-
+                <!-- 书籍列表 -->
                 <div class="space-y-4 md:space-y-6">
                     <% if (data && data.length > 0) { %>
                         <% data.forEach(book => { %>
-                            <div class="bg-white rounded-lg border hover:border-blue-300 transition-shadow duration-150">
+                            <div class="bg-white rounded-xl shadow-lg border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all duration-300 backdrop-blur-sm bg-white/95">
                                 <div class="p-4 md:p-6">
-                                    <div class="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4">
+                                    <div class="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
+                                        <!-- 封面图片 -->
                                         <div class="flex-shrink-0 self-center sm:self-start">
                                             <% if (book.cover_image) { %>
                                                 <img src="<%= book.cover_image %>"
                                                      alt="<%= book.title %>"
-                                                     class="min-w-32 max-w-32 min-h-44 max-h-44 sm:w-16 sm:h-full object-cover rounded-lg shadow-sm">
+                                                     class="min-w-32 max-w-32 min-h-44 max-h-44 object-cover rounded-lg shadow-md border-2 border-gray-100 hover:shadow-lg transition-shadow">
                                             <% } else { %>
-                                                <div class="min-w-32 max-w-32 min-h-44 max-h-44 sm:w-16 sm:h-full bg-gray-200 rounded-lg flex items-center justify-center">
-                                                    <i class="fas fa-book fa-2x text-gray-400"></i>
+                                                <div class="min-w-32 max-w-32 min-h-44 max-h-44 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center shadow-md border-2 border-gray-100">
+                                                    <i class="fas fa-book text-gray-400 text-2xl"></i>
                                                 </div>
                                             <% } %>
                                         </div>
-
+                                        <!-- 书籍信息 -->
                                         <div class="flex-1 min-w-0 w-full sm:w-auto">
-                                            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-3 sm:space-y-0 min-h-32">
+                                            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0 min-h-32">
                                                 <div class="flex-1 space-y-3">
-                                                    <h4 class="text-lg font-medium text-gray-900 break-words sm:truncate">
-                                                        <a href="/book/info/<%= book.slug %>" class="hover:text-blue-600">
+                                                    <!-- 标题 -->
+                                                    <h4 class="text-lg md:text-xl font-semibold text-gray-900 break-words sm:truncate hover:text-blue-600 transition-colors">
+                                                        <a href="/book/<%= book.username %>/<%= book.slug %>" target="_blank" class="hover:text-blue-600">
                                                             <%= book.title %>
                                                         </a>
                                                     </h4>
-
-                                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                                                        <span class="flex items-center">
-                                                            <i class="fas fa-calendar mr-1"></i>
+                                                    <!-- 元信息 -->
+                                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                                                        <span class="flex items-center text-gray-500 bg-gray-50 px-2 py-1 rounded-md">
+                                                            <i class="fas fa-calendar mr-1 text-blue-500"></i>
                                                             <%= book.created_at %>
                                                         </span>
-                                                        <div class="flex items-center space-x-2 text-gray-600">
+                                                        <div class="flex items-center space-x-2 bg-green-50 text-green-700 px-2 py-1 rounded-md">
                                                             <i class="fas fa-eye text-green-500"></i>
-                                                            <span><span class="font-medium text-gray-900"><%= book.view_count || 0 %></span> 次查看</span>
-                                                        </div>
-                                                        <div class="flex items-center space-x-2 bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
-                                                            <i class="fas fa-link text-indigo-500"></i>
-                                                            <span class="font-mono text-sm">/book/<%= book.slug %></span>
+                                                            <span><span class="font-medium"><%= book.view_count || 0 %></span> 次查看</span>
                                                         </div>
                                                     </div>
-
+                                                    <!-- 描述 -->
                                                     <% if (book.description) { %>
-                                                        <p class="text-sm text-gray-600 line-clamp-2 break-words">
-                                                            <%= book.description.substring(0, 120) %><%= book.description.length > 120 ? '...' : '' %>
+                                                        <p class="text-sm text-gray-600 line-clamp-2 break-words leading-relaxed bg-gray-50 p-3 rounded-lg">
+                                                            <%= book.description.substring(0, 60) %><%= book.description.length > 60 ? '...' : '' %>
                                                         </p>
                                                     <% } else { %>
-                                                        <p class="text-sm text-gray-400 italic">暂无描述</p>
+                                                        <p class="text-sm text-gray-400 italic bg-gray-50 p-3 rounded-lg">暂无描述</p>
                                                     <% } %>
-
+                                                    <!-- 状态标签 -->
                                                     <div class="flex flex-wrap items-center gap-2">
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                            <% if (book.status === 'published') { %>bg-green-100 text-green-800
-                                                            <% } else if (book.status === 'draft') { %>bg-yellow-100 text-yellow-800
-                                                            <% } else { %>bg-gray-100 text-gray-800<% } %>">
+                                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium shadow-sm border
+                                                            <% if (book.status === 'published') { %>bg-green-100 text-green-800 border-green-200
+                                                            <% } else if (book.status === 'draft') { %>bg-yellow-100 text-yellow-800 border-yellow-200
+                                                            <% } else { %>bg-gray-100 text-gray-800 border-gray-200<% } %>">
                                                             <% if (book.status === 'published') { %>
                                                                 <i class="fas fa-check-circle mr-1"></i>已发布
                                                             <% } else if (book.status === 'draft') { %>
@@ -117,23 +137,21 @@
                                                             <% } %>
                                                         </span>
 
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                            <% if (book.is_public) { %>bg-blue-100 text-blue-800<% } else { %>bg-gray-100 text-gray-800<% } %>">
+                                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium shadow-sm border
+                                                            <% if (book.is_public) { %>bg-blue-100 text-blue-800 border-blue-200<% } else { %>bg-gray-100 text-gray-800 border-gray-200<% } %>">
                                                             <i class="<%= book.is_public ? 'fas fa-globe' : 'fas fa-lock' %> mr-1"></i>
                                                             <%= book.is_public ? '公开' : '私有' %>
                                                         </span>
                                                     </div>
                                                 </div>
-
-                                                <div class="flex flex-row sm:flex-col gap-2 sm:ml-4 sm:h-full sm:justify-center">
-                                                    <%- include('../../components/button', { href: `/book/info/${book.slug}`, target: '_blank', text: '查看', icon: 'fas fa-eye', variant: 'outline', size: 'sm', className: 'flex-1 sm:flex-none' }) %>
-
-                                                    <%- include('../../components/button', { href: `/book/${book.slug}/edit`, text: '编辑', icon: 'fas fa-edit', variant: 'primary', size: 'sm', className: 'flex-1 sm:flex-none' }) %>
-
+                                                <!-- 操作按钮 -->
+                                                <div class="flex flex-row sm:flex-col gap-2 sm:ml-4 sm:h-full sm:justify-start">
+                                                    <%- include('../../components/button', { href: `/book/${book.username}/${book.slug}`, target: '_blank', text: '查看', icon: 'fas fa-eye', variant: 'outline', size: 'sm', className: 'flex-1 sm:flex-none shadow-sm hover:shadow-md transition-shadow' }) %>
                                                     <% if (user && user.id === book.user_id) { %>
+                                                        <%- include('../../components/button', { href: `/book/${book.username}/${book.slug}/edit`, text: '编辑', icon: 'fas fa-edit', variant: 'primary', size: 'sm', className: 'flex-1 sm:flex-none shadow-sm hover:shadow-md transition-shadow' }) %>
                                                         <form action="/book/<%= book.slug %>" method="POST" class="flex-1 sm:flex-none">
                                                             <input type="hidden" name="_method" value="DELETE">
-                                                            <%- include('../../components/button', { type: 'submit', variant: 'danger', icon: 'fas fa-trash', text: '删除', size: 'sm', className: 'w-full', onclick: 'return confirm("确定要删除这本书籍吗？此操作不可恢复。")' }) %>
+                                                            <%- include('../../components/button', { type: 'submit', variant: 'danger', icon: 'fas fa-trash', text: '删除', size: 'sm', className: 'w-full shadow-sm hover:shadow-md transition-shadow', onclick: 'return confirm("确定要删除这本书籍吗？此操作不可恢复。")' }) %>
                                                         </form>
                                                     <% } %>
                                                 </div>
@@ -144,17 +162,19 @@
                             </div>
                         <% }) %>
                     <% } else { %>
-                        <div class="text-center bg-white rounded-lg border py-12 px-4">
+                        <!-- 空状态 -->
+                        <div class="text-center bg-white rounded-xl shadow-lg border border-gray-100 py-16 px-4 backdrop-blur-sm bg-white/95">
                             <div class="max-w-sm mx-auto">
-                                <i class="fas fa-book text-gray-400 text-6xl mb-4"></i>
-                                <h3 class="text-lg font-medium text-gray-900 mb-2">还没有书籍</h3>
-                                <p class="text-gray-500 mb-6">开始创建您的第一本书籍吧</p>
-                                <%- include('../../components/button', { href: '/book/create', text: '创建第一本书', icon: 'fas fa-plus' }) %>
+                                <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                                    <i class="fas fa-book text-blue-500 text-3xl"></i>
+                                </div>
+                                <h3 class="text-xl font-semibold text-gray-900 mb-3">还没有书籍</h3>
+                                <p class="text-gray-500 mb-8 leading-relaxed">开始创建您的第一本书籍，分享您的知识和故事</p>
+                                <%- include('../../components/button', { href: '/book/create', text: '创建第一本书', icon: 'fas fa-plus', className: 'shadow-md hover:shadow-lg transition-shadow' }) %>
                             </div>
                         </div>
                     <% } %>
                 </div>
-
                 <% if (pagination?.totalItems > 0) { %>
                     <%- include('../../components/pagination', { pagination: pagination }) %>
                 <% } %>

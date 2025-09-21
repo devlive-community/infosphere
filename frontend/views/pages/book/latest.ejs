@@ -1,0 +1,61 @@
+<%- include('../../layouts/base/header', { title: '最新书籍' }) %>
+
+<div class="min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+
+        <!-- 页面标题 -->
+        <div class="mb-6 md:mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-clock text-blue-500 mr-3"></i>
+                        最新书籍
+                    </h1>
+                </div>
+                <div class="text-sm text-gray-500 flex items-center">
+                    <i class="fas fa-sort-amount-down mr-1"></i>
+                    按创建时间排序
+                </div>
+            </div>
+            <% if (pagination?.totalItems > 0) { %>
+                <p class="text-gray-600 mt-2">
+                    共找到 <span class="font-semibold text-blue-600"><%= pagination.totalItems %></span> 本最新书籍
+                </p>
+            <% } %>
+        </div>
+
+        <!-- 书籍网格 -->
+        <% if (data && data.length > 0) { %>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                <% data.forEach((book, index) => { %>
+                    <%- include('../../components/book/card', { book: book, cardStyle: 'latest', showNewBadge: pagination && pagination.currentPage === 1 && index < 5, isNew: index < 5 }) %>
+                <% }) %>
+            </div>
+
+            <!-- 分页组件 -->
+            <% if (pagination?.totalItems > 0) { %>
+                <div class="mt-8 md:mt-12">
+                    <%- include('../../components/pagination', { pagination: pagination }) %>
+                </div>
+            <% } %>
+
+        <% } else { %>
+            <!-- 无数据状态 -->
+            <div class="bg-white rounded-lg border border-gray-100 py-16 md:py-24 text-center">
+                <div class="w-20 h-20 md:w-32 md:h-32 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8">
+                    <i class="fas fa-clock text-blue-400 text-3xl md:text-5xl"></i>
+                </div>
+                <h3 class="text-xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">暂无最新书籍</h3>
+                <p class="text-gray-500 text-base md:text-lg mb-6 md:mb-8">还没有新发布的书籍</p>
+                <a href="/book/create"
+                   class="inline-flex items-center px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200">
+                    <i class="fas fa-plus mr-2"></i>
+                    创建第一本书
+                </a>
+            </div>
+        <% } %>
+
+    </div>
+</div>
+
+<%- include('../../layouts/base/footer') %>
