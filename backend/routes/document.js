@@ -32,7 +32,7 @@ router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, async
     const document = await Document.findByBookAndSlug(book.id, doc_slug || null)
     const isEdit = !!document
 
-    const documents = await Document.findAllByBookId(book.id)
+    const documents = await Document.getDocumentTree(book.id)
 
     // 构建 Socket.IO 房间
     const io = req.app.get('io')
@@ -56,7 +56,7 @@ router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, async
 
 router.post('/writer/:username/:book_slug', ensureAuthenticated, asyncHandler(async (req, res) => {
     const { username, book_slug: slug } = req.params
-    const { title, content, doc_slug, status = 'draft' } = req.body
+    const { title, content, doc_slug, status = 'draft', parent_id } = req.body
 
     const book = await Book.findByUsernameAndSlug(username, slug)
     if (!book || book.user_id !== req.user.id) {
@@ -84,7 +84,7 @@ router.post('/writer/:username/:book_slug', ensureAuthenticated, asyncHandler(as
     try {
         const document = await Document.create({
             book_id: book.id,
-            parent_id: null,
+            parent_id: parent_id,
             title,
             content: content || '',
             slug: doc_slug,
