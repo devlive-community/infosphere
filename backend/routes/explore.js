@@ -23,4 +23,17 @@ router.get('/', asyncHandler(async (req, res) => {
     })
 }))
 
+router.get('/hot', asyncHandler(async (req, res) => {
+    const paginationParams = PaginationHelper.parseParams(req.query, { defaultLimit: 24 })
+
+    const searchParams = { is_public: 1, status: 'published', orderBy: { view_count: 'DESC' } }
+
+    const response = await Book.findAllByConditions(paginationParams, searchParams)
+
+    res.render('pages/book/hot', {
+        data: response.data,
+        pagination: response.pagination
+    })
+}))
+
 module.exports = router
