@@ -15,7 +15,7 @@
                 <!-- 桌面端菜单 -->
                 <div class="hidden md:flex items-center space-x-6">
                     <%- include('../../components/nav', { href: '/', text: '首页', icon: 'fas fa-home' }) %>
-                    <%- include('../../components/nav', { href: '/books', text: '书籍', icon: 'fas fa-book' }) %>
+                    <%- include('../../components/nav', { href: '/explore', text: '发现', icon: 'fas fa-globe' }) %>
                 </div>
             </div>
 
@@ -76,7 +76,7 @@
         <div class="hidden" id="mobile-menu">
             <div class="px-2 pt-2 pb-3 space-y-1 border-t border-gray-200 bg-white">
                 <%- include('../../components/nav', { href: '/', text: '首页', icon: 'fas fa-home', className: 'w-full justify-start px-3 py-3 text-base' }) %>
-                <%- include('../../components/nav', { href: '/books', text: '书籍', icon: 'fas fa-book', className: 'w-full justify-start px-3 py-3 text-base' }) %>
+                <%- include('../../components/nav', { href: '/explore', text: '发现', icon: 'fas fa-globe', className: 'w-full justify-start px-3 py-3 text-base' }) %>
             </div>
             <div class="px-2 py-3 border-t border-gray-200 space-y-2">
                 <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated && user) { %>

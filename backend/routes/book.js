@@ -30,6 +30,28 @@ router.get('/', ensureAuthenticated, asyncHandler(async (req, res) => {
     })
 }))
 
+router.get('/:username/:slug', asyncHandler(async (req, res) => {
+    const book = await Book.findByUsernameAndSlug(req.params.username, req.params.slug)
+
+    if (!book) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '书籍未找到',
+                message: '您请求的书籍不存在'
+            }
+        })
+    }
+
+    await Book.incrementViewCount(book.id)
+
+    res.render('pages/book/summary', {
+        book,
+        // documents,
+        isOwner: req.user && req.user.id === book.user_id
+    })
+}))
+
 router.get('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
     res.render('pages/book/info', { isEdit: false })
 }))
@@ -40,17 +62,29 @@ router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
         const user_id = req.user.id
 
         if (!title || !slug) {
-            req.flash('error', '标题和 URL 路径是必填项')
-            return res.render('pages/book/info', { isEdit: false })
+            return res.render('pages/book/info', { isEdit: false, error: '标题和 URL 路径是必填项' })
+        }
+
+        const slugRegex = /^[a-z0-9-]+$/
+        if (!slugRegex.test(slug)) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径只能包含小写字母、数字和连字符' })
+        }
+
+        if (slug.startsWith('-') || slug.endsWith('-')) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径不能以连字符开头或结尾' })
+        }
+
+        if (slug.includes('--')) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径不能包含连续的连字符' })
         }
 
         const slugExists = await Book.slugExists(slug)
         if (slugExists) {
-            req.flash('error', `URL 路径 ${ slug } 已存在，请使用其他路径`)
-            return res.render('pages/book/info', { isEdit: false })
+            return res.render('pages/book/info', { isEdit: false, error: `URL 路径 ${ slug } 已存在，请使用其他路径` })
         }
 
         const book = await Book.create({ title, description, slug, user_id, status, is_public })
+
         const coverFile = req.files?.find(file => file.fieldname === 'cover_image')
         if (coverFile) {
             coverUpload.addTask({
@@ -62,55 +96,35 @@ router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
                 coverType: 'buffer'
             })
         }
-        res.redirect(`/book/info/${ book.slug }`)
+
+        res.redirect(`/book/${ book.username }/${ book.slug }`)
     }
     catch (error) {
         console.error('创建书籍失败:', error)
-        req.flash('error', '创建书籍失败 ' + error)
-        return res.render('pages/book/info', { isEdit: false })
+        return res.render('pages/book/info', { isEdit: false, error: '创建书籍失败 ' + error })
     }
 }))
 
 router.get(['/info/:slug', '/slug/:slug'], asyncHandler(async (req, res) => {
-    const book = await Book.findBySlug(req.params.slug)
-    if (!book) {
-        req.flash('error', `书籍 ${ req.params.slug } 不存在`)
-        return res.redirect('/book')
-    }
+    // 获取文档树
+    // const documents = await Document.getDocumentTree(bookId)
 
-    // 检查访问权限
-    if (!book.is_public && (!req.user || req.user.id !== book.user_id)) {
-        return res.status(403).render('pages/error/global', {
+}))
+
+router.get('/:username/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => {
+    const book = await Book.findByUsernameAndSlug(req.params.username, req.params.slug)
+
+    if (!book) {
+        return res.status(404).render('pages/error/global', {
             error: {
-                status: 403,
-                title: '权限不足',
-                message: '您没有访问此资源的权限'
+                status: 404,
+                title: '书籍未找到',
+                message: '您请求的书籍不存在'
             }
         })
     }
 
-    // 获取文档树
-    // const documents = await Document.getDocumentTree(bookId)
-
-    await Book.incrementViewCount(book.id)
-
-    res.render('pages/book/detail', {
-        book,
-        // documents,
-        user: req.user,
-        isOwner: req.user && req.user.id === book.user_id
-    })
-}))
-
-router.get('/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => {
-    const book = await Book.findBySlug(req.params.slug)
-    if (!book) {
-        req.flash('error', `书籍 ${ req.params.slug } 不存在`)
-        return res.redirect('/book')
-    }
-
     if (req.user.id !== book.user_id && req.user.role !== 'admin') {
-        req.flash('error', '您没有权限编辑此书籍')
         return res.status(403).render('pages/error/global', {
             error: {
                 status: 403,
@@ -122,22 +136,16 @@ router.get('/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => 
     res.render('pages/book/info', { isEdit: true, book })
 }))
 
-router.put('/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => {
-    const book = await Book.findBySlug(req.params.slug)
+router.put('/:username/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => {
+    const book = await Book.findByUsernameAndSlug(req.params.username, req.params.slug)
     try {
         const user_id = req.user.id
         if (!book) {
-            req.flash('error', `书籍 ${ req.params.slug } 不存在`)
-            return res.redirect('/book')
-        }
-
-        if (user_id !== book.user_id && req.user.role !== 'admin') {
-            req.flash('error', '您没有权限编辑此书籍')
-            return res.status(403).render('pages/error/global', {
+            return res.status(404).render('pages/error/global', {
                 error: {
-                    status: 403,
-                    title: '权限不足',
-                    message: '您没有访问此资源的权限'
+                    status: 404,
+                    title: '书籍未找到',
+                    message: '您请求的书籍不存在'
                 }
             })
         }
@@ -145,14 +153,25 @@ router.put('/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => 
         const { title, slug, description, status, is_public, remove_cover } = req.body
 
         if (!title || !slug) {
-            req.flash('error', '标题和 URL 路径是必填项')
-            return res.render('pages/book/info', { isEdit: true, book })
+            return res.render('pages/book/info', { isEdit: true, book, error: '标题和 URL 路径是必填项' })
+        }
+
+        const slugRegex = /^[a-z0-9-]+$/
+        if (!slugRegex.test(slug)) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径只能包含小写字母、数字和连字符' })
+        }
+
+        if (slug.startsWith('-') || slug.endsWith('-')) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径不能以连字符开头或结尾' })
+        }
+
+        if (slug.includes('--')) {
+            return res.render('pages/book/info', { isEdit: false, error: 'URL 路径不能包含连续的连字符' })
         }
 
         const slugExists = await Book.slugExists(slug, book.id)
         if (slugExists) {
-            req.flash('error', `URL 路径 ${ slug } 已存在，请使用其他路径`)
-            return res.render('pages/book/info', { isEdit: true, book })
+            return res.render('pages/book/info', { isEdit: true, book, error: `URL 路径 ${ slug } 已存在，请使用其他路径` })
         }
 
         const updateData = {
@@ -179,12 +198,11 @@ router.put('/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => 
         }
 
         await Book.update(book.id, updateData)
-        res.redirect(`/book/info/${ book.slug }`)
+        res.redirect(`/book/${ book.username }/${ book.slug }`)
     }
     catch (error) {
         console.error('更新书籍失败:', error)
-        req.flash('error', `更新书籍失败：${ error }`)
-        return res.render('pages/book/info', { isEdit: true, book })
+        return res.render('pages/book/info', { isEdit: true, book, error: `更新书籍失败：${ error }` })
     }
 }))
 
