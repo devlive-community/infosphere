@@ -30,7 +30,9 @@
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-local": "^1.0.0",
+    "pinyin": "^4.0.0",
     "pm2": "^5.4.3",
+    "prismjs": "^1.30.0",
     "qiniu": "^7.14.0",
     "socket.io": "^4.8.1"
   },
