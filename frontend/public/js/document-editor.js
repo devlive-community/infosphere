@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let hasUnsavedChanges = false
     let selectedDocumentItem = null
 
-    // 从全局变量获取数据 (在HTML中定义)
+    // 从全局变量获取数据
     const bookData = window.bookData || {}
     const documentData = window.documentData || {}
     const isEdit = window.isEdit || false
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // 新建模式 - 清空表单
             modalTitle.textContent = '新建文档'
             submitBtn.textContent = '创建'
-            form.action = `/document/writer/${bookData.username}/${bookData.slug}`
+            form.action = `/document/writer/${ bookData.username }/${ bookData.slug }`
             form.querySelector('#title').value = ''
             form.querySelector('#doc_slug').value = ''
 
@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 methodInput.remove()
             }
 
-            // 处理parent_id
             if (docData && docData.parentId) {
                 let parentIdInput = form.querySelector('input[name="parent_id"]')
                 if (!parentIdInput) {
@@ -65,18 +64,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     form.appendChild(parentIdInput)
                 }
                 parentIdInput.value = docData.parentId
-            } else {
+            }
+            else {
                 const parentIdInput = form.querySelector('input[name="parent_id"]')
                 if (parentIdInput) {
                     parentIdInput.remove()
                 }
             }
 
-        } else if (mode === 'edit' && docData) {
+        }
+        else if (mode === 'edit' && docData) {
             // 编辑模式 - 填充数据
             modalTitle.textContent = '编辑文档'
             submitBtn.textContent = '保存'
-            form.action = `/document/writer/${bookData.username}/${bookData.slug}/${docData.slug}`
+            form.action = `/document/writer/${ bookData.username }/${ bookData.slug }/${ docData.slug }`
             form.querySelector('#title').value = docData.title
             form.querySelector('#doc_slug').value = docData.slug
 
@@ -90,7 +91,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 form.appendChild(methodInput)
             }
 
-            // 移除parent_id
             const parentIdInput = form.querySelector('input[name="parent_id"]')
             if (parentIdInput) {
                 parentIdInput.remove()
@@ -100,91 +100,26 @@ document.addEventListener('DOMContentLoaded', function () {
         showModal('documentModal')
     }
 
-    // 右键菜单功能
-    function initContextMenu() {
-        const documentItems = document.querySelectorAll('.document-item')
-
-        documentItems.forEach(item => {
-            item.addEventListener('contextmenu', function(e) {
-                e.preventDefault()
-                selectedDocumentItem = this
-
-                contextMenu.style.left = e.pageX + 'px'
-                contextMenu.style.top = e.pageY + 'px'
-                contextMenu.classList.remove('hidden')
-            })
-        })
-
-        // 点击其他地方隐藏菜单
-        document.addEventListener('click', function(e) {
-            if (!contextMenu.contains(e.target)) {
-                contextMenu.classList.add('hidden')
-            }
-        })
-
-        // 菜单项点击事件
-        document.getElementById('addDocument').addEventListener('click', function() {
-            const parentId = selectedDocumentItem ? selectedDocumentItem.dataset.docId : null
-            openDocumentModal('new', { parentId })
-            contextMenu.classList.add('hidden')
-        })
-
-        document.getElementById('editDocument').addEventListener('click', function() {
-            if (selectedDocumentItem) {
-                const docData = {
-                    id: selectedDocumentItem.dataset.docId,
-                    title: selectedDocumentItem.dataset.docTitle,
-                    slug: selectedDocumentItem.dataset.docSlug
-                }
-                openDocumentModal('edit', docData)
-            }
-            contextMenu.classList.add('hidden')
-        })
-
-        // 删除文档 - 使用表单提交，不是AJAX
-        document.getElementById('deleteDocument').addEventListener('click', function() {
-            if (selectedDocumentItem && confirm('确定要删除这个文档吗？此操作不可恢复！')) {
-                const docSlug = selectedDocumentItem.dataset.docSlug
-
-                // 创建删除表单
-                const deleteForm = document.createElement('form')
-                deleteForm.method = 'POST'
-                deleteForm.action = `/document/writer/${bookData.username}/${bookData.slug}/${docSlug}`
-                deleteForm.style.display = 'none'
-
-                // 添加 DELETE 方法覆盖
-                const methodInput = document.createElement('input')
-                methodInput.type = 'hidden'
-                methodInput.name = '_method'
-                methodInput.value = 'DELETE'
-                deleteForm.appendChild(methodInput)
-
-                // 提交表单
-                document.body.appendChild(deleteForm)
-                deleteForm.submit()
-            }
-            contextMenu.classList.add('hidden')
-        })
-    }
-
     // 新建按钮事件
     const topAddBtn = document.getElementById('topAddBtn')
     if (topAddBtn) {
-        topAddBtn.addEventListener('click', function() {
+        topAddBtn.addEventListener('click', function () {
             openDocumentModal('new')
         })
     }
 
     const centerAddBtn = document.getElementById('centerAddBtn')
     if (centerAddBtn) {
-        centerAddBtn.addEventListener('click', function() {
+        centerAddBtn.addEventListener('click', function () {
             openDocumentModal('new')
         })
     }
 
     // 初始化编辑器
     function initEditor() {
-        if (!editor) return
+        if (!editor) {
+            return
+        }
 
         function handleContentChange() {
             hasUnsavedChanges = true
@@ -213,7 +148,8 @@ document.addEventListener('DOMContentLoaded', function () {
             editorPane.classList.remove('w-1/2')
             editorPane.classList.add('w-full')
             togglePreviewBtn.innerHTML = '<i class="fas fa-eye"></i><span>预览</span>'
-        } else {
+        }
+        else {
             previewPane.classList.remove('hidden')
             editorPane.classList.remove('w-full')
             editorPane.classList.add('w-1/2')
@@ -231,12 +167,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 更新保存状态
     function updateSaveStatus(text, className) {
-        if (!saveStatus) return
+        if (!saveStatus) {
+            return
+        }
         const statusEl = saveStatus.querySelector('span')
         const iconEl = saveStatus.querySelector('i')
 
-        if (statusEl) statusEl.textContent = text
-        if (iconEl) iconEl.className = `fas fa-circle ${className}`
+        if (statusEl) {
+            statusEl.textContent = text
+        }
+        if (iconEl) {
+            iconEl.className = `fas fa-circle ${ className }`
+        }
     }
 
     // 保存文档
@@ -245,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const form = document.createElement('form')
         form.method = 'POST'
-        form.action = `/document/writer/${bookData.username}/${bookData.slug}/${documentData.slug}`
+        form.action = `/document/writer/${ bookData.username }/${ bookData.slug }/${ documentData.slug }`
 
         const contentInput = document.createElement('input')
         contentInput.type = 'hidden'
@@ -293,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Socket.IO 事件监听
     socket.on('user-joined', function (data) {
-        console.log(`用户 ${data.username} 加入了编辑`)
+        console.log(`用户 ${ data.username } 加入了编辑`)
     })
 
     socket.on('document-updated', function (data) {
@@ -312,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })
 
     socket.on('document-deleted', function (data) {
-        console.log(`文档 ${data.documentSlug} 已被删除`)
+        console.log(`文档 ${ data.documentSlug } 已被删除`)
     })
 
     if (!isEdit) {
@@ -343,7 +285,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 初始化
     initEditor()
-    initContextMenu()
 
     if (isEdit) {
         socket.emit('document-change', {

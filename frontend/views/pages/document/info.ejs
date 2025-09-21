@@ -66,22 +66,10 @@
 
             <div class="flex-1 overflow-y-auto overflow-x-auto min-h-0">
                 <div class="space-y-1 min-w-max">
-                    <% if (documents && documents.length > 0) { %>
-                        <% documents.forEach(doc => { %>
-                            <a href="/document/writer/<%= book.username %>/<%= book.slug %>/<%= doc.slug %>"
-                               class="block items-center px-3 py-2 text-sm transition-colors whitespace-nowrap document-item <%= document && doc.id === document.id ? 'bg-blue-400 text-white' : 'text-gray-700 hover:bg-gray-100' %>"
-                               data-doc-id="<%= doc.id %>"
-                               data-doc-slug="<%= doc.slug %>"
-                               data-doc-title="<%= doc.title %>">
-                                <div class="font-medium"><%= doc.title %> <span class="text-xs text-red-600">(<%= doc.slug %>)</span></div>
-                            </a>
-                        <% }) %>
-                    <% } else { %>
-                        <div class="text-sm text-gray-500 text-center py-8">
-                            <i class="fas fa-file-alt text-gray-300 text-2xl mb-2"></i>
-                            <div>暂无文档</div>
-                        </div>
-                    <% } %>
+                    <%- include('../../components/tree', {
+                        documents: documents, currentDocument: document, bookUsername: book.username, bookSlug: book.slug, enableContextMenu: true, expandAll: false, showStatusBadge: true, showIcons: false,
+                        contextMenuItems: [ { action: 'add', label: '添加子文档', icon: 'fas fa-plus', className: 'text-gray-700 hover:bg-gray-100' }, { action: 'edit', label: '编辑文档', icon: 'fas fa-edit', className: 'text-gray-700 hover:bg-gray-100' }, { action: 'delete', label: '删除文档', icon: 'fas fa-trash', className: 'text-red-600 hover:bg-red-50' } ]
+                    }) %>
                 </div>
             </div>
         </div>
@@ -124,22 +112,6 @@
     </div>
 </div>
 
-<!-- 右键菜单 -->
-<div id="contextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-32">
-    <button id="addDocument" class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
-        <i class="fas fa-plus"></i>
-        <span>添加文档</span>
-    </button>
-    <button id="editDocument" class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
-        <i class="fas fa-edit"></i>
-        <span>编辑文档</span>
-    </button>
-    <button id="deleteDocument" class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2">
-        <i class="fas fa-trash"></i>
-        <span>删除文档</span>
-    </button>
-</div>
-
 <%- include('../../components/modal', { modalId: 'documentModal', content: include('../../partials/document-content') } ) %>
 
 <!-- 全局数据变量 -->
@@ -162,5 +134,53 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/document-editor.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('treeAction', function (e) {
+            const { action, docId, docTitle, docSlug, docStatus, hasChildren } = e.detail
+
+            switch (action) {
+                case 'add':
+                    if (typeof openDocumentModal === 'function') {
+                        openDocumentModal('new', { parentId: docId })
+                    }
+                    break
+
+                case 'edit':
+                    if (typeof openDocumentModal === 'function') {
+                        openDocumentModal('edit', {
+                            id: docId,
+                            title: docTitle,
+                            slug: docSlug
+                        })
+                    }
+                    break
+
+                case 'delete':
+                    if (confirm('确定要删除这个文档吗？此操作不可恢复！')) {
+                        deleteDocument(docSlug)
+                    }
+                    break
+            }
+        })
+
+        function deleteDocument(docSlug) {
+            const deleteForm = document.createElement('form')
+            deleteForm.method = 'POST'
+            deleteForm.action = `/document/writer/${ bookData.username }/${ bookData.slug }/${ docSlug }`
+            deleteForm.style.display = 'none'
+
+            const methodInput = document.createElement('input')
+            methodInput.type = 'hidden'
+            methodInput.name = '_method'
+            methodInput.value = 'DELETE'
+            deleteForm.appendChild(methodInput)
+
+            document.body.appendChild(deleteForm)
+            deleteForm.submit()
+        }
+    })
+</script>
 
 <%- include('../../layouts/base/footer') %>
