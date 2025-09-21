@@ -9,11 +9,49 @@ const MySQLStore = require('express-mysql-session')(session)
 const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
 const methodOverride = require('method-override')
+const socketIo = require('socket.io')
+const { marked } = require('marked')
 const { createInstallationChecker } = require('./middleware/installation-checker')
 const { handle404, handleError } = require('./middleware/error-handlers')
 
 const app = express()
+
+// Socket.IO
 const server = http.createServer(app)
+const io = socketIo(server)
+app.set('io', io)
+io.on('connection', (socket) => {
+    console.log('用户连接', socket.id)
+
+    // 加入书籍房间
+    socket.on('join-book-room', (data) => {
+        socket.join(`book-${ data.slug }-room`)
+        console.log(`用户 ${ socket.id } 加入 [${ data.name }] 书籍房间`)
+    })
+
+    // 加入文档房间
+    socket.on('join-document-room', (data) => {
+        socket.join(`doc-${ data.slug }-room`)
+        console.log(`用户 ${ socket.id } 加入 [${ data.name }] 文档房间`)
+    })
+
+    // 内容变化
+    socket.on('document-change', (data) => {
+        socket.to(`doc-${ data.documentSlug }-room`).emit('document-change', data)
+
+        // 如果需要预览，渲染并返回
+        if (data.needPreview) {
+            const html = marked.parse(data.content || '')
+            socket.emit('document-preview-updated', {
+                documentSlug: data.documentSlug,
+                html: html
+            })
+        }
+    })
+
+    socket.on('disconnect', () => console.log('用户断开连接', socket.id))
+})
+
 const PORT = process.env.PORT || 6969
 
 // 配置视图

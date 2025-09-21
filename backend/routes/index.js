@@ -21,6 +21,7 @@ router.use('/setup', require('./setup'))
 router.use('/auth', require('./auth'))
 router.use('/user', require('./user'))
 router.use('/book', require('./book'))
+router.use('/document', require('./document'))
 router.use('/explore', require('./explore'))
 router.use('/system', require('./system'))
 

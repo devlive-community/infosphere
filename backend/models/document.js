@@ -79,7 +79,7 @@ class Document {
      * @param {number} bookId 书籍ID
      * @returns {Promise<Array>} 文档数组
      */
-    static async findByBookId(bookId) {
+    static async findAllByBookId(bookId) {
         try {
             const pool = getPool()
             const connection = await pool.getConnection()
