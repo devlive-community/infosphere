@@ -14,6 +14,10 @@
                     <h1 class="flex items-center space-x-4 text-lg font-medium text-gray-900">
                         <img src="<%= book.cover_image %>" class="w-8 h-8 border rounded-full"/>
                         <span><%= book.title %></span>
+                        <% if (document) { %>
+                            <div class="text-gray-300">|</div>
+                            <span class="text-sm text-gray-500"><%= document.title %></span>
+                        <% } %>
                     </h1>
                 </div>
 
@@ -48,23 +52,25 @@
         </div>
     </div>
 
-    <div class="flex h-screen" style="height: calc(100vh - 4.5rem)">
+    <div class="flex h-screen" style="height: calc(100vh - 4.3rem)">
         <!-- 左侧文档列表 -->
-        <div class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-            <div class="p-0 space-y-2">
+        <div class="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
+            <div class="flex-shrink-0">
                 <div class="flex items-center justify-between border-b border-gray-200 px-4 py-1">
                     <h2 class="text-sm font-medium text-gray-900">文档列表</h2>
                     <button class="p-1 text-gray-400 hover:text-blue-600 transition-colors" title="新建文档" onclick="showModal('newDocumentModal')">
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
+            </div>
 
-                <div class="space-y-1">
+            <div class="flex-1 overflow-y-auto overflow-x-auto min-h-0">
+                <div class="space-y-1 min-w-max">
                     <% if (documents && documents.length > 0) { %>
                         <% documents.forEach(doc => { %>
                             <a href="/document/writer/<%= book.username %>/<%= book.slug %>/<%= doc.slug %>"
-                               class="block items-center px-3 py-2 text-sm transition-colors <%= document && doc.id === document.id ? 'bg-blue-400 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
-                                <div class="font-medium truncate"><%= doc.title %> <span class="text-xs text-red-600">(<%= doc.slug %>)</span></div>
+                               class="block items-center px-3 py-2 text-sm transition-colors whitespace-nowrap <%= document && doc.id === document.id ? 'bg-blue-400 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+                                <div class="font-medium"><%= doc.title %> <span class="text-xs text-red-600">(<%= doc.slug %>)</span></div>
                             </a>
                         <% }) %>
                     <% } else { %>
@@ -100,11 +106,11 @@
             <% } else { %>
                 <!-- 新建文档 -->
                 <div class="flex-1 flex items-center justify-center bg-white">
-                    <div class="text-center">
-                        <i class="fas fa-file-alt text-gray-300 text-6xl mb-4"></i>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">开始编写文档</h3>
-                        <p class="text-gray-500 mb-6">创建第一个文档来开始编写你的书籍</p>
-                        <button id="createFirstDocBtn" class="space-x-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors">
+                    <div class="text-center space-y-6">
+                        <i class="fas fa-file-alt text-gray-300 text-6xl"></i>
+                        <h3 class="text-lg font-medium text-gray-900">开始编写文档</h3>
+                        <p class="text-gray-500 mb-6">创建文档来开始编写你的书籍</p>
+                        <button class="space-x-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors" onclick="showModal('newDocumentModal')">
                             <i class="fas fa-plus"></i>
                             <span>创建文档</span>
                         </button>
@@ -250,16 +256,16 @@
         }
 
         // 标题自动生成 slug
-        const newDocTitleInput = document.getElementById('newDocTitle')
-        if (newDocTitleInput) {
-            newDocTitleInput.addEventListener('input', function () {
+        const titleInput = document.getElementById('title')
+        if (titleInput) {
+            titleInput.addEventListener('input', function () {
                 const title = this.value.trim()
                 const slug = title.toLowerCase()
                     .replace(/[^a-z0-9\u4e00-\u9fa5]/g, '-')
                     .replace(/-+/g, '-')
                     .replace(/^-|-$/g, '')
 
-                document.getElementById('newDocSlug').value = slug
+                document.getElementById('doc_slug').value = slug
             })
         }
 
