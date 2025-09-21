@@ -268,6 +268,55 @@ class Document {
             throw error
         }
     }
+
+    static async findAllByConditions(searchParams = {}) {
+        try {
+            const whereConditions = []
+            const params = []
+
+            if (searchParams.user_id) {
+                whereConditions.push('d.user_id = ?')
+                params.push(searchParams.user_id)
+            }
+
+            if (searchParams.book_id) {
+                whereConditions.push('d.book_id = ?')
+                params.push(searchParams.book_id)
+            }
+
+            if (searchParams.status) {
+                whereConditions.push('d.status = ?')
+                params.push(searchParams.status)
+            }
+
+            if (searchParams.parent_id !== undefined) {
+                if (searchParams.parent_id === null) {
+                    whereConditions.push('d.parent_id IS NULL')
+                }
+                else {
+                    whereConditions.push('d.parent_id = ?')
+                    params.push(searchParams.parent_id)
+                }
+            }
+
+            const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
+
+            const pool = getPool()
+            const [rows] = await pool.query(`
+                SELECT d.*,
+                       DATE_FORMAT(d.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                       DATE_FORMAT(d.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+                FROM documents d
+                         LEFT JOIN users u ON d.user_id = u.id
+                    ${ whereClause }
+                ORDER BY sort_order ASC, created_at ASC`, params)
+
+            return rows || []
+        }
+        catch (error) {
+            throw error
+        }
+    }
 }
 
 module.exports = Document

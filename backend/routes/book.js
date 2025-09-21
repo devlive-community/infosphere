@@ -1,6 +1,7 @@
 const express = require('express')
 const { asyncHandler } = require('../middleware/async-handler')
 const Book = require('../models/book')
+const Document = require('../models/document')
 const { ensureAuthenticated } = require('../middleware/auth-handler')
 const coverUpload = require('../services/upload/cover')
 const PaginationHelper = require('../tools/pagination')
@@ -112,9 +113,28 @@ router.get('/:username/:slug', asyncHandler(async (req, res) => {
 
     res.render('pages/book/summary', {
         book,
-        // documents,
         isOwner: req.user && req.user.id === book.user_id
     })
+}))
+
+router.get('/:username/:slug/chapters', asyncHandler(async (req, res) => {
+    const book = await Book.findByUsernameAndSlug(req.params.username, req.params.slug)
+    if (!book) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '书籍未找到',
+                message: '您请求的书籍不存在'
+            }
+        })
+    }
+
+    const searchParams = { parent_id: null, book_id: book.id }
+    if (book.user_id !== req.user.id) { searchParams.status = 'published' }
+
+    const data = await Document.findAllByConditions(searchParams)
+
+    res.render('pages/book/chapters', { book, data })
 }))
 
 router.get('/:username/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => {
