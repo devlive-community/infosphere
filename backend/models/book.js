@@ -158,6 +158,9 @@ class Book {
 
             const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
 
+            // 构建 ORDER BY 子句
+            const orderByClause = this.buildOrderByClause(searchParams.orderBy, searchParams.sortDirection)
+
             const baseQuery = `
                 SELECT b.id,
                        b.title,
@@ -175,8 +178,7 @@ class Book {
                        u.email
                 FROM books b
                          LEFT JOIN users u ON b.user_id = u.id
-                    ${ whereClause }
-                ORDER BY b.created_at DESC
+                    ${ whereClause } ${ orderByClause }
             `
 
             const countQuery = `
@@ -206,6 +208,88 @@ class Book {
             console.error(`根据条件查找书籍失败:`, error)
             throw error
         }
+    }
+
+    /**
+     * 构建 ORDER BY 子句
+     * @param {string|Array|Object} orderBy - 排序字段配置
+     * @param {string} sortDirection - 全局排序方向（当 orderBy 为字符串时使用）
+     * @returns {string} ORDER BY 子句
+     */
+    static buildOrderByClause(orderBy, sortDirection = 'DESC') {
+        // 定义允许的排序字段映射
+        const allowedFields = {
+            'id': 'b.id',
+            'title': 'b.title',
+            'created_at': 'b.created_at',
+            'updated_at': 'b.updated_at',
+            'view_count': 'b.view_count',
+            'status': 'b.status',
+            'username': 'u.username',
+            'is_public': 'b.is_public'
+        }
+
+        // 验证排序方向
+        function validateDirection(dir) {
+            const validDirections = ['ASC', 'DESC']
+            return validDirections.includes(dir?.toUpperCase()) ? dir.toUpperCase() : 'DESC'
+        }
+
+        // 如果没有指定排序字段，使用默认排序
+        if (!orderBy) {
+            return 'ORDER BY b.created_at DESC'
+        }
+
+        let orderFields = []
+
+        // 字符串格式 - 使用全局排序方向
+        if (typeof orderBy === 'string') {
+            if (allowedFields[orderBy]) {
+                const direction = validateDirection(sortDirection)
+                orderFields.push(`${ allowedFields[orderBy] } ${ direction }`)
+            }
+        }
+        // 数组格式 - 每个元素可以是字符串或对象
+        else if (Array.isArray(orderBy)) {
+            orderFields = orderBy
+                .map(item => {
+                    if (typeof item === 'string') {
+                        // 数组中的字符串，使用全局排序方向
+                        if (allowedFields[item]) {
+                            const direction = validateDirection(sortDirection)
+                            return `${ allowedFields[item] } ${ direction }`
+                        }
+                    }
+                    else if (typeof item === 'object' && item.field) {
+                        // 数组中的对象，每个对象有独立的排序方向
+                        if (allowedFields[item.field]) {
+                            const direction = validateDirection(item.direction)
+                            return `${ allowedFields[item.field] } ${ direction }`
+                        }
+                    }
+                    return null
+                })
+                .filter(Boolean) // 过滤掉 null 值
+        }
+        // 对象格式 - 字段名作为 key，排序方向作为 value
+        else if (typeof orderBy === 'object') {
+            orderFields = Object.entries(orderBy)
+                .map(([field, direction]) => {
+                    if (allowedFields[field]) {
+                        const validDirection = validateDirection(direction)
+                        return `${ allowedFields[field] } ${ validDirection }`
+                    }
+                    return null
+                })
+                .filter(Boolean) // 过滤掉 null 值
+        }
+
+        // 如果没有有效的排序字段，使用默认排序
+        if (orderFields.length === 0) {
+            return 'ORDER BY b.created_at DESC'
+        }
+
+        return `ORDER BY ${ orderFields.join(', ') }`
     }
 
     static async summaryByUser(user_id = null) {
