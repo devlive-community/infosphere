@@ -4,7 +4,7 @@ We love improvements to our tools! There are a few key ways you can help us impr
 Submitting Feedback, Requests, and Bugs
 Our process for submitting feedback, feature requests, and reporting bugs usually begins by discussion on our chat and, after initial clarification, through GitHub issues. Each project repository generally maintains its own set of issues:
 
-    https://answer.devlive.org/tags/infosphere
+    https://community.devlive.org/t/infosphere
 
 Some projects have additional templates or sets of questions for each issue, which you will be prompted to fill out when creating one.
 
@@ -19,13 +19,16 @@ Our process for accepting changes operates by Pull Request (PR) and has a few st
 
 If you haven't submitted anything before, and you aren't (yet!) a member of our organization, fork and clone the repo:
 
-$ git clone git@github.com:infosphere/infosphere.git
+$ `git clone git@github.com:devlive-community/infosphere.git`
+
 Organization members should clone the upsteam repo, instead of working from a personal fork:
 
-$ git clone git@github.com:infosphere/infosphere.git
+$ `git clone git@github.com:devlive-community/infosphere.git`
+
 Create a new branch for the changes you want to work on. Choose a topic for your branch name that reflects the change:
 
-$ git checkout -b <branch-name>
+$ `git checkout -b <branch-name>`
+
 Create or modify the files with your changes. If you want to show other people work that isn't ready to merge in, commit your changes then create a pull request (PR) with WIP or Work In Progress in the title.
 
 https://github.com/devlive-community/infosphere

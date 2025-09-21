@@ -1,56 +1,12 @@
 const express = require('express')
 const { asyncHandler } = require('../middleware/async-handler')
 const Book = require('../models/book')
+const Document = require('../models/document')
 const { ensureAuthenticated } = require('../middleware/auth-handler')
 const coverUpload = require('../services/upload/cover')
 const PaginationHelper = require('../tools/pagination')
+const User = require('../models/user')
 const router = express.Router()
-
-router.get('/', ensureAuthenticated, asyncHandler(async (req, res) => {
-    const paginationParams = PaginationHelper.parseParams(req.query, {
-        defaultLimit: 10,
-        allowedLimits: [10, 20, 50, 100]
-    })
-
-    const searchParams = {
-        user_id: req.user.id
-    }
-
-    const [bookResponse, summaryResponse] = await Promise.all([
-        Book.findAllByConditions(paginationParams, searchParams),
-        Book.summaryByUser(req.user.id)
-    ])
-    delete searchParams.user_id
-
-    res.render('pages/book/self', {
-        data: bookResponse.data,
-        searchParams: searchParams,
-        summary: summaryResponse,
-        pagination: bookResponse.pagination
-    })
-}))
-
-router.get('/:username/:slug', asyncHandler(async (req, res) => {
-    const book = await Book.findByUsernameAndSlug(req.params.username, req.params.slug)
-
-    if (!book) {
-        return res.status(404).render('pages/error/global', {
-            error: {
-                status: 404,
-                title: '书籍未找到',
-                message: '您请求的书籍不存在'
-            }
-        })
-    }
-
-    await Book.incrementViewCount(book.id)
-
-    res.render('pages/book/summary', {
-        book,
-        // documents,
-        isOwner: req.user && req.user.id === book.user_id
-    })
-}))
 
 router.get('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
     res.render('pages/book/info', { isEdit: false })
@@ -105,10 +61,80 @@ router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
     }
 }))
 
-router.get(['/info/:slug', '/slug/:slug'], asyncHandler(async (req, res) => {
-    // 获取文档树
-    // const documents = await Document.getDocumentTree(bookId)
+router.get('/:username', ensureAuthenticated, asyncHandler(async (req, res) => {
+    const user = await User.findByUsername(req.params.username)
+    if (!user) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '用户未找到',
+                message: '您请求的用户不存在'
+            }
+        })
+    }
 
+    const paginationParams = PaginationHelper.parseParams(req.query, { defaultLimit: 10 })
+
+    const searchParams = { username: req.params.username }
+    if (user.id !== req.user.id) {
+        searchParams.is_public = 1
+        searchParams.status = 'published'
+    }
+
+    const [bookResponse, summaryResponse] = await Promise.all([
+        Book.findAllByConditions(paginationParams, searchParams),
+        Book.summaryByConditions(searchParams)
+    ])
+    delete searchParams.username
+
+    res.render('pages/book/self', {
+        user,
+        data: bookResponse.data,
+        searchParams: searchParams,
+        summary: summaryResponse,
+        pagination: bookResponse.pagination
+    })
+}))
+
+router.get('/:username/:slug', asyncHandler(async (req, res) => {
+    const book = await Book.findByUsernameAndSlug(req.params.username, req.params.slug)
+
+    if (!book) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '书籍未找到',
+                message: '您请求的书籍不存在'
+            }
+        })
+    }
+
+    await Book.incrementViewCount(book.id)
+
+    res.render('pages/book/summary', {
+        book,
+        isOwner: req.user && req.user.id === book.user_id
+    })
+}))
+
+router.get('/:username/:slug/chapters', asyncHandler(async (req, res) => {
+    const book = await Book.findByUsernameAndSlug(req.params.username, req.params.slug)
+    if (!book) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '书籍未找到',
+                message: '您请求的书籍不存在'
+            }
+        })
+    }
+
+    const searchParams = { parent_id: null, book_id: book.id }
+    if (book.user_id !== req.user.id) { searchParams.status = 'published' }
+
+    const data = await Document.findAllByConditions(searchParams)
+
+    res.render('pages/book/chapters', { book, data })
 }))
 
 router.get('/:username/:slug/edit', ensureAuthenticated, asyncHandler(async (req, res) => {

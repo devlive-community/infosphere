@@ -4,8 +4,10 @@ const Book = require('../models/book')
 const router = express.Router()
 
 router.get('/', asyncHandler(async (req, res) => {
+    const searchParams = { is_public: 1, status: 'published' }
+
     const [stats, hotBooks] = await Promise.all([
-        Book.summaryByUser(),
+        Book.summaryByConditions(searchParams),
         Book.findTop6ByView()
     ])
 
@@ -19,6 +21,7 @@ router.use('/setup', require('./setup'))
 router.use('/auth', require('./auth'))
 router.use('/user', require('./user'))
 router.use('/book', require('./book'))
+router.use('/document', require('./document'))
 router.use('/explore', require('./explore'))
 router.use('/system', require('./system'))
 

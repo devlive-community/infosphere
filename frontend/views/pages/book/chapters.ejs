@@ -1,0 +1,59 @@
+<%- include('../../layouts/base/header', { title: `${book.title} - 目录` }) %>
+
+<div class="min-h-screen py-4 md:py-8">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div class="flex flex-col lg:flex-row gap-3 md:gap-8 max-w-7xl mx-auto">
+            <%- include('../../layouts/book/detail-nav', { book }) %>
+
+            <div class="flex-1 space-y-3 md:space-y-4">
+                <div class="bg-white rounded-lg border p-1 md:p-3 space-y-2">
+                    <!-- 标题和操作按钮区域 -->
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 md:gap-6 border-b border-gray-100 pb-2">
+                        <div class="text-1xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight break-words">[ <%= book.title %> ] 章节</div>
+
+                        <div class="flex items-center gap-2">
+                            <a href="/document/writer/<%= book.username %>/<%= book.slug %>"
+                               class="inline-flex items-center px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+                                <i class="fas fa-edit mr-2"></i>
+                                编辑文档
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 目录列表 -->
+                    <% if (data && data.length > 0) { %>
+                        <div>
+                            <% data.forEach((document, index) => { %>
+                                <div class="flex items-center justify-between p-2 hover:bg-gray-100 rounded transition-colors">
+                                    <div class="flex items-center space-x-4 flex-1">
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="truncate">
+                                                <%= document.title %>
+                                            </h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    <% } else { %>
+                        <!-- 空状态 -->
+                        <div class="text-center py-12">
+                            <div class="max-w-sm mx-auto">
+                                <i class="fas fa-file-alt text-gray-300 text-6xl mb-4"></i>
+                                <h3 class="text-lg font-medium text-gray-900 mb-2">暂无文档</h3>
+                                <p class="text-gray-500 mb-6">这本书还没有任何文档，开始创建第一个文档吧</p>
+                                <a href="/document/writer/<%= book.username %>/<%= book.slug %>"
+                                   class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    创建文档
+                                </a>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../../layouts/base/footer') %>
