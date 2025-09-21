@@ -292,23 +292,36 @@ class Book {
         return `ORDER BY ${ orderFields.join(', ') }`
     }
 
-    static async summaryByUser(user_id = null) {
+    static async summaryByConditions(searchParams = {}) {
         try {
             const whereConditions = []
-            const values = []
+            const params = []
 
-            if (user_id) {
-                whereConditions.push('user_id = ?')
-                values.push(user_id)
-            }
-            else {
-                whereConditions.push('is_public = ?')
-                values.push(1)
-                whereConditions.push('status = ?')
-                values.push('published')
+            // 根据用户ID过滤
+            if (searchParams.user_id) {
+                whereConditions.push('b.user_id = ?')
+                params.push(searchParams.user_id)
             }
 
-            const whereClause = 'WHERE ' + whereConditions.join(' AND ')
+            // 根据状态过滤
+            if (searchParams.status) {
+                whereConditions.push('b.status = ?')
+                params.push(searchParams.status)
+            }
+
+            // 根据可见性过滤
+            if (searchParams.is_public !== undefined) {
+                whereConditions.push('b.is_public = ?')
+                params.push(searchParams.is_public)
+            }
+
+            // 根据作者用户名搜索
+            if (searchParams.username) {
+                whereConditions.push('u.username LIKE ?')
+                params.push(`%${ searchParams.username }%`)
+            }
+
+            const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
 
             const pool = getPool()
             const [rows] = await pool.query(`
@@ -320,8 +333,9 @@ class Book {
                        SUM(CASE WHEN status = 'published' THEN view_count ELSE 0 END) as published_views,
                        SUM(CASE WHEN status = 'draft' THEN view_count ELSE 0 END)     as draft_views,
                        SUM(CASE WHEN status = 'archived' THEN view_count ELSE 0 END)  as archived_views
-                FROM books ${ whereClause }
-            `, values)
+                FROM books b
+                         LEFT JOIN users u ON b.user_id = u.id
+                    ${ whereClause }`, params)
 
             return rows[0]
         }

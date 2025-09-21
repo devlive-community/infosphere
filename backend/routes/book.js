@@ -4,25 +4,37 @@ const Book = require('../models/book')
 const { ensureAuthenticated } = require('../middleware/auth-handler')
 const coverUpload = require('../services/upload/cover')
 const PaginationHelper = require('../tools/pagination')
+const User = require('../models/user')
 const router = express.Router()
 
-router.get('/', ensureAuthenticated, asyncHandler(async (req, res) => {
-    const paginationParams = PaginationHelper.parseParams(req.query, {
-        defaultLimit: 10,
-        allowedLimits: [10, 20, 50, 100]
-    })
+router.get('/:username', ensureAuthenticated, asyncHandler(async (req, res) => {
+    const user = await User.findByUsername(req.params.username)
+    if (!user) {
+        return res.status(404).render('pages/error/global', {
+            error: {
+                status: 404,
+                title: '用户未找到',
+                message: '您请求的用户不存在'
+            }
+        })
+    }
 
-    const searchParams = {
-        user_id: req.user.id
+    const paginationParams = PaginationHelper.parseParams(req.query, { defaultLimit: 10 })
+
+    const searchParams = { username: req.params.username }
+    if (user.id !== req.user.id) {
+        searchParams.is_public = 1
+        searchParams.status = 'published'
     }
 
     const [bookResponse, summaryResponse] = await Promise.all([
         Book.findAllByConditions(paginationParams, searchParams),
-        Book.summaryByUser(req.user.id)
+        Book.summaryByConditions(searchParams)
     ])
-    delete searchParams.user_id
+    delete searchParams.username
 
     res.render('pages/book/self', {
+        user,
         data: bookResponse.data,
         searchParams: searchParams,
         summary: summaryResponse,
