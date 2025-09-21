@@ -4,8 +4,10 @@ const Book = require('../models/book')
 const router = express.Router()
 
 router.get('/', asyncHandler(async (req, res) => {
+    const searchParams = { is_public: 1, status: 'published' }
+
     const [stats, hotBooks] = await Promise.all([
-        Book.summaryByUser(),
+        Book.summaryByConditions(searchParams),
         Book.findTop6ByView()
     ])
 
