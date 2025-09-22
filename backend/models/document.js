@@ -120,19 +120,29 @@ class Document {
         }
     }
 
-    /**
-     * 获取书籍的文档树结构
-     * @param {number} bookId 书籍ID
-     * @returns {Promise<Array>} 树形结构的文档数组
-     */
-    static async getDocumentTree(bookId) {
+    static async getDocumentTree(searchParams = {}) {
         try {
+            const whereConditions = []
+            const params = []
+
+            if (searchParams.book_id) {
+                whereConditions.push('d.book_id = ?')
+                params.push(searchParams.book_id)
+            }
+
+            if (searchParams.status) {
+                whereConditions.push('d.status = ?')
+                params.push(searchParams.status)
+            }
+
+            const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
+
             const pool = getPool()
             const connection = await pool.getConnection()
-            const [rows] = await connection.execute(
-                'SELECT * FROM documents WHERE book_id = ? ORDER BY sort_order ASC, created_at ASC',
-                [bookId]
-            )
+            const [rows] = await connection.execute(`
+                SELECT *
+                FROM documents d ${ whereClause }
+                ORDER BY sort_order ASC, created_at ASC`, params)
             connection.release()
 
             // 构建树形结构
