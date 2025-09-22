@@ -1,126 +1,133 @@
 <%- include('../../layouts/base/header', { title: '阅读 - ' + document.title, hideNav: true }) %>
 
-<div class="min-h-screen">
-    <!-- 顶部工具栏 -->
-    <div class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div class="max-w-full px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- 左侧导航 -->
+<div class="min-h-screen flex">
+    <!-- 左侧侧边栏 -->
+    <aside id="sidebar" class="w-80 bg-white border-r border-gray-200 flex flex-col h-screen transition-all duration-300">
+        <!-- 顶部：书籍信息 -->
+        <div class="flex-shrink-0 border-b border-gray-100 hover:bg-gray-50">
+            <a href="/book/<%= book.username %>/<%= book.slug %>" class="mx-3 block rounded-lg p-2 transition-colors">
                 <div class="flex items-center space-x-4">
-                    <a href="/book/<%= book.username %>/<%= book.slug %>"
-                       class="flex items-center space-x-3 text-gray-700 hover:text-gray-900 transition-colors group">
+                    <% if (book.cover_image) { %>
                         <img src="<%= book.cover_image %>"
                              alt="<%= book.title %>"
-                             class="w-8 h-8 border rounded-full object-cover shadow-sm group-hover:shadow-md transition-shadow"/>
-                        <h1 class="text-lg font-semibold truncate max-w-xs">
+                             class="w-12 h-12 rounded-lg object-cover shadow-sm"/>
+                    <% } else { %>
+                        <div class="min-w-12 max-w-12 min-h-12 max-h-12 bg-gray-100 rounded-lg flex items-center justify-center shadow-md border-2 border-gray-100">
+                            <i class="fas fa-book text-gray-400 text-lg"></i>
+                        </div>
+                    <% } %>
+                    <div class="flex-1 min-w-0">
+                        <h1 class="text-lg font-semibold text-gray-900 truncate">
                             <%= book.title %>
                         </h1>
-                    </a>
-                </div>
-
-                <!-- 右侧操作 -->
-                <div class="flex items-center space-x-3">
-                    <!-- 阅读设置按钮 -->
-                    <button id="readingSettingsBtn"
-                            class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-                            title="阅读设置">
-                        <i class="fas fa-cog"></i>
-                    </button>
-
-                    <!-- 全屏按钮 -->
-                    <button id="fullscreenBtn"
-                            class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-                            title="全屏阅读">
-                        <i class="fas fa-expand"></i>
-                    </button>
-
-                    <% if (user && user.id === document.user_id) { %>
-                        <a href="/book/writer/<%= book.username %>/<%= book.slug %>/<%= document.slug %>"
-                           class="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors shadow-sm hover:shadow-md">
-                            <i class="fas fa-edit"></i>
-                            <span>编辑</span>
-                        </a>
-                    <% } %>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="flex" style="height: calc(100vh - 4.3rem)">
-        <!-- 左侧文档列表 -->
-        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col h-full transition-all duration-300 relative">
-            <!-- 侧边栏头部 -->
-            <div class="flex-shrink-0 border-b border-gray-100">
-                <div class="flex items-center justify-between px-4 py-3">
-                    <h2 class="text-sm font-semibold text-gray-900 flex items-center space-x-2">
-                        <i class="fas fa-list text-gray-500"></i>
-                        <span>目录</span>
-                    </h2>
-                    <div class="flex items-center space-x-1">
-                        <button id="toggleSidebarBtn"
-                                class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                                title="收起侧边栏">
-                            <i class="fas fa-chevron-left text-xs"></i>
-                        </button>
+                        <p class="text-sm text-gray-600 truncate">
+                            作者：<%= book.username %>
+                        </p>
                     </div>
                 </div>
-            </div>
+            </a>
+        </div>
 
-            <!-- 文档树 -->
-            <div class="flex-1 overflow-y-auto overflow-x-hidden">
-                <div class="py-2">
-                    <%- include('../../components/tree', { linkPattern: '/book/reader/{username}/{bookSlug}/{docSlug}', documents: documents, currentDocument: document, bookUsername: book.username, bookSlug: book.slug, expandAll: true, showStatusBadge: false, showIcons: false, enableContextMenu: false }) %>
-                </div>
+        <!-- 中部：目录 -->
+        <div class="flex-1 overflow-hidden flex flex-col">
+            <div class="flex-1 overflow-y-auto px-2 py-2">
+                <%- include('../../components/tree', {
+                    linkPattern: '/book/reader/{username}/{bookSlug}/{docSlug}',
+                    documents: documents,
+                    currentDocument: document,
+                    bookUsername: book.username,
+                    bookSlug: book.slug,
+                    expandAll: false,
+                    showStatusBadge: false,
+                    showIcons: false,
+                    enableContextMenu: false
+                }) %>
             </div>
-        </aside>
+        </div>
 
-        <!-- 主内容区域 -->
-        <main id="mainContent" class="flex-1 flex flex-col bg-white relative transition-all duration-300">
-            <!-- 内容工具栏 -->
-            <div class="flex-shrink-0 border-b px-6 py-3">
+        <!-- 底部：版权信息 -->
+        <div class="flex-shrink-0 p-4 border-t border-gray-100 bg-gray-50">
+            <p class="text-xs text-gray-500 text-center">
+                本书籍由 <span class="font-medium"><%= locals.site?.site_name || 'InfoSphere' %></span> 构建
+            </p>
+        </div>
+    </aside>
+
+    <!-- 右侧：文档阅读区域 -->
+    <main class="flex-1 flex flex-col bg-white h-screen">
+        <!-- 顶部工具栏 -->
+        <div class="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm">
+            <div class="px-6 py-3">
                 <div class="flex items-center justify-between">
-                    <div class="flex items-center justify-center space-x-3">
-                        <!-- 显示侧边栏按钮（当侧边栏隐藏时显示） -->
-                        <button id="showSidebarBtn"
-                                class="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-md transition-colors shadow-sm hidden"
-                                title="显示目录">
+                    <!-- 左侧：切换按钮和文档标题 -->
+                    <div class="flex items-center space-x-3">
+                        <!-- 侧边栏切换按钮 -->
+                        <button id="toggleSidebarBtn"
+                                class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                                title="隐藏/显示目录">
                             <i class="fas fa-bars"></i>
                         </button>
-                        <h3 class="text-lg text-center font-semibold text-gray-900 truncate max-w-md">
+
+                        <h3 class="text-lg font-semibold text-gray-900 truncate">
                             <%= document.title %>
                         </h3>
                     </div>
 
-                    <!-- 阅读进度 -->
-                    <div class="flex items-center space-x-4 text-sm text-gray-500">
-                        <span id="readingProgress">0%</span>
-                        <span id="estimatedTime" title="预计阅读时间"></span>
+                    <!-- 右侧操作按钮 -->
+                    <div class="flex items-center space-x-3">
+                        <!-- 阅读进度 -->
+                        <div class="flex items-center space-x-4 text-sm text-gray-500">
+                            <span id="readingProgress">0%</span>
+                            <span id="estimatedTime" title="预计阅读时间"></span>
+                        </div>
+
+                        <!-- 阅读设置按钮 -->
+                        <button id="readingSettingsBtn"
+                                class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                                title="阅读设置">
+                            <i class="fas fa-cog"></i>
+                        </button>
+
+                        <!-- 全屏按钮 -->
+                        <button id="fullscreenBtn"
+                                class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                                title="全屏阅读">
+                            <i class="fas fa-expand"></i>
+                        </button>
+
+                        <% if (user && user.id === document.user_id) { %>
+                            <a href="/book/writer/<%= book.username %>/<%= book.slug %>/<%= document.slug %>"
+                               class="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors shadow-sm hover:shadow-md">
+                                <i class="fas fa-edit"></i>
+                                <span>编辑</span>
+                            </a>
+                        <% } %>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- 文档内容 -->
-            <div class="flex-1 overflow-hidden">
-                <div class="h-full px-4">
-                    <% if (document && document.html) { %>
-                        <div id="documentContent"
-                             class="prose prose-lg max-w-none h-full overflow-y-auto"
-                             style="line-height: 1.8;">
-                            <%- document.html %>
+        <!-- 文档内容区域 -->
+        <div class="flex-1 overflow-hidden">
+            <div class="h-full max-w-7xl mx-auto">
+                <% if (document && document.html) { %>
+                    <div id="documentContent"
+                         class="prose prose-lg max-w-none h-full overflow-y-auto px-8 py-6"
+                         style="line-height: 1.8;">
+                        <%- document.html %>
+                    </div>
+                <% } else { %>
+                    <div class="flex items-center justify-center h-full text-gray-500">
+                        <div class="text-center">
+                            <i class="fas fa-file-alt text-4xl mb-4"></i>
+                            <p class="text-lg">文档内容为空</p>
+                            <p class="text-sm mt-2">该文档还没有内容</p>
                         </div>
-                    <% } else { %>
-                        <div class="flex items-center justify-center h-full text-gray-500">
-                            <div class="text-center">
-                                <i class="fas fa-file-alt text-4xl mb-4"></i>
-                                <p class="text-lg">文档内容为空</p>
-                                <p class="text-sm mt-2">该文档还没有内容</p>
-                            </div>
-                        </div>
-                    <% } %>
-                </div>
+                    </div>
+                <% } %>
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
 </div>
 
 <!-- 阅读设置面板 -->
@@ -167,11 +174,9 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // 侧边栏切换
+        // 侧边栏切换功能
         const sidebar = document.getElementById('sidebar')
-        const mainContent = document.getElementById('mainContent')
         const toggleSidebarBtn = document.getElementById('toggleSidebarBtn')
-        const showSidebarBtn = document.getElementById('showSidebarBtn')
         let sidebarVisible = true
 
         toggleSidebarBtn?.addEventListener('click', function () {
@@ -180,18 +185,17 @@
                 sidebar.style.width = '0'
                 sidebar.style.overflow = 'hidden'
                 sidebar.style.borderRight = 'none'
-                showSidebarBtn.classList.remove('hidden')
+                toggleSidebarBtn.innerHTML = '<i class="fas fa-chevron-right"></i>'
+                toggleSidebarBtn.title = '显示目录'
                 sidebarVisible = false
             }
-        })
-
-        showSidebarBtn?.addEventListener('click', function () {
-            if (!sidebarVisible) {
+            else {
                 // 显示侧边栏
-                sidebar.style.width = '16rem'
+                sidebar.style.width = '20rem'
                 sidebar.style.overflow = 'visible'
                 sidebar.style.borderRight = '1px solid #e5e7eb'
-                showSidebarBtn.classList.add('hidden')
+                toggleSidebarBtn.innerHTML = '<i class="fas fa-bars"></i>'
+                toggleSidebarBtn.title = '隐藏目录'
                 sidebarVisible = true
             }
         })

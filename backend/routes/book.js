@@ -68,7 +68,6 @@ router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, 
 
     const book = await Book.findByUsernameAndSlug(username, book_slug)
 
-    // 1. 书籍不存在 -> 404
     if (!book) {
         return res.status(404).render('pages/error/global', {
             error: {
@@ -79,7 +78,6 @@ router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, 
         })
     }
 
-    // 2. 书籍是草稿 & 当前用户不是作者 -> 403
     if (book.status === 'draft' && (!req.user || book.user_id !== req.user.id)) {
         return res.status(403).render('pages/error/global', {
             error: {
@@ -90,8 +88,8 @@ router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, 
         })
     }
 
-    // 3. 获取文档树
-    const documents = await Document.getDocumentTree(book.id)
+    const searchParams = { book_id: book.id, status: 'published' }
+    const documents = await Document.getDocumentTree(searchParams)
     if (documents.length === 0) {
         return res.status(404).render('pages/error/global', {
             error: {
@@ -102,7 +100,6 @@ router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, 
         })
     }
 
-    // 4. 定位要阅读的文档
     let document = documents[0]
     if (docs_slug) {
         document = await Document.findBySlug(docs_slug)
@@ -117,7 +114,6 @@ router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, 
         }
     }
 
-    // 5. 转换 markdown
     document.html = isEmpty(document.content)
         ? undefined
         : `<script src='https://cdn.tailwindcss.com'></script>` + marked.parse(document.content || '')
@@ -132,7 +128,6 @@ router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, 
 router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, asyncHandler(async (req, res) => {
     const { username, book_slug, doc_slug } = req.params
 
-    // 1. 查找书籍
     const book = await Book.findByUsernameAndSlug(username, book_slug)
     if (!book) {
         return res.status(404).render('pages/error/global', {
@@ -144,7 +139,6 @@ router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, async
         })
     }
 
-    // 2. 权限校验（必须是作者）
     if (book.user_id !== req.user.id) {
         return res.status(403).render('pages/error/global', {
             error: {
@@ -155,7 +149,6 @@ router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, async
         })
     }
 
-    // 3. 查找文档（如果有 doc_slug）
     let document = null
     let isEdit = false
     if (doc_slug) {
@@ -165,10 +158,9 @@ router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, async
         }
     }
 
-    // 4. 获取文档树
-    const documents = await Document.getDocumentTree(book.id)
+    const searchParams = { book_id: book.id }
+    const documents = await Document.getDocumentTree(searchParams)
 
-    // 5. Socket.IO 房间逻辑
     const io = req.app.get('io')
     if (io) {
         const userSocket = io.sockets.sockets.get(req.user.socketId)
@@ -188,7 +180,6 @@ router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, async
         }
     }
 
-    // 6. 渲染写作页面
     res.render('pages/document/writer', {
         book,
         document,
