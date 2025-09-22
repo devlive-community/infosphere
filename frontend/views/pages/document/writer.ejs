@@ -25,33 +25,53 @@
                 <%- include('../../components/alert', { type: 'success', message: success }) %>
 
                 <!-- 右侧操作 -->
-                <div class="flex items-center space-x-3">
-                    <% if (documents && documents.length > 0) { %>
-                        <!-- 保存状态 -->
-                        <div id="saveStatus" class="text-sm text-gray-500 space-x-0.5">
-                            <i class="fas fa-circle text-gray-400"></i>
-                            <span>未修改</span>
+                <div class="flex items-center space-x-4">
+                    <!-- 在线用户显示区域 -->
+                    <div class="flex items-center space-x-2 border-l border-gray-200 pl-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-users text-gray-400 text-sm"></i>
+                            <span class="text-sm text-gray-600">
+                                <% if (isEdit) { %>
+                                    编辑中:
+                                <% } else { %>
+                                    在线:
+                                <% } %>
+                            </span>
                         </div>
+                        <div id="onlineUsers" class="flex items-center space-x-1">
+                            <div class="text-gray-400 text-sm">加载中...</div>
+                        </div>
+                    </div>
 
-                        <!-- 预览切换 -->
-                        <button id="togglePreview" class="space-x-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors">
-                            <i class="fas fa-eye"></i>
-                            <span>预览</span>
-                        </button>
-                    <% } %>
+                    <div class="flex items-center space-x-3">
+                        <% if (documents && documents.length > 0) { %>
+                            <!-- 保存状态 -->
+                            <div id="saveStatus" class="text-sm text-gray-500 space-x-0.5">
+                                <i class="fas fa-circle text-gray-400"></i>
+                                <span>未修改</span>
+                            </div>
 
-                    <!-- 保存按钮 -->
-                    <% if (isEdit) { %>
-                        <button id="saveData" class="px-4 py-2 space-x-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-md transition-colors">
-                            <i class="fas fa-save"></i>
-                            <span>保存</span>
-                        </button>
-                    <% } %>
+                            <!-- 预览切换 -->
+                            <button id="togglePreview" class="space-x-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors">
+                                <i class="fas fa-eye"></i>
+                                <span>预览</span>
+                            </button>
+                        <% } %>
+
+                        <!-- 保存按钮 -->
+                        <% if (isEdit) { %>
+                            <button id="saveData" class="px-4 py-2 space-x-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-md transition-colors">
+                                <i class="fas fa-save"></i>
+                                <span>保存</span>
+                            </button>
+                        <% } %>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 其余部分保持不变 -->
     <div class="flex h-screen" style="height: calc(100vh - 4.3rem)">
         <!-- 左侧文档列表 -->
         <div class="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
@@ -67,8 +87,8 @@
             <div class="flex-1 overflow-y-auto overflow-x-auto min-h-0">
                 <div class="space-y-1 min-w-max">
                     <%- include('../../components/tree', {
-                        documents: documents, currentDocument: document, bookUsername: book.username, bookSlug: book.slug, enableContextMenu: true, expandAll: false, showStatusBadge: true, showIcons: false,
-                        contextMenuItems: [ { action: 'add', label: '添加子文档', icon: 'fas fa-plus', className: 'text-gray-700 hover:bg-gray-100' }, { action: 'edit', label: '编辑文档', icon: 'fas fa-edit', className: 'text-gray-700 hover:bg-gray-100' }, { action: 'delete', label: '删除文档', icon: 'fas fa-trash', className: 'text-red-600 hover:bg-red-50' } ]
+                    documents: documents, currentDocument: document, bookUsername: book.username, bookSlug: book.slug, enableContextMenu: true, expandAll: false, showStatusBadge: true, showIcons: false, linkPattern: '/book/writer/{username}/{bookSlug}/{docSlug}',
+                    contextMenuItems: [ { action: 'add', label: '添加子文档', icon: 'fas fa-plus', className: 'text-gray-700 hover:bg-gray-100' }, { action: 'edit', label: '编辑文档', icon: 'fas fa-edit', className: 'text-gray-700 hover:bg-gray-100' }, { action: 'delete', label: '删除文档', icon: 'fas fa-trash', className: 'text-red-600 hover:bg-red-50' } ]
                     }) %>
                 </div>
             </div>
@@ -116,11 +136,19 @@
 
 <!-- 全局数据变量 -->
 <script>
+    // 添加当前用户信息
+    window.currentUser = {
+        id: <%= user.id %>,
+        username: '<%= user.username %>',
+        avatar: '<%= user.avatar || "" %>'
+    }
+
     window.bookData = {
         username: '<%= book.username %>',
         slug: '<%= book.slug %>',
         title: '<%= book.title %>'
     }
+
     <% if (document) { %>
     window.documentData = {
         slug: '<%= document.slug %>',
@@ -129,6 +157,7 @@
     <% } else { %>
     window.documentData = {}
     <% } %>
+
     window.isEdit = <%= isEdit ? 'true' : 'false' %>
 </script>
 
@@ -168,7 +197,7 @@
         function deleteDocument(docSlug) {
             const deleteForm = document.createElement('form')
             deleteForm.method = 'POST'
-            deleteForm.action = `/document/writer/${ bookData.username }/${ bookData.slug }/${ docSlug }`
+            deleteForm.action = `/document/${ bookData.username }/${ bookData.slug }/${ docSlug }`
             deleteForm.style.display = 'none'
 
             const methodInput = document.createElement('input')
