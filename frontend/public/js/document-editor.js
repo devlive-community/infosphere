@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const previewPane = document.getElementById('previewPane')
     const saveStatus = document.getElementById('saveStatus')
     const saveData = document.getElementById('saveData')
+    const onlineUsers = document.getElementById('onlineUsers')
 
     let hasUnsavedChanges = false
 
@@ -15,6 +16,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const bookData = window.bookData || {}
     const documentData = window.documentData || {}
     const isEdit = window.isEdit || false
+    const currentUser = window.currentUser || {} // 当前登录用户信息
+
+    // 首先进行用户认证
+    socket.emit('authenticate', {
+        id: currentUser.id,
+        username: currentUser.username,
+        avatar: currentUser.avatar
+    })
 
     // 加入书籍房间
     socket.emit('join-book-room', { slug: bookData.slug, name: bookData.title })
@@ -231,9 +240,133 @@ document.addEventListener('DOMContentLoaded', function () {
         })
     }
 
-    // Socket.IO 事件监听
-    socket.on('user-joined', function (data) {
-        console.log(`用户 ${ data.username } 加入了编辑`)
+    // 更新在线用户显示
+    function updateOnlineUsers(users, type = 'book') {
+        if (!onlineUsers) {
+            return
+        }
+
+        onlineUsers.innerHTML = ''
+
+        if (users.length === 0) {
+            onlineUsers.innerHTML = '<div class="text-gray-400 text-sm">无在线用户</div>'
+            return
+        }
+
+        const userList = document.createElement('div')
+        userList.className = 'flex items-center space-x-1'
+
+        users.forEach(user => {
+            const userElement = document.createElement('div')
+
+            // 根据用户状态确定样式
+            const isCurrentUser = user.id === currentUser.id
+            let userClass, statusIcon, statusText
+
+            if (type === 'document' || user.editingDocument) {
+                // 正在编辑文档
+                userClass = isCurrentUser ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                statusIcon = 'fa-edit'
+                statusText = user.editingDocumentName ? `编辑: ${ user.editingDocumentName }` : '编辑中'
+            }
+            else {
+                // 只是在浏览书籍
+                userClass = isCurrentUser ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                statusIcon = 'fa-eye'
+                statusText = '浏览中'
+            }
+
+            userElement.className = `group relative flex items-center space-x-1 ${ userClass } px-2 py-1 rounded-full text-xs cursor-pointer`
+            userElement.title = `${ user.username } - ${ statusText }`
+
+            userElement.innerHTML = `
+                ${ user.avatar ?
+                `<img src="${ user.avatar }" alt="${ user.username }" class="w-5 h-5 rounded-full">` :
+                `<div class="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs">${ user.username.charAt(0).toUpperCase() }</div>`
+            }
+                <span class="max-w-20 truncate">${ user.username }${ isCurrentUser ? ' (我)' : '' }</span>
+                <i class="fas ${ statusIcon } text-xs opacity-75"></i>
+            `
+
+            userList.appendChild(userElement)
+        })
+
+        onlineUsers.appendChild(userList)
+    }
+
+    // 显示通知的辅助函数
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div')
+        notification.className = `fixed top-4 right-4 p-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`
+
+        const bgClass = type === 'info' ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white'
+        notification.className += ` ${ bgClass }`
+        notification.textContent = message
+
+        document.body.appendChild(notification)
+
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full')
+        }, 100)
+
+        setTimeout(() => {
+            notification.classList.add('translate-x-full')
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification)
+                }
+            }, 300)
+        }, 3000)
+    }
+
+    // 书籍房间用户更新
+    socket.on('book-room-users-updated', function (data) {
+        console.log('书籍房间用户列表更新:', data.users)
+        if (!isEdit) {
+            // 如果不在编辑模式，显示书籍房间用户
+            updateOnlineUsers(data.users, 'book')
+        }
+    })
+
+    // 文档房间用户更新
+    socket.on('doc-room-users-updated', function (data) {
+        console.log('文档房间用户列表更新:', data.users)
+        if (isEdit && data.documentSlug === documentData.slug) {
+            // 如果在编辑模式，显示文档房间用户
+            updateOnlineUsers(data.users, 'document')
+        }
+    })
+
+    // 用户加入书籍
+    socket.on('user-joined-book', function (data) {
+        console.log(`用户 ${ data.user.username } 加入了书籍`)
+        if (!isEdit) {
+            showNotification(`${ data.user.username } 进入了书籍`, 'info')
+        }
+    })
+
+    // 用户离开书籍
+    socket.on('user-left-book', function (data) {
+        console.log(`用户 ${ data.user.username } 离开了书籍`)
+        if (!isEdit) {
+            showNotification(`${ data.user.username } 离开了书籍`, 'info')
+        }
+    })
+
+    // 用户加入文档编辑
+    socket.on('user-joined-document', function (data) {
+        console.log(`用户 ${ data.user.username } 加入了文档编辑`)
+        if (isEdit) {
+            showNotification(`${ data.user.username } 加入了编辑`, 'info')
+        }
+    })
+
+    // 用户离开文档编辑
+    socket.on('user-left-document', function (data) {
+        console.log(`用户 ${ data.user.username } 离开了文档编辑`)
+        if (isEdit) {
+            showNotification(`${ data.user.username } 离开了编辑`, 'info')
+        }
     })
 
     socket.on('document-updated', function (data) {
