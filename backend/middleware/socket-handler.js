@@ -144,7 +144,7 @@ function initializeSocketHandlers(io) {
 
             // 如果需要预览，渲染并返回
             if (data.needPreview) {
-                const html = `<script src='https://cdn.tailwindcss.com'></script>` + marked.parse(data.content || '')
+                const html = `<link href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-ghcolors.css" rel="stylesheet"/><script src='https://cdn.tailwindcss.com'></script>` + marked.parse(data.content || '')
                 socket.emit('document-preview-updated', {
                     documentSlug: data.documentSlug,
                     html: html
