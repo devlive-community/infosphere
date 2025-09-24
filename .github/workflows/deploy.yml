@@ -1,0 +1,79 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ dev ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          APP_SECRET=2DD596E2A8F1DA6DDCB14F8A4B8C5EA0C4A22CBA80541812
+          PORT=${{ secrets.PORT }}
+          NODE_ENV=production
+          BASE_URL=https://infosphere.devlive.top
+          
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
+          DB_NAME=${{ secrets.DB_NAME }}
+          
+          # 时区配置
+          TZ=Asia/Shanghai
+          
+          # 安装状态
+          INSTALLED=true
+          
+          GITHUB_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET=${{ secrets.GH_CLIENT_SECRET }}
+          GITHUB_CALLBACK_URL=${{ secrets.GH_CALLBACK_URL }}
+          
+          QINIU_ACCESS_KEY=${{ secrets.QINIU_ACCESS_KEY }}
+          QINIU_SECRET_KEY=${{ secrets.QINIU_SECRET_KEY }}
+          QINIU_BUCKET=${{ secrets.QINIU_BUCKET }}
+          QINIU_DOMAIN=${{ secrets.QINIU_DOMAIN }}
+          EOF
+
+      - name: Deploy to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ".,!node_modules,!.git"
+          target: "/var/www/infosphere"
+          strip_components: 0
+
+      - name: Execute remote commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/infosphere
+            pnpm install --prod
+            npm install -g pm2
+            pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
