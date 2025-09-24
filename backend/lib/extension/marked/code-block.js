@@ -55,7 +55,7 @@ const CodeBlockExtension = {
         if (match) {
             let language = match[1].toLowerCase();
 
-            // Parse showLineNumbers and title from the full match string
+            // 在函数开始就解析所有选项
             const showLineNumbers = match[0].includes('showLineNumbers') &&
                 (!match[0].includes('showLineNumbers=false'));
 
@@ -71,9 +71,18 @@ const CodeBlockExtension = {
                 'bash': 'bash',
                 'shell': 'bash',
                 'sh': 'bash',
-                'vue': 'javascript', // Add Vue support
+                'vue': 'javascript',
                 'jsx': 'jsx',
-                'tsx': 'tsx'
+                'tsx': 'tsx',
+                'java': 'java',
+                'py': 'python',
+                'python': 'python',
+                'cpp': 'cpp',
+                'c++': 'cpp',
+                'cs': 'csharp',
+                'c#': 'csharp',
+                'ts': 'typescript',
+                'typescript': 'typescript'
             };
 
             language = languageMap[language] || language;
@@ -100,6 +109,7 @@ const CodeBlockExtension = {
                 console.warn(`Failed to highlight code for language: ${language}`, e);
             }
 
+            // 返回未高亮的版本，确保所有变量都已定义
             return {
                 type: 'infosphereCodeBlock',
                 raw: match[0],
