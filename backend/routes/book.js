@@ -257,7 +257,7 @@ router.get('/:username/:slug/chapters', asyncHandler(async (req, res) => {
     }
 
     const searchParams = { parent_id: null, book_id: book.id }
-    if (book.user_id !== req.user.id) { searchParams.status = 'published' }
+    if (book.user_id !== req.user?.id) { searchParams.status = 'published' }
 
     const data = await Document.findAllByConditions(searchParams)
 
