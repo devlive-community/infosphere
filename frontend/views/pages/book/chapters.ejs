@@ -12,11 +12,13 @@
                         <div class="text-1xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight break-words">[ <%= book.title %> ] 章节</div>
 
                         <div class="flex items-center gap-2">
-                            <a href="/book/writer/<%= book.username %>/<%= book.slug %>"
-                               class="inline-flex items-center px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
-                                <i class="fas fa-edit mr-2"></i>
-                                编辑文档
-                            </a>
+                            <% if (user && user.id === book.user_id) { %>
+                                <a href="/book/writer/<%= book.username %>/<%= book.slug %>"
+                                   class="inline-flex items-center px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+                                    <i class="fas fa-edit mr-2"></i>
+                                    编辑文档
+                                </a>
+                            <% } %>
                         </div>
                     </div>
 
@@ -24,7 +26,8 @@
                     <% if (data && data.length > 0) { %>
                         <div>
                             <% data.forEach((document, index) => { %>
-                                <div class="flex items-center justify-between p-2 hover:bg-gray-100 rounded transition-colors">
+                                <a href="/book/reader/<%= book.username %>/<%= book.slug %>/<%= document.slug %>" target="_blank"
+                                   class="flex items-center justify-between p-2 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors">
                                     <div class="flex items-center space-x-4 flex-1">
                                         <div class="flex-1 min-w-0">
                                             <h3 class="truncate">
@@ -32,7 +35,7 @@
                                             </h3>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                             <% }) %>
                         </div>
                     <% } else { %>
