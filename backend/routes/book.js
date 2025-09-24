@@ -116,7 +116,7 @@ router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, 
 
     document.html = isEmpty(document.content)
         ? undefined
-        : `<script src='https://cdn.tailwindcss.com'></script>` + marked.parse(document.content || '')
+        : `<link href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-ghcolors.css" rel="stylesheet"/><script src='https://cdn.tailwindcss.com'></script>` + marked.parse(document.content || '')
 
     res.render('pages/document/reader', {
         book,
