@@ -15,6 +15,8 @@ const { createInstallationChecker } = require('./middleware/installation-checker
 const { handle404, handleError } = require('./middleware/error-handlers')
 const { initializeSocketHandlers } = require('./middleware/socket-handler')
 
+require('dotenv').config()
+
 const app = express()
 
 // Socket.IO
