@@ -188,7 +188,7 @@ router.get('/writer/:username/:book_slug/:doc_slug?', ensureAuthenticated, async
     })
 }))
 
-router.get('/:username', ensureAuthenticated, asyncHandler(async (req, res) => {
+router.get('/:username', asyncHandler(async (req, res) => {
     const user = await User.findByUsername(req.params.username)
     if (!user) {
         return res.status(404).render('pages/error/global', {
@@ -203,7 +203,7 @@ router.get('/:username', ensureAuthenticated, asyncHandler(async (req, res) => {
     const paginationParams = PaginationHelper.parseParams(req.query, { defaultLimit: 10 })
 
     const searchParams = { username: req.params.username }
-    if (user.id !== req.user.id) {
+    if (user.id !== req.user?.id) {
         searchParams.is_public = 1
         searchParams.status = 'published'
     }
