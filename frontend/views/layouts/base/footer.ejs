@@ -1,4 +1,153 @@
 </main>
-</footer>
+<% if (typeof hideFooter === 'undefined' || !hideFooter) { %>
+    <!-- 页脚 -->
+    <footer class="bg-gray-900 text-gray-300">
+        <!-- 主要内容区域 -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- 品牌信息 -->
+                <div class="lg:col-span-1">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <img src="/images/logo.png" alt="<%= locals.site?.site_name || 'InfoSphere' %>" class="h-8 w-auto">
+                        <span class="text-xl font-bold text-white"><%= locals.site?.site_name || 'InfoSphere' %></span>
+                    </div>
+                    <p class="text-gray-400 mb-4 max-w-sm">
+                        <%= locals.site?.description || '构建知识，分享智慧。与全球用户一起探索信息的无限可能。' %>
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="<%= locals.social?.github || 'https://github.com/devlive-community/infosphere' %>" target="_blank"
+                           class="text-gray-400 hover:text-white transition-colors duration-200" aria-label="GitHub">
+                            <i class="fab fa-github text-lg"></i>
+                        </a>
+                        <a href="<%= locals.social?.email || 'mailto:support@' + (locals.site?.domain || 'devlive.org') %>"
+                           class="text-gray-400 hover:text-white transition-colors duration-200" aria-label="Email">
+                            <i class="fas fa-envelope text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 产品导航 -->
+                <div>
+                    <h3 class="text-white font-semibold mb-4">产品</h3>
+                    <ul class="space-y-2">
+                        <li><a href="/" class="hover:text-white transition-colors duration-200">首页</a></li>
+                        <li><a href="/explore" class="hover:text-white transition-colors duration-200">发现</a></li>
+                    </ul>
+                </div>
+
+                <!-- 资源链接 -->
+                <div>
+                    <h3 class="text-white font-semibold mb-4">资源</h3>
+                    <ul class="space-y-2">
+                        <li><a href="https://infosphere.devlive.org/help" class="hover:text-white transition-colors duration-200">帮助中心</a></li>
+                        <li><a href="https://infosphere.devlive.org/blog" class="hover:text-white transition-colors duration-200">博客</a></li>
+                        <li><a href="https://infosphere.devlive.org/community" class="hover:text-white transition-colors duration-200">社区</a></li>
+                        <li><a href="https://infosphere.devlive.org/tutorials" class="hover:text-white transition-colors duration-200">使用教程</a></li>
+                        <li><a href="https://infosphere.devlive.org/changelog" class="hover:text-white transition-colors duration-200">更新日志</a></li>
+                    </ul>
+                </div>
+
+                <!-- 公司信息 -->
+                <div>
+                    <h3 class="text-white font-semibold mb-4">公司</h3>
+                    <ul class="space-y-2">
+                        <li><a href="/book/reader/help/about" class="hover:text-white transition-colors duration-200">关于我们</a></li>
+                        <li><a href="/book/reader/help/careers" class="hover:text-white transition-colors duration-200">招聘信息</a></li>
+                        <li><a href="/book/reader/help/press" class="hover:text-white transition-colors duration-200">媒体资料</a></li>
+                        <li><a href="/book/reader/help/contact" class="hover:text-white transition-colors duration-200">联系我们</a></li>
+                        <li><a href="/book/reader/help/partners" class="hover:text-white transition-colors duration-200">合作伙伴</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 法律信息和版权 -->
+            <div class="border-t border-gray-800 mt-8 pt-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="flex flex-wrap gap-6 mb-4 md:mb-0">
+                        <a href="/book/reader/help/privacy" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">隐私政策</a>
+                        <a href="/book/reader/help/terms" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">服务条款</a>
+                        <a href="/book/reader/help/cookies" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">Cookie 政策</a>
+                        <a href="/book/reader/help/security" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">安全中心</a>
+                        <a href="/sitemap.xml" class="text-sm text-gray-400 hover:text-white transition-colors duration-200">网站地图</a>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                        <!-- 版权信息 -->
+                        <p class="text-sm text-gray-500">
+                            © <%= new Date().getFullYear() %> <%= locals.site?.site_name || 'InfoSphere' %>.
+                            保留所有权利。
+                            本网站使用 <a href="https://github.com/devlive-community/infosphere" target="_blank"
+                                          class="text-gray-400 hover:text-white transition-colors duration-200">InfoSphere</a>
+                            构建。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 回到顶部按钮 -->
+        <button id="back-to-top"
+                class="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white p-2 px-3 rounded-full shadow-lg transition-all duration-300 opacity-0 invisible z-50"
+                onclick="scrollToTop()"
+                aria-label="回到顶部">
+            <i class="fas fa-chevron-up"></i>
+        </button>
+    </footer>
+
+    <script>
+        // 回到顶部功能：优化用户体验的滚动行为控制
+        function initBackToTop() {
+            const backToTopButton = document.getElementById('back-to-top')
+
+            // 滚动监听：基于阈值显示/隐藏按钮，避免频繁DOM操作
+            window.addEventListener('scroll', throttle(() => {
+                const shouldShow = window.pageYOffset > 300
+                const isVisible = !backToTopButton.classList.contains('opacity-0')
+
+                if (shouldShow && !isVisible) {
+                    backToTopButton.classList.remove('opacity-0', 'invisible')
+                }
+                else if (!shouldShow && isVisible) {
+                    backToTopButton.classList.add('opacity-0', 'invisible')
+                }
+            }, 100))
+        }
+
+        // 平滑滚动到顶部：现代浏览器优先使用原生API
+        function scrollToTop() {
+            if ('scrollBehavior' in document.documentElement.style) {
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
+            else {
+                // 降级处理：为旧浏览器提供动画滚动
+                const scrollStep = -window.scrollY / (500 / 15)
+                const scrollInterval = setInterval(() => {
+                    if (window.scrollY !== 0) {
+                        window.scrollBy(0, scrollStep)
+                    }
+                    else {
+                        clearInterval(scrollInterval)
+                    }
+                }, 15)
+            }
+        }
+
+        // 性能优化：防抖函数避免滚动事件过度触发
+        function throttle(func, wait) {
+            let timeout
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout)
+                    func.apply(this, args)
+                }
+                clearTimeout(timeout)
+                timeout = setTimeout(later, wait)
+            }
+        }
+
+        // 页面加载完成后初始化功能
+        document.addEventListener('DOMContentLoaded', initBackToTop)
+    </script>
+<% } %>
 </body>
 </html>
