@@ -21,8 +21,8 @@
                     </h1>
                 </div>
 
-                <%- include('../../components/alert', { type: 'error', message: error }) %>
-                <%- include('../../components/alert', { type: 'success', message: success }) %>
+                <%- include('../../components/alert', { type: 'error', message: error, autoClose: 2000 }) %>
+                <%- include('../../components/alert', { type: 'success', message: success, autoClose: 2000 }) %>
 
                 <!-- 右侧操作 -->
                 <div class="flex items-center space-x-4">

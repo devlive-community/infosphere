@@ -5,9 +5,7 @@
          id="<%= modalId %>Content">
         <!-- 关闭按钮 -->
         <button onclick="closeModal('<%= modalId %>')" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors z-10">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
+            <i class="fas fa-circle-xmark"></i>
         </button>
 
         <!-- 模态框内容 -->
@@ -16,7 +14,6 @@
 </div>
 
 <script>
-    // 显示模态框
     function showModal(modalId) {
         const modal = document.getElementById(modalId)
         const content = document.getElementById(modalId + 'Content')
@@ -26,7 +23,6 @@
         content.classList.add('scale-100')
     }
 
-    // 关闭模态框
     function closeModal(modalId) {
         const modal = document.getElementById(modalId)
         const content = document.getElementById(modalId + 'Content')
@@ -34,23 +30,15 @@
         content.classList.remove('scale-100')
         content.classList.add('scale-90')
 
+        // 动画计时：等待变换完成后再隐藏
         setTimeout(() => {
             modal.classList.add('opacity-0', 'invisible')
         }, 200)
     }
 
-    // 点击背景关闭
-    document.addEventListener('click', function (e) {
-        if (e.target.id && e.target.id.includes('Modal') && !e.target.id.includes('Content')) {
-            const modalId = e.target.id
-            closeModal(modalId)
-        }
-    })
-
-    // ESC 键关闭所有模态框
+    // ESC 键处理程序：关闭所有可见模态
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-            // 关闭所有打开的模态框
             const modals = document.querySelectorAll('[id$="Modal"]')
             modals.forEach(modal => {
                 if (!modal.classList.contains('invisible')) {

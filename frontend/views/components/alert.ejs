@@ -5,6 +5,7 @@
  * @param {String} message - 消息内容
  * @param {String} title - 可选的标题
  * @param {Boolean} dismissible - 是否可关闭，默认false
+ * @param {Number} autoClose - 自动关闭时间(毫秒)，0表示不自动关闭，默认0
  * @param {String} className - 额外的CSS类，可选
  */
 
@@ -12,9 +13,11 @@ const alertType = typeof type !== 'undefined' ? type : 'info';
 const alertMessage = typeof message !== 'undefined' ? message : '';
 const alertTitle = typeof title !== 'undefined' ? title : '';
 const isDismissible = typeof dismissible !== 'undefined' ? dismissible : false;
+const autoCloseTime = typeof autoClose !== 'undefined' ? parseInt(autoClose) : 0;
 const extraClass = typeof className !== 'undefined' ? className : '';
 
-// 根据类型设置样式
+const alertId = 'alert-' + Math.random().toString(36).substr(2, 9);
+
 let alertClass = '';
 let iconClass = '';
 
@@ -40,7 +43,9 @@ switch(alertType) {
 %>
 
 <% if (alertMessage) { %>
-    <div class="border rounded-lg p-2 my-2 <%= alertClass %> <%= extraClass %>" <% if (isDismissible) { %>id="alert-<%= Math.random().toString(36).substr(2, 9) %>"<% } %>>
+    <div class="border rounded-lg p-2 my-2 <%= alertClass %> <%= extraClass %> transition-all duration-300"
+         id="<%= alertId %>"
+         <% if (autoCloseTime > 0) { %>data-auto-close="<%= autoCloseTime %>"<% } %>>
         <div class="flex">
             <i class="<%= iconClass %> mr-3 mt-1"></i>
             <div class="flex-1">
@@ -48,12 +53,57 @@ switch(alertType) {
                     <div class="font-medium mb-1"><%= alertTitle %></div>
                 <% } %>
                 <div class="text-sm"><%= alertMessage %></div>
+
+                <% if (autoCloseTime > 0) { %>
+                    <div class="mt-2 h-1 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-full bg-current opacity-30 rounded-full transition-all ease-linear"
+                             id="<%= alertId %>-progress"
+                             style="width: 100%; transition-duration: <%= autoCloseTime %>ms; transform-origin: left;"></div>
+                    </div>
+                <% } %>
             </div>
-            <% if (isDismissible) { %>
-                <button type="button" class="ml-3 text-gray-400 hover:text-gray-600" onclick="this.parentElement.parentElement.style.display='none'">
+
+            <% if (isDismissible || autoCloseTime > 0) { %>
+                <button type="button"
+                        class="ml-3 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                        onclick="dismissAlert('<%= alertId %>')">
                     <i class="fas fa-times"></i>
                 </button>
             <% } %>
         </div>
     </div>
+
+    <script>
+        (function initializeAlert() {
+            const alertElement = document.getElementById('<%= alertId %>');
+            const autoCloseTime = parseInt(alertElement.dataset.autoClose) || 0;
+
+            if (autoCloseTime > 0) {
+                const progressBar = document.getElementById('<%= alertId %>-progress');
+
+                if (progressBar) {
+                    progressBar.offsetWidth;
+                    progressBar.style.width = '0%';
+                }
+
+                setTimeout(() => {
+                    dismissAlert('<%= alertId %>');
+                }, autoCloseTime);
+            }
+        })();
+
+        function dismissAlert(alertId) {
+            const alertElement = document.getElementById(alertId);
+            if (!alertElement) return;
+
+            alertElement.style.opacity = '0';
+            alertElement.style.transform = 'translateY(-10px)';
+
+            setTimeout(() => {
+                if (alertElement.parentNode) {
+                    alertElement.parentNode.removeChild(alertElement);
+                }
+            }, 300);
+        }
+    </script>
 <% } %>
