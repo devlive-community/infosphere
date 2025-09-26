@@ -27,7 +27,7 @@
                         <div>
                             <% data.forEach((document, index) => { %>
                                 <a href="/book/reader/<%= book.username %>/<%= book.slug %>/<%= document.slug %>" target="_blank"
-                                   class="flex items-center justify-between p-2 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors">
+                                   class="flex items-center justify-between p-2 border-b border-gray-100 border-dashed hover:text-blue-600 hover:bg-gray-100 rounded transition-colors">
                                     <div class="flex items-center space-x-4 flex-1">
                                         <div class="flex-1 min-w-0">
                                             <h3 class="truncate">
