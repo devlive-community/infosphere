@@ -19,6 +19,7 @@
  *   - document: 文档图标
  * @param {String} linkPattern - 链接模式，默认'/document/writer/{username}/{bookSlug}/{docSlug}'
  *   可用占位符：{username}, {bookSlug}, {docSlug}, {docId}
+ * @param {Boolean} showPath - 是否显示路径，默认 true
  */
 
 const treeDocuments = typeof documents !== 'undefined' ? documents : [];
@@ -34,6 +35,7 @@ const treeShowStatusBadge = typeof showStatusBadge !== 'undefined' ? showStatusB
 const treeStatusField = typeof statusField !== 'undefined' ? statusField : 'status';
 const treeShowIcons = typeof showIcons !== 'undefined' ? showIcons : true;
 const treeLinkPattern = typeof linkPattern !== 'undefined' ? linkPattern : '/document/writer/{username}/{bookSlug}/{docSlug}';
+const treeShowPath = typeof showPath !== 'undefined' ? showPath : true;
 
 // 默认图标配置
 const defaultIcons = {
@@ -146,7 +148,9 @@ function generateDocumentLink(doc) {
 
                             <div class="flex items-center space-x-2">
                                 <span class="truncate text-sm"><%= doc.title %></span>
-                                <span class="text-xs <%= isCurrentDocument(doc) ? 'text-gray-200' : 'text-gray-400' %> flex-shrink-0">(<%= doc.slug %>)</span>
+                                <% if (treeShowPath) { %>
+                                    <span class="text-xs <%= isCurrentDocument(doc) ? 'text-gray-200' : 'text-gray-400' %> flex-shrink-0">(<%= doc.slug %>)</span>
+                                <% } %>
                                 <% if (treeShowStatusBadge) { %>
                                     <% const statusValue = doc[treeStatusField] || doc.status || ''; %>
                                     <% if (statusValue) { %>
