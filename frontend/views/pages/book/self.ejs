@@ -16,9 +16,11 @@
                                 </h3>
                                 <p class="mt-1 text-sm text-gray-500">管理您创建的所有书籍</p>
                             </div>
-                            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                                <%- include('../../components/button', { href: '/book/create', size: 'sm', target: '_blank', text: '创建新书籍', icon: 'fas fa-plus', variant: 'primary', className: 'w-full sm:w-auto' }) %>
-                            </div>
+                            <% if (user.id === authUser?.id) { %>
+                                <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                    <%- include('../../components/button', { href: '/book/create', size: 'sm', target: '_blank', text: '创建新书籍', icon: 'fas fa-plus', variant: 'primary', className: 'w-full sm:w-auto' }) %>
+                                </div>
+                            <% } %>
                         </div>
                     </div>
                     <!-- 统计数据网格 -->
@@ -147,7 +149,7 @@
                                                 <!-- 操作按钮 -->
                                                 <div class="flex flex-row sm:flex-col gap-2 sm:ml-4 sm:h-full sm:justify-start">
                                                     <%- include('../../components/button', { href: `/book/${book.username}/${book.slug}`, target: '_blank', text: '查看', icon: 'fas fa-eye', variant: 'outline', size: 'sm', className: 'flex-1 sm:flex-none' }) %>
-                                                    <% if (user && user.id === book.user_id) { %>
+                                                    <% if (authUser && authUser.id === book.user_id) { %>
                                                         <%- include('../../components/button', { href: `/book/${book.username}/${book.slug}/edit`, text: '编辑', icon: 'fas fa-edit', variant: 'primary', size: 'sm', className: 'flex-1 sm:flex-none' }) %>
                                                         <form action="/book/<%= book.slug %>" method="POST" class="flex-1 sm:flex-none">
                                                             <input type="hidden" name="_method" value="DELETE">

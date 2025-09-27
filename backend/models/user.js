@@ -796,6 +796,31 @@ class User {
             throw error
         }
     }
+
+    static async summaryByConditions(searchParams = {}) {
+        try {
+            const whereConditions = []
+            const params = []
+
+            if (searchParams.is_active !== undefined) {
+                whereConditions.push('u.is_active = ?')
+                params.push(searchParams.is_active)
+            }
+
+            const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
+
+            const pool = getPool()
+            const [rows] = await pool.query(`
+                SELECT COUNT(id) as total_users
+                FROM users u
+                    ${ whereClause }`, params)
+
+            return rows[0]
+        }
+        catch (error) {
+            throw error
+        }
+    }
 }
 
 module.exports = User
