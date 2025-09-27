@@ -1,18 +1,21 @@
 const express = require('express')
 const { asyncHandler } = require('../middleware/async-handler')
 const Book = require('../models/book')
+const User = require('../models/user')
 const router = express.Router()
 
 router.get('/', asyncHandler(async (req, res) => {
     const searchParams = { is_public: 1, status: 'published' }
 
-    const [stats, hotBooks] = await Promise.all([
+    const [bookStats, userStats, hotBooks] = await Promise.all([
         Book.summaryByConditions(searchParams),
+        User.summaryByConditions({ is_active: 1 }),
         Book.findTop6ByView()
     ])
 
     res.render('pages/index', {
-        stats,
+        bookStats,
+        userStats,
         hotBooks
     })
 }))

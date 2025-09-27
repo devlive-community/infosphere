@@ -102,8 +102,9 @@ router.get('/github/callback',
                 await User.updateLastLogin(req.user.id)
             }
 
-            const returnTo = req.session.returnTo || '/'
+            const returnTo = req.session.returnTo || req.session.originalUrl || '/'
             delete req.session.returnTo
+            delete req.session.originalUrl
             res.redirect(returnTo)
         }
         catch (error) {
