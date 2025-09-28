@@ -8,15 +8,15 @@ class Book {
      * @returns {Promise<number>} 插入的书籍
      */
     static async create(bookData) {
-        const { title, description, cover_image, slug, user_id, status = 'draft', is_public = false } = bookData
+        const { title, description, cover_image, slug, user_id, status = 'draft', is_public = false, order_col = 'created_at', order_dir = 'desc' } = bookData
 
         try {
             const pool = getPool()
             const connection = await pool.getConnection()
 
             const [result] = await connection.execute(
-                'INSERT INTO books (title, description, cover_image, slug, user_id, status, is_public) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [title, description || null, cover_image || null, slug, user_id, status, is_public]
+                'INSERT INTO books (title, description, cover_image, slug, user_id, status, is_public, order_col, order_dir) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [title, description || null, cover_image || null, slug, user_id, status, is_public, order_col, order_dir]
             )
             connection.release()
 
@@ -170,6 +170,8 @@ class Book {
                        b.status,
                        b.is_public,
                        b.view_count,
+                       b.order_col,
+                       b.order_dir,
                        DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
                        DATE_FORMAT(b.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
                        b.user_id,
@@ -441,6 +443,14 @@ class Book {
             if (bookData.is_public !== undefined) {
                 fields.push('is_public = ?')
                 values.push(bookData.is_public)
+            }
+            if (bookData.order_col !== undefined) {
+                fields.push('order_col = ?')
+                values.push(bookData.order_col)
+            }
+            if (bookData.order_dir !== undefined) {
+                fields.push('order_dir = ?')
+                values.push(bookData.order_dir)
             }
 
             if (fields.length === 0) {
