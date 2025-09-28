@@ -15,7 +15,7 @@ class Book {
             const connection = await pool.getConnection()
 
             const [result] = await connection.execute(
-                'INSERT INTO books (title, description, cover_image, slug, user_id, status, is_public, order_col, order_dir) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO books (title, description, cover_image, slug, user_id, status, is_public, order_col, order_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [title, description || null, cover_image || null, slug, user_id, status, is_public, order_col, order_dir]
             )
             connection.release()
