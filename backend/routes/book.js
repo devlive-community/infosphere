@@ -16,7 +16,7 @@ router.get('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
 
 router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
     try {
-        const { title, slug, description, status, is_public } = req.body
+        const { title, slug, description, status, is_public, order_col, order_dir } = req.body
         const user_id = req.user.id
 
         if (!title || !slug) {
@@ -41,7 +41,7 @@ router.post('/create', ensureAuthenticated, asyncHandler(async (req, res) => {
             return res.render('pages/book/info', { isEdit: false, error: `URL 路径 ${ slug } 已存在，请使用其他路径` })
         }
 
-        const book = await Book.create({ title, description, slug, user_id, status, is_public })
+        const book = await Book.create({ title, description, slug, user_id, status, is_public, order_col, order_dir })
 
         const coverFile = req.files?.find(file => file.fieldname === 'cover_image')
         if (coverFile) {
@@ -89,7 +89,9 @@ router.get('/reader/:username/:book_slug/:docs_slug?', asyncHandler(async (req, 
     }
 
     const searchParams = { book_id: book.id, status: 'published' }
-    const documents = await Document.getDocumentTree(searchParams)
+    const orderConfig = { order_col: book.order_col, order_dir: book.order_dir }
+
+    const documents = await Document.getDocumentTree(searchParams, orderConfig)
     if (documents.length === 0) {
         return res.status(404).render('pages/error/global', {
             error: {
@@ -259,7 +261,11 @@ router.get('/:username/:slug/chapters', asyncHandler(async (req, res) => {
     const searchParams = { parent_id: null, book_id: book.id }
     if (book.user_id !== req.user?.id) { searchParams.status = 'published' }
 
-    const data = await Document.findAllByConditions(searchParams)
+    const orderConfig = {
+        order_col: book.order_col,
+        order_dir: book.order_dir
+    }
+    const data = await Document.findAllByConditions(searchParams, orderConfig)
 
     res.render('pages/book/chapters', { book, data })
 }))
@@ -303,7 +309,7 @@ router.put('/:username/:slug/edit', ensureAuthenticated, asyncHandler(async (req
             })
         }
 
-        const { title, slug, description, status, is_public, remove_cover } = req.body
+        const { title, slug, description, status, is_public, remove_cover, order_col, order_dir } = req.body
 
         if (!title || !slug) {
             return res.render('pages/book/info', { isEdit: true, book, error: '标题和 URL 路径是必填项' })
@@ -332,7 +338,9 @@ router.put('/:username/:slug/edit', ensureAuthenticated, asyncHandler(async (req
             slug,
             description,
             status: status || 'draft',
-            is_public: is_public === '1'
+            is_public: is_public === '1',
+            order_col: order_col || 'created_at',
+            order_dir: order_dir || 'asc'
         }
 
         const coverFile = req.files?.find(file => file.fieldname === 'cover_image')
