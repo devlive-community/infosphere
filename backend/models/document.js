@@ -120,7 +120,7 @@ class Document {
         }
     }
 
-    static async getDocumentTree(searchParams = {}) {
+    static async getDocumentTree(searchParams = {}, orderConfig = null) {
         try {
             const whereConditions = []
             const params = []
@@ -137,15 +137,15 @@ class Document {
 
             const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
 
+            const orderClause = this.buildOrderClause(orderConfig)
+
             const pool = getPool()
             const connection = await pool.getConnection()
             const [rows] = await connection.execute(`
                 SELECT *
-                FROM documents d ${ whereClause }
-                ORDER BY sort_order ASC, created_at ASC`, params)
+                FROM documents d ${ whereClause } ${ orderClause }`, params)
             connection.release()
 
-            // 构建树形结构
             const buildTree = (documents, parentId = null) => {
                 return documents
                     .filter(doc => doc.parent_id === parentId)
@@ -158,7 +158,7 @@ class Document {
             return buildTree(rows)
         }
         catch (error) {
-            console.error(`获取文档树失败 ${ bookId }:`, error)
+            console.error(`获取文档树失败 ${ searchParams.book_id }:`, error)
             throw error
         }
     }
@@ -279,7 +279,7 @@ class Document {
         }
     }
 
-    static async findAllByConditions(searchParams = {}) {
+    static async findAllByConditions(searchParams = {}, orderConfig = null) {
         try {
             const whereConditions = []
             const params = []
@@ -311,6 +311,8 @@ class Document {
 
             const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
 
+            const orderClause = this.buildOrderClause(orderConfig)
+
             const pool = getPool()
             const [rows] = await pool.query(`
                 SELECT d.*,
@@ -318,14 +320,36 @@ class Document {
                        DATE_FORMAT(d.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
                 FROM documents d
                          LEFT JOIN users u ON d.user_id = u.id
-                    ${ whereClause }
-                ORDER BY sort_order ASC, created_at ASC`, params)
+                    ${ whereClause } ${ orderClause }`, params)
 
             return rows || []
         }
         catch (error) {
             throw error
         }
+    }
+
+    static buildOrderClause(orderConfig) {
+        if (!orderConfig || !orderConfig.order_col || !orderConfig.order_dir) {
+            return 'ORDER BY d.sort_order ASC, d.created_at ASC'
+        }
+
+        const { order_col, order_dir } = orderConfig
+
+        const allowedColumns = {
+            'created_at': 'd.created_at',
+            'updated_at': 'd.updated_at',
+            'sort_order': 'd.sort_order',
+            'title': 'd.title'
+        }
+
+        const allowedDirections = ['asc', 'desc']
+
+        if (!allowedColumns[order_col] || !allowedDirections.includes(order_dir.toLowerCase())) {
+            return 'ORDER BY d.sort_order ASC, d.created_at ASC'
+        }
+
+        return `ORDER BY ${ allowedColumns[order_col] } ${ order_dir.toUpperCase() }, d.sort_order ASC`
     }
 
     static async findBySlug(slug) {
