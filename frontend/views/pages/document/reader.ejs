@@ -30,15 +30,16 @@
             <div class="h-full overflow-auto">
                 <div class="min-w-max">
                     <%- include('../../components/tree', {
-                    linkPattern: '/book/reader/{username}/{bookSlug}/{docSlug}',
-                    documents: documents,
-                    currentDocument: document,
-                    bookUsername: book.username,
-                    bookSlug: book.slug,
-                    expandAll: false,
-                    showStatusBadge: false,
-                    showIcons: false,
-                    enableContextMenu: false
+                        linkPattern: '/book/reader/{username}/{bookSlug}/{docSlug}',
+                        documents: documents,
+                        currentDocument: document,
+                        bookUsername: book.username,
+                        bookSlug: book.slug,
+                        expandAll: false,
+                        showStatusBadge: false,
+                        showIcons: false,
+                        enableContextMenu: false,
+                        showPath: false
                     }) %>
                 </div>
             </div>
