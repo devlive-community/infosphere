@@ -8,15 +8,15 @@ class Book {
      * @returns {Promise<number>} 插入的书籍
      */
     static async create(bookData) {
-        const { title, description, cover_image, slug, user_id, status = 'draft', is_public = false, order_col = 'created_at', order_dir = 'desc' } = bookData
+        const { title, description, cover_image, slug, user_id, status = 'draft', is_public = false, order_col = 'created_at', order_dir = 'desc', chapter_prefix = '' } = bookData
 
         try {
             const pool = getPool()
             const connection = await pool.getConnection()
 
             const [result] = await connection.execute(
-                'INSERT INTO books (title, description, cover_image, slug, user_id, status, is_public, order_col, order_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [title, description || null, cover_image || null, slug, user_id, status, is_public, order_col, order_dir]
+                'INSERT INTO books (title, description, cover_image, slug, user_id, status, is_public, order_col, order_dir, chapter_prefix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [title, description || null, cover_image || null, slug, user_id, status, is_public, order_col, order_dir, chapter_prefix]
             )
             connection.release()
 
@@ -451,6 +451,10 @@ class Book {
             if (bookData.order_dir !== undefined) {
                 fields.push('order_dir = ?')
                 values.push(bookData.order_dir)
+            }
+            if (bookData.chapter_prefix !== undefined) {
+                fields.push('chapter_prefix = ?')
+                values.push(bookData.chapter_prefix)
             }
 
             if (fields.length === 0) {

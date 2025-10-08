@@ -84,6 +84,21 @@
                     </div>
                 </div>
 
+                <!-- 书籍文档前缀 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="chapter_prefix" class="block text-sm font-medium text-gray-700 mb-2">
+                            书籍文档前缀
+                        </label>
+                        <div class="flex items-center">
+                            <%- include('../../components/input', { type: 'text', name: 'chapter_prefix', id: 'chapter_prefix', value: isEdit ? book.chapter_prefix : '', placeholder: '请输入书籍文档前缀' }) %>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">
+                            书籍文档的前缀，末尾不要添加连接符。例如：chapter 文档将会自动生成路径 chapter_xxxx
+                        </p>
+                    </div>
+                </div>
+
                 <!-- 书籍描述 -->
                 <div>
                     <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
