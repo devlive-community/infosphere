@@ -1,4 +1,4 @@
-<div class="w-full mx-auto">
+<div class="w-full mx-auto md:!min-w-[600px]">
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
         <h3 id="modalTitle" class="text-lg font-semibold text-gray-900">新建文档</h3>
     </div>
@@ -9,7 +9,11 @@
         </div>
         <div class="space-y-3">
             <label class="block text-sm font-medium text-gray-700">文档路径</label>
-            <%- include('../components/input', { name: 'doc_slug', id: 'doc_slug', value: '', placeholder: '请输入文档路径', required: true, minWidth: '!min-w-72 sm:min-w-[400px]' }) %>
+            <% if (book?.chapter_prefix) { %>
+                <%- include('../components/input', { name: 'doc_slug', id: 'doc_slug', value: '', prefix: `${ book.chapter_prefix }-`, placeholder: '请输入文档路径', required: true, minWidth: '!min-w-72 sm:min-w-[400px]' }) %>
+            <% } else { %>
+                <%- include('../components/input', { name: 'doc_slug', id: 'doc_slug', value: '', placeholder: '请输入文档路径', required: true, minWidth: '!min-w-72 sm:min-w-[400px]' }) %>
+            <% } %>
             <span class="text-xs text-gray-500">URL友好的路径，只能包含字母、数字和连字符</span>
         </div>
         <div class="space-y-3">

@@ -223,23 +223,6 @@ document.addEventListener('DOMContentLoaded', function () {
         })
     }
 
-    // 标题自动生成 slug
-    const titleInput = document.getElementById('title')
-    if (titleInput) {
-        titleInput.addEventListener('input', function () {
-            const title = this.value.trim()
-            const slug = title.toLowerCase()
-                .replace(/[^a-z0-9\u4e00-\u9fa5]/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '')
-
-            const slugInput = document.getElementById('doc_slug')
-            if (slugInput) {
-                slugInput.value = slug
-            }
-        })
-    }
-
     // 更新在线用户显示
     function updateOnlineUsers(users, type = 'book') {
         if (!onlineUsers) {

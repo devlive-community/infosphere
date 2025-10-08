@@ -7,7 +7,7 @@ const router = express.Router()
 
 router.post('/:username/:book_slug', ensureAuthenticated, asyncHandler(async (req, res) => {
     const { username, book_slug: slug } = req.params
-    const { title, content, doc_slug, status = 'draft', parent_id } = req.body
+    let { title, content, doc_slug, status = 'draft', parent_id } = req.body
 
     const book = await Book.findByUsernameAndSlug(username, slug)
     if (!book || book.user_id !== req.user.id) {
@@ -26,6 +26,9 @@ router.post('/:username/:book_slug', ensureAuthenticated, asyncHandler(async (re
         return res.redirect(`/book/writer/${ username }/${ slug }`)
     }
 
+    if (book.chapter_prefix) {
+        doc_slug = `${ book.chapter_prefix }-${ doc_slug }`
+    }
     const existingDoc = await Document.findByBookAndSlug(book.id, doc_slug)
     if (existingDoc) {
         req.flash('error', `文档路径 ${ doc_slug } 已存在`)
