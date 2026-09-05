@@ -82,7 +82,7 @@ export default function Layout({ title, children }: { title?: string; children: 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
-        {siteName} · Powered by InfoSphere (Go + Next.js)
+        Powered by InfoSphere
       </footer>
     </div>
   )

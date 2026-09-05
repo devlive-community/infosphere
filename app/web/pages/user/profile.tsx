@@ -1,7 +1,7 @@
 import { useEffect, useState, FormEvent } from 'react'
-import { api } from '@/lib/api'
+import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import type { User } from '@/lib/types'
+import { Button, Input, Textarea, Field } from '@/components/ui'
 
 export default function Profile() {
   const user = useRequireAuth()
@@ -12,6 +12,7 @@ export default function Profile() {
   const [githubUrl, setGithubUrl] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -28,6 +29,7 @@ export default function Profile() {
     e.preventDefault()
     setMessage('')
     setError('')
+    setSaving(true)
     try {
       await api('/auth/profile', {
         method: 'PUT',
@@ -37,6 +39,8 @@ export default function Profile() {
       setMessage('资料已更新')
     } catch (err) {
       setError((err as Error).message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -49,7 +53,7 @@ export default function Profile() {
 
         <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
           {avatar
-            ? <img src={avatar.startsWith('/') ? avatar : avatar} alt="" className="h-14 w-14 rounded-full object-cover" />
+            ? <img src={avatar} alt="" className="h-14 w-14 rounded-full object-cover" />
             : <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-xl font-bold text-white">{user.username[0]?.toUpperCase()}</span>}
           <div>
             <div className="font-semibold text-slate-900">{user.username}</div>
@@ -57,24 +61,20 @@ export default function Profile() {
           </div>
         </div>
 
-        <div>
-          <label className="label">邮箱</label>
-          <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">头像 URL</label>
-          <input className="input" value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder="https://..." />
-        </div>
-        <div>
-          <label className="label">个人简介</label>
-          <textarea className="input min-h-[100px]" value={bio} onChange={(e) => setBio(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">GitHub 主页</label>
-          <input className="input" value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} placeholder="https://github.com/username" />
-        </div>
+        <Field label="邮箱">
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </Field>
+        <Field label="头像 URL">
+          <Input value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder="https://..." />
+        </Field>
+        <Field label="个人简介">
+          <Textarea className="min-h-[100px]" value={bio} onChange={(e) => setBio(e.target.value)} />
+        </Field>
+        <Field label="GitHub 主页">
+          <Input value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} placeholder="https://github.com/username" />
+        </Field>
         <div className="flex justify-end">
-          <button className="btn-primary" type="submit">保存资料</button>
+          <Button type="submit" loading={saving}>保存资料</Button>
         </div>
       </form>
     </div>
