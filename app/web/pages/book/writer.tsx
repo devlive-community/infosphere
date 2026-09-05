@@ -111,6 +111,13 @@ export default function Writer() {
     setSaveState('saved')
   }
 
+  // 取消选中当前章节（点击目录空白处）
+  function deselect() {
+    if (!current) return
+    resetForm()
+    router.push(`/book/writer?slug=${encodeURIComponent(bookSlug)}`, undefined, { shallow: true })
+  }
+
   // 选中已有章节时填充表单
   useEffect(() => {
     if (!flatDocs.length && !docSlug) { resetForm(); return }
@@ -271,12 +278,22 @@ export default function Writer() {
     await loadTree(book)
   }
 
+  // 新建章节：相对当前选中项定位。asChild=作为选中项的子章节；否则作为选中项的同级章节；无选中则建到顶级
   function createNew(asChild: boolean) {
-    if (asChild && current) { setParentId(String(current.id)); setStatus('draft') }
-    else { setParentId('') }
+    let newParent = ''
+    let newSort = 0
+    if (current) {
+      if (asChild) {
+        newParent = String(current.id); newSort = current.children?.length || 0
+        setExpanded(new Set(expanded).add(current.id)) // 展开父级，保存后新子章节可见并被选中
+      } else {
+        newParent = current.parent_id ? String(current.parent_id) : ''; newSort = current.sort_order + 1
+      }
+    }
+    setParentId(newParent); setStatus('draft')
     setCurrent(null)
-    setTitle(''); setContent(''); setSortOrder(0); setAllowComments(true)
-    snapshot.current = JSON.stringify(['', '', 'draft', asChild && current ? String(current.id) : '', 0, true])
+    setTitle(''); setContent(''); setSortOrder(newSort); setAllowComments(true)
+    snapshot.current = JSON.stringify(['', '', 'draft', newParent, newSort, true])
     loadedDocId.current = null
     setSaveState('dirty') // 标题输入后自动落库
     setTimeout(() => textareaRef.current?.focus(), 0)
@@ -426,7 +443,8 @@ export default function Writer() {
                   )}
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
+              <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2"
+                onClick={(e) => { if (e.target === e.currentTarget) deselect() }}>
                 {filteredTree.length === 0 ? (
                   <EmptyState>{search ? '没有匹配的章节' : '暂无章节'}</EmptyState>
                 ) : (
@@ -469,7 +487,7 @@ export default function Writer() {
         {/* 中栏：编辑器 */}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 w-full flex-1 flex-col px-8 py-6">
-            {current && parentDoc && (
+            {parentDoc && (
               <p className="mb-1 shrink-0 text-sm text-slate-400">{chapterPrefix}{parentDoc.title}</p>
             )}
             {/* 标题：原生输入，无边框，避免与 Input 组件的 border 样式冲突 */}
