@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router'
+import Container from '@/components/Container'
 import { api } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
 import BookForm from '@/components/BookForm'
@@ -11,7 +12,8 @@ export default function CreateBook() {
   if (!user) return null
 
   return (
-    <div>
+    <Container>
+      <div>
       <h1 className="mb-6 text-xl font-bold text-slate-900">新建书籍</h1>
       <BookForm
         submitLabel="创建书籍"
@@ -21,5 +23,6 @@ export default function CreateBook() {
         }}
       />
     </div>
+    </Container>
   )
 }

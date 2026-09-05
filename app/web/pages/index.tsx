@@ -1,17 +1,19 @@
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
+import { getSSRUser, authHeaderFrom, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatDate, formatNumber } from '@/lib/api'
 import { ButtonLink, EmptyState } from '@/components/ui'
 import HeroIllustration, { HotRankCard } from '@/components/HeroIllustration'
 import Seo from '@/components/Seo'
+import Container from '@/components/Container'
 import TagChips from '@/components/TagChips'
 import { API_BASE } from '@/lib/api'
 import { BookIcon, ChevronRightIcon, CloudIcon, CodeIcon, EyeIcon, FileTextIcon, ShieldIcon, UsersIcon } from '@/components/icons'
-import type { Book, SiteStats } from '@/lib/types'
+import type { Book, SiteStats , User} from '@/lib/types'
 
 interface HomeProps {
   installed: boolean
+  user: User | null
   site: Record<string, string>
   siteUrl: string
   stats: SiteStats
@@ -24,6 +26,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ req })
   if (!(await isInstalled())) {
     return { redirect: { destination: '/install', permanent: false } }
   }
+  const auth = authHeaderFrom(req)
+  const user = await getSSRUser(req)
 
   const [site, stats, latest, hot] = await Promise.all([
     getSiteConfig(),
@@ -34,6 +38,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ req })
   return {
     props: {
       installed: true,
+      user,
       site,
       siteUrl: siteUrlFrom(req),
       stats: stats ?? { user_count: 0, book_count: 0, document_count: 0, total_views: 0 },
@@ -102,6 +107,7 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
         jsonLd={jsonLd}
       />
 
+      <Container>
       {/* Hero */}
       <section className="grid items-center gap-10 py-8 lg:grid-cols-2 lg:py-12">
         <div>
@@ -165,11 +171,12 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
           </div>
         )}
       </section>
+      </Container>
 
       {/* 热门阅读（全宽深色榜） */}
       {hot.length > 0 && (
-        <section className="-mx-[calc(50%-50vw)] w-screen bg-[#0b1f3f] py-12">
-          <div className="mx-auto max-w-7xl px-4">
+        <section className="bg-[#0b1f3f] py-12">
+          <Container>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">热门阅读</h2>
               <Link href="/explore" className="flex items-center gap-0.5 text-sm text-slate-400 transition-colors hover:text-white">
@@ -179,7 +186,7 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {(hot || []).slice(0, 5).map((b, i) => <HotRankCard key={b.id} rank={i + 1} book={b} />)}
             </div>
-          </div>
+          </Container>
         </section>
       )}
     </div>

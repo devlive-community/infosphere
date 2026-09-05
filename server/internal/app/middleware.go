@@ -59,11 +59,13 @@ func (a *App) OptionalAuth() gin.HandlerFunc {
 }
 
 func (a *App) resolveUser(c *gin.Context) *models.User {
-	header := c.GetHeader("Authorization")
-	if header == "" {
-		return nil
+	token := strings.TrimSpace(strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer "))
+	if token == "" {
+		// SSR 场景：浏览器同源请求自动携带 Cookie
+		if ck, err := c.Cookie("infosphere_token"); err == nil {
+			token = strings.TrimSpace(ck)
+		}
 	}
-	token := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
 	if token == "" || a.Config.Secret == "" {
 		return nil
 	}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Container from '@/components/Container'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
@@ -47,7 +48,8 @@ export default function AdminSystem() {
   if (!isAdmin) return <p className="py-20 text-center text-slate-400">仅管理员可访问</p>
 
   return (
-    <div className="mx-auto max-w-xl">
+    <Container>
+      <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">系统管理</h1>
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm mb-6 p-6">
@@ -99,5 +101,6 @@ export default function AdminSystem() {
         <Link href="/" className="hover:underline">返回首页</Link>
       </p>
     </div>
+    </Container>
   )
 }

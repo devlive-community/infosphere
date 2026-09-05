@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Container from '@/components/Container'
 import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
@@ -24,7 +25,8 @@ export default function EditBook() {
   if (!book) return <p className="py-20 text-center text-slate-400">加载中…</p>
 
   return (
-    <div>
+    <Container>
+      <div>
       <h1 className="mb-6 text-xl font-bold text-slate-900">书籍设置</h1>
       <BookForm
         initial={book}
@@ -36,5 +38,6 @@ export default function EditBook() {
         }}
       />
     </div>
+    </Container>
   )
 }

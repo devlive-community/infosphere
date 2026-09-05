@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react'
+import Container from '@/components/Container'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
 import { Button, Input, Field } from '@/components/ui'
@@ -37,7 +38,8 @@ export default function Security() {
   }
 
   return (
-    <div className="mx-auto max-w-xl">
+    <Container>
+      <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">账户安全</h1>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm mb-6 p-6">
         <h2 className="mb-2 font-semibold text-slate-900">账户信息</h2>
@@ -66,5 +68,6 @@ export default function Security() {
         </div>
       </form>
     </div>
+    </Container>
   )
 }

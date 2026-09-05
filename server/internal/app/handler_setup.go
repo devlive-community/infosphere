@@ -174,6 +174,7 @@ func (a *App) SetupInstall(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "签发令牌失败")
 		return
 	}
+	c.SetCookie("infosphere_token", token, 7*24*3600, "/", "", false, false)
 	ok(c, gin.H{"token": token, "user": admin})
 }
 

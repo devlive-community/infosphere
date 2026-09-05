@@ -16,6 +16,8 @@ func (a *App) issueToken(c *gin.Context, u *models.User) {
 		fail(c, http.StatusInternalServerError, "签发令牌失败")
 		return
 	}
+	// 同步下发 Cookie：SSR 页面据此在服务端渲染登录态，避免刷新闪烁
+	c.SetCookie("infosphere_token", token, 7*24*3600, "/", "", false, false)
 	ok(c, gin.H{"token": token, "user": u})
 }
 

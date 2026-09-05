@@ -1,10 +1,11 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
+import Container from '@/components/Container'
+import { getSSRUser, authHeaderFrom, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatDate } from '@/lib/api'
 import BookCard from '@/components/BookCard'
 import { Pagination } from '@/components/ui'
 import Seo from '@/components/Seo'
-import type { Book, PageResult } from '@/lib/types'
+import type { Book, PageResult , User} from '@/lib/types'
 
 interface UserProfile {
   id: number
@@ -19,6 +20,7 @@ interface UserProfile {
 
 interface UserHomeProps {
   installed: boolean
+  user: User | null
   site: Record<string, string>
   siteUrl: string
   profile: UserProfile
@@ -30,6 +32,8 @@ export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ re
   if (!(await isInstalled())) {
     return { redirect: { destination: '/install', permanent: false } }
   }
+  const auth = authHeaderFrom(req)
+  const user = await getSSRUser(req)
 
   const username = (typeof params?.username === 'string' ? params.username : '') || (typeof query.username === 'string' ? query.username : '')
   if (!username) return { notFound: true }
@@ -44,7 +48,7 @@ export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ re
   const books = await serverApi<PageResult<Book>>(`/users/${encodeURIComponent(username)}/books`, { params: { page, page_size: 9 } })
     .catch(() => ({ items: [], total: 0, page: 1, page_size: 9 }) as PageResult<Book>)
 
-  return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), profile, books } }
+  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), profile, books } }
 }
 
 export default function UserHome({ site, siteUrl, profile, books }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -64,7 +68,8 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
   }
 
   return (
-    <div>
+    <Container>
+      <div>
       <Seo
         siteName={siteName}
         title={`${profile.username}的主页`}
@@ -100,5 +105,6 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
       <Pagination page={books.page} pageSize={books.page_size} total={books.total}
         onChange={(p) => { window.location.search = p > 1 ? `?username=${encodeURIComponent(profile.username)}&page=${p}` : `?username=${encodeURIComponent(profile.username)}` }} />
     </div>
+    </Container>
   )
 }

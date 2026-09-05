@@ -22,7 +22,7 @@ export default function BookCard({ book, href }: { book: Book; href?: string }) 
   return (
     <Link href={link} className="rounded-xl border border-slate-200 bg-white shadow-sm group flex flex-col overflow-hidden transition hover:shadow-md">
       <div className="h-36 w-full bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
-        {cover && <img src={cover} alt="" className="h-full w-full object-cover" />}
+        {cover && <img src={cover} alt="" onError={(e) => { e.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" />}
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4">
         <div className="flex items-start justify-between gap-2">

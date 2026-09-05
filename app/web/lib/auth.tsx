@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { useRouter } from 'next/router'
-import { api, getToken, storeSession, clearSession } from './api'
+import { api, getToken, getStoredUser, storeSession, clearSession } from './api'
 import type { SiteConfig, User } from './types'
 
 interface AppContextValue {
@@ -29,11 +29,22 @@ interface AppProviderProps {
   initialSite?: SiteConfig | null
   /** SSR 页面传入的安装状态（服务端已校验，未安装不会渲染到客户端） */
   initialInstalled?: boolean | null
+  /** SSR 经 Cookie 校验出的登录用户，消除刷新时先未登录后登录的闪烁 */
+  initialUser?: User | null
 }
 
-export function AppProvider({ children, initialSite, initialInstalled }: AppProviderProps) {
+// ensureAuthCookie 老用户升级后补种令牌 Cookie，让下一次刷新 SSR 即可渲染登录态
+function ensureAuthCookie() {
+  const token = getToken()
+  if (token && typeof document !== 'undefined' && !document.cookie.includes('infosphere_token=')) {
+    document.cookie = `infosphere_token=${token}; path=/; max-age=604800`
+  }
+}
+
+export function AppProvider({ children, initialSite, initialInstalled, initialUser }: AppProviderProps) {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
+  // 立即用 localStorage 里缓存的用户初始化（同步、零网络等待），随后再由 /auth/me 校验
+  const [user, setUser] = useState<User | null>(initialUser ?? getStoredUser())
   const [authReady, setAuthReady] = useState(false)
   // 仅信任 SSR 显式传入的安装状态；客户端页面走 boot 检测
   const [installed, setInstalled] = useState<boolean | null>(initialInstalled ?? null)
@@ -41,9 +52,12 @@ export function AppProvider({ children, initialSite, initialInstalled }: AppProv
 
   useEffect(() => {
     if (initialInstalled) {
-      // 服务端已确认安装完成，仅补充登录态
-      if (getToken()) {
-        api<User>('/auth/me').then(setUser).catch(() => clearSession()).finally(() => setAuthReady(true))
+      // SSR 已渲染登录态；仅当 SSR 未知用户且本地有令牌时才校验（例如令牌过期）
+      if (!initialUser && getToken()) {
+        api<User>('/auth/me')
+          .then((me) => { setUser(me); ensureAuthCookie() })
+          .catch(() => clearSession())
+          .finally(() => setAuthReady(true))
       } else {
         setAuthReady(true)
       }
@@ -65,7 +79,7 @@ export function AppProvider({ children, initialSite, initialInstalled }: AppProv
         if (getToken()) {
           try {
             const me = await api<User>('/auth/me')
-            if (!cancelled) setUser(me)
+            if (!cancelled) { setUser(me); ensureAuthCookie() }
           } catch {
             clearSession()
           }
@@ -98,6 +112,7 @@ export function AppProvider({ children, initialSite, initialInstalled }: AppProv
 
   const logout = useCallback(() => {
     clearSession()
+    document.cookie = 'infosphere_token=; Max-Age=0; path=/'
     setUser(null)
     router.push('/login')
   }, [router])

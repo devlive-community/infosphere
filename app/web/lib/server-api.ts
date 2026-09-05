@@ -1,6 +1,8 @@
 // 服务端数据获取：getServerSideProps 专用。
 // 通过内网地址直连 Go API（INFO_SPHERE_API_URL，默认 http://127.0.0.1:6969），
 // 不经过 nginx，也不受 CORS 限制。
+import type { User } from './types'
+
 const API_INTERNAL = process.env.INFO_SPHERE_API_URL || 'http://127.0.0.1:6969'
 
 export class ServerApiError extends Error {
@@ -44,11 +46,23 @@ export async function serverApi<T = any>(path: string, options: ServerApiOptions
   return payload.data as T
 }
 
-// 请求头中透传用户令牌（用于登录用户浏览自己的草稿）
+// 请求头中透传用户令牌与 Cookie（用于登录用户浏览自己的草稿、SSR 渲染登录态）
 export function authHeaderFrom(req: { headers: Record<string, string | string[] | undefined> }): Record<string, string> {
+  const h: Record<string, string> = {}
   const raw = req.headers['authorization']
-  if (!raw) return {}
-  return { Authorization: Array.isArray(raw) ? raw[0] : raw }
+  if (raw) h.Authorization = Array.isArray(raw) ? raw[0] : raw
+  const cookie = req.headers['cookie']
+  if (cookie) h.Cookie = Array.isArray(cookie) ? cookie[0] : cookie
+  return h
+}
+
+// SSR 获取当前登录用户（未登录返回 null，不抛错）
+export async function getSSRUser(req: { headers: Record<string, string | string[] | undefined> }): Promise<User | null> {
+  try {
+    return await serverApi<User>('/auth/me', { headers: authHeaderFrom(req) })
+  } catch {
+    return null
+  }
 }
 
 // 安装状态检测：短暂缓存，避免每个 SSR 请求都打一次 API

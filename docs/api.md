@@ -17,6 +17,8 @@ Authorization: Bearer <token>
 ```
 
 - 令牌在登录 / 注册 / 安装完成时签发，有效期 7 天，HS256 签名
+- 签发时**同时下发 `infosphere_token` Cookie**（7 天，非 HttpOnly）：Web SSR 凭 Cookie 在服务端渲染登录态；客户端仍用 `Authorization: Bearer` 或同源 Cookie 均可
+- 登出时客户端清除 localStorage 并使 Cookie 过期（`Max-Age=0`）
 - `GET /auth/permissions` 可获取当前用户权限列表，客户端据此控制 UI 可见性
 
 ## 权限模型

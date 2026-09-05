@@ -1,6 +1,7 @@
 import Link from 'next/link'
+import Container from '@/components/Container'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled } from '@/lib/server-api'
+import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
 import { useApp } from '@/lib/auth'
 import { StatusBadge } from '@/components/BookCard'
 import { ButtonLink } from '@/components/ui'
@@ -8,10 +9,11 @@ import { EyeIcon } from '@/components/icons'
 import TagChips from '@/components/TagChips'
 import DocTree from '@/components/DocTree'
 import Seo from '@/components/Seo'
-import type { Book, Document } from '@/lib/types'
+import type { Book, Document, User } from '@/lib/types'
 
 interface BookDetailProps {
   installed: boolean
+  user: User | null
   site: Record<string, string>
   siteUrl: string
   book: Book
@@ -44,6 +46,7 @@ export const getServerSideProps: GetServerSideProps<BookDetailProps> = async ({ 
 
   const slug = typeof query.slug === 'string' ? query.slug : ''
   if (!slug) return { notFound: true }
+  const user = await getSSRUser(req)
 
   const auth = authHeaderFrom(req)
   const [site, first] = await Promise.all([getSiteConfig(), fetchBook(slug, auth)])
@@ -51,11 +54,11 @@ export const getServerSideProps: GetServerSideProps<BookDetailProps> = async ({ 
   // 公开访问失败且用户带了令牌（草稿/私有书），交给客户端重试
   if (!first.book) {
     if (auth.Authorization) {
-      return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, tree: [], needsAuth: true } }
+      return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, tree: [], needsAuth: true } }
     }
     return { notFound: true }
   }
-  return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), book: first.book, tree: first.tree, needsAuth: false } }
+  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book: first.book, tree: first.tree, needsAuth: false } }
 }
 
 export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -93,7 +96,8 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
   ]
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+    <Container>
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <Seo
         siteName={siteName}
         title={book.title}
@@ -152,6 +156,7 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
         )}
       </aside>
     </div>
+    </Container>
   )
 }
 

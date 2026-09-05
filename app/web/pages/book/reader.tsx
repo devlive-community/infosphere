@@ -1,15 +1,17 @@
 import Link from 'next/link'
+import Container from '@/components/Container'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled } from '@/lib/server-api'
+import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
 import { renderMarkdown } from '@/lib/markdown'
 import { useApp } from '@/lib/auth'
 import DocTree from '@/components/DocTree'
 import Seo from '@/components/Seo'
 import { BookIcon } from '@/components/icons'
-import type { Book, Document } from '@/lib/types'
+import type { Book, Document, User } from '@/lib/types'
 
 interface ReaderProps {
   installed: boolean
+  user: User | null
   site: Record<string, string>
   siteUrl: string
   book: Book
@@ -32,6 +34,7 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
   const slug = typeof query.slug === 'string' ? query.slug : ''
   const docSlug = typeof query.doc === 'string' ? query.doc : ''
   if (!slug) return { notFound: true }
+  const user = await getSSRUser(req)
 
   const auth = authHeaderFrom(req)
   const [site] = await Promise.all([getSiteConfig()])
@@ -44,12 +47,12 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
         ? serverApi<Document>(`/books/${book.id}/documents/slug/${encodeURIComponent(docSlug)}`, { headers: auth })
         : Promise.resolve(null),
     ])
-    return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), book, doc: doc as Document, html: doc ? renderMarkdown(doc.content) : '', tree, needsAuth: false } }
+    return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc: doc as Document, html: doc ? renderMarkdown(doc.content) : '', tree, needsAuth: false } }
   } catch (e) {
     const status = (e as { status?: number }).status ?? 500
     if (status === 404) return { notFound: true }
     // 401/403：私有内容，交给客户端带令牌重试
-    return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, doc: null as unknown as Document, html: '', tree: [], needsAuth: true } }
+    return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, doc: null as unknown as Document, html: '', tree: [], needsAuth: true } }
   }
 }
 
@@ -94,7 +97,8 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
   ] : undefined
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+    <Container>
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <Seo
         siteName={siteName}
         title={doc ? `${chapterPrefix}${doc.title} · ${book.title}` : book.title}
@@ -146,5 +150,6 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
         )}
       </article>
     </div>
+    </Container>
   )
 }

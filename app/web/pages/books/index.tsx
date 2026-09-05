@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Container from '@/components/Container'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
@@ -61,7 +62,8 @@ export default function MyBooks() {
   ]
 
   return (
-    <div>
+    <Container>
+      <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-900">我的书籍</h1>
         <ButtonLink href="/books/create">+ 新建书籍</ButtonLink>
@@ -121,5 +123,6 @@ export default function MyBooks() {
 
       <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
     </div>
+    </Container>
   )
 }

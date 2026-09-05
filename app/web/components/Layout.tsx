@@ -1,6 +1,9 @@
 import Head from 'next/head'
 import Link from 'next/link'
 import { useState, useRef, useEffect, ReactNode } from 'react'
+import { useRouter } from 'next/router'
+import Container from '@/components/Container'
+import { ListBulletIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
 import { ButtonLink } from '@/components/ui'
@@ -55,12 +58,35 @@ function UserMenu() {
   )
 }
 
+// MobileNav 窄屏导航：汉堡按钮 + 下拉面板
+function MobileNav() {
+  const [open, setOpen] = useState(false)
+  const router = useRouter()
+  useEffect(() => { setOpen(false) }, [router.pathname])
+  return (
+    <div className="relative md:hidden">
+      <button onClick={() => setOpen(!open)} aria-label="导航菜单"
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
+        <ListBulletIcon className="h-5 w-5" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-11 z-40 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          {[['发现', '/explore'], ['我的书籍', '/books']].map(([label, href]) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)}
+              className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">{label}</Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Layout({ title, children }: { title?: string; children: ReactNode }) {
   const { site } = useApp()
   const siteName = site.site_name || 'InfoSphere'
   const year = new Date().getFullYear()
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-clip">
       <Head>
         <title>{title ? `${title} - ${siteName}` : siteName}</title>
         <meta name="description" content={site.site_description || 'InfoSphere 知识管理系统'} />
@@ -76,19 +102,20 @@ export default function Layout({ title, children }: { title?: string; children: 
             <Link href="/explore" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">发现</Link>
             <Link href="/books" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">我的书籍</Link>
           </nav>
+          <MobileNav />
           <form action="/explore" method="get" className="relative ml-auto hidden w-full max-w-sm lg:block">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input name="title"
               className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:bg-white focus:outline-none"
               placeholder="搜索书籍、主题或作者" />
           </form>
-          <div className="ml-auto lg:ml-0">
+          <div className="ml-auto flex items-center gap-2 lg:ml-0">
             <UserMenu />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">{children}</main>
+      <main className="w-full flex-1">{children}</main>
 
       <footer className="bg-[#0b1f3f] text-slate-300">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr]">

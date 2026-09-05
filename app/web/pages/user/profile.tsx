@@ -1,4 +1,5 @@
 import { useEffect, useState, FormEvent } from 'react'
+import Container from '@/components/Container'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { Button, Input, Textarea, Field } from '@/components/ui'
@@ -45,7 +46,8 @@ export default function Profile() {
   }
 
   return (
-    <div className="mx-auto max-w-xl">
+    <Container>
+      <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">个人资料</h1>
       <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white shadow-sm space-y-4 p-6">
         {message && <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{message}</div>}
@@ -78,5 +80,6 @@ export default function Profile() {
         </div>
       </form>
     </div>
+    </Container>
   )
 }

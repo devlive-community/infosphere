@@ -1,10 +1,11 @@
 import Link from 'next/link'
+import Container from '@/components/Container'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
+import { getSSRUser, authHeaderFrom, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import BookCard from '@/components/BookCard'
 import { Button, Input, Pagination } from '@/components/ui'
 import Seo from '@/components/Seo'
-import type { Book, PageResult } from '@/lib/types'
+import type { Book, PageResult , User} from '@/lib/types'
 
 interface ExploreProps {
   tag: string
@@ -21,6 +22,8 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
   if (!(await isInstalled())) {
     return { redirect: { destination: '/install', permanent: false } }
   }
+  const auth = authHeaderFrom(req)
+  const user = await getSSRUser(req)
 
   const keyword = typeof query.title === 'string' ? query.title.slice(0, 100) : ''
   const tag = typeof query.tag === 'string' ? query.tag.slice(0, 50) : ''
@@ -30,7 +33,7 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
     serverApi<PageResult<Book>>('/books', { params: { page, page_size: 12, title: keyword || undefined, tag: tag || undefined } })
       .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>),
   ])
-  return { props: { installed: true, site, siteUrl: siteUrlFrom(req), keyword, tag, page, data } }
+  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), keyword, tag, page, data } }
 }
 
 export default function Explore({ site, siteUrl, keyword, tag, page, data }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -48,7 +51,8 @@ export default function Explore({ site, siteUrl, keyword, tag, page, data }: Inf
   } : undefined
 
   return (
-    <div>
+    <Container>
+      <div>
       <Seo
         siteName={siteName}
         title={keyword ? `「${keyword}」的搜索结果` : '发现知识'}
@@ -79,5 +83,6 @@ export default function Explore({ site, siteUrl, keyword, tag, page, data }: Inf
         </>
       )}
     </div>
+    </Container>
   )
 }
