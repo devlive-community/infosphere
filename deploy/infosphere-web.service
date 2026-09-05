@@ -1,0 +1,26 @@
+[Unit]
+Description=InfoSphere Web service (Next.js SSR)
+After=network-online.target infosphere-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/infosphere/current/web
+ExecStart=/usr/bin/node server.js
+EnvironmentFile=/etc/infosphere/infosphere.env
+Environment=NODE_ENV=production
+Environment=PORT=6900
+Environment=HOSTNAME=127.0.0.1
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/www/infosphere/current/web/.next/cache /tmp
+
+[Install]
+WantedBy=multi-user.target

@@ -1,79 +1,174 @@
 name: Deploy to Production
 
+# push 到 dev 分支（或手动触发）：构建 → 上传 → 原子切换 → 健康检查
 on:
   push:
-    branches: [ dev ]
+    branches: [dev]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: infosphere-production
+  cancel-in-progress: false
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment: production
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      # ── 前端：类型检查 + lint + SSR 构建，打包为独立 Node 服务 ──
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: app/web/pnpm-lock.yaml
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+      - name: Install web dependencies
+        working-directory: app/web
+        run: pnpm install --frozen-lockfile
 
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Build
-        run: pnpm run build
-
-      - name: Create .env file
+      - name: Typecheck and lint web
+        working-directory: app/web
         run: |
-          cat > .env << EOF
-          APP_SECRET=2DD596E2A8F1DA6DDCB14F8A4B8C5EA0C4A22CBA80541812
-          PORT=${{ secrets.PORT }}
-          NODE_ENV=production
-          BASE_URL=https://infosphere.devlive.top
-          
-          DB_HOST=${{ secrets.DB_HOST }}
-          DB_USER=${{ secrets.DB_USER }}
-          DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
-          DB_NAME=${{ secrets.DB_NAME }}
-          
-          # 时区配置
-          TZ=Asia/Shanghai
-          
-          # 安装状态
-          INSTALLED=true
-          
-          GITHUB_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
-          GITHUB_CLIENT_SECRET=${{ secrets.GH_CLIENT_SECRET }}
-          GITHUB_CALLBACK_URL=${{ secrets.GH_CALLBACK_URL }}
-          
-          QINIU_ACCESS_KEY=${{ secrets.QINIU_ACCESS_KEY }}
-          QINIU_SECRET_KEY=${{ secrets.QINIU_SECRET_KEY }}
-          QINIU_BUCKET=${{ secrets.QINIU_BUCKET }}
-          QINIU_DOMAIN=${{ secrets.QINIU_DOMAIN }}
-          EOF
+          pnpm exec tsc --noEmit
+          pnpm exec next lint
 
-      - name: Deploy to server
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ".,!node_modules,!.git"
-          target: "/var/www/infosphere"
-          strip_components: 0
+      - name: Build web (SSR standalone)
+        working-directory: app/web
+        run: pnpm build
 
-      - name: Execute remote commands
-        uses: appleboy/ssh-action@master
+      - name: Package web
+        run: |
+          mkdir -p release/web/.next
+          cp -R app/web/.next/standalone/. release/web/
+          cp -R app/web/.next/static/. release/web/.next/static/
+          if [ -d app/web/public ]; then cp -R app/web/public release/web/public; fi
+          tar -czf release/infosphere-web-linux-amd64.tar.gz -C release/web .
+          rm -rf release/web
+          test -s release/infosphere-web-linux-amd64.tar.gz
+
+      # ── 后端：测试 + 交叉编译 Linux 单文件二进制 ──
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          host: ${{ secrets.HOST }}
-          username: root
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      - name: Vet and test backend
+        working-directory: server
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Build Linux backend
+        working-directory: server
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          go build -trimpath \
+            -ldflags="-s -w \
+              -X 'infosphere/server/internal/app.Commit=${COMMIT_SHA::7}' \
+              -X 'infosphere/server/internal/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" \
+            -o ../release/infosphere-server .
+
+      # ── 打包发布：二进制 + 前端包 + systemd unit + env ──
+      - name: Assemble release
+        env:
+          INFO_SPHERE_ENV_FILE: ${{ secrets.INFO_SPHERE_ENV_FILE }}
+        run: |
+          test -n "$INFO_SPHERE_ENV_FILE"
+          cp deploy/infosphere-api.service deploy/infosphere-web.service deploy/infosphere.sudoers release/
+          printf '%s\n' "$INFO_SPHERE_ENV_FILE" > release/infosphere.env
+          chmod 600 release/infosphere.env
+          (cd release && sha256sum infosphere-server infosphere-web-linux-amd64.tar.gz > SHA256SUMS)
+          ls -la release/
+
+      - name: Upload release to server
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_PRIVATE_HOST }}
+          username: ${{ secrets.SSH_PRIVATE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "release/*"
+          target: "/tmp/infosphere-release-${{ github.sha }}"
+          strip_components: 1
+
+      - name: Activate release
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.SSH_PRIVATE_HOST }}
+          username: ${{ secrets.SSH_PRIVATE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: RELEASE_SHA
           script: |
-            cd /var/www/infosphere
-            pnpm install --prod
-            npm install -g pm2
-            pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+            set -eu
+            deploy_root=/var/www/infosphere
+            staged_dir=/tmp/infosphere-release-$RELEASE_SHA
+            release_dir=$deploy_root/releases/$RELEASE_SHA
+
+            test -f "$staged_dir/infosphere-server"
+            test -s "$staged_dir/infosphere-web-linux-amd64.tar.gz"
+            test -s "$staged_dir/infosphere.env"
+
+            # 目录骨架
+            sudo install -d -m 755 "$deploy_root/releases" "$release_dir/web" /etc/infosphere
+            sudo install -d -m 755 -o www-data -g www-data /var/lib/infosphere /var/lib/infosphere/uploads
+
+            # 发布内容
+            sudo cp -a "$staged_dir/." "$release_dir/"
+            sudo chmod 755 "$release_dir/infosphere-server"
+            sudo tar -xzf "$release_dir/infosphere-web-linux-amd64.tar.gz" -C "$release_dir/web"
+            sudo chown -R www-data:www-data "$release_dir/web"
+
+            # 配置与服务
+            sudo install -m 600 "$release_dir/infosphere.env" /etc/infosphere/infosphere.env
+            sudo install -m 644 "$release_dir/infosphere-api.service" /etc/systemd/system/infosphere-api.service
+            sudo install -m 644 "$release_dir/infosphere-web.service" /etc/systemd/system/infosphere-web.service
+            sudo install -m 440 "$release_dir/infosphere.sudoers" /etc/sudoers.d/infosphere
+            sudo visudo -c >/dev/null
+
+            # 原子切换 current
+            sudo ln -sfn "$release_dir" "$deploy_root/current.next"
+            sudo mv -Tf "$deploy_root/current.next" "$deploy_root/current"
+
+            sudo systemctl daemon-reload
+            sudo systemctl enable infosphere-api.service infosphere-web.service
+            sudo systemctl restart infosphere-api.service
+            sudo systemctl restart infosphere-web.service
+
+            # 健康检查：API 包含当前 commit，前端可访问
+            attempt=0
+            until curl -fsS http://127.0.0.1:6969/api/v1/health | grep -q "\"commit\":\"${RELEASE_SHA::7}\"" \
+              && curl -fsS -o /dev/null http://127.0.0.1:6900/; do
+              attempt=$((attempt + 1))
+              if [ "$attempt" -ge 15 ]; then
+                sudo systemctl status infosphere-api.service --no-pager || true
+                sudo systemctl status infosphere-web.service --no-pager || true
+                sudo journalctl -u infosphere-api.service -n 30 --no-pager || true
+                sudo journalctl -u infosphere-web.service -n 30 --no-pager || true
+                exit 1
+              fi
+              sleep 2
+            done
+
+            # 清理：仅保留最近 5 个版本
+            sudo bash -c "ls -1dt $deploy_root/releases/*/ | tail -n +6 | xargs -r rm -rf"
+            rm -rf "$staged_dir"
+            echo "✅ InfoSphere 部署完成: $release_dir"

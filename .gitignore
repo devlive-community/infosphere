@@ -1,5 +1,50 @@
-.idea
+# 构建产物
+bin/
+out/
+dist/
+target/
+build/
+
+# Go
+server/data/
+*.test
+*.out
+
+# Node
+node_modules/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
+# 运行时数据（安装配置、数据库、上传文件）
+data/
+
+# 环境变量与日志
 .env
-node_modules
-frontend/public/css/infosphere.css
-logs
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# Tauri / Rust
+app/desktop/src-tauri/gen/
+
+# Android
+app/android/.gradle/
+app/android/local.properties
+app/android/.idea/
+app/android/app/build/
+app/android/build/
+app/android/captures/
+*.apk
+*.aab
+bin/
+
+# 本地散落产物
+*.bak

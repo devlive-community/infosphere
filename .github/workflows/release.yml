@@ -1,0 +1,88 @@
+name: Release
+
+# 推送 v* 标签：构建发布产物并创建 GitHub Release，供在线升级消费
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Extract version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # ── 前端 ──
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: app/web/pnpm-lock.yaml
+
+      - name: Build web (SSR standalone)
+        working-directory: app/web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Package web
+        run: |
+          mkdir -p release/web/.next
+          cp -R app/web/.next/standalone/. release/web/
+          cp -R app/web/.next/static/. release/web/.next/static/
+          if [ -d app/web/public ]; then cp -R app/web/public release/web/public; fi
+          tar -czf release/infosphere-web-linux-amd64.tar.gz -C release/web .
+          rm -rf release/web
+
+      # ── 后端（多架构） ──
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      - name: Test backend
+        working-directory: server
+        run: go test ./...
+
+      - name: Build backend binaries
+        working-directory: server
+        env:
+          CGO_ENABLED: "0"
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          LDFLAGS="-s -w \
+            -X 'infosphere/server/internal/app.Version=${VERSION}' \
+            -X 'infosphere/server/internal/app.Commit=${GITHUB_SHA::7}' \
+            -X 'infosphere/server/internal/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+          for arch in amd64 arm64; do
+            GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$LDFLAGS" \
+              -o ../release/infosphere-server-linux-$arch .
+          done
+
+      - name: Generate checksums
+        working-directory: release
+        run: sha256sum infosphere-server-linux-* infosphere-web-*.tar.gz > SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release/infosphere-server-linux-amd64
+            release/infosphere-server-linux-arm64
+            release/infosphere-web-linux-amd64.tar.gz
+            release/SHA256SUMS.txt

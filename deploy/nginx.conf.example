@@ -1,0 +1,49 @@
+# InfoSphere 生产站点 nginx 配置示例。
+#
+# 架构：nginx (:80/:443) → Next.js SSR (:6900) 页面渲染
+#                       → Go API (:6969)     /api /uploads /health
+#
+# 若域名尚未解析到本机，可临时通过服务器 IP 访问（server_name 已包含 IP）。
+# 建议上线后使用 certbot 补配 TLS：
+#   sudo certbot --nginx -d infosphere.devlive.org
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name infosphere.devlive.org 43.162.108.186;
+    client_max_body_size 12m;
+
+    # Go API 与上传文件
+    location /api/ {
+        proxy_pass http://127.0.0.1:6969;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:6969;
+        proxy_set_header Host $host;
+    }
+    location = /health {
+        proxy_pass http://127.0.0.1:6969;
+    }
+
+    # Next.js 静态资源：长缓存（文件名带哈希）
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:6900;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # 页面与其他资源：Next.js SSR
+    location / {
+        proxy_pass http://127.0.0.1:6900;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+}
