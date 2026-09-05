@@ -94,6 +94,25 @@ export const PencilIcon = svg(<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1
 
 export const MoreIcon = svg(<><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></>)
 
+export const ClockIcon = svg(<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>)
+
+export const CalendarIcon = svg(<><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></>)
+
+export const BookmarkIcon = svg(<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />)
+
+export const ShareIcon = svg(<>
+  <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+  <path d="m8.6 13.5 6.8 4" /><path d="m15.4 6.5-6.8 4" />
+</>)
+
+export const GlobeIcon = svg(<>
+  <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" />
+</>)
+
+export const HelpCircleIcon = svg(<><circle cx="12" cy="12" r="10" /><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></>)
+
+export const CheckCircleSmallIcon = svg(<><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></>)
+
 export const GripIcon = svg(<>
   <circle cx="9" cy="6" r="1" /><circle cx="15" cy="6" r="1" /><circle cx="9" cy="12" r="1" />
   <circle cx="15" cy="12" r="1" /><circle cx="9" cy="18" r="1" /><circle cx="15" cy="18" r="1" />
