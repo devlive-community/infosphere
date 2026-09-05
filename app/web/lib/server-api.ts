@@ -1,0 +1,93 @@
+// 服务端数据获取：getServerSideProps 专用。
+// 通过内网地址直连 Go API（INFO_SPHERE_API_URL，默认 http://127.0.0.1:6969），
+// 不经过 nginx，也不受 CORS 限制。
+const API_INTERNAL = process.env.INFO_SPHERE_API_URL || 'http://127.0.0.1:6969'
+
+export class ServerApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
+interface ServerApiOptions {
+  method?: string
+  body?: unknown
+  headers?: Record<string, string>
+  params?: Record<string, string | number | boolean | undefined | null>
+}
+
+export async function serverApi<T = any>(path: string, options: ServerApiOptions = {}): Promise<T> {
+  const { method = 'GET', body, headers = {}, params } = options
+  const query = params
+    ? '?' + new URLSearchParams(
+        Object.entries(params)
+          .filter(([, v]) => v !== undefined && v !== null && v !== '')
+          .map(([k, v]) => [k, String(v)]),
+      )
+    : ''
+  const reqHeaders: Record<string, string> = { ...headers }
+  if (body !== undefined) reqHeaders['Content-Type'] = 'application/json'
+
+  const res = await fetch(`${API_INTERNAL}/api/v1${path}${query}`, {
+    method,
+    headers: reqHeaders,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    // API 数据变化需要即时反映到 SEO 页面
+    cache: 'no-store',
+  })
+  const payload = await res.json().catch(() => ({}))
+  if (!res.ok || payload.success === false) {
+    throw new ServerApiError(payload.message || `请求失败 (${res.status})`, res.status)
+  }
+  return payload.data as T
+}
+
+// 请求头中透传用户令牌（用于登录用户浏览自己的草稿）
+export function authHeaderFrom(req: { headers: Record<string, string | string[] | undefined> }): Record<string, string> {
+  const raw = req.headers['authorization']
+  if (!raw) return {}
+  return { Authorization: Array.isArray(raw) ? raw[0] : raw }
+}
+
+// 站点配置缓存：避免每个 SSR 请求都查一次站点配置
+let siteCache: { value: Record<string, string>; expires: number } | null = null
+
+export async function getSiteConfig(): Promise<Record<string, string>> {
+  if (siteCache && siteCache.expires > Date.now()) return siteCache.value
+  try {
+    const value = await serverApi<Record<string, string>>('/site')
+    siteCache = { value, expires: Date.now() + 60_000 }
+    return value
+  } catch {
+    return siteCache?.value ?? {}
+  }
+}
+
+export function invalidateSiteCache(): void {
+  siteCache = null
+}
+
+// 从请求推导对外站点根地址（canonical / sitemap / JSON-LD 用）
+export function siteUrlFrom(req: { headers: Record<string, string | string[] | undefined> }): string {
+  const host = (req.headers['x-forwarded-host'] as string) || (req.headers.host as string) || 'localhost:3000'
+  const proto = (req.headers['x-forwarded-proto'] as string) || 'http'
+  return `${proto}://${host}`
+}
+
+// 纯文本摘要：从 Markdown 生成 meta description
+export function excerptFrom(markdown: string | null | undefined, max = 160): string {
+  if (!markdown) return ''
+  const text = markdown
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^>\s?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/gim, '')
+    .replace(/[>*~_-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text.length > max ? text.slice(0, max - 1) + '…' : text
+}
