@@ -6,15 +6,8 @@ import { useRequireAuth } from '@/lib/auth'
 import { ButtonLink, Badge, EmptyState, Pagination } from '@/components/ui'
 import { StatusBadge } from '@/components/BookCard'
 import { EyeIcon } from '@/components/icons'
+import TagChips from '@/components/TagChips'
 import type { Book, PageResult } from '@/lib/types'
-
-interface Summary {
-  total_books: number
-  total_views: number
-  published: { count: number; views: number }
-  draft: { count: number; views: number }
-  archived: { count: number; views: number }
-}
 
 const statusTabs = [
   { key: '', label: '全部' },
@@ -28,13 +21,11 @@ export default function MyBooks() {
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PageResult<Book>>({ items: [], total: 0, page: 1, page_size: 10 })
-  const [summary, setSummary] = useState<Summary | null>(null)
 
   async function load() {
     if (!user) return
     try {
       setData(await api<PageResult<Book>>('/books', { params: { mine: 'true', page, page_size: 10, status } }))
-      setSummary(await api<Summary>('/books/summary'))
     } catch (e) {
       alert((e as Error).message)
     }
@@ -54,13 +45,6 @@ export default function MyBooks() {
 
   if (!user) return null
 
-  const statCards = summary && [
-    { label: '全部书籍', value: summary.total_books },
-    { label: '已发布', value: summary.published.count },
-    { label: '草稿', value: summary.draft.count },
-    { label: '总浏览', value: summary.total_views },
-  ]
-
   return (
     <Container>
       <div>
@@ -68,17 +52,6 @@ export default function MyBooks() {
         <h1 className="text-xl font-bold text-slate-900">我的书籍</h1>
         <ButtonLink href="/books/create">+ 新建书籍</ButtonLink>
       </div>
-
-      {statCards && (
-        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          {statCards.map((s) => (
-            <div key={s.label} className="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
-              <div className="text-xl font-bold text-slate-900">{s.value}</div>
-              <div className="text-xs text-slate-500">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="mb-4 flex gap-2">
         {statusTabs.map((t) => (
