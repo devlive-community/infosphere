@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown } from '@/lib/markdown'
+import Seo from '@/components/Seo'
 import { Button, Input, Textarea, Select, Field, Badge, EmptyState } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
@@ -364,10 +365,13 @@ export default function Writer() {
     )
   }
 
+  const titleText = current ? `${chapterPrefix}${current.title} · ${book.title}` : `新建章节 · ${book.title}`
+
   const filteredTree = search.trim() ? filterTree(tree, search.trim()) : tree
 
   return (
     <div className="flex h-screen flex-col bg-warm">
+      <Seo siteName={siteName} title={titleText} noindex />
       {/* 顶栏 */}
       <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
