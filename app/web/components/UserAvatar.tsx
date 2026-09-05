@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Tooltip from '@/components/ui/Tooltip'
 import { API_BASE } from '@/lib/api'
 
 export interface UserAvatarUser {
@@ -28,7 +29,6 @@ export default function UserAvatar({ user, size = 'h-7 w-7', tooltip = true, lin
   if (!user?.username) return null
   const inner = (
     <span
-      title={tooltip ? user.username : undefined}
       className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-500 align-middle ${size} ${className}`.trim()}
     >
       {src(user.avatar)
@@ -38,8 +38,10 @@ export default function UserAvatar({ user, size = 'h-7 w-7', tooltip = true, lin
   )
   if (!link) return inner
   return (
-    <Link href={`/user/home?username=${encodeURIComponent(user.username)}`} className="inline-flex shrink-0">
-      {inner}
-    </Link>
+    <Tooltip content={user.username}>
+      <Link href={`/user/home?username=${encodeURIComponent(user.username)}`} className="inline-flex shrink-0">
+        {inner}
+      </Link>
+    </Tooltip>
   )
 }
