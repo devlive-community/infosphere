@@ -39,7 +39,7 @@ export default function Security() {
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">账户安全</h1>
-      <div className="card mb-6 p-6">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm mb-6 p-6">
         <h2 className="mb-2 font-semibold text-slate-900">账户信息</h2>
         <dl className="space-y-1 text-sm text-slate-600">
           <div className="flex"><dt className="w-24 text-slate-400">用户名</dt><dd>{user.username}</dd></div>
@@ -48,7 +48,7 @@ export default function Security() {
         </dl>
       </div>
 
-      <form onSubmit={submit} className="card space-y-4 p-6">
+      <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white shadow-sm space-y-4 p-6">
         <h2 className="font-semibold text-slate-900">修改密码</h2>
         {message && <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{message}</div>}
         {error && <div className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}

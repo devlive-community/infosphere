@@ -50,7 +50,7 @@ export default function AdminSystem() {
     <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">系统管理</h1>
 
-      <div className="card mb-6 p-6">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm mb-6 p-6">
         <h2 className="mb-3 font-semibold text-slate-900">版本信息</h2>
         {info ? (
           <dl className="space-y-2 text-sm">
@@ -83,7 +83,7 @@ export default function AdminSystem() {
         ) : <p className="text-sm text-slate-400">加载中…</p>}
       </div>
 
-      <div className="card p-6">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
         <h2 className="mb-2 font-semibold text-slate-900">在线升级</h2>
         <p className="mb-4 text-sm text-slate-500">
           从 GitHub Releases 拉取最新版本，自动完成后端二进制与前端资源的替换并重启服务。

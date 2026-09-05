@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { useState, useRef, useEffect, ReactNode } from 'react'
 import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
+import { ButtonLink } from '@/components/ui'
 
 function UserMenu() {
   const { user, logout } = useApp()
@@ -21,8 +22,8 @@ function UserMenu() {
   if (!user) {
     return (
       <div className="flex items-center gap-2">
-        <Link href="/login" className="btn-outline">登录</Link>
-        <Link href="/register" className="btn-primary">注册</Link>
+        <ButtonLink href="/login" variant="outline">登录</ButtonLink>
+        <ButtonLink href="/register">注册</ButtonLink>
       </div>
     )
   }

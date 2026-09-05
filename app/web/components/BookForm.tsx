@@ -46,7 +46,7 @@ export default function BookForm({ initial, submitLabel, onSubmit }: BookFormPro
   }
 
   return (
-    <form onSubmit={submit} className="card max-w-2xl p-6">
+    <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white shadow-sm max-w-2xl p-6">
       {error && <div className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
       <div className="space-y-4">
         <Field label="标题 *">
@@ -83,7 +83,7 @@ export default function BookForm({ initial, submitLabel, onSubmit }: BookFormPro
           <div className="flex-1">
             <Field label="可见性">
               <label className="flex h-[42px] items-center gap-2 rounded-lg border border-slate-300 px-3">
-                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
+                <input type="checkbox" className="h-4 w-4 accent-primary-600" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
                 <span className="text-sm">公开可访问</span>
               </label>
             </Field>

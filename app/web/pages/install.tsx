@@ -38,7 +38,7 @@ export default function Install() {
   if (installed) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="card max-w-md p-8 text-center">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm max-w-md p-8 text-center">
           <h1 className="text-lg font-bold">系统已安装</h1>
           <p className="mt-2 text-sm text-slate-500">如需重新安装，请停止服务并删除数据目录下的 config.json。</p>
         </div>
@@ -103,7 +103,7 @@ export default function Install() {
   if (done) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-50 to-slate-50 px-4">
-        <div className="card w-full max-w-md p-8 text-center">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm w-full max-w-md p-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl">✅</div>
           <h1 className="text-xl font-bold text-slate-900">安装完成！</h1>
           <p className="mt-2 text-sm text-slate-500">站点「{site.name}」已就绪，管理员 <b>{admin.username}</b> 已自动登录。</p>
@@ -125,18 +125,28 @@ export default function Install() {
 
         {error && <div className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
 
-        <div className="card p-6">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
           {step === 1 && (
             <div>
               <h2 className="mb-4 font-semibold text-slate-900">选择数据库</h2>
               <div className="space-y-3">
                 {dbTypes.map((t) => (
-                  <label key={t.key}
-                    className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${dbType === t.key ? 'border-primary-500 bg-primary-50/50 ring-1 ring-primary-500' : 'border-slate-200 hover:bg-slate-50'}`}>
-                    <input type="radio" name="dbtype" checked={dbType === t.key} onChange={() => setDbType(t.key)} className="mt-1" />
-                    <span>
-                      <span className="block font-medium text-slate-900">{t.name}{t.key === 'sqlite' && <span className="badge ml-2 bg-primary-50 text-primary-600">默认</span>}</span>
-                      <span className="mt-0.5 block text-xs text-slate-500">{t.desc}</span>
+                  <label key={t.key} className="relative block cursor-pointer">
+                    <input type="radio" name="dbtype" checked={dbType === t.key} onChange={() => setDbType(t.key)} className="peer sr-only" />
+                    <span className={`flex items-start gap-3 rounded-xl border p-4 transition-colors focus-within:border-primary-500 ${
+                      dbType === t.key ? 'border-primary-500 bg-primary-50/50' : 'border-slate-200 hover:bg-slate-50'
+                    }`}>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium text-slate-900">{t.name}{t.key === 'sqlite' && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">默认</span>
+                        )}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">{t.desc}</span>
+                      </span>
+                      <span className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                        dbType === t.key ? 'border-primary-500' : 'border-slate-300'
+                      }`}>
+                        {dbType === t.key && <span className="h-2 w-2 rounded-full bg-primary-500" />}
+                      </span>
                     </span>
                   </label>
                 ))}
@@ -144,7 +154,7 @@ export default function Install() {
 
               {dbType === 'sqlite' ? (
                 <div className="mt-4">
-                  <label className="label">数据库文件路径（可选）</label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">数据库文件路径（可选）</label>
                   <Input value={db.path} onChange={(e) => setDb({ ...db, path: e.target.value })}
                     placeholder={sqliteDefaultPath || 'data/infosphere.db'} />
                   <p className="mt-1.5 text-xs text-slate-400">
@@ -155,23 +165,23 @@ export default function Install() {
               ) : (
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div>
-                    <label className="label">主机</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">主机</label>
                     <Input value={db.host} onChange={(e) => setDb({ ...db, host: e.target.value })} />
                   </div>
                   <div>
-                    <label className="label">端口（可选，{dbType === 'mysql' ? '3306' : '5432'}）</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">端口（可选，{dbType === 'mysql' ? '3306' : '5432'}）</label>
                     <Input value={db.port} onChange={(e) => setDb({ ...db, port: e.target.value })} placeholder={dbType === 'mysql' ? '3306' : '5432'} />
                   </div>
                   <div>
-                    <label className="label">数据库名</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">数据库名</label>
                     <Input value={db.name} onChange={(e) => setDb({ ...db, name: e.target.value })} />
                   </div>
                   <div>
-                    <label className="label">用户名</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">用户名</label>
                     <Input value={db.user} onChange={(e) => setDb({ ...db, user: e.target.value })} />
                   </div>
                   <div className="col-span-2">
-                    <label className="label">密码</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">密码</label>
                     <Input type="password" value={db.password} onChange={(e) => setDb({ ...db, password: e.target.value })} />
                   </div>
                 </div>
@@ -189,30 +199,30 @@ export default function Install() {
               <h2 className="mb-4 font-semibold text-slate-900">站点信息与管理员账户</h2>
               <div className="space-y-3">
                 <div>
-                  <label className="label">站点名称 *</label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">站点名称 *</label>
                   <Input value={site.name} onChange={(e) => setSite({ ...site, name: e.target.value })} placeholder="我的知识库" />
                 </div>
                 <div>
-                  <label className="label">站点描述</label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">站点描述</label>
                   <Input value={site.description} onChange={(e) => setSite({ ...site, description: e.target.value })} placeholder="简单介绍你的知识库" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="label">管理员用户名 *</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">管理员用户名 *</label>
                     <Input value={admin.username} onChange={(e) => setAdmin({ ...admin, username: e.target.value })} />
                   </div>
                   <div>
-                    <label className="label">管理员邮箱</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">管理员邮箱</label>
                     <Input type="email" value={admin.email} onChange={(e) => setAdmin({ ...admin, email: e.target.value })} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="label">管理员密码 *</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">管理员密码 *</label>
                     <Input type="password" value={admin.password} onChange={(e) => setAdmin({ ...admin, password: e.target.value })} />
                   </div>
                   <div>
-                    <label className="label">确认密码 *</label>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">确认密码 *</label>
                     <Input type="password" value={admin.confirm} onChange={(e) => setAdmin({ ...admin, confirm: e.target.value })} />
                   </div>
                 </div>
