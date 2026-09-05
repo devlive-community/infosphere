@@ -28,9 +28,11 @@ func (a *App) canReadBook(u *models.User, b *models.Book) bool {
 }
 
 func preloadBookUser(db *gorm.DB) *gorm.DB {
-	return db.Preload("User", func(tx *gorm.DB) *gorm.DB {
-		return tx.Select("id", "username", "avatar", "email", "bio", "github_url", "role")
-	})
+	return db.
+		Preload("User", func(tx *gorm.DB) *gorm.DB {
+			return tx.Select("id", "username", "avatar", "email", "bio", "github_url", "role")
+		}).
+		Preload("Tags")
 }
 
 // ListBooks GET /books
@@ -57,6 +59,10 @@ func (a *App) ListBooks(c *gin.Context) {
 	}
 	if username := c.Query("username"); username != "" {
 		query = query.Joins("JOIN users u ON u.id = books.user_id").Where("u.username LIKE ?", "%"+username+"%")
+	}
+	if tagSlug := c.Query("tag"); tagSlug != "" {
+		query = query.Joins("JOIN book_tags bt ON bt.book_id = books.id").
+			Joins("JOIN tags t ON t.id = bt.tag_id AND t.slug = ?", tagSlug)
 	}
 
 	var total int64
@@ -108,6 +114,7 @@ type bookPayload struct {
 	OrderCol      *string `json:"order_col"`
 	OrderDir      *string `json:"order_dir"`
 	ChapterPrefix *string `json:"chapter_prefix"`
+	Tags          []string `json:"tags"`
 }
 
 // CreateBook POST /books
@@ -190,6 +197,12 @@ func (a *App) CreateBook(c *gin.Context) {
 	if err := a.DB.Create(&book).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "创建失败: "+err.Error())
 		return
+	}
+	if len(req.Tags) > 0 {
+		if err := a.syncBookTags(&book, req.Tags); err != nil {
+			fail(c, http.StatusInternalServerError, "标签关联失败: "+err.Error())
+			return
+		}
 	}
 	ok(c, book)
 }
@@ -280,6 +293,12 @@ func (a *App) UpdateBook(c *gin.Context) {
 	if err := a.DB.Save(book).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
+	}
+	if req.Tags != nil {
+		if err := a.syncBookTags(book, req.Tags); err != nil {
+			fail(c, http.StatusInternalServerError, "标签关联失败: "+err.Error())
+			return
+		}
 	}
 	ok(c, book)
 }

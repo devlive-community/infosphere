@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
 import { Button, Input, Textarea, Select, Field } from '@/components/ui'
+import TagChips from '@/components/TagChips'
 import type { Book, BookStatus } from '@/lib/types'
 
 export interface BookFormProps {
@@ -21,6 +22,7 @@ export default function BookForm({ initial, submitLabel, onSubmit }: BookFormPro
   const [status, setStatus] = useState<BookStatus>(initial?.status || 'draft')
   const [isPublic, setIsPublic] = useState(initial?.is_public || false)
   const [chapterPrefix, setChapterPrefix] = useState(initial?.chapter_prefix || '')
+  const [tags, setTags] = useState((initial?.tags || []).map((t) => t.name).join(', '))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -38,6 +40,7 @@ export default function BookForm({ initial, submitLabel, onSubmit }: BookFormPro
         status,
         is_public: isPublic,
         chapter_prefix: chapterPrefix,
+        tags: tags.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
       })
     } catch (err) {
       setError((err as Error).message)
@@ -65,6 +68,9 @@ export default function BookForm({ initial, submitLabel, onSubmit }: BookFormPro
         </div>
         <Field label="封面图片 URL">
           <Input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="https://..." />
+        </Field>
+        <Field label="标签" hint="多个标签用逗号分隔，最多 10 个；不存在的标签会自动创建">
+          <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Go, 后端, 设计" />
         </Field>
         <div className="flex gap-6">
           <div className="flex-1">

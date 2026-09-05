@@ -16,6 +16,13 @@ export interface User {
   updated_at: string
 }
 
+export interface Tag {
+  id: number
+  name: string
+  slug: string
+  book_count?: number
+}
+
 export interface Book {
   id: number
   title: string
@@ -30,6 +37,7 @@ export interface Book {
   order_dir: 'asc' | 'desc'
   chapter_prefix: string
   user?: Pick<User, 'id' | 'username' | 'avatar' | 'email' | 'bio' | 'github_url' | 'role'>
+  tags?: Tag[]
   created_at: string
   updated_at: string
 }
