@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { api } from '@/lib/api'
 import { serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
-import { useApp } from '@/lib/auth'
-import BookCard from '@/components/BookCard'
+import { formatDate, formatNumber } from '@/lib/api'
+import { ButtonLink, EmptyState } from '@/components/ui'
+import HeroIllustration, { HotRankCard } from '@/components/HeroIllustration'
 import Seo from '@/components/Seo'
+import { API_BASE } from '@/lib/api'
+import { BookIcon, ChevronRightIcon, CloudIcon, CodeIcon, EyeIcon, FileTextIcon, ShieldIcon, UsersIcon } from '@/components/icons'
 import type { Book, SiteStats } from '@/lib/types'
 
 interface HomeProps {
@@ -29,14 +30,46 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ req })
     serverApi<Book[]>('/explore/latest').catch(() => []),
     serverApi<Book[]>('/explore/hot').catch(() => []),
   ])
-  return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), stats: stats ?? { user_count: 0, book_count: 0, document_count: 0, total_views: 0 }, latest, hot } }
+  return {
+    props: {
+      installed: true,
+      site,
+      siteUrl: siteUrlFrom(req),
+      stats: stats ?? { user_count: 0, book_count: 0, document_count: 0, total_views: 0 },
+      latest,
+      hot,
+    },
+  }
+}
+
+// 首页最新发布横向卡片
+function LatestCard({ book }: { book: Book }) {
+  const cover = book.cover_image ? API_BASE + book.cover_image : ''
+  return (
+    <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`}
+      className="group flex gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+      <div className={`h-28 w-28 shrink-0 overflow-hidden rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-400 to-violet-400'}`}>
+        {cover && <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <h3 className="truncate font-semibold text-slate-900 group-hover:text-primary-600">{book.title}</h3>
+        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
+        <div className="mt-auto flex items-center gap-2 pt-3 text-xs text-slate-400">
+          {book.user?.avatar
+            ? <img src={book.user.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
+            : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-500 text-[10px] font-bold text-white">{book.user?.username?.[0]?.toUpperCase() || '?'}</span>}
+          <span>{book.user?.username || '佚名'}</span>
+          <span>·</span>
+          <span>{formatDate(book.created_at).slice(0, 10)}</span>
+          <span className="ml-auto flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>
+        </div>
+      </div>
+    </Link>
+  )
 }
 
 export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
-  const { user } = useApp()
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  useEffect(() => setIsLoggedIn(!!user), [user])
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -51,15 +84,15 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
     },
   }
 
-  const statCards = [
-    { label: '注册用户', value: stats.user_count, icon: '👥' },
-    { label: '知识书籍', value: stats.book_count, icon: '📚' },
-    { label: '文档章节', value: stats.document_count, icon: '📄' },
-    { label: '总浏览量', value: stats.total_views, icon: '🔥' },
+  const statItems = [
+    { label: '注册用户', value: stats.user_count, icon: UsersIcon, tone: 'bg-primary-50 text-primary-500' },
+    { label: '知识书籍', value: stats.book_count, icon: BookIcon, tone: 'bg-sky-50 text-sky-500' },
+    { label: '文档章节', value: stats.document_count, icon: FileTextIcon, tone: 'bg-emerald-50 text-emerald-500' },
+    { label: '总浏览量', value: stats.total_views, icon: EyeIcon, tone: 'bg-amber-50 text-amber-500' },
   ]
 
   return (
-    <div className="space-y-10">
+    <div>
       <Seo
         siteName={siteName}
         description={site.site_description || '简单而强大的开源知识管理系统，支持多数据库与多端访问。'}
@@ -67,44 +100,86 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
         jsonLd={jsonLd}
       />
 
-      <section className="rounded-2xl bg-gradient-to-r from-primary-600 to-violet-600 px-8 py-12 text-white">
-        <h1 className="text-3xl font-bold">{siteName}</h1>
-        <p className="mt-2 max-w-xl text-white/80">{site.site_description || '使用 InfoSphere 组织你的书籍与文档，支持公开分享、多数据库与多端访问。'}</p>
-        <div className="mt-6 flex gap-3">
-          <Link href="/explore" className="btn bg-white text-primary-600 hover:bg-white/90">开始探索</Link>
-          {!isLoggedIn && <Link href="/register" className="btn border border-white/40 text-white hover:bg-white/10">注册账户</Link>}
+      {/* Hero */}
+      <section className="grid items-center gap-10 py-8 lg:grid-cols-2 lg:py-12">
+        <div>
+          <span className="mb-6 block h-1 w-12 rounded-full bg-primary-500" aria-hidden="true" />
+          <h1 className="text-4xl font-bold leading-[1.15] text-slate-900 md:text-[44px] md:leading-[1.15]">
+            让知识沉淀，<br />也让灵感流动
+          </h1>
+          <p className="mt-5 max-w-md text-[15px] leading-7 text-slate-500">
+            一个属于你自己的开源知识空间。写作、整理、发布与阅读，在同一个地方自然发生。
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <ButtonLink href="/explore">探索知识</ButtonLink>
+            <ButtonLink href="/books/create" variant="outline"
+              className="border-primary-500 text-primary-600 hover:border-primary-600 hover:bg-primary-50">
+              创建第一本书
+            </ButtonLink>
+          </div>
+          <div className="mt-9 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500">
+            <span className="flex items-center gap-1.5"><CodeIcon className="h-4 w-4 text-primary-500" /> 开源</span>
+            <span className="text-slate-300">·</span>
+            <span className="flex items-center gap-1.5"><ShieldIcon className="h-4 w-4 text-primary-500" /> 自托管</span>
+            <span className="text-slate-300">·</span>
+            <span className="flex items-center gap-1.5"><CloudIcon className="h-4 w-4 text-primary-500" /> 多端同步</span>
+          </div>
+        </div>
+        <HeroIllustration books={latest} />
+      </section>
+
+      {/* 统计条 */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="grid grid-cols-2 divide-y divide-slate-100 md:grid-cols-4 md:divide-x md:divide-y-0">
+          {statItems.map((s) => (
+            <div key={s.label} className="flex items-center gap-4 p-6">
+              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${s.tone}`}>
+                <s.icon className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block text-xl font-bold tabular-nums text-slate-900">{s.value.toLocaleString('en-US')}</span>
+                <span className="text-xs text-slate-400">{s.label}</span>
+              </span>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {statCards.map((s) => (
-          <div key={s.label} className="rounded-xl border border-slate-200 bg-white shadow-sm flex items-center gap-4 p-5">
-            <span className="text-3xl">{s.icon}</span>
-            <span>
-              <span className="block text-2xl font-bold text-slate-900">{s.value}</span>
-              <span className="text-xs text-slate-500">{s.label}</span>
-            </span>
+      {/* 最新发布 */}
+      <section className="mt-12">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-slate-900">最新发布</h2>
+          <Link href="/explore" className="flex items-center gap-0.5 text-sm text-slate-500 transition-colors hover:text-primary-600">
+            查看全部 <ChevronRightIcon className="h-4 w-4" />
+          </Link>
+        </div>
+        {latest.length === 0 ? (
+          <EmptyState>
+            还没有公开的书籍，<Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
+          </EmptyState>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {latest.slice(0, 3).map((b) => <LatestCard key={b.id} book={b} />)}
           </div>
-        ))}
+        )}
       </section>
 
-      <BookSection title="最新发布" books={latest} moreHref="/explore" />
-      <BookSection title="热门阅读" books={hot} moreHref="/explore" />
+      {/* 热门阅读（全宽深色榜） */}
+      {hot.length > 0 && (
+        <section className="-mx-[calc(50%-50vw)] w-screen bg-[#0b1f3f] py-12">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">热门阅读</h2>
+              <Link href="/explore" className="flex items-center gap-0.5 text-sm text-slate-400 transition-colors hover:text-white">
+                查看全部 <ChevronRightIcon className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              {hot.slice(0, 5).map((b, i) => <HotRankCard key={b.id} rank={i + 1} book={b} />)}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
-  )
-}
-
-function BookSection({ title, books, moreHref }: { title: string; books: Book[]; moreHref?: string }) {
-  if (!books.length) return null
-  return (
-    <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-        {moreHref && <Link href={moreHref} className="text-sm text-primary-600 hover:underline">查看更多</Link>}
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {books.map((b) => <BookCard key={b.id} book={b} />)}
-      </div>
-    </section>
   )
 }
