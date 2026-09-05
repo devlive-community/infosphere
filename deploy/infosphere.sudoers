@@ -1,0 +1,4 @@
+# InfoSphere 在线升级专用：允许服务账户重启本应用服务（安装到 /etc/sudoers.d/infosphere）
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart infosphere-api.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart infosphere-web.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart infosphere.service

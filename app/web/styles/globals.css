@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import 'highlight.js/styles/github.css';
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+}
+
+/* ---------- Markdown 渲染样式 ---------- */
+.markdown-body { @apply text-[15px] leading-7 text-slate-700; }
+.markdown-body h1 { @apply mt-8 mb-4 text-2xl font-bold text-slate-900; }
+.markdown-body h2 { @apply mt-8 mb-3 border-b border-slate-200 pb-2 text-xl font-bold text-slate-900; }
+.markdown-body h3 { @apply mt-6 mb-2 text-lg font-semibold text-slate-900; }
+.markdown-body p { @apply my-3; }
+.markdown-body ul { @apply my-3 list-disc pl-6; }
+.markdown-body ol { @apply my-3 list-decimal pl-6; }
+.markdown-body li { @apply my-1; }
+.markdown-body blockquote { @apply my-4 border-l-4 border-slate-300 bg-slate-100 px-4 py-2 text-slate-600; }
+.markdown-body a { @apply text-primary-600 hover:underline; }
+.markdown-body img { @apply my-4 max-w-full rounded-lg; }
+.markdown-body hr { @apply my-6 border-slate-200; }
+.markdown-body table { @apply my-4 w-full border-collapse text-sm; }
+.markdown-body th { @apply border border-slate-300 bg-slate-100 px-3 py-2 text-left font-semibold; }
+.markdown-body td { @apply border border-slate-300 px-3 py-2; }
+.markdown-body :not(pre) > code { @apply rounded bg-slate-100 px-1.5 py-0.5 text-[13px] text-rose-600; }
+.markdown-body .md-code-block { @apply my-4 overflow-hidden rounded-lg bg-slate-900; }
+.markdown-body .md-code-block pre { @apply overflow-x-auto p-4 text-[13px] leading-6; }
+.markdown-body .md-code-block code { @apply bg-transparent text-slate-100; }
+
+.markdown-body .md-alert { @apply my-4 rounded-lg border-l-4 px-4 py-3; }
+.markdown-body .md-alert-title { @apply mb-1 text-sm font-bold; }
+.markdown-body .md-alert-note { @apply border-blue-400 bg-blue-50; }
+.markdown-body .md-alert-note .md-alert-title { @apply text-blue-600; }
+.markdown-body .md-alert-tip { @apply border-emerald-400 bg-emerald-50; }
+.markdown-body .md-alert-tip .md-alert-title { @apply text-emerald-600; }
+.markdown-body .md-alert-important { @apply border-violet-400 bg-violet-50; }
+.markdown-body .md-alert-important .md-alert-title { @apply text-violet-600; }
+.markdown-body .md-alert-warning { @apply border-amber-400 bg-amber-50; }
+.markdown-body .md-alert-warning .md-alert-title { @apply text-amber-600; }
+.markdown-body .md-alert-caution { @apply border-rose-400 bg-rose-50; }
+.markdown-body .md-alert-caution .md-alert-title { @apply text-rose-600; }
+
+/* ---------- 通用组件 ---------- */
+.btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition; }
+.btn-primary { @apply btn bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-50; }
+.btn-outline { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50; }
+.btn-danger { @apply btn bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50; }
+.input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100; }
+.label { @apply mb-1.5 block text-sm font-medium text-slate-700; }
+.card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
+.badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }

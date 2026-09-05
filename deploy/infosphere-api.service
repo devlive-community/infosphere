@@ -1,0 +1,25 @@
+[Unit]
+Description=InfoSphere API service (Go)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/infosphere/current
+ExecStart=/var/www/infosphere/current/infosphere-server -port 6969
+EnvironmentFile=/etc/infosphere/infosphere.env
+Environment=INFO_SPHERE_UPGRADE=enabled
+Environment=INFO_SPHERE_WEB_ROOT=/var/www/infosphere/current/web
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/infosphere /var/www/infosphere
+
+[Install]
+WantedBy=multi-user.target
