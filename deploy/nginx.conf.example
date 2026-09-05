@@ -30,10 +30,15 @@ server {
         proxy_pass http://127.0.0.1:6969;
     }
 
-    # Next.js 静态资源：长缓存（文件名带哈希）
+    # Next.js 静态资源：优先读累积式共享目录（跨版本保留旧 chunk，
+    # 已打开的旧页面不会因部署而 404），缺失时回退到应用服务
     location /_next/static/ {
-        proxy_pass http://127.0.0.1:6900;
+        alias /var/www/infosphere/static/;
+        try_files $uri @next_static;
         add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location @next_static {
+        proxy_pass http://127.0.0.1:6900;
     }
 
     # 页面与其他资源：Next.js SSR
