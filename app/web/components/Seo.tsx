@@ -18,6 +18,8 @@ export interface SeoProps {
 export default function Seo({ title, description, image, url, noindex, jsonLd, siteName }: SeoProps) {
   const fullTitle = title && siteName ? `${title} - ${siteName}` : title || siteName
   const schemas = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : []
+  // 未指定分享图时回退到站点 logo，保证社交卡片不缺图
+  const ogImage = image || (url ? `${url}/logo.png` : undefined)
   return (
     <Head>
       {fullTitle && <title key="title">{fullTitle}</title>}
@@ -26,11 +28,11 @@ export default function Seo({ title, description, image, url, noindex, jsonLd, s
       {url && <link key="canonical" rel="canonical" href={url} />}
       {description && <meta key="og-description" property="og:description" content={description} />}
       {url && <meta key="og-url" property="og:url" content={url} />}
-      {image && <meta key="og-image" property="og:image" content={image} />}
+      {ogImage && <meta key="og-image" property="og:image" content={ogImage} />}
       {fullTitle && <meta key="og-title" property="og:title" content={fullTitle} />}
       {description && <meta key="tw-description" name="twitter:description" content={description} />}
       {fullTitle && <meta key="tw-title" name="twitter:title" content={fullTitle} />}
-      {image && <meta key="tw-image" name="twitter:image" content={image} />}
+      {ogImage && <meta key="tw-image" name="twitter:image" content={ogImage} />}
       {schemas.map((schema, i) => (
         <script key={`jsonld-${i}`} type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />

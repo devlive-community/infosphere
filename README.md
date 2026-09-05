@@ -1,5 +1,7 @@
 <div align="center">
 
+<img width="96" src="app/web/public/logo.png" alt="InfoSphere" />
+
 # InfoSphere 2026
 
 **Go + Next.js + 多数据库** 的开源知识管理系统。一个二进制文件即可部署，附带桌面端与 Android 客户端。
