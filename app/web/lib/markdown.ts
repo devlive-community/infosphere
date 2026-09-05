@@ -36,7 +36,18 @@ const alertExtension: TokenizerAndRendererExtension = {
   },
 }
 
+// 章节内标题序号：为 H2/H3 生成稳定 id（h-1, h-2…），供“本章目录”锚点跳转
+let headingSeq = 0
+
 const renderer: Renderer = new marked.Renderer()
+
+renderer.heading = (text: string, level: number): string => {
+  if (level === 2 || level === 3) {
+    const id = `h-${++headingSeq}`
+    return `<h${level} id="${id}" class="md-h">${text}</h${level}>`
+  }
+  return `<h${level}>${text}</h${level}>`
+}
 
 renderer.code = (code: string, infostring: string | undefined, _escaped: boolean): string => {
   const lang = (infostring || '').match(/\S*/)?.[0] || ''
@@ -66,25 +77,28 @@ marked.use({ renderer, extensions: [alertExtension], breaks: true, gfm: true })
 // renderMarkdown 渲染 Markdown 为经过 XSS 净化的 HTML（仅客户端使用）
 export function renderMarkdown(source: string | null | undefined): string {
   if (!source) return ''
+  headingSeq = 0 // 与 extractHeadings 保持相同的编号顺序
   const html = marked.parse(source, { async: false }) as string
-  return DOMPurify.sanitize(html, { ADD_ATTR: ['target', 'rel'] })
+  return DOMPurify.sanitize(html, { ADD_ATTR: ['target', 'rel', 'id'] })
 }
 
 export interface Heading {
   level: number
   text: string
+  id: string
 }
 
-// extractHeadings 提取 H2/H3 目录
+// extractHeadings 提取 H2/H3 目录（id 与 renderMarkdown 生成的标题 id 一致）
 export function extractHeadings(source: string | null | undefined): Heading[] {
   if (!source) return []
   const headings: Heading[] = []
   let inCode = false
+  let seq = 0
   source.split('\n').forEach((line) => {
     if (/^```/.test(line.trim())) inCode = !inCode
     if (inCode) return
     const m = /^(#{2,3})\s+(.+)$/.exec(line)
-    if (m) headings.push({ level: m[1].length, text: m[2].trim() })
+    if (m) headings.push({ level: m[1].length, text: m[2].trim(), id: `h-${++seq}` })
   })
   return headings
 }
