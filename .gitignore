@@ -50,6 +50,7 @@ bin/
 
 # 本地散落产物
 *.bak
-.CodeX
-!.Codex/
-!.Codex/**
+
+# 项目记忆（仅本地，禁止提交）
+.Codex/
+.Codex
