@@ -17,6 +17,31 @@ body {
   }
 }
 
+/* 全局滚动条：细窄、圆角、低调，hover 加深；Firefox 与 WebKit 同步 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /*
  * 仅保留 Markdown 渲染内容的排版样式（服务端生成的 HTML 无法使用工具类），
  * 全部 UI 组件样式一律由 components/ui 中的 Tailwind 工具类提供。
