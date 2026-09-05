@@ -69,23 +69,33 @@ export default function MyBooks() {
           还没有书籍，<Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
         </EmptyState>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {(data.items || []).map((book) => (
-            <div key={book.id} className="rounded-xl border border-slate-200 bg-white shadow-sm flex items-center gap-4 p-4">
-              <div className="h-16 w-12 shrink-0 rounded bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
-                {book.cover_image && <img src={book.cover_image} alt="" className="h-full w-full rounded object-cover" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="truncate font-semibold text-slate-900 hover:text-primary-600">{book.title}</Link>
-                  <StatusBadge status={book.status} />
-                  {book.is_public && <Badge tone="sky">公开</Badge>}
+            <div key={book.id} className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+              <div className="flex gap-4">
+                <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`}
+                  className="h-32 w-24 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
+                  {book.cover_image
+                    ? <img src={book.cover_image} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    : <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-white/80">{book.title.slice(0, 1)}</span>}
+                </Link>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex items-center gap-2">
+                    <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="min-w-0 truncate font-semibold text-slate-900 hover:text-primary-600">{book.title}</Link>
+                    <StatusBadge status={book.status} />
+                    {book.is_public && <Badge tone="sky">公开</Badge>}
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
+                  <div className="mt-1.5"><TagChips tags={book.tags} max={3} link={false} /></div>
+                  <div className="mt-auto flex items-center gap-3 pt-2 text-xs text-slate-400">
+                    <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {book.view_count}</span>
+                    <span className="truncate">/ {book.slug}</span>
+                  </div>
                 </div>
-                <p className="mt-0.5 truncate text-sm text-slate-500">{book.description || '暂无简介'}</p>
-                <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">/ {book.slug} · <EyeIcon className="h-3.5 w-3.5" /> {book.view_count}</p>
               </div>
-              <div className="flex shrink-0 gap-2">
-                <ButtonLink href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">章节</ButtonLink>
+              <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                <ButtonLink href={`/book/writer?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">写作</ButtonLink>
+                <ButtonLink href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">详情</ButtonLink>
                 <ButtonLink href={`/books/edit?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">设置</ButtonLink>
                 <button onClick={() => remove(book)} className="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-white px-3 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 focus:outline-none">删除</button>
               </div>

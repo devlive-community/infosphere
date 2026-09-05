@@ -8,7 +8,7 @@ import type { ReactNode } from 'react'
 import type { SiteConfig } from '@/lib/types'
 
 // 安装向导、登录注册与全屏编辑器使用独立布局
-const bareRoutes = ['/install', '/login', '/register', '/book/writer']
+const bareRoutes = ['/install', '/login', '/register', '/book/writer', '/book/reader']
 
 // 无 SEO 价值的交互页统一 noindex
 const noindexRoutes = ['/books', '/book/writer', '/user/profile', '/user/security', '/admin']
@@ -27,7 +27,7 @@ function Shell({ children }: { children: ReactNode }) {
   if (bareRoutes.includes(router.pathname)) {
     return (
       <div className="min-h-screen">
-        <Seo noindex />
+        {router.pathname !== '/book/reader' && <Seo noindex />}
         {children}
       </div>
     )

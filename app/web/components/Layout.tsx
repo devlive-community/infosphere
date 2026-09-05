@@ -61,6 +61,7 @@ function UserMenu() {
 // MobileNav 窄屏导航：汉堡按钮 + 下拉面板
 function MobileNav() {
   const [open, setOpen] = useState(false)
+  const { user } = useApp()
   const router = useRouter()
   useEffect(() => { setOpen(false) }, [router.pathname])
   return (
@@ -71,7 +72,7 @@ function MobileNav() {
       </button>
       {open && (
         <div className="absolute left-0 top-11 z-40 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          {[['发现', '/explore'], ['我的书籍', '/books']].map(([label, href]) => (
+          {([['发现', '/explore'], ...(user ? [['我的书籍', '/books']] : [])] as [string, string][]).map(([label, href]) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">{label}</Link>
           ))}
@@ -82,7 +83,7 @@ function MobileNav() {
 }
 
 export default function Layout({ title, children }: { title?: string; children: ReactNode }) {
-  const { site } = useApp()
+  const { site, user } = useApp()
   const siteName = site.site_name || 'InfoSphere'
   const year = new Date().getFullYear()
   return (
@@ -100,7 +101,7 @@ export default function Layout({ title, children }: { title?: string; children: 
           </Link>
           <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
             <Link href="/explore" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">发现</Link>
-            <Link href="/books" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">我的书籍</Link>
+            {user && <Link href="/books" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">我的书籍</Link>}
           </nav>
           <MobileNav />
           <form action="/explore" method="get" className="relative ml-auto hidden w-full max-w-sm lg:block">
@@ -130,7 +131,7 @@ export default function Layout({ title, children }: { title?: string; children: 
           </div>
           <FooterColumn title="产品" links={[
             { label: '发现', href: '/explore' },
-            { label: '我的书籍', href: '/books' },
+            ...(user ? [{ label: '我的书籍', href: '/books' }] : []),
           ]} />
           <FooterColumn title="资源" links={[
             { label: '文档', href: 'https://github.com/devlive-community/infosphere' },
