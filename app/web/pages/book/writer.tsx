@@ -50,6 +50,7 @@ export default function Writer() {
   const [newMenuOpen, setNewMenuOpen] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'inside' | 'after' } | null>(null)
+  const [creatingUnder, setCreatingUnder] = useState<number | null>(null) // 新建期间保持高亮的父章节
   const [preview, setPreview] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [message, setMessage] = useState('')
@@ -105,6 +106,7 @@ export default function Writer() {
 
   function resetForm() {
     setCurrent(null)
+    setCreatingUnder(null)
     setTitle(''); setContent(''); setStatus('draft'); setParentId(''); setSortOrder(0); setAllowComments(true)
     snapshot.current = JSON.stringify(['', '', 'draft', '', 0, true])
     loadedDocId.current = null
@@ -124,6 +126,7 @@ export default function Writer() {
     const doc = docSlug ? flatDocs.find((d) => d.slug === docSlug) : null
     if (doc) {
       setCurrent(doc)
+      setCreatingUnder(null)
       api<Document>(`/documents/${doc.id}`).then((full) => {
         setTitle(full.title)
         setContent(full.content || '')
@@ -281,17 +284,17 @@ export default function Writer() {
     await loadTree(book)
   }
 
-  // 新建章节：相对当前选中项定位。asChild=作为选中项的子章节；否则作为选中项的同级章节；无选中则建到顶级
-  function createNew(asChild: boolean) {
+  // 新建章节/子章节：有选中项时都建到该章节之下（子级）；无选中项时建到顶级
+  function createNew() {
     let newParent = ''
     let newSort = 0
     if (current) {
-      if (asChild) {
-        newParent = String(current.id); newSort = current.children?.length || 0
-        setExpanded(new Set(expanded).add(current.id)) // 展开父级，保存后新子章节可见并被选中
-      } else {
-        newParent = current.parent_id ? String(current.parent_id) : ''; newSort = current.sort_order + 1
-      }
+      newParent = String(current.id)
+      newSort = current.children?.length || 0
+      setExpanded(new Set(expanded).add(current.id)) // 展开父级，保存后新子章节可见
+      setCreatingUnder(current.id) // 新建期间保持父章节高亮作上下文
+    } else {
+      setCreatingUnder(null)
     }
     setParentId(newParent); setStatus('draft')
     setCurrent(null)
@@ -430,7 +433,7 @@ export default function Writer() {
                   <Input className="h-9 pl-9" placeholder="搜索章节" value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <div className="relative mt-2.5">
-                  <button onClick={() => createNew(false)}
+                  <button onClick={() => createNew()}
                     className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50">
                     + 新建章节
                   </button>
@@ -440,8 +443,8 @@ export default function Writer() {
                   </button>
                   {newMenuOpen && (
                     <div className="absolute left-0 right-0 top-11 z-20 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                      <button onClick={() => { createNew(false); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> 新建章节</button>
-                      <button onClick={() => { setNewMenuOpen(false); if (!current) { setMessage('请先选择一个章节作为父级'); return } createNew(true) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
+                      <button onClick={() => { createNew(); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> 新建章节</button>
+                      <button onClick={() => { setNewMenuOpen(false); if (!current) { setMessage('请先选择一个章节作为父级'); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
                     </div>
                   )}
                 </div>
@@ -452,7 +455,7 @@ export default function Writer() {
                   <EmptyState>{search ? '没有匹配的章节' : '暂无章节'}</EmptyState>
                 ) : (
                   <TreeItems items={filteredTree} search={search.trim()} expanded={expanded} setExpanded={setExpanded}
-                    currentId={current?.id} chapterPrefix={chapterPrefix}
+                    currentId={current?.id ?? creatingUnder ?? undefined} chapterPrefix={chapterPrefix}
                     onSelect={selectDoc} onMove={move} onDelete={removeDoc}
                     menuFor={menuFor} setMenuFor={setMenuFor}
                     dragEnabled={!search.trim()} dragId={dragId} dragBlocked={dragBlocked} dropTarget={dropTarget}
