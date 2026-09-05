@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { api } from '@/lib/api'
-import { serverApi, getSiteConfig, siteUrlFrom } from '@/lib/server-api'
+import { serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { useApp } from '@/lib/auth'
 import BookCard from '@/components/BookCard'
 import Seo from '@/components/Seo'
 import type { Book, SiteStats } from '@/lib/types'
 
 interface HomeProps {
+  installed: boolean
   site: Record<string, string>
   siteUrl: string
   stats: SiteStats
@@ -17,13 +18,18 @@ interface HomeProps {
 }
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ req }) => {
+  // 未安装时强制进入安装向导（服务端重定向，不渲染任何内容）
+  if (!(await isInstalled())) {
+    return { redirect: { destination: '/install', permanent: false } }
+  }
+
   const [site, stats, latest, hot] = await Promise.all([
     getSiteConfig(),
     serverApi<SiteStats>('/stats').catch(() => null),
     serverApi<Book[]>('/explore/latest').catch(() => []),
     serverApi<Book[]>('/explore/hot').catch(() => []),
   ])
-  return { props: { site, siteUrl: siteUrlFrom(req), stats: stats ?? { user_count: 0, book_count: 0, document_count: 0, total_views: 0 }, latest, hot } }
+  return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), stats: stats ?? { user_count: 0, book_count: 0, document_count: 0, total_views: 0 }, latest, hot } }
 }
 
 export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServerSidePropsType<typeof getServerSideProps>) {
