@@ -5,7 +5,16 @@
 @import 'highlight.js/styles/github.css';
 
 body {
-  @apply bg-slate-50 text-slate-800 antialiased;
+  @apply bg-warm text-ink antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /*

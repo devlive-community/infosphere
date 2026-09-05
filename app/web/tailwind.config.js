@@ -4,13 +4,23 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // 品牌主色：钴蓝 #4169E1（见 .Codex/memory/features/homepage-design.md）
         primary: {
-          50: '#eef4ff',
-          100: '#dce7fe',
-          500: '#3b6ff0',
-          600: '#2c56d4',
-          700: '#2546ab',
+          50: '#EEF2FE',
+          100: '#DCE4FD',
+          200: '#BCCBFB',
+          300: '#93ADF8',
+          400: '#6A8FF4',
+          500: '#4169E1',
+          600: '#3455C6',
+          700: '#2A44A0',
+          800: '#243980',
+          900: '#1F3069',
         },
+        // 主要文字：墨水海军蓝
+        ink: '#172033',
+        // 页面底色：暖白
+        warm: '#F7F6F2',
       },
     },
   },

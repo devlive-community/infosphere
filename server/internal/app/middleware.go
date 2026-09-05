@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"infosphere/server/internal/auth"
+	"infosphere/server/internal/authz"
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -95,4 +96,30 @@ func (a *App) RequireAdmin() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// RequirePermission 校验当前用户是否拥有指定权限（resource:action）
+func (a *App) RequirePermission(perm authz.Permission) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		u := currentUser(c)
+		if u == nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"success": false, "message": "请先登录"})
+			return
+		}
+		if !authz.Has(u.Role, perm) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"code":    "PERMISSION_DENIED",
+				"message": "权限不足，需要 " + string(perm),
+			})
+			return
+		}
+		c.Next()
+	}
+}
+
+// CurrentPermissions 返回当前用户的权限列表
+func (a *App) CurrentPermissions(c *gin.Context) {
+	u := currentUser(c)
+	ok(c, authz.ForRole(u.Role))
 }
