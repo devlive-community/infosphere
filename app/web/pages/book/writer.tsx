@@ -150,6 +150,7 @@ export default function Writer() {
       parent_id: parentId ? Number(parentId) : null, allow_comments: allowComments,
     }
     setSaveState('saving')
+    const startedAt = Date.now()
     try {
       if (current) {
         const updated = await api<Document>(`/documents/${current.id}`, { method: 'PUT', body: payload })
@@ -168,6 +169,8 @@ export default function Writer() {
         await loadTree(book)
         selectDoc(created.slug)
       }
+      const elapsed = Date.now() - startedAt
+      if (elapsed < 500) await new Promise((r) => setTimeout(r, 500 - elapsed)) // 让“保存中”至少可见片刻
       setSaveState('saved')
     } catch (e) {
       setSaveState('dirty')
@@ -377,14 +380,14 @@ export default function Writer() {
         <div className="hidden items-center gap-1.5 text-sm text-slate-400 md:flex">
           {saveState === 'saved' && <><CheckCircleIcon className="h-4 w-4 text-emerald-500" /> 所有更改已保存</>}
           {saveState === 'dirty' && <><CloudIcon className="h-4 w-4 text-amber-500" /> 未保存的更改</>}
-          {saveState === 'saving' && <span className="animate-pulse">正在保存…</span>}
+          {saveState === 'saving' && <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> <span className="text-primary-600">保存中…</span></>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button variant="ghost" onClick={() => setPreview(!preview)}>
             <EyeIcon className="h-4 w-4" /> {preview ? '编辑' : '预览'}
           </Button>
           <Button variant="outline" onClick={() => saveRef.current()} disabled={saveState === 'saving'}>
-            <SaveIcon className="h-4 w-4" /> 保存
+            <SaveIcon className="h-4 w-4" /> {saveState === 'saving' ? '保存中…' : '保存'}
           </Button>
           <Button onClick={publish} disabled={saveState === 'saving'}>
             <UploadIcon className="h-4 w-4" /> 发布
