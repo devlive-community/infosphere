@@ -3,9 +3,9 @@
 # 架构：nginx (:80/:443) → Next.js SSR (:6900) 页面渲染
 #                       → Go API (:6969)     /api /uploads /health
 #
-# 若域名尚未解析到本机，可临时通过服务器 IP 访问（server_name 已包含 IP）。
-# 建议上线后使用 certbot 补配 TLS：
+# TLS：DNS 指向服务器后执行一次即可自动签发并配置 80→443 跳转：
 #   sudo certbot --nginx -d infosphere.devlive.org
+# 证书自动续期由 certbot.timer 负责。
 
 server {
     listen 80;
