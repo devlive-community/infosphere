@@ -7,6 +7,7 @@ import Seo from '@/components/Seo'
 import type { Book, PageResult } from '@/lib/types'
 
 interface ExploreProps {
+  tag: string
   installed: boolean
   site: Record<string, string>
   siteUrl: string
@@ -22,16 +23,17 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
   }
 
   const keyword = typeof query.title === 'string' ? query.title.slice(0, 100) : ''
+  const tag = typeof query.tag === 'string' ? query.tag.slice(0, 50) : ''
   const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1)
   const [site, data] = await Promise.all([
     getSiteConfig(),
-    serverApi<PageResult<Book>>('/books', { params: { page, page_size: 12, title: keyword || undefined } })
+    serverApi<PageResult<Book>>('/books', { params: { page, page_size: 12, title: keyword || undefined, tag: tag || undefined } })
       .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>),
   ])
-  return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), keyword, page, data } }
+  return { props: { installed: true, site, siteUrl: siteUrlFrom(req), keyword, tag, page, data } }
 }
 
-export default function Explore({ site, siteUrl, keyword, page, data }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Explore({ site, siteUrl, keyword, tag, page, data }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
 
   const jsonLd = data.items.length > 0 ? {
@@ -56,7 +58,7 @@ export default function Explore({ site, siteUrl, keyword, page, data }: InferGet
       />
 
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-xl font-bold text-slate-900">{keyword ? `「${keyword}」的搜索结果` : '发现知识'}</h1>
+        <h1 className="text-xl font-bold text-slate-900">{tag ? `标签「${tag}」下的书籍` : keyword ? `「${keyword}」的搜索结果` : '发现知识'}</h1>
         <form action="/explore" method="get" className="flex gap-2">
           <Input className="w-56" name="title" placeholder="搜索书籍标题" defaultValue={keyword} />
           <Button type="submit">搜索</Button>

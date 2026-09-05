@@ -90,6 +90,8 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/books/:id/documents", a.ListDocumentTree)
 			public.GET("/books/:id/documents/slug/:slug", a.GetDocumentBySlug)
 			public.GET("/documents/:id", a.GetDocument)
+			public.GET("/tags", a.ListTags)
+			public.GET("/tags/:slug/books", a.BooksByTag)
 			public.POST("/books/:id/view", a.IncrementBookView)
 		}
 
@@ -112,6 +114,13 @@ func (a *App) Router() *gin.Engine {
 
 		// ── 上传 ──
 		api.POST("/upload", a.RequireAuth(), a.RequirePermission(authz.UploadCreate), a.Upload)
+
+		// ── 标签管理（tag:*；登录用户可创建，删除仅管理员） ──
+		tags := api.Group("/tags", a.RequireAuth())
+		{
+			tags.POST("", a.RequirePermission(authz.TagCreate), a.CreateTag)
+			tags.DELETE("/:id", a.RequirePermission(authz.TagDelete), a.DeleteTag)
+		}
 
 		// ── 站点与系统管理（仅管理员） ──
 		admin := api.Group("", a.RequireAuth(), a.RequireAdmin())

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { API_BASE, formatNumber, formatDate } from '@/lib/api'
 import { EyeIcon } from '@/components/icons'
 import { Badge } from '@/components/ui'
+import TagChips from '@/components/TagChips'
 import type { Book } from '@/lib/types'
 
 const statusNames: Record<string, string> = { draft: '草稿', published: '已发布', archived: '已归档' }
@@ -29,6 +30,7 @@ export default function BookCard({ book, href }: { book: Book; href?: string }) 
           <StatusBadge status={book.status} />
         </div>
         <p className="line-clamp-2 min-h-[40px] text-sm text-slate-500">{book.description || '暂无简介'}</p>
+        <TagChips tags={book.tags} max={2} />
         <div className="mt-auto flex items-center justify-between pt-2 text-xs text-slate-400">
           <span>{book.user?.username || '佚名'}</span>
           <span className="flex gap-3">

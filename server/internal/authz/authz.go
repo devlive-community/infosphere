@@ -22,6 +22,11 @@ const (
 	DocumentUpdate Permission = "document:update" // 更新文档（仅限本人书籍）
 	DocumentDelete Permission = "document:delete" // 删除文档（仅限本人书籍）
 
+	// 标签
+	TagRead   Permission = "tag:read"   // 浏览标签与按标签检索（含匿名访问）
+	TagCreate Permission = "tag:create" // 创建标签（登录用户，书籍打标时自动创建）
+	TagDelete Permission = "tag:delete" // 删除标签（仅管理员）
+
 	// 用户
 	UserRead   Permission = "user:read"   // 查看用户公开主页
 	UserUpdate Permission = "user:update" // 更新个人资料与密码
@@ -45,6 +50,7 @@ const (
 var All = []Permission{
 	BookRead, BookCreate, BookUpdate, BookDelete,
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
+	TagRead, TagCreate, TagDelete,
 	UserRead, UserUpdate,
 	SiteRead, SiteUpdate,
 	StatsRead,
@@ -56,6 +62,7 @@ var All = []Permission{
 var userPermissions = []Permission{
 	BookRead, BookCreate, BookUpdate, BookDelete,
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
+	TagRead, TagCreate,
 	UserRead, UserUpdate,
 	SiteRead, StatsRead,
 	UploadCreate,

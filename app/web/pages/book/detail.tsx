@@ -5,6 +5,7 @@ import { useApp } from '@/lib/auth'
 import { StatusBadge } from '@/components/BookCard'
 import { ButtonLink } from '@/components/ui'
 import { EyeIcon } from '@/components/icons'
+import TagChips from '@/components/TagChips'
 import DocTree from '@/components/DocTree'
 import Seo from '@/components/Seo'
 import type { Book, Document } from '@/lib/types'
@@ -115,6 +116,7 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
             </div>
           </div>
           <p className="mt-3 text-slate-600">{book.description || '暂无简介'}</p>
+          <div className="mt-3"><TagChips tags={book.tags} max={5} /></div>
           <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-4 text-sm text-slate-500">
             {book.user && (
               <Link href={`/user/home?username=${encodeURIComponent(book.user.username)}`} className="flex items-center gap-2 hover:text-primary-600">

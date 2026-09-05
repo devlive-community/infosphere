@@ -5,6 +5,7 @@ import { formatDate, formatNumber } from '@/lib/api'
 import { ButtonLink, EmptyState } from '@/components/ui'
 import HeroIllustration, { HotRankCard } from '@/components/HeroIllustration'
 import Seo from '@/components/Seo'
+import TagChips from '@/components/TagChips'
 import { API_BASE } from '@/lib/api'
 import { BookIcon, ChevronRightIcon, CloudIcon, CodeIcon, EyeIcon, FileTextIcon, ShieldIcon, UsersIcon } from '@/components/icons'
 import type { Book, SiteStats } from '@/lib/types'
@@ -54,6 +55,7 @@ function LatestCard({ book }: { book: Book }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="truncate font-semibold text-slate-900 group-hover:text-primary-600">{book.title}</h3>
         <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
+        <div className="mt-2"><TagChips tags={book.tags} max={2} /></div>
         <div className="mt-auto flex items-center gap-2 pt-3 text-xs text-slate-400">
           {book.user?.avatar
             ? <img src={book.user.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />

@@ -36,6 +36,9 @@ Authorization: Bearer <token>
 | `user:read` | 查看用户公开主页 | ✅ | ✅ |
 | `user:update` | 更新个人资料与密码 | ✅ | ✅ |
 | `site:read` | 读取站点公开配置 | ✅ | ✅ |
+| `tag:read` | 浏览标签与按标签检索 | ✅ | ✅ |
+| `tag:create` | 创建标签（书籍打标时自动创建） | ✅ | ✅ |
+| `tag:delete` | 删除标签 | ❌ | ✅ |
 | `site:update` | 更新站点配置 | ❌ | ✅ |
 | `stats:read` | 读取站点统计 | ✅ | ✅ |
 | `upload:create` | 上传图片 | ✅ | ✅ |
@@ -135,7 +138,7 @@ Authorization: Bearer <token>
 | GET | `/books/summary` | 当前用户书籍统计（按状态汇总） | `book:read` |
 | POST | `/books/:id/view` | 浏览计数 +1 | `book:read` |
 
-书籍字段：`id, title, description, cover_image, slug, status(draft|published|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, user, created_at, updated_at`
+书籍字段：`id, title, description, cover_image, slug, status(draft|published|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, user, tags, created_at, updated_at`
 
 ## 文档（章节，支持树形）
 
@@ -149,6 +152,18 @@ Authorization: Bearer <token>
 | DELETE | `/documents/:id` | 删除文档及其子树 | `document:delete` |
 
 文档字段：`id, book_id, parent_id, title, slug, content( markdown), user_id, sort_order, status, created_at, updated_at, children`
+
+## 标签
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/tags?q=&limit=` | 标签列表（含公开书籍使用计数 `book_count`，按计数降序） | `tag:read` |
+| POST | `/tags` | 创建标签 `{ "name": "Go" }` | `tag:create` |
+| DELETE | `/tags/:id` | 删除标签并解绑全部书籍 | `tag:delete` |
+| GET | `/tags/:slug/books?page=` | 按标签查公开书籍（分页） | `tag:read` |
+
+- 书籍对象包含 `tags: [{ id, name, slug }]`；创建/更新书籍时请求体可传 `tags: ["Go", "后端"]`，服务端自动 find-or-create 并全量替换关联（单书最多 10 个）
+- 列表过滤：`GET /books?tag=<slug>`
 
 ## 上传
 

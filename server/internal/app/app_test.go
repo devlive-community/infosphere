@@ -119,6 +119,38 @@ func TestFullLifecycle(t *testing.T) {
 	docData := doc["data"].(map[string]any)
 	docSlug := docData["slug"].(string)
 
+	// 5.1 标签：建书时携带 tags，自动创建并关联
+	book2 := post("/api/v1/books", map[string]any{
+		"title": "Tagged Book", "status": "published", "is_public": true,
+		"tags": []any{"Go", "后端开发"},
+	}, adminToken)
+	book2Data := book2["data"].(map[string]any)
+	book2ID := int(book2Data["id"].(float64))
+	tags := book2Data["tags"].([]any)
+	if len(tags) != 2 {
+		t.Fatalf("书籍应携带 2 个标签: %v", tags)
+	}
+	status, payload = get("/api/v1/tags", "")
+	tagList := payload["data"].([]any)
+	if status != 200 || len(tagList) != 2 {
+		t.Fatalf("标签列表异常: %d %v", status, tagList)
+	}
+	var goTag map[string]any
+	for _, t := range tagList {
+		if m := t.(map[string]any); m["name"] == "Go" {
+			goTag = m
+		}
+	}
+	if goTag == nil || goTag["book_count"].(float64) != 1 {
+		t.Fatalf("标签计数错误: %v", tagList)
+	}
+	// 按标签过滤书籍
+	status, payload = get("/api/v1/books?tag=go", "")
+	if status != 200 || payload["data"].(map[string]any)["total"].(float64) != 1 {
+		t.Fatalf("按标签过滤失败: %d %v", status, payload)
+	}
+	_ = book2ID
+
 	// 6. 匿名读取书籍与章节
 	status, payload = get("/api/v1/books/slug/"+slug, "")
 	if status != 200 || payload["data"].(map[string]any)["title"] != "Go Handbook" {
@@ -148,8 +180,25 @@ func TestFullLifecycle(t *testing.T) {
 	for _, p := range payload["data"].([]any) {
 		perms[p.(string)] = true
 	}
-	if !perms["book:create"] || perms["site:update"] || perms["system:upgrade"] {
+	if !perms["book:create"] || perms["site:update"] || perms["system:upgrade"] || !perms["tag:create"] || perms["tag:delete"] {
 		t.Fatalf("普通用户权限集错误: %v", perms)
+	}
+
+	// 7.1 普通用户可创建标签（tag:create）
+	created := post("/api/v1/tags", map[string]any{"name": "随笔"}, aliceToken)
+	if created["data"].(map[string]any)["slug"] == "" {
+		t.Fatalf("普通用户创建标签失败: %v", created)
+	}
+	// 普通用户删除标签应 403（tag:delete 仅管理员）
+	req2, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/tags/1", nil)
+	req2.Header.Set("Authorization", "Bearer "+aliceToken)
+	resp2, err := client.Do(req2)
+	if err != nil {
+		t.Fatalf("DELETE /tags/1: %v", err)
+	}
+	resp2.Body.Close()
+	if resp2.StatusCode != 403 {
+		t.Fatalf("普通用户删除标签应 403: %d", resp2.StatusCode)
 	}
 	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/site", bytes.NewReader([]byte(`{"site_name":"x"}`)))
 	req.Header.Set("Authorization", "Bearer "+aliceToken)

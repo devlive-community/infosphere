@@ -65,8 +65,25 @@ type Book struct {
 	OrderDir      string    `gorm:"size:10;default:desc" json:"order_dir"`
 	ChapterPrefix string    `gorm:"size:20;default:''" json:"chapter_prefix"`
 	User          *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Tags          []Tag     `gorm:"many2many:book_tags" json:"tags,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// Tag 标签
+type Tag struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"size:50;uniqueIndex;not null" json:"name"`
+	Slug      string    `gorm:"size:50;uniqueIndex;not null" json:"slug"`
+	BookCount int64     `gorm:"->" json:"book_count"` // 只读聚合列：公开书籍使用计数
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// BookTag 书籍-标签联接表
+type BookTag struct {
+	BookID    uint      `gorm:"primaryKey" json:"book_id"`
+	TagID     uint      `gorm:"primaryKey;index" json:"tag_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Document 文档，支持 parent_id 构成树形结构
@@ -93,5 +110,7 @@ func All(db *gorm.DB) error {
 		&SiteConfig{},
 		&Book{},
 		&Document{},
+		&Tag{},
+		&BookTag{},
 	)
 }
