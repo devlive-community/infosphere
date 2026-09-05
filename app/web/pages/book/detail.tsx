@@ -4,6 +4,7 @@ import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isI
 import { useApp } from '@/lib/auth'
 import { StatusBadge } from '@/components/BookCard'
 import { ButtonLink } from '@/components/ui'
+import { EyeIcon } from '@/components/icons'
 import DocTree from '@/components/DocTree'
 import Seo from '@/components/Seo'
 import type { Book, Document } from '@/lib/types'
@@ -123,7 +124,7 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
                 {book.user.username}
               </Link>
             )}
-            <span>👁 {book.view_count}</span>
+            <span className="flex items-center gap-1"><EyeIcon className="h-4 w-4" /> {book.view_count}</span>
           </div>
           {canManage && (
             <div className="mt-4 flex gap-2">

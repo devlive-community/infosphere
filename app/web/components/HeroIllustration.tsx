@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { API_BASE, formatNumber } from '@/lib/api'
+import { EyeIcon } from '@/components/icons'
 import type { Book } from '@/lib/types'
 
 const topicChips = [
@@ -16,7 +17,7 @@ function CardFace({ book }: { book?: Book }) {
   const cover = book?.cover_image ? API_BASE + book.cover_image : ''
   return (
     <>
-      <div className={`h-20 w-full rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-400 to-violet-400'}`}>
+      <div className={`h-20 w-full rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
         {cover && <img src={cover} alt="" className="h-full w-full rounded-lg object-cover" />}
       </div>
       <div className="mt-2 truncate text-xs font-medium text-slate-800">{book?.title || '你的第一本书'}</div>
@@ -37,7 +38,7 @@ export default function HeroIllustration({ books }: { books: Book[] }) {
   return (
     <div className="relative hidden h-[380px] select-none lg:block" aria-hidden="true">
       {/* 柔和渐变底 */}
-      <div className="absolute inset-4 rounded-[48px] bg-gradient-to-br from-primary-100/80 via-indigo-100/60 to-purple-100/80 blur-2xl" />
+      <div className="absolute inset-4 rounded-[48px] bg-gradient-to-br from-primary-100/70 via-[#8B8DFF]/10 to-[#B9E4D0]/60 blur-2xl" />
 
       {/* 知识连线 */}
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 520 380" fill="none">
@@ -75,12 +76,12 @@ export function HotRankCard({ rank, book }: { rank: number; book: Book }) {
     <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`}
       className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
       <span className={`w-6 shrink-0 text-center text-2xl font-bold ${rankColors[rank - 1] || 'text-slate-400'}`}>{rank}</span>
-      <div className={`h-16 w-12 shrink-0 overflow-hidden rounded-md ${cover ? '' : 'bg-gradient-to-br from-primary-400 to-violet-400'}`}>
+      <div className={`h-16 w-12 shrink-0 overflow-hidden rounded-md ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
         {cover && <img src={cover} alt="" className="h-full w-full object-cover" />}
       </div>
       <div className="min-w-0">
         <div className="truncate text-sm font-medium text-white">{book.title}</div>
-        <div className="mt-1.5 text-xs text-slate-400">👁 {formatNumber(book.view_count)}</div>
+        <div className="mt-1.5 flex items-center gap-1 text-xs text-slate-400"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</div>
       </div>
     </Link>
   )

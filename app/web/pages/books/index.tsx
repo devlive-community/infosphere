@@ -4,6 +4,7 @@ import { api } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
 import { ButtonLink, Badge, EmptyState, Pagination } from '@/components/ui'
 import { StatusBadge } from '@/components/BookCard'
+import { EyeIcon } from '@/components/icons'
 import type { Book, PageResult } from '@/lib/types'
 
 interface Summary {
@@ -96,7 +97,7 @@ export default function MyBooks() {
         <div className="space-y-3">
           {data.items.map((book) => (
             <div key={book.id} className="rounded-xl border border-slate-200 bg-white shadow-sm flex items-center gap-4 p-4">
-              <div className="h-16 w-12 shrink-0 rounded bg-gradient-to-br from-primary-500/80 to-violet-500/80">
+              <div className="h-16 w-12 shrink-0 rounded bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
                 {book.cover_image && <img src={book.cover_image} alt="" className="h-full w-full rounded object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
@@ -106,7 +107,7 @@ export default function MyBooks() {
                   {book.is_public && <Badge tone="sky">公开</Badge>}
                 </div>
                 <p className="mt-0.5 truncate text-sm text-slate-500">{book.description || '暂无简介'}</p>
-                <p className="mt-0.5 text-xs text-slate-400">/ {book.slug} · 👁 {book.view_count}</p>
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">/ {book.slug} · <EyeIcon className="h-3.5 w-3.5" /> {book.view_count}</p>
               </div>
               <div className="flex shrink-0 gap-2">
                 <ButtonLink href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">章节</ButtonLink>

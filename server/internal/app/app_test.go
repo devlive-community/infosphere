@@ -139,7 +139,31 @@ func TestFullLifecycle(t *testing.T) {
 		t.Fatalf("登录用户读取公开书籍失败: %d", status)
 	}
 
-	// 8. 系统版本（需要管理员）
+	// 7.1 权限体系：alice 拥有 book:create 但没有 site:update / system:*
+	status, payload = get("/api/v1/auth/permissions", aliceToken)
+	if status != 200 {
+		t.Fatalf("权限查询失败: %d %v", status, payload)
+	}
+	perms := map[string]bool{}
+	for _, p := range payload["data"].([]any) {
+		perms[p.(string)] = true
+	}
+	if !perms["book:create"] || perms["site:update"] || perms["system:upgrade"] {
+		t.Fatalf("普通用户权限集错误: %v", perms)
+	}
+	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/site", bytes.NewReader([]byte(`{"site_name":"x"}`)))
+	req.Header.Set("Authorization", "Bearer "+aliceToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("PUT /site: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 403 {
+		t.Fatalf("普通用户更新站点配置应 403: %d", resp.StatusCode)
+	}
+
+	// 7.2 管理员拥有 system:read
 	status, payload = get("/api/v1/system/version", adminToken)
 	if status != 200 || payload["data"].(map[string]any)["version"] == "" {
 		t.Fatalf("版本查询失败: %d %v", status, payload)

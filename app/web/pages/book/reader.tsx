@@ -5,6 +5,7 @@ import { renderMarkdown } from '@/lib/markdown'
 import { useApp } from '@/lib/auth'
 import DocTree from '@/components/DocTree'
 import Seo from '@/components/Seo'
+import { BookIcon } from '@/components/icons'
 import type { Book, Document } from '@/lib/types'
 
 interface ReaderProps {
@@ -104,8 +105,8 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
       />
 
       <aside className="rounded-xl border border-slate-200 bg-white shadow-sm h-fit p-4 lg:sticky lg:top-20">
-        <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="mb-2 block px-2 text-sm font-bold text-slate-900 hover:text-primary-600">
-          📖 {book.title}
+        <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="mb-2 flex items-center gap-1.5 px-2 text-sm font-bold text-slate-900 hover:text-primary-600">
+          <BookIcon className="h-4 w-4 text-primary-500" /> {book.title}
         </Link>
         <DocTree
           items={tree}

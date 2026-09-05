@@ -48,7 +48,7 @@ function LatestCard({ book }: { book: Book }) {
   return (
     <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`}
       className="group flex gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      <div className={`h-28 w-28 shrink-0 overflow-hidden rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-400 to-violet-400'}`}>
+      <div className={`h-28 w-28 shrink-0 overflow-hidden rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
         {cover && <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
