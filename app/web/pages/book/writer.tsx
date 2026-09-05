@@ -720,7 +720,7 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
         )}
       </div>
       {hasChildren && isExpanded && (
-        <ul className="ml-5 border-l border-slate-200 pl-1">
+        <ul className={depth < 6 ? 'ml-4 border-l border-slate-200 pl-1' : ''}>
           {item.children!.map((child) => (
             <TreeItem key={child.id} {...props} item={child} depth={depth + 1} />
           ))}
