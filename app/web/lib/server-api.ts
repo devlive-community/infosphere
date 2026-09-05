@@ -51,6 +51,21 @@ export function authHeaderFrom(req: { headers: Record<string, string | string[] 
   return { Authorization: Array.isArray(raw) ? raw[0] : raw }
 }
 
+// 安装状态检测：短暂缓存，避免每个 SSR 请求都打一次 API
+let installState: { installed: boolean; expires: number } | null = null
+
+export async function isInstalled(): Promise<boolean> {
+  if (installState && installState.expires > Date.now()) return installState.installed
+  try {
+    const status = await serverApi<{ installed: boolean }>('/setup/status')
+    installState = { installed: status.installed, expires: Date.now() + 3_000 }
+    return status.installed
+  } catch {
+    // API 不可用时保持上一次的状态（未启动过则视为未安装）
+    return installState?.installed ?? false
+  }
+}
+
 // 站点配置缓存：避免每个 SSR 请求都查一次站点配置
 let siteCache: { value: Record<string, string>; expires: number } | null = null
 

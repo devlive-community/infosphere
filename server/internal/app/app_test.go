@@ -69,6 +69,20 @@ func TestFullLifecycle(t *testing.T) {
 		t.Fatalf("安装状态异常: %d %v", status, payload)
 	}
 
+	// 1.1 未安装时业务接口全部 503，仅 setup 放行
+	status, payload = get("/api/v1/books", "")
+	if status != 503 || payload["code"] != "NOT_INSTALLED" {
+		t.Fatalf("未安装时业务接口应返回 503 NOT_INSTALLED: %d %v", status, payload)
+	}
+	status, _ = get("/api/v1/stats", "")
+	if status != 503 {
+		t.Fatalf("未安装时 stats 应返回 503: %d", status)
+	}
+	status, _ = get("/api/v1/health", "")
+	if status != 200 {
+		t.Fatalf("未安装时健康检查应可用: %d", status)
+	}
+
 	// 2. 安装（sqlite）
 	install := post("/api/v1/setup/install", map[string]any{
 		"database": map[string]any{"type": "sqlite"},
