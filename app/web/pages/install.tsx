@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { api, storeSession } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { Button, Input, Field } from '@/components/ui'
 import type { DatabasePayload, User } from '@/lib/types'
 
 const dbTypes = [
@@ -101,7 +102,7 @@ export default function Install() {
           <p className="mt-2 text-sm text-slate-500">站点「{site.name}」已就绪，管理员 <b>{admin.username}</b> 已自动登录。</p>
           {/* 刻意整页刷新，让 AppProvider 重新读取本地会话 */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a href="/" className="btn-primary mt-6 w-full">进入首页</a>
+          <Button type="button" className="mt-6 w-full" onClick={() => { window.location.href = '/' }}>进入首页</Button>
         </div>
       </div>
     )
@@ -137,38 +138,36 @@ export default function Install() {
               {dbType === 'sqlite' ? (
                 <div className="mt-4">
                   <label className="label">数据库文件路径（相对或绝对路径）</label>
-                  <input className="input" value={db.path} onChange={(e) => setDb({ ...db, path: e.target.value })} placeholder="data/infosphere.db" />
+                  <Input value={db.path} onChange={(e) => setDb({ ...db, path: e.target.value })} placeholder="data/infosphere.db" />
                 </div>
               ) : (
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div>
                     <label className="label">主机</label>
-                    <input className="input" value={db.host} onChange={(e) => setDb({ ...db, host: e.target.value })} />
+                    <Input value={db.host} onChange={(e) => setDb({ ...db, host: e.target.value })} />
                   </div>
                   <div>
                     <label className="label">端口（可选，{dbType === 'mysql' ? '3306' : '5432'}）</label>
-                    <input className="input" value={db.port} onChange={(e) => setDb({ ...db, port: e.target.value })} placeholder={dbType === 'mysql' ? '3306' : '5432'} />
+                    <Input value={db.port} onChange={(e) => setDb({ ...db, port: e.target.value })} placeholder={dbType === 'mysql' ? '3306' : '5432'} />
                   </div>
                   <div>
                     <label className="label">数据库名</label>
-                    <input className="input" value={db.name} onChange={(e) => setDb({ ...db, name: e.target.value })} />
+                    <Input value={db.name} onChange={(e) => setDb({ ...db, name: e.target.value })} />
                   </div>
                   <div>
                     <label className="label">用户名</label>
-                    <input className="input" value={db.user} onChange={(e) => setDb({ ...db, user: e.target.value })} />
+                    <Input value={db.user} onChange={(e) => setDb({ ...db, user: e.target.value })} />
                   </div>
                   <div className="col-span-2">
                     <label className="label">密码</label>
-                    <input type="password" className="input" value={db.password} onChange={(e) => setDb({ ...db, password: e.target.value })} />
+                    <Input type="password" value={db.password} onChange={(e) => setDb({ ...db, password: e.target.value })} />
                   </div>
                 </div>
               )}
 
               <div className="mt-6 flex items-center justify-between">
-                <button type="button" className="btn-outline" disabled={testing} onClick={testConnection}>
-                  {testing ? '测试中…' : '测试连接'}
-                </button>
-                <button type="button" className="btn-primary" onClick={() => { setError(''); setStep(2) }}>下一步</button>
+                <Button type="button" variant="outline" disabled={testing} onClick={testConnection}>测试连接</Button>
+                <Button type="button" onClick={() => { setError(''); setStep(2) }}>下一步</Button>
               </div>
             </div>
           )}
@@ -179,38 +178,36 @@ export default function Install() {
               <div className="space-y-3">
                 <div>
                   <label className="label">站点名称 *</label>
-                  <input className="input" value={site.name} onChange={(e) => setSite({ ...site, name: e.target.value })} placeholder="我的知识库" />
+                  <Input value={site.name} onChange={(e) => setSite({ ...site, name: e.target.value })} placeholder="我的知识库" />
                 </div>
                 <div>
                   <label className="label">站点描述</label>
-                  <input className="input" value={site.description} onChange={(e) => setSite({ ...site, description: e.target.value })} placeholder="简单介绍你的知识库" />
+                  <Input value={site.description} onChange={(e) => setSite({ ...site, description: e.target.value })} placeholder="简单介绍你的知识库" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="label">管理员用户名 *</label>
-                    <input className="input" value={admin.username} onChange={(e) => setAdmin({ ...admin, username: e.target.value })} />
+                    <Input value={admin.username} onChange={(e) => setAdmin({ ...admin, username: e.target.value })} />
                   </div>
                   <div>
                     <label className="label">管理员邮箱</label>
-                    <input type="email" className="input" value={admin.email} onChange={(e) => setAdmin({ ...admin, email: e.target.value })} />
+                    <Input type="email" value={admin.email} onChange={(e) => setAdmin({ ...admin, email: e.target.value })} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="label">管理员密码 *</label>
-                    <input type="password" className="input" value={admin.password} onChange={(e) => setAdmin({ ...admin, password: e.target.value })} />
+                    <Input type="password" value={admin.password} onChange={(e) => setAdmin({ ...admin, password: e.target.value })} />
                   </div>
                   <div>
                     <label className="label">确认密码 *</label>
-                    <input type="password" className="input" value={admin.confirm} onChange={(e) => setAdmin({ ...admin, confirm: e.target.value })} />
+                    <Input type="password" value={admin.confirm} onChange={(e) => setAdmin({ ...admin, confirm: e.target.value })} />
                   </div>
                 </div>
               </div>
               <div className="mt-6 flex items-center justify-between">
-                <button type="button" className="btn-outline" onClick={() => setStep(1)}>上一步</button>
-                <button type="submit" className="btn-primary" disabled={installing}>
-                  {installing ? '正在安装…' : '开始安装'}
-                </button>
+                <Button type="button" variant="outline" onClick={() => setStep(1)}>上一步</Button>
+                <Button type="submit" loading={installing}>开始安装</Button>
               </div>
             </form>
           )}

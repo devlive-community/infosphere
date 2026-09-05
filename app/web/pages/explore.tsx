@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom } from '@/lib/server-api'
-import BookCard, { Pagination } from '@/components/BookCard'
+import BookCard from '@/components/BookCard'
+import { Button, Input, Pagination } from '@/components/ui'
 import Seo from '@/components/Seo'
 import type { Book, PageResult } from '@/lib/types'
 
@@ -51,8 +52,8 @@ export default function Explore({ site, siteUrl, keyword, page, data }: InferGet
       <div className="mb-6 flex items-center justify-between gap-4">
         <h1 className="text-xl font-bold text-slate-900">{keyword ? `「${keyword}」的搜索结果` : '发现知识'}</h1>
         <form action="/explore" method="get" className="flex gap-2">
-          <input className="input w-56" name="title" placeholder="搜索书籍标题" defaultValue={keyword} />
-          <button className="btn-primary" type="submit">搜索</button>
+          <Input className="w-56" name="title" placeholder="搜索书籍标题" defaultValue={keyword} />
+          <Button type="submit">搜索</Button>
         </form>
       </div>
 

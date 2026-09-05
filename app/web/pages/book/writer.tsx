@@ -5,6 +5,7 @@ import { useRequireAuth } from '@/lib/auth'
 import { renderMarkdown } from '@/lib/markdown'
 import DocTree from '@/components/DocTree'
 import { StatusBadge } from '@/components/BookCard'
+import { Button, Input, Textarea, Select } from '@/components/ui'
 import type { Book, Document, BookStatus } from '@/lib/types'
 
 // Writer：左侧章节树管理，右侧 Markdown 编辑器
@@ -182,36 +183,27 @@ export default function Writer() {
           <h2 className="font-bold text-slate-900">{current ? `编辑：${chapterPrefix}${current.title}` : '新建章节'}</h2>
           <div className="flex items-center gap-2">
             {current && <StatusBadge status={current.status} />}
-            <button onClick={() => setPreview(!preview)} className="btn-outline px-3 py-1.5 text-sm">
-              {preview ? '编辑' : '预览'}
-            </button>
+            <Button variant="outline" className="px-3 py-1.5 text-sm" onClick={() => setPreview(!preview)}>{preview ? '编辑' : '预览'}</Button>
           </div>
         </div>
 
         {message && <div className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600">{message}</div>}
 
         <div className="space-y-3">
-          <input className="input text-lg font-semibold" placeholder="章节标题" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Input className="text-lg font-semibold" placeholder="章节标题" value={title} onChange={(e) => setTitle(e.target.value)} />
           <div className="flex gap-3">
-            <select className="input flex-1" value={status} onChange={(e) => setStatus(e.target.value as BookStatus)}>
-              <option value="draft">草稿</option>
-              <option value="published">发布</option>
-              <option value="archived">归档</option>
-            </select>
-            <select className="input flex-1" value={parentId} onChange={(e) => setParentId(e.target.value)}>
-              <option value="">作为顶级章节</option>
-              {parentCandidates.map((d) => (
-                <option key={d.id} value={d.id}>父级：{chapterPrefix}{d.title}</option>
-              ))}
-            </select>
+            <Select className="flex-1" value={status} onChange={(e) => setStatus(e.target.value as BookStatus)}
+              options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '发布' }, { value: 'archived', label: '归档' }]} />
+            <Select className="flex-1" value={parentId} onChange={(e) => setParentId(e.target.value)}
+              options={[{ value: '', label: '作为顶级章节' }, ...parentCandidates.map((d) => ({ value: String(d.id), label: `父级：${chapterPrefix}${d.title}` }))]} />
           </div>
 
           {preview ? (
             <div className="markdown-body min-h-[400px] rounded-lg border border-slate-200 p-4"
               dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
           ) : (
-            <textarea
-              className="input min-h-[400px] font-mono leading-6"
+            <Textarea
+              className="min-h-[400px] font-mono leading-6"
               placeholder="使用 Markdown 编写章节内容…"
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -222,7 +214,7 @@ export default function Writer() {
             <span className="text-xs text-slate-400">
               {current ? `更新于 ${formatDate(current.updated_at)}` : '新章节默认为草稿'}
             </span>
-            <button onClick={save} className="btn-primary" disabled={saving}>{saving ? '保存中…' : current ? '保存修改' : '创建章节'}</button>
+            <Button onClick={save} loading={saving}>{current ? '保存修改' : '创建章节'}</Button>
           </div>
         </div>
       </section>

@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
+import { Button, Input, Textarea, Select, Field } from '@/components/ui'
 import type { Book, BookStatus } from '@/lib/types'
 
 export interface BookFormProps {
@@ -48,49 +49,50 @@ export default function BookForm({ initial, submitLabel, onSubmit }: BookFormPro
     <form onSubmit={submit} className="card max-w-2xl p-6">
       {error && <div className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
       <div className="space-y-4">
-        <div>
-          <label className="label">标题 *</label>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">简介</label>
-          <textarea className="input min-h-[90px]" value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
+        <Field label="标题 *">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+        </Field>
+        <Field label="简介">
+          <Textarea className="min-h-[90px]" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </Field>
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">访问路径 slug（留空自动生成）</label>
-            <input className="input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="my-book" disabled={!!initial} />
-          </div>
-          <div>
-            <label className="label">章节前缀（如「第」、「Chapter 」）</label>
-            <input className="input" value={chapterPrefix} onChange={(e) => setChapterPrefix(e.target.value)} />
-          </div>
+          <Field label="访问路径 slug（留空自动生成）">
+            <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="my-book" disabled={!!initial} />
+          </Field>
+          <Field label="章节前缀（如「第」、「Chapter 」）">
+            <Input value={chapterPrefix} onChange={(e) => setChapterPrefix(e.target.value)} />
+          </Field>
         </div>
-        <div>
-          <label className="label">封面图片 URL</label>
-          <input className="input" value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="https://..." />
-        </div>
+        <Field label="封面图片 URL">
+          <Input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="https://..." />
+        </Field>
         <div className="flex gap-6">
           <div className="flex-1">
-            <label className="label">状态</label>
-            <select className="input" value={status} onChange={(e) => setStatus(e.target.value as BookStatus)}>
-              <option value="draft">草稿</option>
-              <option value="published">已发布</option>
-              <option value="archived">已归档</option>
-            </select>
+            <Field label="状态">
+              <Select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as BookStatus)}
+                options={[
+                  { value: 'draft', label: '草稿' },
+                  { value: 'published', label: '已发布' },
+                  { value: 'archived', label: '已归档' },
+                ]}
+              />
+            </Field>
           </div>
           <div className="flex-1">
-            <label className="label">可见性</label>
-            <label className="flex h-[42px] items-center gap-2 rounded-lg border border-slate-300 px-3">
-              <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
-              <span className="text-sm">公开可访问</span>
-            </label>
+            <Field label="可见性">
+              <label className="flex h-[42px] items-center gap-2 rounded-lg border border-slate-300 px-3">
+                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
+                <span className="text-sm">公开可访问</span>
+              </label>
+            </Field>
           </div>
         </div>
       </div>
       <div className="mt-6 flex justify-end gap-3">
-        <button type="button" className="btn-outline" onClick={() => router.back()}>取消</button>
-        <button type="submit" className="btn-primary" disabled={saving}>{saving ? '保存中…' : submitLabel}</button>
+        <Button variant="outline" type="button" onClick={() => router.back()}>取消</Button>
+        <Button type="submit" loading={saving}>{submitLabel}</Button>
       </div>
     </form>
   )

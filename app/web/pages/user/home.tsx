@@ -1,7 +1,8 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom } from '@/lib/server-api'
 import { formatDate } from '@/lib/api'
-import BookCard, { Pagination } from '@/components/BookCard'
+import BookCard from '@/components/BookCard'
+import { Pagination } from '@/components/ui'
 import Seo from '@/components/Seo'
 import type { Book, PageResult } from '@/lib/types'
 
