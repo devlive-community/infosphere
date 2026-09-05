@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom } from '@/lib/server-api'
+import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled } from '@/lib/server-api'
 import { useApp } from '@/lib/auth'
 import { StatusBadge } from '@/components/BookCard'
 import { ButtonLink } from '@/components/ui'
@@ -9,6 +9,7 @@ import Seo from '@/components/Seo'
 import type { Book, Document } from '@/lib/types'
 
 interface BookDetailProps {
+  installed: boolean
   site: Record<string, string>
   siteUrl: string
   book: Book
@@ -34,6 +35,11 @@ async function fetchBook(slug: string, auth: Record<string, string>): Promise<Bo
 }
 
 export const getServerSideProps: GetServerSideProps<BookDetailProps> = async ({ req, query }) => {
+  // 未安装时强制进入安装向导（服务端重定向，不渲染任何内容）
+  if (!(await isInstalled())) {
+    return { redirect: { destination: '/install', permanent: false } }
+  }
+
   const slug = typeof query.slug === 'string' ? query.slug : ''
   if (!slug) return { notFound: true }
 
@@ -43,11 +49,11 @@ export const getServerSideProps: GetServerSideProps<BookDetailProps> = async ({ 
   // 公开访问失败且用户带了令牌（草稿/私有书），交给客户端重试
   if (!first.book) {
     if (auth.Authorization) {
-      return { props: { site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, tree: [], needsAuth: true } }
+      return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, tree: [], needsAuth: true } }
     }
     return { notFound: true }
   }
-  return { props: { site, siteUrl: siteUrlFrom(req), book: first.book, tree: first.tree, needsAuth: false } }
+  return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), book: first.book, tree: first.tree, needsAuth: false } }
 }
 
 export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: InferGetServerSidePropsType<typeof getServerSideProps>) {

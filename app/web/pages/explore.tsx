@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom } from '@/lib/server-api'
+import { serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import BookCard from '@/components/BookCard'
 import { Button, Input, Pagination } from '@/components/ui'
 import Seo from '@/components/Seo'
 import type { Book, PageResult } from '@/lib/types'
 
 interface ExploreProps {
+  installed: boolean
   site: Record<string, string>
   siteUrl: string
   keyword: string
@@ -15,6 +16,11 @@ interface ExploreProps {
 }
 
 export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req, query }) => {
+  // 未安装时强制进入安装向导（服务端重定向，不渲染任何内容）
+  if (!(await isInstalled())) {
+    return { redirect: { destination: '/install', permanent: false } }
+  }
+
   const keyword = typeof query.title === 'string' ? query.title.slice(0, 100) : ''
   const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1)
   const [site, data] = await Promise.all([
@@ -22,7 +28,7 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
     serverApi<PageResult<Book>>('/books', { params: { page, page_size: 12, title: keyword || undefined } })
       .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>),
   ])
-  return { props: { site, siteUrl: siteUrlFrom(req), keyword, page, data } }
+  return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), keyword, page, data } }
 }
 
 export default function Explore({ site, siteUrl, keyword, page, data }: InferGetServerSidePropsType<typeof getServerSideProps>) {

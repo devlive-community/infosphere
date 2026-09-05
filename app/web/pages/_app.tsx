@@ -41,9 +41,9 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 export default function App({ Component, pageProps }: AppProps) {
-  // SSR 页面通过 getServerSideProps 注入站点配置与公开数据
+  // SSR 页面通过 getServerSideProps 注入安装状态、站点配置与公开数据
   return (
-    <AppProvider initialSite={pageProps.site ?? null}>
+    <AppProvider initialSite={pageProps.site ?? null} initialInstalled={pageProps.installed ?? null}>
       <Shell>
         <Component {...pageProps} />
       </Shell>

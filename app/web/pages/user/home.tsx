@@ -1,5 +1,5 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom } from '@/lib/server-api'
+import { serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatDate } from '@/lib/api'
 import BookCard from '@/components/BookCard'
 import { Pagination } from '@/components/ui'
@@ -18,6 +18,7 @@ interface UserProfile {
 }
 
 interface UserHomeProps {
+  installed: boolean
   site: Record<string, string>
   siteUrl: string
   profile: UserProfile
@@ -25,6 +26,11 @@ interface UserHomeProps {
 }
 
 export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ req, query, params }) => {
+  // 未安装时强制进入安装向导（服务端重定向，不渲染任何内容）
+  if (!(await isInstalled())) {
+    return { redirect: { destination: '/install', permanent: false } }
+  }
+
   const username = (typeof params?.username === 'string' ? params.username : '') || (typeof query.username === 'string' ? query.username : '')
   if (!username) return { notFound: true }
   const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1)
@@ -38,7 +44,7 @@ export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ re
   const books = await serverApi<PageResult<Book>>(`/users/${encodeURIComponent(username)}/books`, { params: { page, page_size: 9 } })
     .catch(() => ({ items: [], total: 0, page: 1, page_size: 9 }) as PageResult<Book>)
 
-  return { props: { site, siteUrl: siteUrlFrom(req), profile, books } }
+  return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), profile, books } }
 }
 
 export default function UserHome({ site, siteUrl, profile, books }: InferGetServerSidePropsType<typeof getServerSideProps>) {
