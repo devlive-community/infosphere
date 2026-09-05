@@ -54,3 +54,4 @@ bin/
 # 项目记忆（仅本地，禁止提交）
 .Codex/
 .Codex
+app/web/.next-dev/

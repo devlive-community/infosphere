@@ -1,9 +1,11 @@
 package app
 
 import (
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 
 	"infosphere/server/internal/models"
 
@@ -55,13 +57,28 @@ func buildDocTree(docs []models.Document, parent *uint) []*models.Document {
 }
 
 type documentPayload struct {
-	Title         *string `json:"title"`
-	Slug          *string `json:"slug"`
-	Content       *string `json:"content"`
-	ParentID      *uint   `json:"parent_id"`
-	SortOrder     *int    `json:"sort_order"`
-	Status        *string `json:"status"`
-	AllowComments *bool   `json:"allow_comments"`
+	Title         *string         `json:"title"`
+	Slug          *string         `json:"slug"`
+	Content       *string         `json:"content"`
+	ParentID      json.RawMessage `json:"parent_id"`
+	SortOrder     *int            `json:"sort_order"`
+	Status        *string         `json:"status"`
+	AllowComments *bool           `json:"allow_comments"`
+}
+
+// parseParentID 解析 parent_id 三态：缺省(present=false)不改动；显式 null 表示置为顶级；数字表示挂到该父级
+func parseParentID(raw json.RawMessage) (present bool, id *uint, err error) {
+	if len(raw) == 0 {
+		return false, nil, nil
+	}
+	if strings.TrimSpace(string(raw)) == "null" {
+		return true, nil, nil
+	}
+	var v uint
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return true, nil, err
+	}
+	return true, &v, nil
 }
 
 // CreateDocument POST /books/:id/documents
@@ -90,9 +107,14 @@ func (a *App) CreateDocument(c *gin.Context) {
 	if req.Status != nil && docStatuses[*req.Status] {
 		statusStr = *req.Status
 	}
-	if req.ParentID != nil {
+	_, createParentID, perr := parseParentID(req.ParentID)
+	if perr != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	if createParentID != nil {
 		var parent models.Document
-		if err := a.DB.Where("id = ? AND book_id = ?", *req.ParentID, book.ID).First(&parent).Error; err != nil {
+		if err := a.DB.Where("id = ? AND book_id = ?", *createParentID, book.ID).First(&parent).Error; err != nil {
 			fail(c, http.StatusBadRequest, "父文档不存在")
 			return
 		}
@@ -110,8 +132,8 @@ func (a *App) CreateDocument(c *gin.Context) {
 	if req.AllowComments != nil {
 		doc.AllowComments = req.AllowComments
 	}
-	if req.ParentID != nil {
-		doc.ParentID = req.ParentID
+	if createParentID != nil {
+		doc.ParentID = createParentID
 	}
 	if req.Content != nil {
 		doc.Content = *req.Content
@@ -263,22 +285,31 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		}
 		doc.Slug = *req.Slug
 	}
-	if req.ParentID != nil && (doc.ParentID == nil || *req.ParentID != *doc.ParentID) {
-		if *req.ParentID == doc.ID {
-			fail(c, http.StatusBadRequest, "父文档不能是自身")
-			return
+	present, newParentID, perr := parseParentID(req.ParentID)
+	if perr != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	if present {
+		if newParentID == nil {
+			doc.ParentID = nil // 移动为顶级章节
+		} else if doc.ParentID == nil || *newParentID != *doc.ParentID {
+			if *newParentID == doc.ID {
+				fail(c, http.StatusBadRequest, "父文档不能是自身")
+				return
+			}
+			var parent models.Document
+			if err := a.DB.Where("id = ? AND book_id = ?", *newParentID, book.ID).First(&parent).Error; err != nil {
+				fail(c, http.StatusBadRequest, "父文档不存在")
+				return
+			}
+			// 检查是否会把文档移动到自己的后代下
+			if isDescendant(a.DB, doc.ID, *newParentID) {
+				fail(c, http.StatusBadRequest, "不能将文档移动到自己的子文档下")
+				return
+			}
+			doc.ParentID = newParentID
 		}
-		var parent models.Document
-		if err := a.DB.Where("id = ? AND book_id = ?", *req.ParentID, book.ID).First(&parent).Error; err != nil {
-			fail(c, http.StatusBadRequest, "父文档不存在")
-			return
-		}
-		// 检查是否会把文档移动到自己的后代下
-		if isDescendant(a.DB, doc.ID, *req.ParentID) {
-			fail(c, http.StatusBadRequest, "不能将文档移动到自己的子文档下")
-			return
-		}
-		doc.ParentID = req.ParentID
 	}
 
 	if err := a.DB.Save(doc).Error; err != nil {

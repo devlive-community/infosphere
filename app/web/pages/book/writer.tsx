@@ -49,7 +49,7 @@ export default function Writer() {
   const [menuFor, setMenuFor] = useState<number | null>(null)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
-  const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'after' } | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'inside' | 'after' } | null>(null)
   const [preview, setPreview] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [message, setMessage] = useState('')
@@ -69,12 +69,23 @@ export default function Writer() {
   const snapshot = useRef('') // 已保存/已加载表单的快照，用于脏状态判断
   const loadedDocId = useRef<number | null>(null) // 当前表单对应的文档，防止切换章节时误触发自动保存
   const saveRef = useRef<(opts?: { status?: BookStatus }) => Promise<void>>(async () => {})
+  const didInitExpand = useRef(false)
 
   const flatDocs = useMemo(() => flatten(tree), [tree])
 
   const loadTree = useCallback(async (b: Book) => {
     setTree((await api<Document[]>(`/books/${b.id}/documents`)) || [])
   }, [])
+
+  // 首次加载章节树后默认展开所有含子章节的节点（只执行一次，不干扰后续手动折叠）
+  useEffect(() => {
+    if (didInitExpand.current || tree.length === 0) return
+    didInitExpand.current = true
+    const ids = new Set<number>()
+    const walk = (docs: Document[]) => docs.forEach((d) => { if (d.children?.length) { ids.add(d.id); walk(d.children) } })
+    walk(tree)
+    setExpanded(ids)
+  }, [tree])
 
   // 加载书籍与章节树
   useEffect(() => {
@@ -209,23 +220,54 @@ export default function Writer() {
     await loadTree(book)
   }
 
-  // 拖拽排序：仅在同一父级的兄弟节点之间重排，落库时重排该层的 sort_order
-  async function reorderSibling(dragDocId: number, targetId: number, pos: 'before' | 'after') {
+  // 收集某节点及其所有后代 id（用于禁止把节点拖进自己的子树）
+  function subtreeIds(id: number): Set<number> {
+    const set = new Set<number>([id])
+    const walk = (d: Document) => (d.children || []).forEach((c) => { set.add(c.id); walk(c) })
+    const root = flatDocs.find((d) => d.id === id)
+    if (root) walk(root)
+    return set
+  }
+
+  // 拖拽移动：支持跨层级。pos=before/after 挂到目标同级，inside 作为目标的子章节
+  async function moveNode(dragDocId: number, targetId: number, pos: 'before' | 'inside' | 'after') {
     if (!book || dragDocId === targetId) return
     const drag = flatDocs.find((d) => d.id === dragDocId)
     const target = flatDocs.find((d) => d.id === targetId)
     if (!drag || !target) return
-    if ((drag.parent_id ?? null) !== (target.parent_id ?? null)) return // 仅支持同级重排
-    const parent = drag.parent_id ?? null
-    const siblings = (parent === null ? tree : flatDocs.find((d) => d.id === parent)?.children || []).slice()
+    if (subtreeIds(dragDocId).has(targetId)) return // 不能拖进自身子树
+
+    let newParent: number | null
+    let siblings: Document[]
+    if (pos === 'inside') {
+      newParent = target.id
+      siblings = (target.children || []).slice()
+    } else {
+      newParent = target.parent_id ?? null
+      siblings = (newParent === null ? tree : flatDocs.find((d) => d.id === newParent)?.children || []).slice()
+    }
     const without = siblings.filter((d) => d.id !== dragDocId)
-    const idx = without.findIndex((d) => d.id === targetId)
-    if (idx < 0) return
-    without.splice(pos === 'before' ? idx : idx + 1, 0, drag)
-    const writes = without
-      .map((d, i) => (d.sort_order === i ? null : api(`/documents/${d.id}`, { method: 'PUT', body: { sort_order: i } })))
-      .filter(Boolean) as Promise<unknown>[]
+    let insertAt = without.length
+    if (pos !== 'inside') {
+      const idx = without.findIndex((d) => d.id === targetId)
+      if (idx < 0) return
+      insertAt = pos === 'before' ? idx : idx + 1
+    }
+    without.splice(insertAt, 0, drag)
+
+    const parentChanged = (drag.parent_id ?? null) !== newParent
+    const writes: Promise<unknown>[] = []
+    without.forEach((d, i) => {
+      if (d.id === dragDocId) {
+        if (parentChanged || d.sort_order !== i) {
+          writes.push(api(`/documents/${d.id}`, { method: 'PUT', body: { parent_id: newParent, sort_order: i } }))
+        }
+      } else if (d.sort_order !== i) {
+        writes.push(api(`/documents/${d.id}`, { method: 'PUT', body: { sort_order: i } }))
+      }
+    })
     if (writes.length) await Promise.all(writes)
+    if (pos === 'inside') setExpanded(new Set(expanded).add(target.id)) // 展开新父级以显示移入的子章节
     await loadTree(book)
   }
 
@@ -289,7 +331,7 @@ export default function Writer() {
   const parentCandidates = flatDocs.filter((d) => !current || (d.id !== current.id && !isDescendantOf(d, current.id)))
   const parentDoc = parentId ? flatDocs.find((d) => String(d.id) === parentId) : null
   const wordCount = content.replace(/\s/g, '').length
-  const dragParentId = dragId != null ? flatDocs.find((d) => d.id === dragId)?.parent_id ?? null : null
+  const dragBlocked = dragId != null ? subtreeIds(dragId) : null
 
   if (!book) {
     return (
@@ -392,10 +434,10 @@ export default function Writer() {
                     currentId={current?.id} chapterPrefix={chapterPrefix}
                     onSelect={selectDoc} onMove={move} onDelete={removeDoc}
                     menuFor={menuFor} setMenuFor={setMenuFor}
-                    dragEnabled={!search.trim()} dragId={dragId} dragParentId={dragParentId} dropTarget={dropTarget}
+                    dragEnabled={!search.trim()} dragId={dragId} dragBlocked={dragBlocked} dropTarget={dropTarget}
                     onDragStartItem={(d) => setDragId(d.id)}
                     onDragOverItem={(d, pos) => setDropTarget({ id: d.id, pos })}
-                    onDropItem={(d) => { if (dragId != null && dropTarget) reorderSibling(dragId, d.id, dropTarget.pos); setDragId(null); setDropTarget(null) }}
+                    onDropItem={(d) => { if (dragId != null && dropTarget) moveNode(dragId, d.id, dropTarget.pos); setDragId(null); setDropTarget(null) }}
                     onDragEndItem={() => { setDragId(null); setDropTarget(null) }} />
                 )}
               </div>
@@ -569,10 +611,10 @@ interface TreeProps {
   setMenuFor: (id: number | null) => void
   dragEnabled: boolean
   dragId: number | null
-  dragParentId: number | null
-  dropTarget: { id: number; pos: 'before' | 'after' } | null
+  dragBlocked: Set<number> | null
+  dropTarget: { id: number; pos: 'before' | 'inside' | 'after' } | null
   onDragStartItem: (doc: Document) => void
-  onDragOverItem: (doc: Document, pos: 'before' | 'after') => void
+  onDragOverItem: (doc: Document, pos: 'before' | 'inside' | 'after') => void
   onDropItem: (doc: Document) => void
   onDragEndItem: () => void
 }
@@ -589,7 +631,7 @@ function TreeItems(props: TreeProps) {
 function TreeItem(props: TreeProps & { item: Document; depth: number }) {
   const {
     item, depth, search, expanded, setExpanded, currentId, chapterPrefix, onSelect, onMove, onDelete, menuFor, setMenuFor,
-    dragEnabled, dragId, dragParentId, dropTarget, onDragStartItem, onDragOverItem, onDropItem, onDragEndItem,
+    dragEnabled, dragId, dragBlocked, dropTarget, onDragStartItem, onDragOverItem, onDropItem, onDragEndItem,
   } = props
   function toggleExpand() {
     const next = new Set(expanded)
@@ -610,15 +652,18 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
         onDragEnd={onDragEndItem}
         onDragOver={(e) => {
           if (!dragEnabled || dragId == null || dragId === item.id) return
-          if ((item.parent_id ?? null) !== dragParentId) return // 仅同级可放置
+          if (dragBlocked?.has(item.id)) return // 不能拖进自身子树
           e.preventDefault()
           const rect = e.currentTarget.getBoundingClientRect()
-          onDragOverItem(item, e.clientY < rect.top + rect.height / 2 ? 'before' : 'after')
+          const y = e.clientY - rect.top
+          const pos = y < rect.height * 0.3 ? 'before' : y > rect.height * 0.7 ? 'after' : 'inside'
+          onDragOverItem(item, pos)
         }}
         onDrop={(e) => { e.preventDefault(); onDropItem(item) }}
         className={`group relative flex items-center rounded-lg text-sm ${active ? 'bg-primary-50 ring-1 ring-inset ring-primary-100' : 'hover:bg-slate-50'} ${dragging ? 'opacity-40' : ''}`}>
         {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-0.5 rounded-full bg-primary-500" />}
-        {dropHere && <span className={`pointer-events-none absolute inset-x-1.5 z-10 h-0.5 rounded-full bg-primary-500 ${dropTarget!.pos === 'before' ? 'top-0' : 'bottom-0'}`} />}
+        {dropHere && dropTarget!.pos !== 'inside' && <span className={`pointer-events-none absolute inset-x-1.5 z-10 h-0.5 rounded-full bg-primary-500 ${dropTarget!.pos === 'before' ? 'top-0' : 'bottom-0'}`} />}
+        {dropHere && dropTarget!.pos === 'inside' && <span className="pointer-events-none absolute inset-0 z-10 rounded-lg ring-2 ring-inset ring-primary-400" />}
         {hasChildren ? (
           <button type="button" aria-label={isExpanded ? '折叠' : '展开'}
             onClick={(e) => { e.stopPropagation(); toggleExpand() }}
