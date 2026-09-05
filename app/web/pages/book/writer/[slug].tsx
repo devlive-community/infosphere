@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, ReactNode } from 'react'
 import { useRouter } from 'next/router'
+import type { GetServerSideProps } from 'next'
 import Link from 'next/link'
 import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
+import { authHeaderFrom, getSSRUser, isInstalled } from '@/lib/server-api'
 import { renderMarkdown } from '@/lib/markdown'
 import Seo from '@/components/Seo'
 import { Button, Input, Textarea, Select, Field, Badge, EmptyState } from '@/components/ui'
@@ -32,9 +34,22 @@ const STATUS_META: Record<BookStatus, { label: string; tone: 'emerald' | 'primar
   archived: { label: '已归档', tone: 'slate', dot: 'bg-slate-400' },
 }
 
+interface WriterProps {
+  user: import('@/lib/types').User | null
+}
+
+export const getServerSideProps: GetServerSideProps = async ({ req, params }) => {
+  if (!(await isInstalled())) {
+    return { redirect: { destination: '/install', permanent: false } }
+  }
+  const user = await getSSRUser(req)
+  // 将 params 原样透传：Next 仅在有 gSSP 的页面把动态段填入 router.query
+  return { props: { user, slug: typeof params?.slug === 'string' ? params.slug : '', doc: typeof params?.doc === 'string' ? params.doc : '' } }
+}
+
 // Writer：书籍与章节编辑器（三栏工作台布局）
-export default function Writer() {
-  const user = useRequireAuth()
+export default function Writer({ user }: WriterProps) {
+  useRequireAuth()
   const router = useRouter()
   const { site } = useApp()
   const bookSlug = (router.query.slug as string) || ''
