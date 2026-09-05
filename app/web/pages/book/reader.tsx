@@ -5,7 +5,8 @@ import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isI
 import { renderMarkdown, extractHeadings } from '@/lib/markdown'
 import { API_BASE, formatDate } from '@/lib/api'
 import Seo from '@/components/Seo'
-import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon } from '@/components/icons'
+import { ButtonLink } from '@/components/ui'
+import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
 import type { Book, Document, User } from '@/lib/types'
 
 interface ReaderProps {
@@ -21,6 +22,24 @@ interface ReaderProps {
 }
 
 const FONT_SIZES = [15, 16, 18, 20, 22]
+
+// AuthorAvatars 创作者头像列表：hover 提示用户名，点击跳转用户主页
+function AuthorAvatars({ users }: { users: { username: string; avatar?: string }[] }) {
+  if (users.length === 0) return null
+  return (
+    <span className="flex items-center gap-1">
+      {users.map((u) => (
+        <Link key={u.username} href={`/user/home?username=${encodeURIComponent(u.username)}`}
+          title={u.username}
+          className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full ring-1 ring-white transition-transform hover:scale-110">
+          {u.avatar
+            ? <img src={u.avatar.startsWith('/') ? u.avatar : u.avatar} alt={u.username} className="h-full w-full object-cover" />
+            : <span className="flex h-full w-full items-center justify-center bg-primary-500 text-[10px] font-bold text-white">{u.username.slice(0, 1).toUpperCase()}</span>}
+        </Link>
+      ))}
+    </span>
+  )
+}
 
 function flatten(docs: Document[] | null | undefined): Document[] {
   return (docs || []).flatMap((d) => [d, ...flatten(d.children)])
@@ -53,7 +72,7 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
   }
 }
 
-export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Reader({ site, siteUrl, user, book, doc, html, tree, needsAuth }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
@@ -98,6 +117,7 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
     )
   }
 
+  const canEdit = !!user && !!book && (user.id === book.user_id || user.role === 'admin')
   const index = doc ? flat.findIndex((d) => d.id === doc.id) : -1
   const prev = index > 0 ? flat[index - 1] : null
   const next = index >= 0 && index < flat.length - 1 ? flat[index + 1] : null
@@ -123,7 +143,7 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
   }
 
   return (
-    <>
+    <div className="flex h-screen flex-col overflow-hidden bg-white">
       <Seo
         siteName={siteName}
         title={doc ? `${chapterPrefix}${doc.title} · ${book.title}` : book.title}
@@ -132,18 +152,37 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
         image={book.cover_image || undefined}
         jsonLd={jsonLd}
       />
-      <div className="flex w-full items-start bg-white">
+      {/* 顶栏 */}
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4">
+        <div className="flex min-w-0 items-center gap-2 text-sm">
+          <Link href="/" className="flex shrink-0 items-center gap-2 font-bold text-slate-900">
+            <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
+            {siteName}
+          </Link>
+          <span className="text-slate-300">/</span>
+          <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`}
+            className="flex shrink-0 items-center gap-1 text-slate-500 hover:text-primary-600">
+            <ChevronRightIcon className="h-4 w-4 rotate-180" /> 返回书籍
+          </Link>
+        </div>
+        <div className="hidden min-w-0 truncate text-sm font-medium text-slate-900 md:block">
+          {doc ? `${chapterPrefix}${doc.title}` : book.title}
+        </div>
+      </header>
+      <div className="flex min-h-0 flex-1 items-stretch">
         {/* 左：书籍信息 + 目录 */}
         {!focus && (
-          <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-72 shrink-0 flex-col overflow-y-auto border-r border-slate-200 px-4 py-5 lg:flex">
-            <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="mb-4 flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary-600">
-              <ChevronRightIcon className="h-4 w-4 rotate-180" /> 返回书籍
-            </Link>
+          <aside className="hidden w-72 shrink-0 flex-col border-r border-slate-200 pt-5 lg:flex">
+            <div className="shrink-0 px-4">
             <div className="mb-3 flex flex-col items-center text-center">
-              <div className="h-40 w-30 overflow-hidden rounded-lg border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF] shadow-sm" style={{ width: '7.5rem' }}>
+              <div className="aspect-[16/10] w-full overflow-hidden rounded-lg border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF]">
                 {cover && <img src={cover} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
               </div>
-              <h1 className="mt-3 font-bold text-slate-900">{book.title}</h1>
+              <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                {(book.tags || []).map((t) => (
+                  <span key={t.id} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t.name}</span>
+                ))}
+              </div>
               <div className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-500">
                 {authorAvatar
                   ? <img src={authorAvatar} alt="" className="h-5 w-5 rounded-full object-cover" />
@@ -151,86 +190,105 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
                 {author?.username || '佚名'}
               </div>
               <p className="mt-1 text-xs text-slate-400">{flat.length} 个章节</p>
+              {canEdit && (
+                <ButtonLink href={`/book/writer?slug=${encodeURIComponent(book.slug)}${doc ? `&doc=${doc.slug}` : ''}`}
+                  className="mt-3 w-full">
+                  <PencilIcon className="h-4 w-4" /> 写作
+                </ButtonLink>
+              )}
             </div>
             <div className="mb-2 mt-2 text-sm font-semibold text-slate-900">目录</div>
-            <div className="-mx-2 min-w-max">
-              <ReaderTree items={tree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id} expanded={expanded} setExpanded={setExpanded} />
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-w-max pb-2 pl-4">
+                <ReaderTree items={tree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id} expanded={expanded} setExpanded={setExpanded} />
+              </div>
+            </div>
+            <div className="shrink-0 border-t border-slate-100 px-4 py-2 text-center text-xs text-slate-400">
+              Powered by InfoSphere
             </div>
           </aside>
         )}
 
-        {/* 中：正文 */}
-        <main className="min-w-0 flex-1">
-          <div className={`mx-auto px-6 py-10 lg:px-12 ${focus ? 'max-w-2xl' : 'max-w-3xl'}`}>
-            {doc ? (
-              <article>
-                {parentDoc && <div className="mb-1 text-sm font-medium text-primary-600">{chapterPrefix}{parentDoc.title}</div>}
-                <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">{doc.title}</h1>
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-400">
-                  {authorAvatar
-                    ? <img src={authorAvatar} alt="" className="h-6 w-6 rounded-full object-cover" />
-                    : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500">{(author?.username || '?').slice(0, 1)}</span>}
-                  <span className="text-slate-600">{author?.username || '佚名'}</span>
-                  <span>· 更新于 {formatDate(doc.updated_at).slice(0, 10)}</span>
-                  <span>· 阅读 {readingMin} 分钟</span>
+        {/* 中：正文（内部滚动）+ 底部固定的上一篇/下一篇 */}
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="min-w-0 flex-1 overflow-y-auto">
+            <div className="px-8 py-10 lg:px-14">
+              {doc ? (
+                <article>
+                  {parentDoc && <div className="mb-1 text-sm font-medium text-primary-600">{chapterPrefix}{parentDoc.title}</div>}
+                  <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">{doc.title}</h1>
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-400">
+                    {authorAvatar
+                      ? <img src={authorAvatar} alt="" className="h-6 w-6 rounded-full object-cover" />
+                      : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500">{(author?.username || '?').slice(0, 1)}</span>}
+                    <span className="text-slate-600">{author?.username || '佚名'}</span>
+                    <span>· 更新于 {formatDate(doc.updated_at).slice(0, 10)}</span>
+                    <span>· 阅读 {readingMin} 分钟</span>
+                  </div>
+                  <hr className="my-6 border-slate-100" />
+                  <div className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
+                </article>
+              ) : (
+                <div className="py-24 text-center text-slate-400">
+                  <p>请从左侧目录选择章节开始阅读</p>
+                  {flat.length === 0 && <p className="mt-2 text-xs">本书暂无已发布章节</p>}
                 </div>
-                <hr className="my-6 border-slate-100" />
-                <div className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
-
-                <nav className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {prev ? (
-                    <Link href={`/book/reader?slug=${encodeURIComponent(book.slug)}&doc=${prev.slug}`}
-                      className="group flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-primary-300 hover:bg-primary-50/40">
-                      <ChevronRightIcon className="h-5 w-5 shrink-0 rotate-180 text-slate-400 group-hover:text-primary-500" />
-                      <span className="min-w-0">
-                        <span className="block text-xs text-slate-400">上一篇</span>
-                        <span className="block truncate font-medium text-slate-800">{chapterPrefix}{prev.title}</span>
-                      </span>
-                    </Link>
-                  ) : <span />}
-                  {next && (
-                    <Link href={`/book/reader?slug=${encodeURIComponent(book.slug)}&doc=${next.slug}`}
-                      className="group flex items-center justify-end gap-3 rounded-xl border border-slate-200 p-4 text-right transition-colors hover:border-primary-300 hover:bg-primary-50/40 sm:col-start-2">
-                      <span className="min-w-0">
-                        <span className="block text-xs text-slate-400">下一篇</span>
-                        <span className="block truncate font-medium text-slate-800">{chapterPrefix}{next.title}</span>
-                      </span>
-                      <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate-400 group-hover:text-primary-500" />
-                    </Link>
-                  )}
-                </nav>
-              </article>
-            ) : (
-              <div className="py-24 text-center text-slate-400">
-                <p>请从左侧目录选择章节开始阅读</p>
-                {flat.length === 0 && <p className="mt-2 text-xs">本书暂无已发布章节</p>}
-              </div>
-            )}
+              )}
+            </div>
           </div>
+
+          {/* 上一篇/下一篇：固定在内容区底部（标题 + 创作者头像列表） */}
+          {doc && (
+            <nav className="flex shrink-0 items-start justify-between gap-3 border-t border-slate-200 bg-white px-8 py-3 lg:px-14">
+              {prev ? (
+                <div className="group flex min-w-0 flex-col gap-1.5 text-sm">
+                  <span className="text-xs text-slate-400">上一篇</span>
+                  <Link href={`/book/reader?slug=${encodeURIComponent(book.slug)}&doc=${prev.slug}`}
+                    className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{prev.title}</Link>
+                  <AuthorAvatars users={book.user ? [book.user] : []} />
+                </div>
+              ) : <span className="text-xs text-slate-300">已经是第一章了</span>}
+              {next ? (
+                <div className="group flex min-w-0 flex-col items-end gap-1.5 text-right text-sm">
+                  <span className="text-xs text-slate-400">下一篇</span>
+                  <Link href={`/book/reader?slug=${encodeURIComponent(book.slug)}&doc=${next.slug}`}
+                    className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{next.title}</Link>
+                  <AuthorAvatars users={book.user ? [book.user] : []} />
+                </div>
+              ) : <span className="text-xs text-slate-300">已经是最后一章了</span>}
+            </nav>
+          )}
         </main>
 
-        {/* 右：本章目录 + 阅读设置 + 作者 */}
+        {/* 右：本章目录（内滚）+ 阅读设置 + 作者（固定底部） */}
         {!focus && (
-          <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-72 shrink-0 flex-col gap-6 overflow-y-auto border-l border-slate-200 px-5 py-6 xl:flex">
-            {headings.length > 0 && (
-              <div>
-                <h2 className="mb-3 text-sm font-semibold text-slate-900">本章目录</h2>
-                <ul className="space-y-1 border-l border-slate-100">
-                  {headings.map((h) => (
-                    <li key={h.id}>
-                      <a href={`#${h.id}`} onClick={(e) => { e.preventDefault(); jumpTo(h.id) }}
-                        className={`-ml-px block border-l-2 py-1 text-sm transition-colors ${h.level === 3 ? 'pl-6' : 'pl-3'} ${
-                          activeHeading === h.id ? 'border-primary-500 font-medium text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-800'
-                        }`}>
-                        {h.text}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          <aside className="hidden w-72 shrink-0 flex-col border-l border-slate-200 px-5 py-6 xl:flex">
+            {/* 本章目录：占满剩余区域，内部滚动 */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {headings.length > 0 ? (
+                <div>
+                  <h2 className="mb-3 text-sm font-semibold text-slate-900">本章目录</h2>
+                  <ul className="space-y-1 border-l border-slate-100">
+                    {headings.map((h) => (
+                      <li key={h.id}>
+                        <a href={`#${h.id}`} onClick={(e) => { e.preventDefault(); jumpTo(h.id) }}
+                          className={`-ml-px block border-l-2 py-1 text-sm transition-colors ${h.level === 3 ? 'pl-6' : 'pl-3'} ${
+                            activeHeading === h.id ? 'border-primary-500 font-medium text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+                          }`}>
+                          {h.text}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="px-1 py-2 text-xs text-slate-400">本章暂无目录</p>
+              )}
+            </div>
 
-            <div>
+            {/* 阅读设置：固定 */}
+            <div className="shrink-0 border-t border-slate-100 pt-5">
               <h2 className="mb-3 text-sm font-semibold text-slate-900">阅读设置</h2>
               <div className="grid grid-cols-3 gap-2">
                 <SettingButton label="减小字号" onClick={() => setFontIdx((i) => Math.max(0, i - 1))} disabled={fontIdx === 0}>
@@ -245,8 +303,9 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
               </div>
             </div>
 
+            {/* 作者：固定在最底部 */}
             {author && (
-              <div className="rounded-xl border border-slate-200 p-4">
+              <div className="mt-5 shrink-0 rounded-xl border border-slate-200 p-4">
                 <div className="flex items-center gap-3">
                   {authorAvatar
                     ? <img src={authorAvatar} alt="" className="h-11 w-11 rounded-lg object-cover" />
@@ -273,7 +332,7 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
           </button>
         )}
       </div>
-    </>
+    </div>
   )
 }
 
