@@ -21,7 +21,7 @@ export default function CreateBook() {
         showSaveDraft
         onSubmit={async (payload) => {
           const book = await api<Book>('/books', { method: 'POST', body: payload })
-          router.push(`/book/${encodeURIComponent(book.slug)}/writer`)
+          router.push(`/book/writer/${encodeURIComponent(book.slug)}`)
         }}
       />
     </Container>

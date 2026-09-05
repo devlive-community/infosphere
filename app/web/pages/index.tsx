@@ -53,7 +53,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ req })
 function LatestCard({ book }: { book: Book }) {
   const cover = book.cover_image ? API_BASE + book.cover_image : ''
   return (
-    <Link href={`/book/${encodeURIComponent(book.slug)}/detail`}
+    <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
       className="group flex gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
       <div className={`h-28 w-28 shrink-0 overflow-hidden rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
         {cover && <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}

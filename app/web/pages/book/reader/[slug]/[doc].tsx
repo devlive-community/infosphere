@@ -157,7 +157,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
           <span className="text-slate-300">/</span>
           <span className="max-w-[220px] truncate font-medium text-slate-900">{book.title}</span>
           <span className="text-slate-300">/</span>
-          <Link href={`/book/${encodeURIComponent(book.slug)}/detail`}
+          <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
             className="flex shrink-0 items-center gap-1 text-slate-500 hover:text-primary-600">
             <ChevronRightIcon className="h-4 w-4 rotate-180" /> 返回书籍
           </Link>
@@ -221,7 +221,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
                     <span>· 更新于 {formatDate(doc.updated_at).slice(0, 10)}</span>
                     <span>· 阅读 {readingMin} 分钟</span>
                     {canEdit && (
-                      <Link href={`/book/${encodeURIComponent(book.slug)}/writer?doc=${encodeURIComponent(doc.slug)}`}
+                      <Link href={`/book/writer/${encodeURIComponent(book.slug)}?doc=${encodeURIComponent(doc.slug)}`}
                         className="flex items-center gap-1 text-primary-600 transition-colors hover:text-primary-700">
                         <i className="fa-solid fa-pen-to-square text-xs" aria-hidden="true" /> 编辑
                       </Link>
@@ -245,7 +245,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
               {prev ? (
                 <div className="group flex min-w-0 flex-col gap-1.5 text-sm">
                   <span className="text-xs text-slate-400">上一篇</span>
-                  <Link href={`/book/${encodeURIComponent(book.slug)}/${prev.slug}/reader`}
+                  <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${prev.slug}`}
                     className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{prev.title}</Link>
                   <AuthorAvatars users={book.user ? [book.user] : []} />
                 </div>
@@ -253,7 +253,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
               {next ? (
                 <div className="group flex min-w-0 flex-col items-end gap-1.5 text-right text-sm">
                   <span className="text-xs text-slate-400">下一篇</span>
-                  <Link href={`/book/${encodeURIComponent(book.slug)}/${next.slug}/reader`}
+                  <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${next.slug}`}
                     className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{next.title}</Link>
                   <AuthorAvatars users={book.user ? [book.user] : []} />
                 </div>

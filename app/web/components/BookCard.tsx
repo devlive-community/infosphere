@@ -17,7 +17,7 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 export default function BookCard({ book, href }: { book: Book; href?: string }) {
-  const link = href || `/book/${encodeURIComponent(book.slug)}/detail`
+  const link = href || `/book/detail/${encodeURIComponent(book.slug)}`
   const cover = book.cover_image ? API_BASE + book.cover_image : ''
   return (
     <Link href={link} className="rounded-xl border border-slate-200 bg-white shadow-sm group flex flex-col overflow-hidden transition hover:shadow-md">

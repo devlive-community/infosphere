@@ -43,7 +43,7 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
 // ExploreMediaCard 发现页媒体卡片（与「我的书籍」卡片同构）
 function ExploreMediaCard({ book }: { book: Book }) {
   return (
-    <Link href={`/book/${encodeURIComponent(book.slug)}/detail`}
+    <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
       className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
       <div className="flex gap-4">
         <div className="h-32 w-24 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
