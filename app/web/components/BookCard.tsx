@@ -30,7 +30,7 @@ export default function BookCard({ book, href }: { book: Book; href?: string }) 
           <StatusBadge status={book.status} />
         </div>
         <p className="line-clamp-2 min-h-[40px] text-sm text-slate-500">{book.description || '暂无简介'}</p>
-        <TagChips tags={book.tags} max={2} />
+        <TagChips tags={book.tags} max={2} link={false} />
         <div className="mt-auto flex items-center justify-between pt-2 text-xs text-slate-400">
           <span>{book.user?.username || '佚名'}</span>
           <span className="flex gap-3">
