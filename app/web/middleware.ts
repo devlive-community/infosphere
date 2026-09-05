@@ -26,17 +26,21 @@ export async function middleware(req: NextRequest) {
   const installed = await checkInstalled()
   const { pathname } = req.nextUrl
 
+  // standalone 模式下 nextUrl.host 是绑定地址（localhost:6900），
+  // 需从 nginx 的转发头还原对外地址，否则重定向会指向内网
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || req.nextUrl.host
+  const proto = req.headers.get('x-forwarded-proto')?.split(',')[0] || req.nextUrl.protocol.replace(':', '')
+  const external = new URL(`${proto}://${host}`)
+
   if (!installed && pathname !== INSTALL_PATH) {
-    const url = req.nextUrl.clone()
-    url.pathname = INSTALL_PATH
-    url.search = ''
-    return NextResponse.redirect(url)
+    external.pathname = INSTALL_PATH
+    external.search = ''
+    return NextResponse.redirect(external)
   }
   if (installed && pathname === INSTALL_PATH) {
-    const url = req.nextUrl.clone()
-    url.pathname = '/'
-    url.search = ''
-    return NextResponse.redirect(url)
+    external.pathname = '/'
+    external.search = ''
+    return NextResponse.redirect(external)
   }
   return NextResponse.next()
 }
