@@ -27,19 +27,21 @@ interface AppProviderProps {
   children: ReactNode
   /** SSR 页面通过 pageProps 传入的站点配置，避免客户端首屏闪烁 */
   initialSite?: SiteConfig | null
+  /** SSR 页面传入的安装状态（服务端已校验，未安装不会渲染到客户端） */
+  initialInstalled?: boolean | null
 }
 
-export function AppProvider({ children, initialSite }: AppProviderProps) {
+export function AppProvider({ children, initialSite, initialInstalled }: AppProviderProps) {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [authReady, setAuthReady] = useState(false)
-  // SSR 页面携带站点配置说明系统已安装
-  const [installed, setInstalled] = useState<boolean | null>(initialSite ? true : null)
+  // 仅信任 SSR 显式传入的安装状态；客户端页面走 boot 检测
+  const [installed, setInstalled] = useState<boolean | null>(initialInstalled ?? null)
   const [site, setSite] = useState<SiteConfig>(initialSite ?? {})
 
   useEffect(() => {
-    if (initialSite) {
-      // 已由 SSR 注入站点信息，仅补充登录态
+    if (initialInstalled) {
+      // 服务端已确认安装完成，仅补充登录态
       if (getToken()) {
         api<User>('/auth/me').then(setUser).catch(() => clearSession()).finally(() => setAuthReady(true))
       } else {

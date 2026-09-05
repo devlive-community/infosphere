@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom } from '@/lib/server-api'
+import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled } from '@/lib/server-api'
 import { renderMarkdown } from '@/lib/markdown'
 import { useApp } from '@/lib/auth'
 import DocTree from '@/components/DocTree'
@@ -8,6 +8,7 @@ import Seo from '@/components/Seo'
 import type { Book, Document } from '@/lib/types'
 
 interface ReaderProps {
+  installed: boolean
   site: Record<string, string>
   siteUrl: string
   book: Book
@@ -22,6 +23,11 @@ function flatten(docs: Document[]): Document[] {
 }
 
 export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req, query }) => {
+  // 未安装时强制进入安装向导（服务端重定向，不渲染任何内容）
+  if (!(await isInstalled())) {
+    return { redirect: { destination: '/install', permanent: false } }
+  }
+
   const slug = typeof query.slug === 'string' ? query.slug : ''
   const docSlug = typeof query.doc === 'string' ? query.doc : ''
   if (!slug) return { notFound: true }
@@ -37,12 +43,12 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
         ? serverApi<Document>(`/books/${book.id}/documents/slug/${encodeURIComponent(docSlug)}`, { headers: auth })
         : Promise.resolve(null),
     ])
-    return { props: { site, siteUrl: siteUrlFrom(req), book, doc: doc as Document, html: doc ? renderMarkdown(doc.content) : '', tree, needsAuth: false } }
+    return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), book, doc: doc as Document, html: doc ? renderMarkdown(doc.content) : '', tree, needsAuth: false } }
   } catch (e) {
     const status = (e as { status?: number }).status ?? 500
     if (status === 404) return { notFound: true }
     // 401/403：私有内容，交给客户端带令牌重试
-    return { props: { site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, doc: null as unknown as Document, html: '', tree: [], needsAuth: true } }
+    return { props: { installed: true,  site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, doc: null as unknown as Document, html: '', tree: [], needsAuth: true } }
   }
 }
 

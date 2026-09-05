@@ -1,8 +1,26 @@
 package app
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 )
+
+// installGate 未安装时拦截除安装向导外的全部业务 API
+func (a *App) installGate() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if a.Config.Installed || strings.HasPrefix(c.Request.URL.Path, "/api/v1/setup/") {
+			c.Next()
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"code":    "NOT_INSTALLED",
+			"message": "系统尚未安装，请先完成安装向导",
+		})
+	}
+}
 
 // Router 组装全部路由
 func (a *App) Router() *gin.Engine {
@@ -16,7 +34,7 @@ func (a *App) Router() *gin.Engine {
 
 	a.ServeUploads(r)
 
-	api := r.Group("/api/v1")
+	api := r.Group("/api/v1", a.installGate())
 	{
 		// 安装向导
 		api.GET("/setup/status", a.SetupStatus)
