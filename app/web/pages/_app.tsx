@@ -7,8 +7,8 @@ import Seo from '@/components/Seo'
 import type { ReactNode } from 'react'
 import type { SiteConfig } from '@/lib/types'
 
-// 安装向导与登录注册使用独立布局
-const bareRoutes = ['/install', '/login', '/register']
+// 安装向导、登录注册与全屏编辑器使用独立布局
+const bareRoutes = ['/install', '/login', '/register', '/book/writer']
 
 // 无 SEO 价值的交互页统一 noindex
 const noindexRoutes = ['/books', '/book/writer', '/user/profile', '/user/security', '/admin']

@@ -97,6 +97,8 @@ type Document struct {
 	UserID    uint       `gorm:"index;not null" json:"user_id"`
 	SortOrder int        `gorm:"default:0" json:"sort_order"`
 	Status    string     `gorm:"size:20;default:draft;index" json:"status"`
+	// 公开后允许评论；指针型保证显式 false 能写入（列默认 true）
+	AllowComments *bool      `gorm:"default:true" json:"allow_comments"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 	Children  []*Document `gorm:"-" json:"children,omitempty"`

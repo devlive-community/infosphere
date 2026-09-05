@@ -52,6 +52,7 @@ export interface Document {
   user_id: number
   sort_order: number
   status: BookStatus
+  allow_comments?: boolean | null
   created_at: string
   updated_at: string
   children?: Document[]

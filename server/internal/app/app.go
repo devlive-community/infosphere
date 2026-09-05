@@ -6,6 +6,7 @@ import (
 
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/database"
+	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -27,6 +28,10 @@ func New(cfg *config.Config) (*App, error) {
 		}
 		if err := database.Ping(db); err != nil {
 			return nil, fmt.Errorf("数据库连接失败: %w", err)
+		}
+		// 已安装的库也要执行迁移：版本升级新增字段/表时自动补齐（幂等）
+		if err := models.All(db); err != nil {
+			return nil, fmt.Errorf("数据库迁移失败: %w", err)
 		}
 		a.DB = db
 	}

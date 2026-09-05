@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes, ReactNode } from 'react'
+import { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes, ReactNode, forwardRef } from 'react'
 
 // 输入类控件的基础样式：无 focus 外圈阴影，仅边框颜色变化
 const controlClass =
@@ -12,10 +12,12 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
   return <input className={`h-10 ${controlClass} ${className || ''}`.trim()} {...rest} />
 }
 
-// Textarea 通用多行文本域
-export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={`min-h-[96px] py-2.5 ${controlClass} ${className || ''}`.trim()} {...rest} />
-}
+// Textarea 通用多行文本域（forwardRef 供编辑器操作选区）
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  function Textarea({ className, ...rest }, ref) {
+    return <textarea ref={ref} className={`py-2.5 ${controlClass} ${className || ''}`.trim()} {...rest} />
+  },
+)
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   options: { value: string; label: string }[]

@@ -55,12 +55,13 @@ func buildDocTree(docs []models.Document, parent *uint) []*models.Document {
 }
 
 type documentPayload struct {
-	Title     *string `json:"title"`
-	Slug      *string `json:"slug"`
-	Content   *string `json:"content"`
-	ParentID  *uint   `json:"parent_id"`
-	SortOrder *int    `json:"sort_order"`
-	Status    *string `json:"status"`
+	Title         *string `json:"title"`
+	Slug          *string `json:"slug"`
+	Content       *string `json:"content"`
+	ParentID      *uint   `json:"parent_id"`
+	SortOrder     *int    `json:"sort_order"`
+	Status        *string `json:"status"`
+	AllowComments *bool   `json:"allow_comments"`
 }
 
 // CreateDocument POST /books/:id/documents
@@ -104,6 +105,11 @@ func (a *App) CreateDocument(c *gin.Context) {
 		Status:  statusStr,
 		Content: "",
 	}
+	defaultOn := true
+	doc.AllowComments = &defaultOn
+	if req.AllowComments != nil {
+		doc.AllowComments = req.AllowComments
+	}
 	if req.ParentID != nil {
 		doc.ParentID = req.ParentID
 	}
@@ -112,6 +118,9 @@ func (a *App) CreateDocument(c *gin.Context) {
 	}
 	if req.SortOrder != nil {
 		doc.SortOrder = *req.SortOrder
+	}
+	if req.AllowComments != nil {
+		doc.AllowComments = req.AllowComments
 	}
 
 	slug := ""
@@ -234,6 +243,9 @@ func (a *App) UpdateDocument(c *gin.Context) {
 	}
 	if req.SortOrder != nil {
 		doc.SortOrder = *req.SortOrder
+	}
+	if req.AllowComments != nil {
+		doc.AllowComments = req.AllowComments
 	}
 	if req.Status != nil && docStatuses[*req.Status] {
 		doc.Status = *req.Status

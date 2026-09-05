@@ -151,7 +151,7 @@ Authorization: Bearer <token>
 | PUT | `/documents/:id` | 更新（title/content/parent_id/sort_order/status/slug；防环校验） | `document:update` |
 | DELETE | `/documents/:id` | 删除文档及其子树 | `document:delete` |
 
-文档字段：`id, book_id, parent_id, title, slug, content( markdown), user_id, sort_order, status, created_at, updated_at, children`
+文档字段：`id, book_id, parent_id, title, slug, content( markdown), user_id, sort_order, status, allow_comments(公开后允许评论，默认 true), created_at, updated_at, children`；创建/更新请求体同样接受 `allow_comments`
 
 ## 标签
 
