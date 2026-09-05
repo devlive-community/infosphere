@@ -26,10 +26,11 @@ export default function EditBook() {
 
   return (
     <Container>
-      <div>
-      <h1 className="mb-6 text-xl font-bold text-slate-900">书籍设置</h1>
       <BookForm
         initial={book}
+        heading="书籍设置"
+        subheading="调整书籍的基本信息、封面与发布方式。"
+        breadcrumb={book.title}
         submitLabel="保存设置"
         onSubmit={async (payload) => {
           delete payload.slug
@@ -37,7 +38,6 @@ export default function EditBook() {
           router.push(`/book/detail?slug=${encodeURIComponent(book.slug)}`)
         }}
       />
-    </div>
     </Container>
   )
 }
