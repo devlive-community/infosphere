@@ -449,7 +449,7 @@ export default function Writer() {
                   )}
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2"
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-3 pb-2"
                 onClick={(e) => { if (e.target === e.currentTarget) deselect() }}>
                 {filteredTree.length === 0 ? (
                   <EmptyState>{search ? '没有匹配的章节' : '暂无章节'}</EmptyState>
@@ -646,7 +646,7 @@ interface TreeProps {
 // TreeItems 章节树：文件夹/文件图标、展开折叠、搜索过滤、行内菜单、同级拖拽排序
 function TreeItems(props: TreeProps) {
   return (
-    <ul className="space-y-0.5">
+    <ul className="min-w-max space-y-0.5">
       {props.items.map((item) => <TreeItem key={item.id} {...props} item={item} depth={0} />)}
     </ul>
   )
@@ -698,11 +698,11 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
           <span className="ml-1 w-5 shrink-0" />
         )}
         <button type="button" onClick={() => onSelect(item.slug)}
-          className="flex min-w-0 flex-1 items-center gap-1.5 py-2 pl-1 pr-1 text-left">
+          className="flex flex-1 items-center gap-1.5 py-2 pl-1 pr-1 text-left">
           {hasChildren
             ? <FolderIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />
             : <FileTextIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />}
-          <span className={`truncate ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
+          <span className={`whitespace-nowrap ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
         </button>
         <span className="mr-1 hidden shrink-0 items-center group-hover:flex">
           <span className={`flex h-6 w-6 items-center justify-center rounded text-slate-400 ${dragEnabled ? 'cursor-grab hover:bg-slate-200 hover:text-slate-700' : 'cursor-default'}`} title={dragEnabled ? '拖拽调整顺序' : ''}><GripIcon className="h-4 w-4" /></span>
@@ -720,7 +720,7 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
         )}
       </div>
       {hasChildren && isExpanded && (
-        <ul className={depth < 6 ? 'ml-4 border-l border-slate-200 pl-1' : ''}>
+        <ul className="ml-4 border-l border-slate-200 pl-1">
           {item.children!.map((child) => (
             <TreeItem key={child.id} {...props} item={child} depth={depth + 1} />
           ))}
