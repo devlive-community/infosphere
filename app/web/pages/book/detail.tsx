@@ -5,6 +5,7 @@ import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isI
 import { useApp } from '@/lib/auth'
 import { StatusBadge } from '@/components/BookCard'
 import { ButtonLink } from '@/components/ui'
+import UserAvatar from '@/components/UserAvatar'
 import { EyeIcon } from '@/components/icons'
 import TagChips from '@/components/TagChips'
 import DocTree from '@/components/DocTree'
@@ -124,9 +125,7 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
           <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-4 text-sm text-slate-500">
             {book.user && (
               <Link href={`/user/home?username=${encodeURIComponent(book.user.username)}`} className="flex items-center gap-2 hover:text-primary-600">
-                {book.user.avatar
-                  ? <img src={book.user.avatar} alt={book.user.username} className="h-6 w-6 rounded-full object-cover" />
-                  : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-500 text-xs font-bold text-white">{book.user.username[0]?.toUpperCase()}</span>}
+                <UserAvatar user={book.user} size="h-6 w-6" />
                 {book.user.username}
               </Link>
             )}

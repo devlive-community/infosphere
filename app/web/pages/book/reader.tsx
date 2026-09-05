@@ -5,6 +5,7 @@ import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isI
 import { renderMarkdown, extractHeadings } from '@/lib/markdown'
 import { API_BASE, formatDate } from '@/lib/api'
 import Seo from '@/components/Seo'
+import UserAvatar from '@/components/UserAvatar'
 import { ButtonLink } from '@/components/ui'
 import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
 import type { Book, Document, User } from '@/lib/types'
@@ -29,13 +30,7 @@ function AuthorAvatars({ users }: { users: { username: string; avatar?: string }
   return (
     <span className="flex items-center gap-1">
       {users.map((u) => (
-        <Link key={u.username} href={`/user/home?username=${encodeURIComponent(u.username)}`}
-          title={u.username}
-          className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full ring-1 ring-white transition-transform hover:scale-110">
-          {u.avatar
-            ? <img src={u.avatar.startsWith('/') ? u.avatar : u.avatar} alt={u.username} className="h-full w-full object-cover" />
-            : <span className="flex h-full w-full items-center justify-center bg-primary-500 text-[10px] font-bold text-white">{u.username.slice(0, 1).toUpperCase()}</span>}
-        </Link>
+        <UserAvatar key={u.username} user={u} size="h-6 w-6" className="ring-1 ring-white transition-transform hover:scale-110" />
       ))}
     </span>
   )
@@ -160,6 +155,8 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
             {siteName}
           </Link>
           <span className="text-slate-300">/</span>
+          <span className="max-w-[220px] truncate font-medium text-slate-900">{book.title}</span>
+          <span className="text-slate-300">/</span>
           <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`}
             className="flex shrink-0 items-center gap-1 text-slate-500 hover:text-primary-600">
             <ChevronRightIcon className="h-4 w-4 rotate-180" /> 返回书籍
@@ -219,9 +216,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
                   {parentDoc && <div className="mb-1 text-sm font-medium text-primary-600">{chapterPrefix}{parentDoc.title}</div>}
                   <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">{doc.title}</h1>
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-400">
-                    {authorAvatar
-                      ? <img src={authorAvatar} alt="" className="h-6 w-6 rounded-full object-cover" />
-                      : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500">{(author?.username || '?').slice(0, 1)}</span>}
+                    <UserAvatar user={author} size="h-6 w-6" />
                     <span className="text-slate-600">{author?.username || '佚名'}</span>
                     <span>· 更新于 {formatDate(doc.updated_at).slice(0, 10)}</span>
                     <span>· 阅读 {readingMin} 分钟</span>

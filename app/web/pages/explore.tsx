@@ -3,6 +3,7 @@ import Container from '@/components/Container'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, siteUrlFrom } from '@/lib/server-api'
 import TagChips from '@/components/TagChips'
+import UserAvatar from '@/components/UserAvatar'
 import { EyeIcon } from '@/components/icons'
 import { Button, Input, Pagination } from '@/components/ui'
 import { formatDate } from '@/lib/api'
@@ -55,9 +56,7 @@ function ExploreMediaCard({ book }: { book: Book }) {
           <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
           <div className="mt-1.5"><TagChips tags={book.tags} max={3} link={false} /></div>
           <div className="mt-auto flex items-center gap-2 pt-2 text-xs text-slate-400">
-            {book.user?.avatar
-              ? <img src={book.user.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
-              : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-500 text-[10px] font-bold text-white">{book.user?.username?.[0]?.toUpperCase() || '?'}</span>}
+            <UserAvatar user={book.user} size="h-5 w-5" />
             <span>{book.user?.username || '佚名'}</span>
             <span>·</span>
             <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {book.view_count}</span>

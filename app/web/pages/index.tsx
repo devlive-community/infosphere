@@ -5,6 +5,7 @@ import { formatDate, formatNumber } from '@/lib/api'
 import { ButtonLink, EmptyState } from '@/components/ui'
 import HeroIllustration, { HotRankCard } from '@/components/HeroIllustration'
 import Seo from '@/components/Seo'
+import UserAvatar from '@/components/UserAvatar'
 import Container from '@/components/Container'
 import TagChips from '@/components/TagChips'
 import { API_BASE } from '@/lib/api'
@@ -62,9 +63,7 @@ function LatestCard({ book }: { book: Book }) {
         <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
         <div className="mt-2"><TagChips tags={book.tags} max={2} link={false} /></div>
         <div className="mt-auto flex items-center gap-2 pt-3 text-xs text-slate-400">
-          {book.user?.avatar
-            ? <img src={book.user.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
-            : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-500 text-[10px] font-bold text-white">{book.user?.username?.[0]?.toUpperCase() || '?'}</span>}
+          <UserAvatar user={book.user} size="h-5 w-5" />
           <span>{book.user?.username || '佚名'}</span>
           <span>·</span>
           <span>{formatDate(book.created_at).slice(0, 10)}</span>
