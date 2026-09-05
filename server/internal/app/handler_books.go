@@ -81,29 +81,6 @@ func (a *App) ListBooks(c *gin.Context) {
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }
 
-// BookSummary GET /books/summary 当前用户书籍统计
-func (a *App) BookSummary(c *gin.Context) {
-	u := currentUser(c)
-	type row struct {
-		Status string
-		Count  int64
-		Views  int64
-	}
-	var rows []row
-	a.DB.Model(&models.Book{}).
-		Select("status, COUNT(*) as count, COALESCE(SUM(view_count), 0) as views").
-		Where("user_id = ?", u.ID).
-		Group("status").Scan(&rows)
-
-	summary := gin.H{"total_books": 0, "total_views": 0, "published": gin.H{"count": 0, "views": 0}, "draft": gin.H{"count": 0, "views": 0}, "archived": gin.H{"count": 0, "views": 0}}
-	for _, r := range rows {
-		summary["total_books"] = summary["total_books"].(int64) + r.Count
-		summary["total_views"] = summary["total_views"].(int64) + r.Views
-		summary[r.Status] = gin.H{"count": r.Count, "views": r.Views}
-	}
-	ok(c, summary)
-}
-
 type bookPayload struct {
 	Title         *string `json:"title"`
 	Description   *string `json:"description"`
