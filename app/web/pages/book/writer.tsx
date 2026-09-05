@@ -24,6 +24,13 @@ interface BookFormState {
   chapterPrefix: string
 }
 
+// 状态视觉：草稿=绿（对齐原型），已发布=品牌蓝，已归档=灰
+const STATUS_META: Record<BookStatus, { label: string; tone: 'emerald' | 'primary' | 'slate'; dot: string }> = {
+  draft: { label: '草稿', tone: 'emerald', dot: 'bg-emerald-500' },
+  published: { label: '已发布', tone: 'primary', dot: 'bg-primary-500' },
+  archived: { label: '已归档', tone: 'slate', dot: 'bg-slate-400' },
+}
+
 // Writer：书籍与章节编辑器（三栏工作台布局）
 export default function Writer() {
   const user = useRequireAuth()
@@ -41,6 +48,8 @@ export default function Writer() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [menuFor, setMenuFor] = useState<number | null>(null)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
+  const [dragId, setDragId] = useState<number | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'after' } | null>(null)
   const [preview, setPreview] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [message, setMessage] = useState('')
@@ -200,6 +209,26 @@ export default function Writer() {
     await loadTree(book)
   }
 
+  // 拖拽排序：仅在同一父级的兄弟节点之间重排，落库时重排该层的 sort_order
+  async function reorderSibling(dragDocId: number, targetId: number, pos: 'before' | 'after') {
+    if (!book || dragDocId === targetId) return
+    const drag = flatDocs.find((d) => d.id === dragDocId)
+    const target = flatDocs.find((d) => d.id === targetId)
+    if (!drag || !target) return
+    if ((drag.parent_id ?? null) !== (target.parent_id ?? null)) return // 仅支持同级重排
+    const parent = drag.parent_id ?? null
+    const siblings = (parent === null ? tree : flatDocs.find((d) => d.id === parent)?.children || []).slice()
+    const without = siblings.filter((d) => d.id !== dragDocId)
+    const idx = without.findIndex((d) => d.id === targetId)
+    if (idx < 0) return
+    without.splice(pos === 'before' ? idx : idx + 1, 0, drag)
+    const writes = without
+      .map((d, i) => (d.sort_order === i ? null : api(`/documents/${d.id}`, { method: 'PUT', body: { sort_order: i } })))
+      .filter(Boolean) as Promise<unknown>[]
+    if (writes.length) await Promise.all(writes)
+    await loadTree(book)
+  }
+
   function createNew(asChild: boolean) {
     if (asChild && current) { setParentId(String(current.id)); setStatus('draft') }
     else { setParentId('') }
@@ -260,6 +289,7 @@ export default function Writer() {
   const parentCandidates = flatDocs.filter((d) => !current || (d.id !== current.id && !isDescendantOf(d, current.id)))
   const parentDoc = parentId ? flatDocs.find((d) => String(d.id) === parentId) : null
   const wordCount = content.replace(/\s/g, '').length
+  const dragParentId = dragId != null ? flatDocs.find((d) => d.id === dragId)?.parent_id ?? null : null
 
   if (!book) {
     return (
@@ -312,7 +342,7 @@ export default function Writer() {
             </div>
             <div className="min-w-0">
               <div className="truncate font-semibold text-slate-900">{book.title}</div>
-              <div className="mt-1"><Badge tone={book.status === 'published' ? 'emerald' : 'amber'}>{book.status === 'published' ? '已发布' : book.status === 'draft' ? '草稿' : '已归档'}</Badge></div>
+              <div className="mt-1"><Badge tone={STATUS_META[book.status].tone}>{STATUS_META[book.status].label}</Badge></div>
             </div>
           </div>
 
@@ -356,7 +386,12 @@ export default function Writer() {
                   <TreeItems items={filteredTree} search={search.trim()} expanded={expanded} setExpanded={setExpanded}
                     currentId={current?.id} chapterPrefix={chapterPrefix}
                     onSelect={selectDoc} onMove={move} onDelete={removeDoc}
-                    menuFor={menuFor} setMenuFor={setMenuFor} />
+                    menuFor={menuFor} setMenuFor={setMenuFor}
+                    dragEnabled={!search.trim()} dragId={dragId} dragParentId={dragParentId} dropTarget={dropTarget}
+                    onDragStartItem={(d) => setDragId(d.id)}
+                    onDragOverItem={(d, pos) => setDropTarget({ id: d.id, pos })}
+                    onDropItem={(d) => { if (dragId != null && dropTarget) reorderSibling(dragId, d.id, dropTarget.pos); setDragId(null); setDropTarget(null) }}
+                    onDragEndItem={() => { setDragId(null); setDropTarget(null) }} />
                 )}
               </div>
               <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 text-xs text-slate-400">
@@ -368,7 +403,7 @@ export default function Writer() {
               <Field label="书籍标题"><Input value={bookForm.title} onChange={(e) => setBookForm({ ...bookForm, title: e.target.value })} /></Field>
               <Field label="简介"><Textarea className="min-h-[72px]" value={bookForm.description} onChange={(e) => setBookForm({ ...bookForm, description: e.target.value })} /></Field>
               <Field label="状态">
-                <Select value={bookForm.status} onChange={(e) => setBookForm({ ...bookForm, status: e.target.value as BookStatus })}
+                <Select value={bookForm.status} onChange={(v) => setBookForm({ ...bookForm, status: v as BookStatus })}
                   options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }, { value: 'archived', label: '已归档' }]} />
               </Field>
               <Field label="可见性">
@@ -387,7 +422,7 @@ export default function Writer() {
         {/* 中栏：编辑器 */}
         <main className="min-w-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl px-6 py-8">
-            {parentDoc && (
+            {current && parentDoc && (
               <p className="mb-1 text-sm text-slate-400">{chapterPrefix}{parentDoc.title}</p>
             )}
             <Input className="h-auto border-0 bg-transparent px-0 text-3xl font-bold text-ink placeholder:text-slate-300 focus:outline-none"
@@ -436,15 +471,13 @@ export default function Writer() {
           <div className="space-y-4">
             <Field label="发布状态">
               <div className="relative">
-                <span className={`pointer-events-none absolute left-3.5 top-1/2 z-10 h-2 w-2 -translate-y-1/2 rounded-full ${
-                  status === 'published' ? 'bg-emerald-500' : status === 'archived' ? 'bg-slate-400' : 'bg-amber-500'
-                }`} />
-                <Select className="pl-0" value={status} onChange={(e) => setStatus(e.target.value as BookStatus)}
+                <span className={`pointer-events-none absolute left-3.5 top-1/2 z-10 h-2 w-2 -translate-y-1/2 rounded-full ${STATUS_META[status].dot}`} />
+                <Select className="pl-0" value={status} onChange={(v) => setStatus(v as BookStatus)}
                   options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }, { value: 'archived', label: '已归档' }]} />
               </div>
             </Field>
             <Field label="父级章节">
-              <Select value={parentId} onChange={(e) => setParentId(e.target.value)}
+              <Select value={parentId} onChange={(v) => setParentId(v)}
                 options={[{ value: '', label: '作为顶级章节' }, ...parentCandidates.map((d) => ({ value: String(d.id), label: `${chapterPrefix}${d.title}` }))]} />
             </Field>
             <Field label="排序">
@@ -461,9 +494,9 @@ export default function Writer() {
 
           <div className="mt-6 border-t border-slate-100 pt-5">
             <h3 className="mb-3 font-semibold text-slate-900">本章信息</h3>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between"><dt className="text-slate-400">创建时间</dt><dd>{current ? formatDate(current.created_at) : '-'}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-400">更新时间</dt><dd>{current ? formatDate(current.updated_at) : '-'}</dd></div>
+            <dl className="space-y-3 text-sm">
+              <div><dt className="text-slate-400">创建时间</dt><dd className="mt-0.5 text-slate-700">{current ? formatDate(current.created_at) : '-'}</dd></div>
+              <div><dt className="text-slate-400">更新时间</dt><dd className="mt-0.5 text-slate-700">{current ? formatDate(current.updated_at) : '-'}</dd></div>
             </dl>
           </div>
 
@@ -527,9 +560,17 @@ interface TreeProps {
   onDelete: (doc: Document) => void
   menuFor: number | null
   setMenuFor: (id: number | null) => void
+  dragEnabled: boolean
+  dragId: number | null
+  dragParentId: number | null
+  dropTarget: { id: number; pos: 'before' | 'after' } | null
+  onDragStartItem: (doc: Document) => void
+  onDragOverItem: (doc: Document, pos: 'before' | 'after') => void
+  onDropItem: (doc: Document) => void
+  onDragEndItem: () => void
 }
 
-// TreeItems 章节树：文件夹/文件图标、展开折叠、搜索过滤、行内菜单
+// TreeItems 章节树：文件夹/文件图标、展开折叠、搜索过滤、行内菜单、同级拖拽排序
 function TreeItems(props: TreeProps) {
   return (
     <ul className="space-y-0.5">
@@ -538,15 +579,34 @@ function TreeItems(props: TreeProps) {
   )
 }
 
-function TreeItem({ item, depth, search, expanded, setExpanded, currentId, chapterPrefix, onSelect, onMove, onDelete, menuFor, setMenuFor }: TreeProps & { item: Document; depth: number }) {
+function TreeItem(props: TreeProps & { item: Document; depth: number }) {
+  const {
+    item, depth, search, expanded, currentId, chapterPrefix, onSelect, onMove, onDelete, menuFor, setMenuFor,
+    dragEnabled, dragId, dragParentId, dropTarget, onDragStartItem, onDragOverItem, onDropItem, onDragEndItem,
+  } = props
   const hasChildren = !!item.children?.length
   const isExpanded = search !== '' || expanded.has(item.id)
   const active = currentId === item.id
+  const dragging = dragId === item.id
+  const dropHere = dropTarget?.id === item.id
 
   return (
     <li>
-      <div className={`group relative flex items-center rounded-lg text-sm ${active ? 'bg-primary-50 ring-1 ring-inset ring-primary-100' : 'hover:bg-slate-50'}`}>
+      <div
+        draggable={dragEnabled}
+        onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStartItem(item) }}
+        onDragEnd={onDragEndItem}
+        onDragOver={(e) => {
+          if (!dragEnabled || dragId == null || dragId === item.id) return
+          if ((item.parent_id ?? null) !== dragParentId) return // 仅同级可放置
+          e.preventDefault()
+          const rect = e.currentTarget.getBoundingClientRect()
+          onDragOverItem(item, e.clientY < rect.top + rect.height / 2 ? 'before' : 'after')
+        }}
+        onDrop={(e) => { e.preventDefault(); onDropItem(item) }}
+        className={`group relative flex items-center rounded-lg text-sm ${active ? 'bg-primary-50 ring-1 ring-inset ring-primary-100' : 'hover:bg-slate-50'} ${dragging ? 'opacity-40' : ''}`}>
         {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-0.5 rounded-full bg-primary-500" />}
+        {dropHere && <span className={`pointer-events-none absolute inset-x-1.5 z-10 h-0.5 rounded-full bg-primary-500 ${dropTarget!.pos === 'before' ? 'top-0' : 'bottom-0'}`} />}
         <button type="button" onClick={() => onSelect(item.slug)}
           className="flex min-w-0 flex-1 items-center gap-1.5 py-2 pl-2 pr-1 text-left">
           <span className="w-4 shrink-0 text-slate-400">
@@ -560,7 +620,7 @@ function TreeItem({ item, depth, search, expanded, setExpanded, currentId, chapt
           <span className={`truncate ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
         </button>
         <span className="mr-1 hidden shrink-0 items-center group-hover:flex">
-          <span className="cursor-grab text-slate-300"><GripIcon className="h-4 w-4" /></span>
+          <span className={`text-slate-300 ${dragEnabled ? 'cursor-grab' : 'cursor-default'}`} title={dragEnabled ? '拖拽调整顺序' : ''}><GripIcon className="h-4 w-4" /></span>
           <button aria-label="章节操作" onClick={() => setMenuFor(menuFor === item.id ? null : item.id)}
             className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700">
             <MoreIcon className="h-4 w-4" />
@@ -577,7 +637,7 @@ function TreeItem({ item, depth, search, expanded, setExpanded, currentId, chapt
       {hasChildren && isExpanded && (
         <ul className="ml-5 border-l border-slate-200 pl-1">
           {item.children!.map((child) => (
-            <TreeItem key={child.id} {...{ items: [], search, expanded, setExpanded, currentId, chapterPrefix, onSelect, onMove, onDelete, menuFor, setMenuFor }} item={child} depth={depth + 1} />
+            <TreeItem key={child.id} {...props} item={child} depth={depth + 1} />
           ))}
         </ul>
       )}

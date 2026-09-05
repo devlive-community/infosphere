@@ -77,7 +77,7 @@ export default function BookForm({ initial, submitLabel, onSubmit }: BookFormPro
             <Field label="状态">
               <Select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as BookStatus)}
+                onChange={(v) => setStatus(v as BookStatus)}
                 options={[
                   { value: 'draft', label: '草稿' },
                   { value: 'published', label: '已发布' },
