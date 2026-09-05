@@ -2,6 +2,8 @@
 bin/
 out/
 dist/
+!app/desktop/dist/
+!app/desktop/dist/**
 target/
 build/
 
@@ -48,3 +50,7 @@ bin/
 
 # 本地散落产物
 *.bak
+.CodeX
+!.Codex/
+!.Codex/**
+.CodeX

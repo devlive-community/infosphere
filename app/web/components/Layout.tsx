@@ -67,8 +67,8 @@ export default function Layout({ title, children }: { title?: string; children: 
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-slate-900">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500 text-white">iS</span>
+            <Link href="/" className="flex items-center gap-2.5 text-lg font-bold text-slate-900">
+              <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
               {siteName}
             </Link>
             <nav className="hidden items-center gap-4 text-sm text-slate-600 md:flex">

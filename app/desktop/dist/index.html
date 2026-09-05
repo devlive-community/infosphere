@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>InfoSphere 桌面端</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(160deg, #eef4ff 0%, #f8fafc 60%); color: #1e293b;
+    }
+    .card { width: 420px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+            padding: 40px 36px; box-shadow: 0 12px 32px rgba(59, 111, 240, .08); }
+    .logo { width: 64px; height: 64px; object-fit: contain; margin: 0 auto 16px; display: block; }
+    h1 { font-size: 20px; text-align: center; margin-bottom: 6px; }
+    p.desc { font-size: 13px; color: #64748b; text-align: center; margin-bottom: 24px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    input { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px;
+            font-size: 14px; outline: none; }
+    input:focus { border-color: #3b6ff0; box-shadow: 0 0 0 3px rgba(59, 111, 240, .15); }
+    button { width: 100%; margin-top: 16px; background: #3b6ff0; color: #fff; border: 0;
+             border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: default; }
+    button.link { background: none; color: #94a3b8; margin-top: 10px; font-size: 12px; }
+    button.link:hover { color: #3b6ff0; }
+    .error { display: none; margin-top: 14px; background: #fef2f2; color: #dc2626;
+             border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+    .hint { margin-top: 20px; font-size: 12px; color: #94a3b8; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="logo.png" alt="InfoSphere" />
+    <h1>连接 InfoSphere 服务器</h1>
+    <p class="desc">输入自托管的 InfoSphere 服务地址（默认端口 6969）</p>
+    <form id="form">
+      <label for="url">服务器地址</label>
+      <input id="url" placeholder="例如 http://192.168.1.10:6969" autofocus />
+      <button id="btn" type="submit">连 接</button>
+    </form>
+    <div class="error" id="error"></div>
+    <button class="link" id="reset">清除已保存的服务器</button>
+    <p class="hint">尚未部署服务器？在服务器上运行 InfoSphere 单文件二进制后，<br/>使用此处地址即可接入，数据始终保存在你自己的服务器上。</p>
+  </div>
+
+  <script>
+    const invoke = window.__TAURI__ ? window.__TAURI__.core.invoke : null
+
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const btn = document.getElementById('btn')
+      const error = document.getElementById('error')
+      error.style.display = 'none'
+      btn.disabled = true
+      btn.textContent = '连接中…'
+      try {
+        await invoke('save_server_url', { url: document.getElementById('url').value })
+      } catch (err) {
+        error.textContent = String(err)
+        error.style.display = 'block'
+      } finally {
+        btn.disabled = false
+        btn.textContent = '连 接'
+      }
+    })
+
+    document.getElementById('reset').addEventListener('click', () => invoke('reset_server'))
+  </script>
+</body>
+</html>

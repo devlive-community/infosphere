@@ -119,6 +119,7 @@ export default function Install() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-50 to-slate-50 px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-6 text-center">
+          <img src="/logo.png" alt="InfoSphere" className="mx-auto mb-3 h-16 w-16 object-contain" />
           <h1 className="text-2xl font-bold text-slate-900">欢迎使用 InfoSphere</h1>
           <p className="mt-1 text-sm text-slate-500">安装向导将帮助你完成数据库与站点初始化（{step}/2）</p>
         </div>
