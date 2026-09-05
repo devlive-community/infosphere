@@ -56,7 +56,12 @@ func Open(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		if path == "" {
 			path = "./data/infosphere.db"
 		}
-		return gorm.Open(sqlite.Open(path+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"), &gorm.Config{})
+		db, err := gorm.Open(sqlite.Open(path+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"), &gorm.Config{})
+		if err != nil {
+			// 纯 Go SQLite 驱动把"无法打开文件"(14) 误报为 out of memory，翻译成人话
+			return nil, fmt.Errorf("无法打开 SQLite 数据库文件 %s: %w（通常为目录不存在或无写入权限）", path, err)
+		}
+		return db, nil
 	case TypeMySQL:
 		return gorm.Open(mysql.Open(mysqlDSN(cfg)), &gorm.Config{})
 	case TypePostgres:

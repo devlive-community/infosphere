@@ -1,8 +1,8 @@
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import { api, storeSession } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Button, Input, Field } from '@/components/ui'
-import type { DatabasePayload, User } from '@/lib/types'
+import type { DatabasePayload, SetupStatus, User } from '@/lib/types'
 
 const dbTypes = [
   { key: 'sqlite' as const, name: 'SQLite', desc: '零配置嵌入式数据库，默认推荐。数据存储在本地文件中，适合个人与中小型部署。' },
@@ -24,7 +24,14 @@ export default function Install() {
   const [done, setDone] = useState(false)
 
   const [dbType, setDbType] = useState<'sqlite' | 'mysql' | 'postgres'>('sqlite')
-  const [db, setDb] = useState({ host: '127.0.0.1', port: '', name: 'infosphere', user: 'root', password: '', path: 'data/infosphere.db' })
+  const [db, setDb] = useState({ host: '127.0.0.1', port: '', name: 'infosphere', user: 'root', password: '', path: '' })
+  const [sqliteDefaultPath, setSqliteDefaultPath] = useState('')
+
+  useEffect(() => {
+    api<SetupStatus>('/setup/status')
+      .then((s) => setSqliteDefaultPath(s.sqlite_default_path || ''))
+      .catch(() => {})
+  }, [])
   const [site, setSite] = useState({ name: '', description: '' })
   const [admin, setAdmin] = useState({ username: '', email: '', password: '', confirm: '' })
 
@@ -42,7 +49,7 @@ export default function Install() {
   const dbPayload = (): DatabasePayload => {
     const payload: DatabasePayload = { type: dbType }
     if (dbType === 'sqlite') {
-      payload.path = db.path
+      payload.path = db.path.trim() || undefined
     } else {
       payload.host = db.host
       payload.port = db.port ? Number(db.port) : undefined
@@ -137,8 +144,13 @@ export default function Install() {
 
               {dbType === 'sqlite' ? (
                 <div className="mt-4">
-                  <label className="label">数据库文件路径（相对或绝对路径）</label>
-                  <Input value={db.path} onChange={(e) => setDb({ ...db, path: e.target.value })} placeholder="data/infosphere.db" />
+                  <label className="label">数据库文件路径（可选）</label>
+                  <Input value={db.path} onChange={(e) => setDb({ ...db, path: e.target.value })}
+                    placeholder={sqliteDefaultPath || 'data/infosphere.db'} />
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    留空使用服务器数据目录下的默认位置{sqliteDefaultPath ? `：${sqliteDefaultPath}` : ''}。
+                    相对路径将基于数据目录解析；自定义路径需保证服务运行账户可写。
+                  </p>
                 </div>
               ) : (
                 <div className="mt-4 grid grid-cols-2 gap-3">

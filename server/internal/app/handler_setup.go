@@ -41,9 +41,11 @@ type installRequest struct {
 // SetupStatus GET /setup/status
 func (a *App) SetupStatus(c *gin.Context) {
 	resp := gin.H{
-		"installed": a.Config.Installed,
-		"version":   Version,
-		"db_types":  database.SupportedTypes(),
+		"installed":           a.Config.Installed,
+		"version":             Version,
+		"db_types":            database.SupportedTypes(),
+		"data_dir":            config.DataDir(),
+		"sqlite_default_path": filepath.Join(config.DataDir(), "infosphere.db"),
 	}
 	if a.Config.Installed {
 		resp["db_type"] = a.Config.Database.Type
@@ -184,11 +186,22 @@ func normalizeDBConfig(cfg *config.DatabaseConfig) error {
 	case database.TypeSQLite:
 		if cfg.Path == "" {
 			cfg.Path = filepath.Join(config.DataDir(), "infosphere.db")
+		} else if !filepath.IsAbs(cfg.Path) {
+			// 相对路径统一解析到数据目录，不受进程工作目录影响
+			cfg.Path = filepath.Join(config.DataDir(), cfg.Path)
 		}
 		if dir := filepath.Dir(cfg.Path); dir != "." && dir != "" {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return fmt.Errorf("无法创建数据库目录: %w", err)
+				return fmt.Errorf("数据库目录 %s 无法创建或不可写: %w", dir, err)
 			}
+			// 实际写探测：systemd 沙箱（ProtectSystem=strict）下即使目录权限为 777 也会写入失败
+			probe := filepath.Join(dir, ".infosphere-write-probe")
+			if err := os.WriteFile(probe, []byte("ok"), 0o600); err != nil {
+				return fmt.Errorf(
+					"数据库目录 %s 不可写（服务账户无权限或被部署沙箱限制）。请使用数据目录内的路径，例如 %s",
+					dir, filepath.Join(config.DataDir(), "infosphere.db"))
+			}
+			_ = os.Remove(probe)
 		}
 	case database.TypeMySQL, database.TypePostgres:
 		if cfg.Host == "" {

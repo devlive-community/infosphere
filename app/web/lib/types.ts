@@ -61,6 +61,8 @@ export interface SetupStatus {
   version: string
   db_types: ('sqlite' | 'mysql' | 'postgres')[]
   db_type?: string
+  data_dir?: string
+  sqlite_default_path?: string
 }
 
 export interface PageResult<T> {
