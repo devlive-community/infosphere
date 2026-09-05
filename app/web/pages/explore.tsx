@@ -56,7 +56,7 @@ function ExploreMediaCard({ book }: { book: Book }) {
           <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
           <div className="mt-1.5"><TagChips tags={book.tags} max={3} link={false} /></div>
           <div className="mt-auto flex items-center gap-2 pt-2 text-xs text-slate-400">
-            <UserAvatar user={book.user} size="h-5 w-5" />
+            <UserAvatar user={book.user} size="h-5 w-5" link={false} />
             <span>{book.user?.username || '佚名'}</span>
             <span>·</span>
             <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {book.view_count}</span>
