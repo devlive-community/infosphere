@@ -32,7 +32,7 @@ export default function Writer() {
   const flatDocs = useMemo(() => flatten(tree), [tree])
 
   const loadTree = useCallback(async (b: Book) => {
-    setTree(await api<Document[]>(`/books/${b.id}/documents`))
+    setTree((await api<Document[]>(`/books/${b.id}/documents`)) || [])
   }, [])
 
   useEffect(() => {
@@ -222,6 +222,6 @@ export default function Writer() {
   )
 }
 
-function flatten(docs: Document[]): Document[] {
-  return docs.flatMap((d) => [d, ...flatten(d.children || [])])
+function flatten(docs: Document[] | null | undefined): Document[] {
+  return (docs || []).flatMap((d) => [d, ...flatten(d.children)])
 }

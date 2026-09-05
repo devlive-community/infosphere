@@ -65,14 +65,14 @@ export default function Explore({ site, siteUrl, keyword, tag, page, data }: Inf
         </form>
       </div>
 
-      {data.items.length === 0 ? (
+      {(data.items || []).length === 0 ? (
         <p className="py-20 text-center text-slate-400">
           {keyword ? '没有找到相关书籍' : '还没有公开的书籍，创建一本吧！'}
         </p>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.items.map((b) => <BookCard key={b.id} book={b} />)}
+            {(data.items || []).map((b) => <BookCard key={b.id} book={b} />)}
           </div>
           <Pagination page={data.page} pageSize={data.page_size} total={data.total}
             onChange={(p) => { window.location.search = p > 1 ? `?page=${p}${keyword ? `&title=${encodeURIComponent(keyword)}` : ''}` : (keyword ? `?title=${encodeURIComponent(keyword)}` : '') }} />

@@ -70,7 +70,7 @@ func (a *App) ListBooks(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
 	}
-	var books []models.Book
+	books := []models.Book{}
 	if err := preloadBookUser(query).
 		Order("books.created_at DESC").
 		Limit(pageSize).Offset((page - 1) * pageSize).

@@ -151,6 +151,22 @@ func TestFullLifecycle(t *testing.T) {
 	}
 	_ = book2ID
 
+	// 5.1 空书籍的文档树应返回 [] 而非 null
+	emptyBook := post("/api/v1/books", map[string]any{
+		"title": "Empty Book", "status": "published", "is_public": true,
+	}, adminToken)
+	emptyBookID := int(emptyBook["data"].(map[string]any)["id"].(float64))
+	status, payload = get(fmt.Sprintf("/api/v1/books/%d/documents", emptyBookID), "")
+	if status != 200 {
+		t.Fatalf("空书籍文档树查询失败: %d", status)
+	}
+	if payload["data"] == nil {
+		t.Fatalf("空文档树不应返回 null")
+	}
+	if _, isArr := payload["data"].([]any); !isArr {
+		t.Fatalf("空文档树应为数组: %v", payload["data"])
+	}
+
 	// 6. 匿名读取书籍与章节
 	status, payload = get("/api/v1/books/slug/"+slug, "")
 	if status != 200 || payload["data"].(map[string]any)["title"] != "Go Handbook" {

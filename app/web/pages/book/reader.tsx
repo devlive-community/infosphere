@@ -19,8 +19,8 @@ interface ReaderProps {
   needsAuth: boolean
 }
 
-function flatten(docs: Document[]): Document[] {
-  return docs.flatMap((d) => [d, ...flatten(d.children || [])])
+function flatten(docs: Document[] | null | undefined): Document[] {
+  return (docs || []).flatMap((d) => [d, ...flatten(d.children)])
 }
 
 export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req, query }) => {

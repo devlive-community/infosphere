@@ -90,11 +90,11 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
       </div>
 
       <h2 className="mb-4 text-lg font-bold text-slate-900">公开书籍</h2>
-      {books.items.length === 0 ? (
+      {(books.items || []).length === 0 ? (
         <p className="py-16 text-center text-slate-400">暂无公开书籍</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {books.items.map((b) => <BookCard key={b.id} book={b} />)}
+          {(books.items || []).map((b) => <BookCard key={b.id} book={b} />)}
         </div>
       )}
       <Pagination page={books.page} pageSize={books.page_size} total={books.total}

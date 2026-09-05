@@ -161,7 +161,7 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
           </EmptyState>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {latest.slice(0, 3).map((b) => <LatestCard key={b.id} book={b} />)}
+            {(latest || []).slice(0, 3).map((b) => <LatestCard key={b.id} book={b} />)}
           </div>
         )}
       </section>
@@ -177,7 +177,7 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
               </Link>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {hot.slice(0, 5).map((b, i) => <HotRankCard key={b.id} rank={i + 1} book={b} />)}
+              {(hot || []).slice(0, 5).map((b, i) => <HotRankCard key={b.id} rank={i + 1} book={b} />)}
             </div>
           </div>
         </section>

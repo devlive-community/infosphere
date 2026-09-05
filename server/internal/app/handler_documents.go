@@ -37,7 +37,7 @@ func (a *App) ListDocumentTree(c *gin.Context) {
 
 // buildDocTree 将平铺文档列表组装为树
 func buildDocTree(docs []models.Document, parent *uint) []*models.Document {
-	var result []*models.Document
+	result := []*models.Document{}
 	for i := range docs {
 		doc := &docs[i]
 		if (doc.ParentID == nil && parent == nil) || (doc.ParentID != nil && parent != nil && *doc.ParentID == *parent) {

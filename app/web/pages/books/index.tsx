@@ -89,13 +89,13 @@ export default function MyBooks() {
         ))}
       </div>
 
-      {data.items.length === 0 ? (
+      {(data.items || []).length === 0 ? (
         <EmptyState>
           还没有书籍，<Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
         </EmptyState>
       ) : (
         <div className="space-y-3">
-          {data.items.map((book) => (
+          {(data.items || []).map((book) => (
             <div key={book.id} className="rounded-xl border border-slate-200 bg-white shadow-sm flex items-center gap-4 p-4">
               <div className="h-16 w-12 shrink-0 rounded bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
                 {book.cover_image && <img src={book.cover_image} alt="" className="h-full w-full rounded object-cover" />}

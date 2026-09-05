@@ -15,7 +15,7 @@ func (a *App) publicPublishedBooks() *gorm.DB {
 
 // ExploreHot GET /explore/hot 浏览量最高的 6 本公开书籍
 func (a *App) ExploreHot(c *gin.Context) {
-	var books []models.Book
+	books := []models.Book{}
 	if err := preloadBookUser(a.publicPublishedBooks()).
 		Order("view_count DESC").Limit(6).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
@@ -26,7 +26,7 @@ func (a *App) ExploreHot(c *gin.Context) {
 
 // ExploreLatest GET /explore/latest 最新发布的 6 本公开书籍
 func (a *App) ExploreLatest(c *gin.Context) {
-	var books []models.Book
+	books := []models.Book{}
 	if err := preloadBookUser(a.publicPublishedBooks()).
 		Order("created_at DESC").Limit(6).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
@@ -123,7 +123,7 @@ func (a *App) GetUserBooks(c *gin.Context) {
 	query := a.DB.Model(&models.Book{}).Where("user_id = ? AND is_public = ? AND status = ?", u.ID, true, "published")
 	var total int64
 	query.Count(&total)
-	var books []models.Book
+	books := []models.Book{}
 	if err := preloadBookUser(query).Order("created_at DESC").
 		Limit(pageSize).Offset((page - 1) * pageSize).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")

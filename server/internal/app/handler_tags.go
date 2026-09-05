@@ -26,7 +26,7 @@ func (a *App) ListTags(c *gin.Context) {
 	if q != "" {
 		query = query.Where("tags.name LIKE ?", "%"+q+"%")
 	}
-	var tags []models.Tag
+	tags := []models.Tag{}
 	if err := query.Order("book_count DESC").Limit(limit).Find(&tags).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
@@ -148,7 +148,7 @@ func (a *App) findOrCreateTag(name string) (*models.Tag, error) {
 
 // syncBookTags 将书籍标签同步为请求给定的名称列表（find-or-create + 全量替换）
 func (a *App) syncBookTags(book *models.Book, names []string) error {
-	var tags []models.Tag
+	tags := []models.Tag{}
 	seen := map[string]bool{}
 	for _, raw := range names {
 		name := strings.TrimSpace(raw)
