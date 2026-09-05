@@ -17,6 +17,11 @@ body {
   }
 }
 
+/* 正文标题锚点：避免被顶部粘性导航遮挡 */
+.markdown-body :where(h2, h3) {
+  scroll-margin-top: 5rem;
+}
+
 /* 全局滚动条：细窄、圆角、低调，hover 加深；Firefox 与 WebKit 同步 */
 * {
   scrollbar-width: thin;
