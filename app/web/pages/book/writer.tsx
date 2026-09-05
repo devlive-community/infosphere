@@ -333,6 +333,11 @@ export default function Writer() {
         </div>
       </header>
 
+      {/* 透明遮罩：任一浮层菜单打开时点击外部即关闭（菜单层级更高，不受影响） */}
+      {(newMenuOpen || menuFor !== null) && (
+        <div className="fixed inset-0 z-10" onClick={() => { setNewMenuOpen(false); setMenuFor(null) }} />
+      )}
+
       <div className="flex min-h-0 flex-1">
         {/* 左栏：书籍与章节树 */}
         <aside className="flex w-72 shrink-0 flex-col border-r border-slate-200 bg-white">
@@ -374,7 +379,7 @@ export default function Writer() {
                   {newMenuOpen && (
                     <div className="absolute left-0 right-0 top-11 z-20 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                       <button onClick={() => { createNew(false); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> 新建章节</button>
-                      <button onClick={() => { if (!current) { setMessage('请先选择一个章节作为父级'); return } createNew(true); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
+                      <button onClick={() => { setNewMenuOpen(false); if (!current) { setMessage('请先选择一个章节作为父级'); return } createNew(true) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
                     </div>
                   )}
                 </div>
@@ -420,47 +425,51 @@ export default function Writer() {
         </aside>
 
         {/* 中栏：编辑器 */}
-        <main className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-6 py-8">
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 w-full flex-1 flex-col px-8 py-6">
             {current && parentDoc && (
-              <p className="mb-1 text-sm text-slate-400">{chapterPrefix}{parentDoc.title}</p>
+              <p className="mb-1 shrink-0 text-sm text-slate-400">{chapterPrefix}{parentDoc.title}</p>
             )}
-            <Input className="h-auto border-0 bg-transparent px-0 text-3xl font-bold text-ink placeholder:text-slate-300 focus:outline-none"
+            {/* 标题：原生输入，无边框，避免与 Input 组件的 border 样式冲突 */}
+            <input
+              className="w-full shrink-0 border-0 bg-transparent p-0 text-3xl font-bold text-ink placeholder:text-slate-300 focus:outline-none focus:ring-0"
               placeholder="章节标题" value={title} onChange={(e) => setTitle(e.target.value)} />
 
-            {/* Markdown 工具条 */}
-            {!preview && (
-              <div className="mt-5 flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-1.5">
-                <ToolbarSelect onPick={(prefix) => insertAtLineStart(prefix)} />
-                <ToolbarDivider />
-                <ToolbarButton title="加粗" onClick={() => wrapSelection('**')}><span className="font-bold">B</span></ToolbarButton>
-                <ToolbarButton title="斜体" onClick={() => wrapSelection('*')}><span className="italic">I</span></ToolbarButton>
-                <ToolbarDivider />
-                <ToolbarButton title="链接" onClick={() => wrapSelection('[', `](${window.prompt('链接地址', 'https://') || ''})`)}><LinkIcon className="h-4 w-4" /></ToolbarButton>
-                <ToolbarButton title="引用" onClick={() => insertAtLineStart('> ')}><QuoteIcon className="h-4 w-4" /></ToolbarButton>
-                <ToolbarButton title="行内代码" onClick={() => wrapSelection('`')}><CodeIcon className="h-4 w-4" /></ToolbarButton>
-                <ToolbarDivider />
-                <ToolbarButton title="无序列表" onClick={() => insertAtLineStart('- ')}><ListBulletIcon className="h-4 w-4" /></ToolbarButton>
-                <ToolbarButton title="有序列表" onClick={() => insertAtLineStart('1. ')}><ListOrderedIcon className="h-4 w-4" /></ToolbarButton>
-                <ToolbarDivider />
-                <ToolbarButton title="图片" onClick={() => wrapSelection('![', `](${window.prompt('图片地址', 'https://') || ''})`)}><ImageIcon className="h-4 w-4" /></ToolbarButton>
-              </div>
-            )}
+            {/* 编辑卡片：工具条 + 正文 + 底栏合为一个圆角边框，宽高跟随中列 */}
+            <div className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+              {!preview && (
+                <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-slate-200 px-2 py-1.5">
+                  <ToolbarSelect onPick={(prefix) => insertAtLineStart(prefix)} />
+                  <ToolbarDivider />
+                  <ToolbarButton title="加粗" onClick={() => wrapSelection('**')}><span className="font-bold">B</span></ToolbarButton>
+                  <ToolbarButton title="斜体" onClick={() => wrapSelection('*')}><span className="italic">I</span></ToolbarButton>
+                  <ToolbarDivider />
+                  <ToolbarButton title="链接" onClick={() => wrapSelection('[', `](${window.prompt('链接地址', 'https://') || ''})`)}><LinkIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="引用" onClick={() => insertAtLineStart('> ')}><QuoteIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="行内代码" onClick={() => wrapSelection('`')}><CodeIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarDivider />
+                  <ToolbarButton title="无序列表" onClick={() => insertAtLineStart('- ')}><ListBulletIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="有序列表" onClick={() => insertAtLineStart('1. ')}><ListOrderedIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarDivider />
+                  <ToolbarButton title="图片" onClick={() => wrapSelection('![', `](${window.prompt('图片地址', 'https://') || ''})`)}><ImageIcon className="h-4 w-4" /></ToolbarButton>
+                </div>
+              )}
 
-            {preview ? (
-              <div className="markdown-body min-h-[420px] rounded-xl border border-slate-200 bg-white p-6"
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
-            ) : (
-              <Textarea ref={textareaRef} className="mt-4 min-h-[440px] rounded-xl font-mono leading-7"
-                placeholder="使用 Markdown 编写章节内容…" value={content} onChange={(e) => setContent(e.target.value)} />
-            )}
+              {/* 正文：铺满剩余高度，内部滚动 */}
+              {preview ? (
+                <div className="markdown-body min-h-0 flex-1 overflow-y-auto px-6 py-5"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
+              ) : (
+                <textarea ref={textareaRef}
+                  className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                  placeholder="使用 Markdown 编写章节内容…" value={content} onChange={(e) => setContent(e.target.value)} />
+              )}
 
-            <div className="flex items-center justify-between py-3 text-xs text-slate-400">
-              <span>Markdown</span>
-              <span className="flex items-center gap-4">
+              <div className="flex shrink-0 items-center justify-between border-t border-slate-200 px-4 py-2.5 text-xs text-slate-400">
+                <span className="flex items-center gap-1">Markdown <ChevronDownIcon className="h-3.5 w-3.5" /></span>
                 <span>{wordCount} 字</span>
-                {current && <span>更新于 {formatDate(current.updated_at).slice(11)}</span>}
-              </span>
+                {current ? <span>更新于 {formatDate(current.updated_at).slice(11)}</span> : <span />}
+              </div>
             </div>
           </div>
         </main>
@@ -470,11 +479,9 @@ export default function Writer() {
           <h2 className="mb-4 font-bold text-slate-900">章节设置</h2>
           <div className="space-y-4">
             <Field label="发布状态">
-              <div className="relative">
-                <span className={`pointer-events-none absolute left-3.5 top-1/2 z-10 h-2 w-2 -translate-y-1/2 rounded-full ${STATUS_META[status].dot}`} />
-                <Select className="pl-0" value={status} onChange={(v) => setStatus(v as BookStatus)}
-                  options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }, { value: 'archived', label: '已归档' }]} />
-              </div>
+              <Select value={status} onChange={(v) => setStatus(v as BookStatus)}
+                leading={<span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_META[status].dot}`} />}
+                options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }, { value: 'archived', label: '已归档' }]} />
             </Field>
             <Field label="父级章节">
               <Select value={parentId} onChange={(v) => setParentId(v)}
@@ -581,9 +588,14 @@ function TreeItems(props: TreeProps) {
 
 function TreeItem(props: TreeProps & { item: Document; depth: number }) {
   const {
-    item, depth, search, expanded, currentId, chapterPrefix, onSelect, onMove, onDelete, menuFor, setMenuFor,
+    item, depth, search, expanded, setExpanded, currentId, chapterPrefix, onSelect, onMove, onDelete, menuFor, setMenuFor,
     dragEnabled, dragId, dragParentId, dropTarget, onDragStartItem, onDragOverItem, onDropItem, onDragEndItem,
   } = props
+  function toggleExpand() {
+    const next = new Set(expanded)
+    if (next.has(item.id)) next.delete(item.id); else next.add(item.id)
+    setExpanded(next)
+  }
   const hasChildren = !!item.children?.length
   const isExpanded = search !== '' || expanded.has(item.id)
   const active = currentId === item.id
@@ -607,20 +619,24 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
         className={`group relative flex items-center rounded-lg text-sm ${active ? 'bg-primary-50 ring-1 ring-inset ring-primary-100' : 'hover:bg-slate-50'} ${dragging ? 'opacity-40' : ''}`}>
         {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-0.5 rounded-full bg-primary-500" />}
         {dropHere && <span className={`pointer-events-none absolute inset-x-1.5 z-10 h-0.5 rounded-full bg-primary-500 ${dropTarget!.pos === 'before' ? 'top-0' : 'bottom-0'}`} />}
+        {hasChildren ? (
+          <button type="button" aria-label={isExpanded ? '折叠' : '展开'}
+            onClick={(e) => { e.stopPropagation(); toggleExpand() }}
+            className="ml-1 flex h-6 w-5 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-600">
+            {isExpanded ? <ChevronDownIcon className="h-3.5 w-3.5" /> : <ChevronRightIcon className="h-3.5 w-3.5" />}
+          </button>
+        ) : (
+          <span className="ml-1 w-5 shrink-0" />
+        )}
         <button type="button" onClick={() => onSelect(item.slug)}
-          className="flex min-w-0 flex-1 items-center gap-1.5 py-2 pl-2 pr-1 text-left">
-          <span className="w-4 shrink-0 text-slate-400">
-            {hasChildren && (isExpanded
-              ? <ChevronDownIcon className="h-3.5 w-3.5" />
-              : <ChevronRightIcon className="h-3.5 w-3.5" />)}
-          </span>
+          className="flex min-w-0 flex-1 items-center gap-1.5 py-2 pl-1 pr-1 text-left">
           {hasChildren
             ? <FolderIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />
             : <FileTextIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />}
           <span className={`truncate ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
         </button>
         <span className="mr-1 hidden shrink-0 items-center group-hover:flex">
-          <span className={`text-slate-300 ${dragEnabled ? 'cursor-grab' : 'cursor-default'}`} title={dragEnabled ? '拖拽调整顺序' : ''}><GripIcon className="h-4 w-4" /></span>
+          <span className={`flex h-6 w-6 items-center justify-center rounded text-slate-400 ${dragEnabled ? 'cursor-grab hover:bg-slate-200 hover:text-slate-700' : 'cursor-default'}`} title={dragEnabled ? '拖拽调整顺序' : ''}><GripIcon className="h-4 w-4" /></span>
           <button aria-label="章节操作" onClick={() => setMenuFor(menuFor === item.id ? null : item.id)}
             className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700">
             <MoreIcon className="h-4 w-4" />

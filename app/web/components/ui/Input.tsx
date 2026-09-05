@@ -39,10 +39,11 @@ interface SelectProps {
   className?: string
   placeholder?: string
   disabled?: boolean
+  leading?: ReactNode
 }
 
 // Select 自绘下拉选择：触发按钮 + 浮层选项列表（不使用原生 select）
-export function Select({ options, value, onChange, className, placeholder, disabled }: SelectProps) {
+export function Select({ options, value, onChange, className, placeholder, disabled, leading }: SelectProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const selected = options.find((o) => o.value === value)
@@ -71,20 +72,23 @@ export function Select({ options, value, onChange, className, placeholder, disab
         onClick={() => setOpen(!open)}
         className={`flex h-10 items-center justify-between gap-2 text-left ${controlClass}`}
       >
-        <span className={`truncate ${selected ? '' : 'text-slate-400'}`}>{selected?.label || placeholder || '请选择'}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {leading}
+          <span className={`truncate ${selected ? '' : 'text-slate-400'}`}>{selected?.label || placeholder || '请选择'}</span>
+        </span>
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"
           className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}>
           <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       {open && (
-        <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+        <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 space-y-0.5 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
           {options.map((o) => {
             const active = o.value === value
             return (
               <li key={o.value}>
                 <button type="button" onClick={() => { onChange?.(o.value); setOpen(false) }}
-                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                  className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
                     active ? 'bg-primary-50 font-medium text-primary-700' : 'text-slate-700 hover:bg-slate-50'
                   }`}>
                   <span className="truncate">{o.label}</span>
