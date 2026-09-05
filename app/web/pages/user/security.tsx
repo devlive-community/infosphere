@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
+import { Button, Input, Field } from '@/components/ui'
 
 export default function Security() {
   const user = useRequireAuth()
@@ -9,6 +10,7 @@ export default function Security() {
   const [confirm, setConfirm] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   if (!user) return null
 
@@ -17,6 +19,7 @@ export default function Security() {
     setMessage('')
     setError('')
     if (newPassword !== confirm) return setError('两次输入的新密码不一致')
+    setSaving(true)
     try {
       await api('/auth/password', {
         method: 'PUT',
@@ -28,6 +31,8 @@ export default function Security() {
       setConfirm('')
     } catch (err) {
       setError((err as Error).message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -47,20 +52,17 @@ export default function Security() {
         <h2 className="font-semibold text-slate-900">修改密码</h2>
         {message && <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{message}</div>}
         {error && <div className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
-        <div>
-          <label className="label">当前密码</label>
-          <input type="password" className="input" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">新密码（至少 6 位）</label>
-          <input type="password" className="input" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">确认新密码</label>
-          <input type="password" className="input" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-        </div>
+        <Field label="当前密码">
+          <Input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
+        </Field>
+        <Field label="新密码（至少 6 位）">
+          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+        </Field>
+        <Field label="确认新密码">
+          <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        </Field>
         <div className="flex justify-end">
-          <button className="btn-primary" type="submit">更新密码</button>
+          <Button type="submit" loading={saving}>更新密码</Button>
         </div>
       </form>
     </div>

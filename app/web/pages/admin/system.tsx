@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { Button, Badge } from '@/components/ui'
 
 interface SystemVersion {
   version: string
@@ -74,8 +75,8 @@ export default function AdminSystem() {
               <dt className="text-slate-400">升级状态</dt>
               <dd>
                 {info.update_available
-                  ? <span className="badge bg-amber-50 text-amber-600">有新版本可升级</span>
-                  : <span className="badge bg-emerald-50 text-emerald-600">已是最新</span>}
+                  ? <Badge tone="amber">有新版本可升级</Badge>
+                  : <Badge tone="emerald">已是最新</Badge>}
               </dd>
             </div>
           </dl>
@@ -89,9 +90,9 @@ export default function AdminSystem() {
           升级前会自动备份当前版本。
         </p>
         {message && <div className="mb-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
-        <button className="btn-primary" disabled={!info?.update_available || upgrading} onClick={upgrade}>
-          {upgrading ? '升级中，请勿关闭页面…' : info?.update_available ? '立即升级' : '暂无可升级版本'}
-        </button>
+        <Button onClick={upgrade} disabled={!info?.update_available} loading={upgrading}>
+          {info?.update_available || upgrading ? '立即升级' : '暂无可升级版本'}
+        </Button>
       </div>
 
       <p className="mt-4 text-center text-xs text-slate-400">

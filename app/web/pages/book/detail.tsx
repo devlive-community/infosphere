@@ -3,6 +3,7 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom } from '@/lib/server-api'
 import { useApp } from '@/lib/auth'
 import { StatusBadge } from '@/components/BookCard'
+import { ButtonLink } from '@/components/ui'
 import DocTree from '@/components/DocTree'
 import Seo from '@/components/Seo'
 import type { Book, Document } from '@/lib/types'
@@ -120,8 +121,8 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
           </div>
           {canManage && (
             <div className="mt-4 flex gap-2">
-              <Link href={`/book/writer?slug=${encodeURIComponent(book.slug)}`} className="btn-primary">+ 新建章节</Link>
-              <Link href={`/books/edit?slug=${encodeURIComponent(book.slug)}`} className="btn-outline">书籍设置</Link>
+              <ButtonLink href={`/book/writer?slug=${encodeURIComponent(book.slug)}`}>+ 新建章节</ButtonLink>
+              <ButtonLink href={`/books/edit?slug=${encodeURIComponent(book.slug)}`} variant="outline">书籍设置</ButtonLink>
             </div>
           )}
         </div>
@@ -138,7 +139,7 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
           )}
         />
         {canManage && (
-          <Link href={`/book/writer?slug=${encodeURIComponent(book.slug)}`} className="btn-outline mt-3 w-full">管理章节</Link>
+          <ButtonLink href={`/book/writer?slug=${encodeURIComponent(book.slug)}`} variant="outline" className="mt-3 w-full">管理章节</ButtonLink>
         )}
       </aside>
     </div>

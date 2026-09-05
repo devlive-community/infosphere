@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
-import { Pagination, StatusBadge } from '@/components/BookCard'
+import { ButtonLink, Badge, EmptyState, Pagination } from '@/components/ui'
+import { StatusBadge } from '@/components/BookCard'
 import type { Book, PageResult } from '@/lib/types'
 
 interface Summary {
@@ -12,6 +13,13 @@ interface Summary {
   draft: { count: number; views: number }
   archived: { count: number; views: number }
 }
+
+const statusTabs = [
+  { key: '', label: '全部' },
+  { key: 'published', label: '已发布' },
+  { key: 'draft', label: '草稿' },
+  { key: 'archived', label: '已归档' },
+]
 
 export default function MyBooks() {
   const user = useRequireAuth()
@@ -55,7 +63,7 @@ export default function MyBooks() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-900">我的书籍</h1>
-        <Link href="/books/create" className="btn-primary">+ 新建书籍</Link>
+        <ButtonLink href="/books/create">+ 新建书籍</ButtonLink>
       </div>
 
       {statCards && (
@@ -70,41 +78,35 @@ export default function MyBooks() {
       )}
 
       <div className="mb-4 flex gap-2">
-        {[
-          { key: '', label: '全部' },
-          { key: 'published', label: '已发布' },
-          { key: 'draft', label: '草稿' },
-          { key: 'archived', label: '已归档' },
-        ].map((t) => (
+        {statusTabs.map((t) => (
           <button key={t.key} onClick={() => { setStatus(t.key); setPage(1) }}
             className={`btn px-3 py-1.5 text-sm ${status === t.key ? 'bg-primary-500 text-white' : 'border border-slate-300 bg-white'}`}>{t.label}</button>
         ))}
       </div>
 
       {data.items.length === 0 ? (
-        <div className="card py-16 text-center text-slate-400">
-          还没有书籍，
-          <Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
-        </div>
+        <EmptyState>
+          还没有书籍，<Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
+        </EmptyState>
       ) : (
         <div className="space-y-3">
           {data.items.map((book) => (
             <div key={book.id} className="card flex items-center gap-4 p-4">
               <div className="h-16 w-12 shrink-0 rounded bg-gradient-to-br from-primary-500/80 to-violet-500/80">
-                {book.cover_image && <img src={book.cover_image.startsWith('/') ? book.cover_image : book.cover_image} alt="" className="h-full w-full rounded object-cover" />}
+                {book.cover_image && <img src={book.cover_image} alt="" className="h-full w-full rounded object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="truncate font-semibold text-slate-900 hover:text-primary-600">{book.title}</Link>
                   <StatusBadge status={book.status} />
-                  {book.is_public && <span className="badge bg-sky-50 text-sky-600">公开</span>}
+                  {book.is_public && <Badge tone="sky">公开</Badge>}
                 </div>
                 <p className="mt-0.5 truncate text-sm text-slate-500">{book.description || '暂无简介'}</p>
                 <p className="mt-0.5 text-xs text-slate-400">/ {book.slug} · 👁 {book.view_count}</p>
               </div>
               <div className="flex shrink-0 gap-2">
-                <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="btn-outline px-3 py-1.5 text-sm">章节</Link>
-                <Link href={`/books/edit?slug=${encodeURIComponent(book.slug)}`} className="btn-outline px-3 py-1.5 text-sm">设置</Link>
+                <ButtonLink href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} variant="outline" className="px-3 py-1.5 text-sm">章节</ButtonLink>
+                <ButtonLink href={`/books/edit?slug=${encodeURIComponent(book.slug)}`} variant="outline" className="px-3 py-1.5 text-sm">设置</ButtonLink>
                 <button onClick={() => remove(book)} className="btn-outline px-3 py-1.5 text-sm text-rose-600 hover:bg-rose-50">删除</button>
               </div>
             </div>
