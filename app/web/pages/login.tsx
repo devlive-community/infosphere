@@ -34,7 +34,7 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-50 to-slate-50 px-4">
-      <div className="card w-full max-w-sm p-8">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm w-full max-w-sm p-8">
         <h1 className="text-center text-xl font-bold text-slate-900">登录 InfoSphere</h1>
         <p className="mb-6 mt-1 text-center text-sm text-slate-500">继续你的知识之旅</p>
         {error && <div className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}

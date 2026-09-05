@@ -73,13 +73,13 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
         jsonLd={jsonLd}
       />
 
-      <div className="card mb-6 flex items-center gap-5 p-6">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm mb-6 flex items-center gap-5 p-6">
         {profile.avatar
           ? <img src={profile.avatar} alt={profile.username} className="h-16 w-16 rounded-full object-cover" />
           : <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-500 text-2xl font-bold text-white">{profile.username[0]?.toUpperCase()}</span>}
         <div className="flex-1">
           <h1 className="text-xl font-bold text-slate-900">{profile.username}
-            {profile.role === 'admin' && <span className="badge ml-2 bg-violet-50 text-violet-600">管理员</span>}
+            {profile.role === 'admin' && <span className="ml-2 inline-flex items-center rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-200">管理员</span>}
           </h1>
           {profile.bio && <p className="mt-1 text-sm text-slate-500">{profile.bio}</p>}
           <p className="mt-1 text-xs text-slate-400">

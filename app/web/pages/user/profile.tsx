@@ -47,7 +47,7 @@ export default function Profile() {
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">个人资料</h1>
-      <form onSubmit={submit} className="card space-y-4 p-6">
+      <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white shadow-sm space-y-4 p-6">
         {message && <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{message}</div>}
         {error && <div className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
 

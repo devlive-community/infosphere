@@ -18,7 +18,7 @@ export default function BookCard({ book, href }: { book: Book; href?: string }) 
   const link = href || `/book/detail?slug=${encodeURIComponent(book.slug)}`
   const cover = book.cover_image ? API_BASE + book.cover_image : ''
   return (
-    <Link href={link} className="card group flex flex-col overflow-hidden transition hover:shadow-md">
+    <Link href={link} className="rounded-xl border border-slate-200 bg-white shadow-sm group flex flex-col overflow-hidden transition hover:shadow-md">
       <div className="h-36 w-full bg-gradient-to-br from-primary-500/80 to-violet-500/80">
         {cover && <img src={cover} alt="" className="h-full w-full object-cover" />}
       </div>

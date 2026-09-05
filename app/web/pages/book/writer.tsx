@@ -154,7 +154,7 @@ export default function Writer() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-      <aside className="card h-fit p-4">
+      <aside className="rounded-xl border border-slate-200 bg-white shadow-sm h-fit p-4">
         <div className="mb-2 flex items-center justify-between px-2">
           <h2 className="text-sm font-bold text-slate-900">章节管理</h2>
           <button onClick={() => router.push(`/book/writer?slug=${encodeURIComponent(bookSlug)}`, undefined, { shallow: true })}
@@ -178,7 +178,7 @@ export default function Writer() {
         />
       </aside>
 
-      <section className="card p-6">
+      <section className="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-bold text-slate-900">{current ? `编辑：${chapterPrefix}${current.title}` : '新建章节'}</h2>
           <div className="flex items-center gap-2">

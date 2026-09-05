@@ -69,7 +69,7 @@ export default function MyBooks() {
       {statCards && (
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           {statCards.map((s) => (
-            <div key={s.label} className="card p-4">
+            <div key={s.label} className="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
               <div className="text-xl font-bold text-slate-900">{s.value}</div>
               <div className="text-xs text-slate-500">{s.label}</div>
             </div>
@@ -80,7 +80,11 @@ export default function MyBooks() {
       <div className="mb-4 flex gap-2">
         {statusTabs.map((t) => (
           <button key={t.key} onClick={() => { setStatus(t.key); setPage(1) }}
-            className={`btn px-3 py-1.5 text-sm ${status === t.key ? 'bg-primary-500 text-white' : 'border border-slate-300 bg-white'}`}>{t.label}</button>
+            className={`inline-flex h-9 items-center rounded-lg border px-3.5 text-sm font-medium transition-colors focus:outline-none ${
+              status === t.key
+                ? 'border-primary-500 bg-primary-500 text-white'
+                : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+            }`}>{t.label}</button>
         ))}
       </div>
 
@@ -91,7 +95,7 @@ export default function MyBooks() {
       ) : (
         <div className="space-y-3">
           {data.items.map((book) => (
-            <div key={book.id} className="card flex items-center gap-4 p-4">
+            <div key={book.id} className="rounded-xl border border-slate-200 bg-white shadow-sm flex items-center gap-4 p-4">
               <div className="h-16 w-12 shrink-0 rounded bg-gradient-to-br from-primary-500/80 to-violet-500/80">
                 {book.cover_image && <img src={book.cover_image} alt="" className="h-full w-full rounded object-cover" />}
               </div>
@@ -105,9 +109,9 @@ export default function MyBooks() {
                 <p className="mt-0.5 text-xs text-slate-400">/ {book.slug} · 👁 {book.view_count}</p>
               </div>
               <div className="flex shrink-0 gap-2">
-                <ButtonLink href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} variant="outline" className="px-3 py-1.5 text-sm">章节</ButtonLink>
-                <ButtonLink href={`/books/edit?slug=${encodeURIComponent(book.slug)}`} variant="outline" className="px-3 py-1.5 text-sm">设置</ButtonLink>
-                <button onClick={() => remove(book)} className="btn-outline px-3 py-1.5 text-sm text-rose-600 hover:bg-rose-50">删除</button>
+                <ButtonLink href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">章节</ButtonLink>
+                <ButtonLink href={`/books/edit?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">设置</ButtonLink>
+                <button onClick={() => remove(book)} className="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-white px-3 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 focus:outline-none">删除</button>
               </div>
             </div>
           ))}

@@ -78,7 +78,7 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {statCards.map((s) => (
-          <div key={s.label} className="card flex items-center gap-4 p-5">
+          <div key={s.label} className="rounded-xl border border-slate-200 bg-white shadow-sm flex items-center gap-4 p-5">
             <span className="text-3xl">{s.icon}</span>
             <span>
               <span className="block text-2xl font-bold text-slate-900">{s.value}</span>

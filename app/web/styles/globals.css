@@ -8,7 +8,10 @@ body {
   @apply bg-slate-50 text-slate-800 antialiased;
 }
 
-/* ---------- Markdown 渲染样式 ---------- */
+/*
+ * 仅保留 Markdown 渲染内容的排版样式（服务端生成的 HTML 无法使用工具类），
+ * 全部 UI 组件样式一律由 components/ui 中的 Tailwind 工具类提供。
+ */
 .markdown-body { @apply text-[15px] leading-7 text-slate-700; }
 .markdown-body h1 { @apply mt-8 mb-4 text-2xl font-bold text-slate-900; }
 .markdown-body h2 { @apply mt-8 mb-3 border-b border-slate-200 pb-2 text-xl font-bold text-slate-900; }
@@ -41,13 +44,3 @@ body {
 .markdown-body .md-alert-warning .md-alert-title { @apply text-amber-600; }
 .markdown-body .md-alert-caution { @apply border-rose-400 bg-rose-50; }
 .markdown-body .md-alert-caution .md-alert-title { @apply text-rose-600; }
-
-/* ---------- 通用组件 ---------- */
-.btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition; }
-.btn-primary { @apply btn bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-50; }
-.btn-outline { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50; }
-.btn-danger { @apply btn bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50; }
-.input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100; }
-.label { @apply mb-1.5 block text-sm font-medium text-slate-700; }
-.card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
-.badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }

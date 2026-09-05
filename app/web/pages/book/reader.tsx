@@ -58,7 +58,7 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
 
   if (needsAuth || !book) {
     return (
-      <div className="card p-6 text-center text-sm text-slate-500">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 text-center text-sm text-slate-500">
         该章节仅对作者可见，请<Link href="/login" className="mx-1 text-primary-600">登录</Link>后查看。
       </div>
     )
@@ -103,7 +103,7 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
         jsonLd={jsonLd}
       />
 
-      <aside className="card h-fit p-4 lg:sticky lg:top-20">
+      <aside className="rounded-xl border border-slate-200 bg-white shadow-sm h-fit p-4 lg:sticky lg:top-20">
         <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="mb-2 block px-2 text-sm font-bold text-slate-900 hover:text-primary-600">
           📖 {book.title}
         </Link>
@@ -117,7 +117,7 @@ export default function Reader({ site, siteUrl, book, doc, html, tree, needsAuth
         />
       </aside>
 
-      <article className="card min-h-[60vh] p-8">
+      <article className="rounded-xl border border-slate-200 bg-white shadow-sm min-h-[60vh] p-8">
         {doc ? (
           <>
             <h1 className="mb-6 text-2xl font-bold text-slate-900">{chapterPrefix}{doc.title}</h1>

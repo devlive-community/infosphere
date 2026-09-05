@@ -102,7 +102,7 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
       />
 
       <div>
-        <div className="card p-6">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">{book.title}</h1>
@@ -134,7 +134,7 @@ export default function BookDetail({ site, siteUrl, book, tree, needsAuth }: Inf
         </div>
       </div>
 
-      <aside className="card h-fit p-4">
+      <aside className="rounded-xl border border-slate-200 bg-white shadow-sm h-fit p-4">
         <h2 className="mb-2 px-2 text-sm font-bold text-slate-900">目录</h2>
         <DocTree
           items={tree}
@@ -156,13 +156,13 @@ function ClientFallback({ slug }: { slug: string }) {
   const { user } = useApp()
   if (!user) {
     return (
-      <div className="card p-6 text-center text-sm text-slate-500">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 text-center text-sm text-slate-500">
         请<Link href="/login" className="mx-1 text-primary-600">登录</Link>后查看该书籍。
       </div>
     )
   }
   return (
-    <div className="card p-6 text-center text-sm text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 text-center text-sm text-slate-500">
       该书籍仅对作者可见。
       <a href={`/book/detail?slug=${encodeURIComponent(slug)}`} className="ml-1 text-primary-600">刷新重试</a>
     </div>
