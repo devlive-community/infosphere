@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { Button, Input, Field } from '@/components/ui'
 import type { User } from '@/lib/types'
 
 export default function Register() {
@@ -42,23 +43,19 @@ export default function Register() {
         <p className="mb-6 mt-1 text-center text-sm text-slate-500">加入 InfoSphere，开始记录知识</p>
         {error && <div className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
         <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="label">用户名（3-50 位字母数字下划线）</label>
-            <input className="input" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} autoFocus />
-          </div>
-          <div>
-            <label className="label">邮箱（可选）</label>
-            <input type="email" className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">密码（至少 6 位）</label>
-            <input type="password" className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">确认密码</label>
-            <input type="password" className="input" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
-          </div>
-          <button className="btn-primary w-full" disabled={loading}>{loading ? '注册中…' : '注 册'}</button>
+          <Field label="用户名（3-50 位字母数字下划线）">
+            <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} autoFocus />
+          </Field>
+          <Field label="邮箱（可选）">
+            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </Field>
+          <Field label="密码（至少 6 位）">
+            <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          </Field>
+          <Field label="确认密码">
+            <Input type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+          </Field>
+          <Button className="w-full" loading={loading}>注 册</Button>
         </form>
         <p className="mt-4 text-center text-sm text-slate-500">
           已有账户？<Link href="/login" className="text-primary-600 hover:underline">直接登录</Link>
