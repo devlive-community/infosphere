@@ -19,7 +19,6 @@ interface ReaderProps {
   doc: Document
   html: string
   tree: Document[]
-  needsAuth: boolean
 }
 
 const FONT_SIZES = [15, 16, 18, 20, 22]
@@ -59,15 +58,15 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
         ? serverApi<Document>(`/books/${book.id}/documents/slug/${encodeURIComponent(docSlug)}`, { headers: auth })
         : Promise.resolve(null),
     ])
-    return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc: doc as Document, html: doc ? renderMarkdown(doc.content) : '', tree, needsAuth: false } }
+    if (!doc) return { notFound: true }
+    return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc, html: renderMarkdown(doc.content), tree, needsAuth: false } }
   } catch (e) {
-    const status = (e as { status?: number }).status ?? 500
-    if (status === 404) return { notFound: true }
-    return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, doc: null as unknown as Document, html: '', tree: [], needsAuth: true } }
+    // 404/403 一律按不存在处理：不向未授权访客泄露私有章节的存在
+    return { notFound: true }
   }
 }
 
-export default function Reader({ site, siteUrl, user, book, doc, html, tree, needsAuth }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Reader({ site, siteUrl, user, book, doc, html, tree }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
@@ -104,7 +103,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
     return () => obs.disconnect()
   }, [headings, doc?.id])
 
-  if (needsAuth || !book) {
+  if (!book || !doc) {
     return (
       <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 shadow-sm" style={{ marginTop: '4rem' }}>
         该章节仅对作者可见，请<Link href="/login" className="mx-1 text-primary-600">登录</Link>后查看。
