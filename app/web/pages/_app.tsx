@@ -8,10 +8,10 @@ import Seo from '@/components/Seo'
 import type { ReactNode } from 'react'
 import type { SiteConfig } from '@/lib/types'
 
-// 安装向导、登录注册与全屏编辑器使用独立布局
+// 安装向导、登录注册与全屏编辑器/阅读器使用独立布局（前缀匹配，覆盖动态路由）
 const bareRoutes = ['/install', '/login', '/register', '/book/writer', '/book/reader']
 
-// 无 SEO 价值的交互页统一 noindex
+// 无 SEO 价值的交互页统一 noindex（前缀匹配）
 const noindexRoutes = ['/books', '/book/writer', '/user/profile', '/user/security', '/admin']
 
 function Shell({ children }: { children: ReactNode }) {
@@ -25,10 +25,10 @@ function Shell({ children }: { children: ReactNode }) {
       </div>
     )
   }
-  if (bareRoutes.includes(router.pathname)) {
+  if (bareRoutes.some((r) => router.pathname === r || router.pathname.startsWith(r + '/'))) {
     return (
       <div className="min-h-screen">
-        {router.pathname !== '/book/reader' && <Seo noindex />}
+        {!router.pathname.startsWith('/book/reader') && <Seo noindex />}
         {children}
       </div>
     )
