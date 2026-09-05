@@ -1,0 +1,72 @@
+name: CI Checks
+
+# 日常质量门禁：PR 与非 dev 分支推送触发
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches-ignore: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: Go server checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      - name: Vet
+        working-directory: server
+        run: go vet ./...
+
+      - name: Test
+        working-directory: server
+        run: go test -v ./...
+
+      - name: Build
+        working-directory: server
+        env:
+          CGO_ENABLED: "0"
+        run: go build -trimpath -o /tmp/infosphere-server .
+
+  web:
+    name: Web checks (typecheck + lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: app/web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: app/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: app/web
+        run: pnpm exec tsc --noEmit
+
+      - name: Lint
+        working-directory: app/web
+        run: pnpm exec next lint
+
+      - name: Build (SSR standalone)
+        working-directory: app/web
+        run: pnpm build
