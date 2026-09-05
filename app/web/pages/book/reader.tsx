@@ -180,11 +180,9 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
                   <span key={t.id} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t.name}</span>
                 ))}
               </div>
-              <div className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-500">
-                {authorAvatar
-                  ? <img src={authorAvatar} alt="" className="h-5 w-5 rounded-full object-cover" />
-                  : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px] text-slate-500">{(author?.username || '?').slice(0, 1)}</span>}
-                {author?.username || '佚名'}
+              <div className="mt-1.5 flex items-center justify-center gap-2 text-sm text-slate-500">
+                <UserAvatar user={author} size="h-5 w-5" />
+                <span>{author?.username || '佚名'}</span>
               </div>
               <p className="mt-1 text-xs text-slate-400">{flat.length} 个章节</p>
               {canEdit && (
@@ -220,6 +218,12 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
                     <span className="text-slate-600">{author?.username || '佚名'}</span>
                     <span>· 更新于 {formatDate(doc.updated_at).slice(0, 10)}</span>
                     <span>· 阅读 {readingMin} 分钟</span>
+                    {canEdit && (
+                      <Link href={`/book/writer?slug=${encodeURIComponent(book.slug)}&doc=${doc.slug}`}
+                        className="flex items-center gap-1 text-primary-600 transition-colors hover:text-primary-700">
+                        <i className="fa-solid fa-pen-to-square text-xs" aria-hidden="true" /> 编辑
+                      </Link>
+                    )}
                   </div>
                   <hr className="my-6 border-slate-100" />
                   <div className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
