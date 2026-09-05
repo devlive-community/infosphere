@@ -114,9 +114,9 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   }
 
   return (
-    <div className="pb-24">
+    <div>
       {/* 页头 */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <nav className="mb-1 flex items-center gap-1.5 text-sm text-slate-400">
             <button onClick={() => router.push('/books')} className="hover:text-primary-600">我的书籍</button>
@@ -141,7 +141,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         {/* 左：分区表单 */}
-        <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm">
           {/* 基本信息 */}
           <Section icon={<BookIcon className="h-4 w-4" />} title="基本信息">
             <RowField label={<>书籍标题 <span className="text-rose-500">*</span></>}>
@@ -177,7 +177,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
           {/* 封面 */}
           <Section icon={<ImageIcon className="h-4 w-4" />} title="封面">
             <div className="flex gap-4">
-              <div className="h-36 w-28 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF]">
+              <div className="w-56 shrink-0 self-stretch overflow-hidden rounded-lg border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF]">
                 {coverSrc && <img src={coverSrc} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
               </div>
               <div className="min-w-0 flex-1 space-y-3">
@@ -255,7 +255,11 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
               </div>
               <div className="space-y-2 p-4">
                 {tags.length > 0 && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{tags[0]}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tags.map((t) => (
+                      <span key={t} className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t}</span>
+                    ))}
+                  </div>
                 )}
                 <h3 className="line-clamp-2 text-lg font-bold text-slate-900">{title || '书名将显示在这里'}</h3>
                 <p className="line-clamp-3 text-sm text-slate-500">{description || '一句话简介会显示在这里。'}</p>
