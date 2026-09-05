@@ -23,7 +23,7 @@ interface BookFormState {
   description: string
   status: BookStatus
   isPublic: boolean
-  tags: string
+  tags: string[]
   chapterPrefix: string
 }
 
@@ -80,7 +80,8 @@ export default function Writer({ user }: WriterProps) {
   const [allowComments, setAllowComments] = useState(true)
 
   // 书籍设置表单
-  const [bookForm, setBookForm] = useState<BookFormState>({ title: '', description: '', status: 'draft', isPublic: false, tags: '', chapterPrefix: '' })
+  const [bookForm, setBookForm] = useState<BookFormState>({ title: '', description: '', status: 'draft', isPublic: false, tags: [] as string[], chapterPrefix: '' })
+  const [tagInput, setTagInput] = useState('')
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const snapshot = useRef('') // 已保存/已加载表单的快照，用于脏状态判断
@@ -112,7 +113,7 @@ export default function Writer({ user }: WriterProps) {
         setBook(b)
         setBookForm({
           title: b.title, description: b.description || '', status: b.status,
-          isPublic: b.is_public, tags: (b.tags || []).map((t) => t.name).join(', '),
+          isPublic: b.is_public, tags: (b.tags || []).map((t) => t.name),
           chapterPrefix: b.chapter_prefix || '',
         })
         await loadTree(b)
@@ -327,7 +328,7 @@ export default function Writer({ user }: WriterProps) {
       const payload = {
         title: bookForm.title.trim(), description: bookForm.description, status: bookForm.status,
         is_public: bookForm.isPublic, chapter_prefix: bookForm.chapterPrefix,
-        tags: bookForm.tags.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
+        tags: bookForm.tags,
       }
       const updated = await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
       setBook(updated)
@@ -497,12 +498,31 @@ export default function Writer({ user }: WriterProps) {
                   options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }, { value: 'archived', label: '已归档' }]} />
               </Field>
               <Field label="可见性">
-                <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm">
-                  <input type="checkbox" className="h-4 w-4 accent-primary-600" checked={bookForm.isPublic} onChange={(e) => setBookForm({ ...bookForm, isPublic: e.target.checked })} />
-                  公开可访问
-                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <VisibilityCard active={!bookForm.isPublic} onClick={() => setBookForm({ ...bookForm, isPublic: false })} title="仅自己可见" desc="尚未完成的内容" />
+                  <VisibilityCard active={bookForm.isPublic} onClick={() => setBookForm({ ...bookForm, isPublic: true })} title="公开访问" desc="所有访客可阅读" />
+                </div>
               </Field>
-              <Field label="标签" hint="逗号分隔，最多 10 个"><Input value={bookForm.tags} onChange={(e) => setBookForm({ ...bookForm, tags: e.target.value })} placeholder="Go, 后端" /></Field>
+              <Field label="标签" hint="回车添加，最多 10 个">
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition-colors focus-within:border-primary-500">
+                  {bookForm.tags.map((t) => (
+                    <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
+                      {t}
+                      <button type="button" aria-label={`移除 ${t}`} onClick={() => setBookForm({ ...bookForm, tags: bookForm.tags.filter((x) => x !== t) })}
+                        className="text-primary-400 hover:text-primary-700">×</button>
+                    </span>
+                  ))}
+                  <input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); const t = tagInput.trim(); if (t && !bookForm.tags.includes(t) && bookForm.tags.length < 10) { setBookForm({ ...bookForm, tags: [...bookForm.tags, t] }) } setTagInput('') }
+                      else if (e.key === 'Backspace' && !tagInput && bookForm.tags.length) { setBookForm({ ...bookForm, tags: bookForm.tags.slice(0, -1) }) }
+                    }}
+                    onBlur={() => { const t = tagInput.trim(); if (t && !bookForm.tags.includes(t) && bookForm.tags.length < 10) { setBookForm({ ...bookForm, tags: [...bookForm.tags, t] }) } setTagInput('') }}
+                    placeholder={bookForm.tags.length >= 10 ? '已达上限' : '添加标签'}
+                    disabled={bookForm.tags.length >= 10}
+                    className="min-w-[100px] flex-1 border-0 bg-transparent p-0 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-0" />
+                </div>
+              </Field>
               <Field label="章节前缀"><Input value={bookForm.chapterPrefix} onChange={(e) => setBookForm({ ...bookForm, chapterPrefix: e.target.value })} placeholder="第" /></Field>
               <Button className="w-full" onClick={saveBookSettings}>保存书籍设置</Button>
             </div>
@@ -605,6 +625,18 @@ export default function Writer({ user }: WriterProps) {
 }
 
 /* ── 子组件 ── */
+
+function VisibilityCard({ active, onClick, title, desc }: { active: boolean; onClick: () => void; title: string; desc: string }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+        active ? 'border-primary-500 bg-primary-50/60 ring-1 ring-inset ring-primary-200' : 'border-slate-200 hover:border-slate-300'
+      }`}>
+      <span className={`block text-sm font-medium ${active ? 'text-primary-700' : 'text-slate-900'}`}>{title}</span>
+      <span className="block text-xs text-slate-500">{desc}</span>
+    </button>
+  )
+}
 
 function ToolbarButton({ title, onClick, children }: { title: string; onClick: () => void; children: ReactNode }) {
   return (
