@@ -73,7 +73,7 @@ export default function MyBooks() {
           {(data.items || []).map((book) => (
             <div key={book.id} className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
               <div className="flex gap-4">
-                <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`}
+                <Link href={`/book/${encodeURIComponent(book.slug)}/detail`}
                   className="h-32 w-24 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
                   {book.cover_image
                     ? <img src={book.cover_image} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
@@ -81,7 +81,7 @@ export default function MyBooks() {
                 </Link>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <div className="flex items-center gap-2">
-                    <Link href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} className="min-w-0 truncate font-semibold text-slate-900 hover:text-primary-600">{book.title}</Link>
+                    <Link href={`/book/${encodeURIComponent(book.slug)}/detail`} className="min-w-0 truncate font-semibold text-slate-900 hover:text-primary-600">{book.title}</Link>
                     <StatusBadge status={book.status} />
                     {book.is_public && <Badge tone="sky">公开</Badge>}
                   </div>
@@ -94,9 +94,9 @@ export default function MyBooks() {
                 </div>
               </div>
               <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
-                <ButtonLink href={`/book/writer?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">写作</ButtonLink>
-                <ButtonLink href={`/book/detail?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">详情</ButtonLink>
-                <ButtonLink href={`/books/edit?slug=${encodeURIComponent(book.slug)}`} variant="outline" size="sm">设置</ButtonLink>
+                <ButtonLink href={`/book/${encodeURIComponent(book.slug)}/writer`} variant="outline" size="sm">写作</ButtonLink>
+                <ButtonLink href={`/book/${encodeURIComponent(book.slug)}/detail`} variant="outline" size="sm">详情</ButtonLink>
+                <ButtonLink href={`/book/${encodeURIComponent(book.slug)}/settings`} variant="outline" size="sm">设置</ButtonLink>
                 <button onClick={() => remove(book)} className="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-white px-3 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 focus:outline-none">删除</button>
               </div>
             </div>

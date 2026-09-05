@@ -35,7 +35,7 @@ export default function EditBook() {
         onSubmit={async (payload) => {
           delete payload.slug
           await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
-          router.push(`/book/detail?slug=${encodeURIComponent(book.slug)}`)
+          router.push(`/book/${encodeURIComponent(book.slug)}/detail`)
         }}
       />
     </Container>
