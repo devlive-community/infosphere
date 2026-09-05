@@ -8,5 +8,7 @@ export default function LegacyWriter() {
 export const getServerSideProps: GetServerSideProps = async ({ query }) => {
   const slug = typeof query.slug === 'string' ? query.slug : ''
   if (!slug) return { notFound: true }
-  return { redirect: { destination: `/book/writer/${encodeURIComponent(slug)}`, permanent: true } }
+    const doc = typeof query.doc === 'string' ? query.doc : ''
+  const dest = doc ? `/book/writer/${encodeURIComponent(slug)}/${encodeURIComponent(doc)}` : `/book/detail/${encodeURIComponent(slug)}`
+  return { redirect: { destination: dest, permanent: true } }
 }

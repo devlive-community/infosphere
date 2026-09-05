@@ -188,7 +188,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
                 <span className="text-xs text-slate-400">{flat.length} 个章节</span>
               </div>
               {canEdit && (
-                <ButtonLink href={`/book/writer?slug=${encodeURIComponent(book.slug)}${doc ? `&doc=${doc.slug}` : ''}`}
+                <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}/${doc ? encodeURIComponent(doc.slug) : ''}`}
                   className="mt-3 w-full">
                   <PencilIcon className="h-4 w-4" /> 写作
                 </ButtonLink>
@@ -221,7 +221,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, nee
                     <span>· 更新于 {formatDate(doc.updated_at).slice(0, 10)}</span>
                     <span>· 阅读 {readingMin} 分钟</span>
                     {canEdit && (
-                      <Link href={`/book/writer/${encodeURIComponent(book.slug)}?doc=${encodeURIComponent(doc.slug)}`}
+                      <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${encodeURIComponent(doc.slug)}`}
                         className="flex items-center gap-1 text-primary-600 transition-colors hover:text-primary-700">
                         <i className="fa-solid fa-pen-to-square text-xs" aria-hidden="true" /> 编辑
                       </Link>
