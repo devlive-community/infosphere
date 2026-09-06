@@ -71,6 +71,16 @@ type BookCollaborator struct {
 	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
+// PasswordResetToken 找回密码一次性令牌（M15；只存哈希，明文仅出现在邮件链接里）
+type PasswordResetToken struct {
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	UserID    uint       `gorm:"index;not null" json:"user_id"`
+	TokenHash string     `gorm:"size:64;uniqueIndex;not null" json:"-"`
+	ExpiresAt time.Time  `gorm:"index" json:"expires_at"`
+	UsedAt    *time.Time `json:"used_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
 // Book 书籍
 type Book struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
@@ -176,5 +186,6 @@ func All(db *gorm.DB) error {
 		&Reaction{},
 		&Notification{},
 		&BookCollaborator{},
+		&PasswordResetToken{},
 	)
 }

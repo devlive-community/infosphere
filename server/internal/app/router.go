@@ -64,6 +64,10 @@ func (a *App) Router() *gin.Engine {
 			authGroup.POST("/register", a.Register)
 			authGroup.POST("/login", a.Login)
 
+			// ── 找回密码（auth:password-reset 匿名语义） ──
+			authGroup.POST("/password/forgot", a.ForgotPassword)
+			authGroup.POST("/password/reset", a.ResetPassword)
+
 			// ── 第三方登录（auth:oauth；start/callback 匿名，绑定管理需登录） ──
 			authGroup.GET("/oauth/providers", a.OAuthProviders)
 			authGroup.GET("/oauth/:provider", a.OAuthStart)
@@ -173,6 +177,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/site", a.RequirePermission(authz.SiteUpdate), a.UpdateSiteConfig)
 			admin.GET("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminGetOAuth)
 			admin.PUT("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminSaveOAuth)
+			admin.GET("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminGetMail)
+			admin.PUT("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminSaveMail)
 			admin.GET("/system/version", a.RequirePermission(authz.SystemRead), a.SystemVersion)
 			admin.POST("/system/upgrade", a.RequirePermission(authz.SystemUpgrade), a.SystemUpgrade)
 		}

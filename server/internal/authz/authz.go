@@ -33,6 +33,9 @@ const (
 	// 第三方登录
 	AuthOauth Permission = "auth:oauth" // 管理第三方登录绑定（登录用户）
 
+	// 找回密码
+	AuthPasswordReset Permission = "auth:password-reset" // 申请/执行密码重置（匿名语义，端点公开）
+
 	// 站内通知
 	NotificationRead   Permission = "notification:read"   // 查看自己的通知（含 SSE 流）
 	NotificationUpdate Permission = "notification:update" // 标记通知已读
@@ -78,7 +81,7 @@ var All = []Permission{
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	TagRead, TagCreate, TagDelete,
 	SearchRead,
-	AuthOauth,
+	AuthOauth, AuthPasswordReset,
 	NotificationRead, NotificationUpdate,
 	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
@@ -96,7 +99,7 @@ var userPermissions = []Permission{
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	TagRead, TagCreate,
 	SearchRead,
-	AuthOauth,
+	AuthOauth, AuthPasswordReset,
 	NotificationRead, NotificationUpdate,
 	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate,

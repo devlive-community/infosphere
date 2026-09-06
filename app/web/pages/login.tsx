@@ -54,6 +54,9 @@ export default function Login() {
           </Field>
           <Button className="w-full" loading={loading}>登 录</Button>
         </form>
+        <p className="mt-3 text-center text-sm text-slate-500">
+          <Link href="/forgot-password" className="text-slate-400 hover:text-primary-600 hover:underline">忘记密码？</Link>
+        </p>
         <OAuthButtons label="登录" />
         <p className="mt-4 text-center text-sm text-slate-500">
           还没有账户？<Link href="/register" className="text-primary-600 hover:underline">立即注册</Link>

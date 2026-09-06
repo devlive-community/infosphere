@@ -50,6 +50,7 @@ Authorization: Bearer <token>
 | `reaction:delete` | 取消点赞/收藏 | ✅ | ✅ |
 | `reaction:read` | 查看自己的点赞/收藏 | ✅ | ✅ |
 | `auth:oauth` | 管理第三方登录绑定 | ✅ | ✅ |
+| `auth:password-reset` | 申请/执行密码重置（匿名语义，端点公开） | ✅ | ✅ |
 | `notification:read` | 查看自己的通知（含 SSE 流） | ✅ | ✅ |
 | `notification:update` | 标记通知已读 | ✅ | ✅ |
 | `collaborator:read` | 查看书籍协作者列表 | ✅ | ✅ |
@@ -118,6 +119,8 @@ Authorization: Bearer <token>
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |
 | PUT | `/auth/password` | 修改密码（old_password/new_password；OAuth 用户未设密码时免验原密码，用于首次设置） | `user:update` |
+| POST | `/auth/password/forgot` | 匿名申请找回：`{email}`；响应不泄露邮箱是否存在，令牌邮件 60 分钟有效、一次性、只保留最新一条；`mail_driver=log` 时链接输出到后端日志 | `auth:password-reset`（匿名语义） |
+| POST | `/auth/password/reset` | 匿名重置：`{token, password}`（≥6 位）；成功后旧密码立即失效，该用户其余令牌作废 | `auth:password-reset`（匿名语义） |
 
 ## 第三方登录（OAuth，当前支持 github）
 
@@ -129,6 +132,7 @@ Authorization: Bearer <token>
 | GET | `/auth/oauth/bindings` | 当前用户绑定列表 `[{provider,provider_username,provider_email,created_at}]` | 登录 |
 | DELETE | `/auth/oauth/:provider` | 解绑；未设置本地密码时拒绝（防止锁死） | `auth:oauth` |
 | GET/PUT | `/oauth` | 管理员读取/保存 GitHub 凭据（client_id/client_secret/enabled），存站点配置表，不出现在公开 `/site` | `site:update` |
+| GET/PUT | `/mail` | 管理员读取/保存邮件配置（driver log\|smtp、host/port/username/password/from）与 `site_url`（找回邮件链接前缀） | `site:update` |
 
 > 凭据存于站点配置（`oauth_github_*` 键）；state 防 CSRF 为内存态（10 分钟 TTL），适配当前单实例部署架构。
 

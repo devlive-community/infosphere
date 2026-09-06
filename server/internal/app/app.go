@@ -6,6 +6,7 @@ import (
 
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/database"
+	"infosphere/server/internal/mail"
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,8 @@ type App struct {
 	Config        *config.Config
 	DB            *gorm.DB
 	Notifications *notificationHub
+	// MailSender 邮件发送器；为空时按站点配置解析（测试可注入替代实现）
+	MailSender mail.Sender
 }
 
 // New 创建应用实例；已安装时建立数据库连接
