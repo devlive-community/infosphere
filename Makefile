@@ -23,9 +23,9 @@ build: web-build server-build web-package
 web-install:
 	cd $(WEB_DIR) && pnpm install
 
-## 构建 Next.js SSR 产物
+## 构建 Next.js SSR 产物（隔离目录，不干扰 dev 的 .next）
 web-build:
-	cd $(WEB_DIR) && pnpm build
+	cd $(WEB_DIR) && NEXT_DIST_DIR=.next-build pnpm build
 
 ## 打包前端独立部署包
 web-package:

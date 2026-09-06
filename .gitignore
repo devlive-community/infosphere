@@ -55,3 +55,4 @@ bin/
 .Codex/
 .Codex
 app/web/.next-dev/
+app/web/.next-build/

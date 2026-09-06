@@ -47,6 +47,8 @@ jobs:
 
       - name: Build web (SSR standalone)
         working-directory: app/web
+        env:
+          NEXT_DIST_DIR: .next-build
         run: pnpm build
 
       - name: Package web
