@@ -8,19 +8,19 @@ import (
 
 // User 用户
 type User struct {
-	ID           uint       `gorm:"primaryKey" json:"id"`
-	Username     string     `gorm:"size:50;uniqueIndex" json:"username"`
-	Email        string     `gorm:"size:100;uniqueIndex" json:"email"`
-	Password     string     `gorm:"size:255" json:"-"`
-	Role         string     `gorm:"size:20;default:user" json:"role"`
-	Avatar       string     `gorm:"size:500" json:"avatar"`
-	Bio          string     `gorm:"size:1000" json:"bio"`
-	GithubURL    string     `gorm:"size:255;column:github_url" json:"github_url"`
-	IsActive     bool       `gorm:"default:true" json:"is_active"`
-	LastLoginAt  *time.Time `json:"last_login_at"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	Books        []Book     `gorm:"foreignKey:UserID" json:"books,omitempty"`
+	ID              uint                 `gorm:"primaryKey" json:"id"`
+	Username        string               `gorm:"size:50;uniqueIndex" json:"username"`
+	Email           string               `gorm:"size:100;uniqueIndex" json:"email"`
+	Password        string               `gorm:"size:255" json:"-"`
+	Role            string               `gorm:"size:20;default:user" json:"role"`
+	Avatar          string               `gorm:"size:500" json:"avatar"`
+	Bio             string               `gorm:"size:1000" json:"bio"`
+	GithubURL       string               `gorm:"size:255;column:github_url" json:"github_url"`
+	IsActive        bool                 `gorm:"default:true" json:"is_active"`
+	LastLoginAt     *time.Time           `json:"last_login_at"`
+	CreatedAt       time.Time            `json:"created_at"`
+	UpdatedAt       time.Time            `json:"updated_at"`
+	Books           []Book               `gorm:"foreignKey:UserID" json:"books,omitempty"`
 	Authentications []UserAuthentication `gorm:"foreignKey:UserID" json:"authentications,omitempty"`
 }
 
@@ -54,11 +54,21 @@ type SiteConfig struct {
 type Notification struct {
 	ID        uint       `gorm:"primaryKey" json:"id"`
 	UserID    uint       `gorm:"index;not null" json:"user_id"`
-	Type      string     `gorm:"size:30;index" json:"type"` // comment | reaction | system
+	Type      string     `gorm:"size:30;index" json:"type"` // comment | reaction | system | collaboration
 	Title     string     `gorm:"size:255;not null" json:"title"`
 	Payload   string     `gorm:"type:text" json:"payload"` // JSON 字符串，如 {"link":"/book/detail/x"}
 	ReadAt    *time.Time `json:"read_at"`
 	CreatedAt time.Time  `json:"created_at"`
+}
+
+// BookCollaborator 书籍协作者（M14；书籍所有者为 book.user_id，不在此表）
+type BookCollaborator struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	BookID    uint      `gorm:"not null;uniqueIndex:uk_book_user" json:"book_id"`
+	UserID    uint      `gorm:"not null;uniqueIndex:uk_book_user" json:"user_id"`
+	Role      string    `gorm:"size:20;default:editor" json:"role"` // editor | viewer
+	CreatedAt time.Time `json:"created_at"`
+	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
 // Book 书籍
@@ -92,16 +102,16 @@ type Tag struct {
 
 // Comment 章节评论：支持两级（parent_id 为空是顶层评论）
 type Comment struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	DocumentID uint     `gorm:"index;not null" json:"document_id"`
-	UserID    uint      `gorm:"index;not null" json:"user_id"`
-	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	ParentID  *uint     `gorm:"index" json:"parent_id"`
-	Parent    *Comment  `gorm:"foreignKey:ParentID" json:"-"`
-	Content   string    `gorm:"type:text;not null" json:"content"`
-	Status    string    `gorm:"size:20;default:published;index" json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	DocumentID uint      `gorm:"index;not null" json:"document_id"`
+	UserID     uint      `gorm:"index;not null" json:"user_id"`
+	User       *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	ParentID   *uint     `gorm:"index" json:"parent_id"`
+	Parent     *Comment  `gorm:"foreignKey:ParentID" json:"-"`
+	Content    string    `gorm:"type:text;not null" json:"content"`
+	Status     string    `gorm:"size:20;default:published;index" json:"status"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // Reaction 点赞/收藏：每用户每书一条（like 或 favorite）
@@ -135,20 +145,20 @@ type BookTag struct {
 
 // Document 文档，支持 parent_id 构成树形结构
 type Document struct {
-	ID        uint       `gorm:"primaryKey" json:"id"`
-	BookID    uint       `gorm:"index;not null;uniqueIndex:uk_book_slug" json:"book_id"`
-	ParentID  *uint      `gorm:"index" json:"parent_id"`
-	Title     string     `gorm:"size:255;not null" json:"title"`
-	Slug      string     `gorm:"size:255;not null;uniqueIndex:uk_book_slug" json:"slug"`
-	Content   string     `gorm:"type:text" json:"content"`
-	UserID    uint       `gorm:"index;not null" json:"user_id"`
-	SortOrder int        `gorm:"default:0" json:"sort_order"`
-	Status    string     `gorm:"size:20;default:draft;index" json:"status"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	BookID    uint   `gorm:"index;not null;uniqueIndex:uk_book_slug" json:"book_id"`
+	ParentID  *uint  `gorm:"index" json:"parent_id"`
+	Title     string `gorm:"size:255;not null" json:"title"`
+	Slug      string `gorm:"size:255;not null;uniqueIndex:uk_book_slug" json:"slug"`
+	Content   string `gorm:"type:text" json:"content"`
+	UserID    uint   `gorm:"index;not null" json:"user_id"`
+	SortOrder int    `gorm:"default:0" json:"sort_order"`
+	Status    string `gorm:"size:20;default:draft;index" json:"status"`
 	// 公开后允许评论；指针型保证显式 false 能写入（列默认 true）
-	AllowComments *bool      `gorm:"default:true" json:"allow_comments"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	Children  []*Document `gorm:"-" json:"children,omitempty"`
+	AllowComments *bool       `gorm:"default:true" json:"allow_comments"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+	Children      []*Document `gorm:"-" json:"children,omitempty"`
 }
 
 // All 执行多数据库迁移
@@ -165,5 +175,6 @@ func All(db *gorm.DB) error {
 		&Comment{},
 		&Reaction{},
 		&Notification{},
+		&BookCollaborator{},
 	)
 }

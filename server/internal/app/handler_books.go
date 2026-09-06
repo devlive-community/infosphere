@@ -14,9 +14,31 @@ var bookStatuses = map[string]bool{"draft": true, "published": true, "archived":
 
 var allowedOrderCols = map[string]bool{"created_at": true, "updated_at": true, "title": true, "view_count": true}
 
-// canManageBook 判断用户能否管理书籍
+// canManageBook 判断用户能否管理书籍（设置与删除：owner/admin）
 func (a *App) canManageBook(u *models.User, b *models.Book) bool {
 	return IsAdmin(u) || (u != nil && u.ID == b.UserID)
+}
+
+// collaboratorRole 查询用户在书籍上的协作者角色；非协作者返回 ("", false)
+func (a *App) collaboratorRole(u *models.User, bookID uint) (string, bool) {
+	if u == nil {
+		return "", false
+	}
+	var c models.BookCollaborator
+	if err := a.DB.Where("book_id = ? AND user_id = ?", bookID, u.ID).First(&c).Error; err != nil {
+		return "", false
+	}
+	return c.Role, true
+}
+
+// canEditBookContent 内容归属校验：owner/admin 或 editor 协作者。
+// 仅覆盖章节内容与目录管理，书籍设置与删除仍限 canManageBook。
+func (a *App) canEditBookContent(u *models.User, b *models.Book) bool {
+	if a.canManageBook(u, b) {
+		return true
+	}
+	role, ok := a.collaboratorRole(u, b.ID)
+	return ok && role == "editor"
 }
 
 // canReadBook 判断书籍是否对当前用户可见
@@ -24,7 +46,12 @@ func (a *App) canReadBook(u *models.User, b *models.Book) bool {
 	if b.IsPublic && b.Status == "published" {
 		return true
 	}
-	return a.canManageBook(u, b)
+	if a.canManageBook(u, b) {
+		return true
+	}
+	// 协作者（editor/viewer）可访问私有协作书籍
+	_, ok := a.collaboratorRole(u, b.ID)
+	return ok
 }
 
 func preloadBookUser(db *gorm.DB) *gorm.DB {
@@ -82,15 +109,15 @@ func (a *App) ListBooks(c *gin.Context) {
 }
 
 type bookPayload struct {
-	Title         *string `json:"title"`
-	Description   *string `json:"description"`
-	CoverImage    *string `json:"cover_image"`
-	Slug          *string `json:"slug"`
-	Status        *string `json:"status"`
-	IsPublic      *bool   `json:"is_public"`
-	OrderCol      *string `json:"order_col"`
-	OrderDir      *string `json:"order_dir"`
-	ChapterPrefix *string `json:"chapter_prefix"`
+	Title         *string  `json:"title"`
+	Description   *string  `json:"description"`
+	CoverImage    *string  `json:"cover_image"`
+	Slug          *string  `json:"slug"`
+	Status        *string  `json:"status"`
+	IsPublic      *bool    `json:"is_public"`
+	OrderCol      *string  `json:"order_col"`
+	OrderDir      *string  `json:"order_dir"`
+	ChapterPrefix *string  `json:"chapter_prefix"`
 	Tags          []string `json:"tags"`
 }
 
@@ -146,12 +173,12 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 
 	book := models.Book{
-		Title:     *req.Title,
-		UserID:    u.ID,
-		Status:    "draft",
-		OrderCol:  "created_at",
-		OrderDir:  "desc",
-		IsPublic:  req.IsPublic != nil && *req.IsPublic,
+		Title:    *req.Title,
+		UserID:   u.ID,
+		Status:   "draft",
+		OrderCol: "created_at",
+		OrderDir: "desc",
+		IsPublic: req.IsPublic != nil && *req.IsPublic,
 	}
 	if req.Description != nil {
 		book.Description = *req.Description

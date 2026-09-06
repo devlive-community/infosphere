@@ -37,6 +37,11 @@ const (
 	NotificationRead   Permission = "notification:read"   // 查看自己的通知（含 SSE 流）
 	NotificationUpdate Permission = "notification:update" // 标记通知已读
 
+	// 协作与团队
+	CollaboratorRead   Permission = "collaborator:read"   // 查看书籍协作者列表
+	CollaboratorCreate Permission = "collaborator:create" // 添加/更新协作者（仅书籍所有者）
+	CollaboratorDelete Permission = "collaborator:delete" // 移除协作者（所有者；协作者可自行退出）
+
 	// 点赞/收藏
 	ReactionCreate Permission = "reaction:create" // 点赞/收藏书籍
 	ReactionDelete Permission = "reaction:delete" // 取消点赞/收藏
@@ -53,7 +58,7 @@ const (
 	UserUpdate Permission = "user:update" // 更新个人资料与密码
 
 	// 站点
-	SiteRead  Permission = "site:read"   // 读取站点公开配置
+	SiteRead   Permission = "site:read"   // 读取站点公开配置
 	SiteUpdate Permission = "site:update" // 更新站点配置（仅管理员）
 
 	// 统计
@@ -75,6 +80,7 @@ var All = []Permission{
 	SearchRead,
 	AuthOauth,
 	NotificationRead, NotificationUpdate,
+	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	UserRead, UserUpdate,
@@ -92,6 +98,7 @@ var userPermissions = []Permission{
 	SearchRead,
 	AuthOauth,
 	NotificationRead, NotificationUpdate,
+	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	UserRead, UserUpdate,

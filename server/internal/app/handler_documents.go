@@ -27,7 +27,7 @@ func (a *App) ListDocumentTree(c *gin.Context) {
 	var docs []models.Document
 	query := a.DB.Where("book_id = ?", book.ID).
 		Select("id", "book_id", "parent_id", "title", "slug", "user_id", "sort_order", "status", "created_at", "updated_at")
-	if !a.canManageBook(u, book) {
+	if !a.canEditBookContent(u, book) {
 		query = query.Where("status = ?", "published")
 	}
 	if err := query.Order("sort_order ASC, created_at ASC").Find(&docs).Error; err != nil {
@@ -89,7 +89,7 @@ func (a *App) CreateDocument(c *gin.Context) {
 		return
 	}
 	u := currentUser(c)
-	if !a.canManageBook(u, book) {
+	if !a.canEditBookContent(u, book) {
 		fail(c, http.StatusForbidden, "无权操作该书籍")
 		return
 	}
@@ -201,8 +201,12 @@ func (a *App) findDocument(c *gin.Context) (*models.Document, *models.Book, int)
 
 // canReadDocument 判断文档是否对当前用户可见
 func (a *App) canReadDocument(u *models.User, doc *models.Document, book *models.Book) bool {
-	if a.canManageBook(u, book) {
+	if a.canEditBookContent(u, book) {
 		return true
+	}
+	// viewer 协作者：私有书籍中可见已发布章节
+	if role, ok := a.collaboratorRole(u, book.ID); ok && role == "viewer" {
+		return doc.Status == "published"
 	}
 	return book.IsPublic && book.Status == "published" && doc.Status == "published"
 }
@@ -247,7 +251,7 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		fail(c, status, "文档不存在")
 		return
 	}
-	if !a.canManageBook(currentUser(c), book) {
+	if !a.canEditBookContent(currentUser(c), book) {
 		fail(c, http.StatusForbidden, "无权操作该文档")
 		return
 	}
@@ -346,7 +350,7 @@ func (a *App) DeleteDocument(c *gin.Context) {
 		fail(c, status, "文档不存在")
 		return
 	}
-	if !a.canManageBook(currentUser(c), book) {
+	if !a.canEditBookContent(currentUser(c), book) {
 		fail(c, http.StatusForbidden, "无权操作该文档")
 		return
 	}

@@ -112,6 +112,11 @@ func (a *App) Router() *gin.Engine {
 			books.GET("/status-counts", a.RequirePermission(authz.BookRead), a.MyBookCounts)
 			books.PUT("/:id", a.RequirePermission(authz.BookUpdate), a.UpdateBook)
 			books.DELETE("/:id", a.RequirePermission(authz.BookDelete), a.DeleteBook)
+
+			// ── 协作者管理（collaborator:*；归属校验在 handler 内） ──
+			books.GET("/:id/collaborators", a.RequirePermission(authz.CollaboratorRead), a.ListCollaborators)
+			books.POST("/:id/collaborators", a.RequirePermission(authz.CollaboratorCreate), a.AddCollaborator)
+			books.DELETE("/:id/collaborators/:userId", a.RequirePermission(authz.CollaboratorDelete), a.RemoveCollaborator)
 		}
 
 		// ── 文档管理（document:*，归属校验在 handler 内） ──

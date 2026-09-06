@@ -52,6 +52,9 @@ Authorization: Bearer <token>
 | `auth:oauth` | 管理第三方登录绑定 | ✅ | ✅ |
 | `notification:read` | 查看自己的通知（含 SSE 流） | ✅ | ✅ |
 | `notification:update` | 标记通知已读 | ✅ | ✅ |
+| `collaborator:read` | 查看书籍协作者列表 | ✅ | ✅ |
+| `collaborator:create` | 添加/更新协作者（仅书籍所有者/管理员） | ✅ | ✅ |
+| `collaborator:delete` | 移除协作者（所有者；协作者可自行退出） | ✅ | ✅ |
 | `site:update` | 更新站点配置 | ❌ | ✅ |
 | `stats:read` | 读取站点统计 | ✅ | ✅ |
 | `upload:create` | 上传图片 | ✅ | ✅ |
@@ -179,6 +182,16 @@ Authorization: Bearer <token>
 | DELETE | `/documents/:id` | 删除文档及其子树 | `document:delete` |
 
 文档字段：`id, book_id, parent_id, title, slug, content( markdown), user_id, sort_order, status, allow_comments(公开后允许评论，默认 true), created_at, updated_at, children`；创建/更新请求体同样接受 `allow_comments`
+
+> **协作（M14）**：书籍协作者（editor）拥有章节内容的增删改权限，与所有者相同；书籍设置与删除仍限所有者/管理员。viewer 可访问私有协作书籍及其已发布章节。协作者查看章节/文档端点直接复用上表权限。
+
+## 协作者（M14）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/books/:id/collaborators` | 协作者列表（含 user 摘要）；所有者/管理员/协作者可查 | `collaborator:read` |
+| POST | `/books/:id/collaborators` | 添加或更新协作者 `{username, role: editor\|viewer}`；已存在则覆盖角色；向对方发送协作邀请通知 | `collaborator:create` |
+| DELETE | `/books/:id/collaborators/:userId` | 移除协作者；协作者可传自己的 userId 退出协作 | `collaborator:delete` |
 
 ## 标签
 

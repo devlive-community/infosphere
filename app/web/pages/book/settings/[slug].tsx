@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
 import BookForm from '@/components/BookForm'
+import CollaboratorManager from '@/components/CollaboratorManager'
 import type { Book } from '@/lib/types'
 
 export default function EditBook() {
@@ -26,18 +27,21 @@ export default function EditBook() {
 
   return (
     <Container>
-      <BookForm
-        initial={book}
-        heading="书籍设置"
-        subheading="调整书籍的基本信息、封面与发布方式。"
-        breadcrumb={book.title}
-        submitLabel="保存设置"
-        onSubmit={async (payload) => {
-          delete payload.slug
-          await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
-          router.push(`/book/detail/${encodeURIComponent(book.slug)}`)
-        }}
-      />
+      <div className="space-y-6">
+        <BookForm
+          initial={book}
+          heading="书籍设置"
+          subheading="调整书籍的基本信息、封面与发布方式。"
+          breadcrumb={book.title}
+          submitLabel="保存设置"
+          onSubmit={async (payload) => {
+            delete payload.slug
+            await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
+            router.push(`/book/detail/${encodeURIComponent(book.slug)}`)
+          }}
+        />
+        <CollaboratorManager book={book} />
+      </div>
     </Container>
   )
 }
