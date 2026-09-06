@@ -6,7 +6,7 @@ import { API_BASE, formatNumber } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useState } from 'react'
-import { ButtonLink } from '@/components/ui'
+import { ButtonLink , Tooltip} from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
@@ -230,14 +230,14 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
               ) : (
                 <span className="text-sm text-slate-400">暂无已发布章节</span>
               )}
-              <button type="button" onClick={() => alert('收藏功能即将上线')} title="收藏"
+              <Tooltip content="收藏"><button type="button" onClick={() => alert('收藏功能即将上线')}
                 className="flex h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">
-                <BookmarkIcon className="h-4 w-4" /> 收藏
-              </button>
-              <button type="button" onClick={share} title="分享"
+                  <BookmarkIcon className="h-4 w-4" /> 收藏
+                </button></Tooltip>
+              <Tooltip content="分享"><button type="button" onClick={share}
                 className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
-                <ShareIcon className="h-4 w-4" />
-              </button>
+                  <ShareIcon className="h-4 w-4" />
+                </button></Tooltip>
               {canManage && (
                 <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">写作</ButtonLink>
               )}

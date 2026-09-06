@@ -3,7 +3,7 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
-import { Pagination, Select, Loading } from '@/components/ui'
+import { Pagination, Select, Loading , Tooltip} from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import { ArrowRightIcon, BookIcon, CalendarIcon, EyeIcon, GitHubIcon, GridIcon, ListIcon, ShareIcon } from '@/components/icons'
@@ -94,10 +94,10 @@ function AuthorProfileCard({ profile, siteUrl, share }: { profile: UserProfile; 
                 <GitHubIcon className="h-4 w-4" /> 访问 GitHub
               </a>
             )}
-            <button onClick={share} title="分享主页"
+            <Tooltip content="分享主页"><button onClick={share}
               className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
-              <ShareIcon className="h-4 w-4" />
-            </button>
+                <ShareIcon className="h-4 w-4" />
+              </button></Tooltip>
           </div>
         </div>
 
@@ -258,14 +258,14 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
             <div className="flex items-center gap-2">
               <Select className="w-36" value={sort} onChange={(v) => setSort(v as SortKey)} options={sortOptions} />
               <div className="flex overflow-hidden rounded-lg border border-slate-200">
-                <button onClick={() => setView('grid')} aria-label="网格视图"
+                <Tooltip content="网格视图"><button onClick={() => setView('grid')}
                   className={`flex h-10 w-10 items-center justify-center transition-colors ${view === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
                   <GridIcon className="h-4 w-4" />
-                </button>
-                <button onClick={() => setView('list')} aria-label="列表视图"
+                </button></Tooltip>
+                <Tooltip content="列表视图"><button onClick={() => setView('list')}
                   className={`flex h-10 w-10 items-center justify-center border-l border-slate-200 transition-colors ${view === 'list' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
                   <ListIcon className="h-4 w-4" />
-                </button>
+                </button></Tooltip>
               </div>
             </div>
           </div>

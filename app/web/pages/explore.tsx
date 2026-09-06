@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, siteUrlFrom } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
 import Container from '@/components/Container'
-import { Button, Input, Loading, Pagination, Select } from '@/components/ui'
+import { Button, Input, Loading, Pagination, Select , Tooltip} from '@/components/ui'
 import Seo from '@/components/Seo'
 import TagChips from '@/components/TagChips'
 import UserAvatar from '@/components/UserAvatar'
@@ -247,14 +247,14 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
                   options={[{ value: 'latest', label: '最新发布' }, { value: 'hot', label: '热门阅读' }]} />
               )}
               <div className="flex overflow-hidden rounded-lg border border-slate-200">
-                <button onClick={() => setView('grid')} aria-label="网格视图"
+                <Tooltip content="网格视图"><button onClick={() => setView('grid')}
                   className={`flex h-10 w-10 items-center justify-center transition-colors ${view === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
                   <GridIcon className="h-4 w-4" />
-                </button>
-                <button onClick={() => setView('list')} aria-label="列表视图"
+                </button></Tooltip>
+                <Tooltip content="列表视图"><button onClick={() => setView('list')}
                   className={`flex h-10 w-10 items-center justify-center border-l border-slate-200 transition-colors ${view === 'list' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
                   <ListIcon className="h-4 w-4" />
-                </button>
+                </button></Tooltip>
               </div>
             </div>
           </div>

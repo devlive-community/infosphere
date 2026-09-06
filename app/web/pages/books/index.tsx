@@ -4,7 +4,7 @@ import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
-import { ButtonLink, Badge, EmptyState, Pagination, Select, Loading } from '@/components/ui'
+import { ButtonLink, Badge, EmptyState, Pagination, Select, Loading , Tooltip} from '@/components/ui'
 import { StatusBadge } from '@/components/BookCard'
 import TagChips from '@/components/TagChips'
 import {
@@ -301,14 +301,14 @@ function ActionRow({ book, menu }: { book: Book; menu: React.ReactNode }) {
         {isNew ? '开始写作' : '继续写作'}
       </Link>
       <div className="relative flex items-center gap-1">
-        <button title="章节列表" onClick={() => setChaptersOpen(!chaptersOpen)}
+        <Tooltip content="章节列表"><button type="button" onClick={() => setChaptersOpen(!chaptersOpen)}
           className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${chaptersOpen ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}>
-          <FileTextIcon className="h-4 w-4" />
-        </button>
-        <Link href={`/book/settings/${encodeURIComponent(book.slug)}`} title="书籍设置"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
-          <GearIcon className="h-4 w-4" />
-        </Link>
+            <FileTextIcon className="h-4 w-4" />
+          </button></Tooltip>
+        <Tooltip content="书籍设置"><Link href={`/book/settings/${encodeURIComponent(book.slug)}`}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+            <GearIcon className="h-4 w-4" />
+          </Link></Tooltip>
         {menu}
         {chaptersOpen && <ChapterPanel book={book} onClose={() => setChaptersOpen(false)} />}
       </div>
@@ -348,7 +348,7 @@ function ChapterPanel({ book, onClose }: { book: Book; onClose: () => void }) {
                 <FileTextIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                 <span className="truncate">{book.chapter_prefix}{row.doc.title}</span>
               </Link>
-              <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${row.doc.slug}`} title="编辑" onClick={onClose}
+              <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${row.doc.slug}`} onClick={onClose}
                 className="shrink-0 text-slate-300 transition-colors hover:text-primary-600">
                 <PencilIcon className="h-3.5 w-3.5" />
               </Link>
