@@ -173,6 +173,15 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | POST | `/upload` | `multipart/form-data` 字段 `file`，仅图片（png/jpg/jpeg/gif/webp/svg/ico），≤10MB；返回 `{ url }`（如 `/uploads/xxx.png`） | `upload:create` |
 
+## 点赞 / 收藏（登录用户）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| POST | `/books/:id/reactions` | 点赞或收藏，请求体 `{ "type": "like" \| "favorite" }`，重复请求幂等 | `reaction:create` |
+| DELETE | `/books/:id/reactions?type=` | 取消（like / favorite） | `reaction:delete` |
+| GET | `/books/:id/reactions/me` | 当前用户对该书的态度 + 全站计数 | `reaction:read` |
+| GET | `/users/me/reactions?type=&page=` | 我的点赞/收藏列表（含书籍对象，分页） | `reaction:read` |
+
 ## 阅读进度（登录用户）
 
 | 方法 | 路径 | 说明 | 权限 |

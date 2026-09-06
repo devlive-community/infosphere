@@ -93,6 +93,16 @@ type Comment struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// Reaction 点赞/收藏：每用户每书一条（like 或 favorite）
+type Reaction struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"uniqueIndex:uk_user_book_type;not null" json:"user_id"`
+	BookID    uint      `gorm:"uniqueIndex:uk_user_book_type;index;not null" json:"book_id"`
+	Type      string    `gorm:"uniqueIndex:uk_user_book_type;size:20;not null" json:"type"` // like | favorite
+	CreatedAt time.Time `json:"created_at"`
+	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+}
+
 // ReadingProgress 阅读进度：每个用户在每个书籍中最近读到的章节
 type ReadingProgress struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
@@ -142,5 +152,6 @@ func All(db *gorm.DB) error {
 		&BookTag{},
 		&ReadingProgress{},
 		&Comment{},
+		&Reaction{},
 	)
 }

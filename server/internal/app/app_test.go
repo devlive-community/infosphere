@@ -217,6 +217,26 @@ func TestFullLifecycle(t *testing.T) {
 		t.Fatalf("普通用户权限集错误: %v", perms)
 	}
 
+	// 6.75 点赞/收藏：POST → ME 含 type → DELETE → 移除
+	post(fmt.Sprintf("/api/v1/books/%v/reactions", bookID), map[string]any{"type": "like"}, aliceToken)
+	status, payload = get(fmt.Sprintf("/api/v1/books/%v/reactions/me", bookID), aliceToken)
+	if status != 200 {
+		t.Fatalf("查询 reaction 失败: %d", status)
+	}
+	if len(payload["data"].(map[string]any)["types"].([]any)) != 1 {
+		t.Fatalf("应有 1 个 reaction: %v", payload["data"])
+	}
+	delR, _ := http.NewRequest(http.MethodDelete, ts.URL+fmt.Sprintf("/api/v1/books/%v/reactions?type=like", bookID), nil)
+	delR.Header.Set("Authorization", "Bearer "+aliceToken)
+	delResp, delErr := client.Do(delR)
+	if delErr != nil {
+		t.Fatalf("DELETE reaction: %v", delErr)
+	}
+	delResp.Body.Close()
+	if delResp.StatusCode != 200 {
+		t.Fatalf("取消 reaction 失败: %d", delResp.StatusCode)
+	}
+
 	// 6.8 评论：发表 → 列表 → 删除权限
 	post(fmt.Sprintf("/api/v1/documents/%v/comments", docData["id"]), map[string]any{"content": "写得不错"}, aliceToken)
 	status, payload = get(fmt.Sprintf("/api/v1/documents/%v/comments", docData["id"]), "")
@@ -225,14 +245,17 @@ func TestFullLifecycle(t *testing.T) {
 	}
 	commentID := payload["data"].([]any)[0].(map[string]any)["id"].(float64)
 	// 非作者删除他人评论应 403
-	delReq, _ := http.NewRequest(http.MethodDelete, ts.URL+fmt.Sprintf("/api/v1/comments/%v", commentID), nil)
-	delReq.Header.Set("Authorization", "Bearer "+aliceToken)
-	delResp, err := client.Do(delReq)
-	if err != nil {
-		t.Fatalf("DELETE comment: %v", err)
+	commentDelReq, commentDelReqErr := http.NewRequest(http.MethodDelete, ts.URL+fmt.Sprintf("/api/v1/comments/%v", commentID), nil)
+	if commentDelReqErr != nil {
+		t.Fatalf("new DELETE request: %v", commentDelReqErr)
 	}
-	delResp.Body.Close()
-	if delResp.StatusCode != 403 {
+	commentDelReq.Header.Set("Authorization", "Bearer "+aliceToken)
+	commentDelResp, commentDelErr := client.Do(commentDelReq)
+	if commentDelErr != nil {
+		t.Fatalf("DELETE comment: %v", commentDelErr)
+	}
+	commentDelResp.Body.Close()
+	if commentDelResp.StatusCode != 403 {
 		t.Fatalf("删除他人评论应 403: %d", delResp.StatusCode)
 	}
 

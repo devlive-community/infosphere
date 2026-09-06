@@ -118,6 +118,12 @@ func (a *App) Router() *gin.Engine {
 		api.PUT("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentUpdate), a.UpdateComment)
 		api.DELETE("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentDelete), a.DeleteComment)
 
+		// ── 点赞/收藏（reaction:*） ──
+		books.POST("/:id/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionCreate), a.PutReaction)
+		books.DELETE("/:id/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionDelete), a.DeleteReaction)
+		books.GET("/:id/reactions/me", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyBookReaction)
+		api.GET("/users/me/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyReactions)
+
 		// ── 阅读进度（user 语义，读自己写自己） ──
 		progress := api.Group("/reading-progress", a.RequireAuth())
 		{
