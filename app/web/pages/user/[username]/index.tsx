@@ -7,6 +7,7 @@ import { resolveMediaUrl } from '@/lib/media'
 import { Pagination, Select, Loading , Tooltip} from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
+import ExploreBookCard from '@/components/ExploreBookCard'
 import { ArrowRightIcon, BookIcon, CalendarIcon, EyeIcon, GitHubIcon, GridIcon, ListIcon, ShareIcon } from '@/components/icons'
 import TagChips from '@/components/TagChips'
 import type { Book, PageResult, User } from '@/lib/types'
@@ -133,68 +134,6 @@ function KnowledgeNetwork() {
   )
 }
 
-// PublicBookCard 公开书籍宽图卡片（原型样式：宽封面 + 标签 + meta + 作者条）
-function PublicBookCard({ book, author }: { book: Book; author: UserProfile }) {
-  const cover = resolveMediaUrl(book.cover_image)
-  return (
-    <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
-      <div className="relative aspect-[16/9] w-full overflow-hidden bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
-        {cover && <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
-        {cover && (
-          <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-600 opacity-0 shadow transition-opacity duration-200 group-hover:opacity-100">
-            <ArrowRightIcon className="h-4 w-4" />
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-4">
-        <TagChips tags={book.tags} max={1} link={false} />
-        <h3 className="mt-2 truncate font-semibold text-slate-900 group-hover:text-primary-600">{book.title}</h3>
-        <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
-        <div className="mt-auto flex items-center gap-4 pt-3 text-xs text-slate-400">
-          <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>
-          <span className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> 更新于 {book.updated_at?.slice(0, 10)}</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-2.5">
-        <UserAvatar user={author} size="h-5 w-5" link={false} />
-        <span className="text-xs text-slate-500">{author.username}</span>
-      </div>
-    </a>
-  )
-}
-
-// PublicBookRow 列表视图行卡（与「我的书籍」列表模式同构）
-function PublicBookRow({ book, author }: { book: Book; author: UserProfile }) {
-  const cover = resolveMediaUrl(book.cover_image)
-  return (
-    <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
-      className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
-        {cover
-          ? <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-          : <span className="flex h-full w-full items-center justify-center text-xl font-bold text-white/80">{book.title.slice(0, 1)}</span>}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 truncate font-semibold text-slate-900 group-hover:text-primary-600">{book.title}</span>
-          <TagChips tags={book.tags} max={1} link={false} />
-        </div>
-        <p className="mt-0.5 truncate text-sm text-slate-500">{book.description || '暂无简介'}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
-          <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>
-          <span className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> 更新于 {book.updated_at?.slice(0, 10)}</span>
-        </div>
-      </div>
-      <span className="flex shrink-0 items-center gap-2 text-sm text-slate-400">
-        <UserAvatar user={author} size="h-6 w-6" link={false} />
-        {author.username}
-        <ArrowRightIcon className="h-4 w-4 text-slate-300 transition-colors group-hover:text-primary-500" />
-      </span>
-    </a>
-  )
-}
-
 export default function UserHome({ site, siteUrl, profile, books }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
@@ -275,13 +214,9 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
             <p className="py-16 text-center text-slate-400">暂无公开书籍</p>
           ) : loading ? (
             <Loading />
-          ) : view === 'grid' ? (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {items.map((b) => <PublicBookCard key={b.id} book={b} author={profile} />)}
-            </div>
           ) : (
-            <div className="space-y-4">
-              {items.map((b) => <PublicBookRow key={b.id} book={b} author={profile} />)}
+            <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+              {items.map((b) => <ExploreBookCard key={b.id} book={b} view={view} showAuthor={false} />)}
             </div>
           )}
         </section>

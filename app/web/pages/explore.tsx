@@ -8,7 +8,7 @@ import Container from '@/components/Container'
 import { Button, Input, Loading, Pagination, Select , Tooltip} from '@/components/ui'
 import Seo from '@/components/Seo'
 import TagChips from '@/components/TagChips'
-import UserAvatar from '@/components/UserAvatar'
+import ExploreBookCard from '@/components/ExploreBookCard'
 import { ArrowRightIcon, BookIcon, ClockIcon, EyeIcon, GlobeIcon, GridIcon, ListIcon, SearchIcon } from '@/components/icons'
 import type { Book, PageResult, Tag, User } from '@/lib/types'
 
@@ -47,69 +47,6 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
     serverApi<Tag[]>('/tags', { params: { limit: 6 } }).catch(() => [] as Tag[]),
   ])
   return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), keyword, tag, sort, page, data, hotTags } }
-}
-
-// ExploreCard 发现页宽图卡
-function ExploreCard({ book }: { book: Book }) {
-  const cover = resolveMediaUrl(book.cover_image)
-  const date = book.updated_at?.slice(0, 10) || book.created_at?.slice(0, 10)
-  return (
-    <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
-      <div className="relative aspect-[16/8] w-full overflow-hidden bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
-        {cover && <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
-        {cover && (
-          <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-600 opacity-0 shadow transition-opacity duration-200 group-hover:opacity-100">
-            <ArrowRightIcon className="h-4 w-4" />
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-4">
-        <TagChips tags={book.tags} max={1} link={false} />
-        <h3 className="mt-2 truncate font-semibold text-slate-900 group-hover:text-primary-600">{book.title}</h3>
-        <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
-        <div className="mt-auto flex items-center gap-2 border-t border-slate-100 pt-3 mt-3">
-          <UserAvatar user={book.user} size="h-5 w-5" link={false} />
-          <span className="truncate text-xs text-slate-500">{book.user?.username || '佚名'}</span>
-          <span className="ml-auto flex items-center gap-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>
-            <span>{date}</span>
-          </span>
-        </div>
-      </div>
-    </a>
-  )
-}
-
-// ExploreRowCard 列表视图行卡
-function ExploreRowCard({ book }: { book: Book }) {
-  const cover = resolveMediaUrl(book.cover_image)
-  return (
-    <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
-      className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
-        {cover
-          ? <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-          : <span className="flex h-full w-full items-center justify-center text-xl font-bold text-white/80">{book.title.slice(0, 1)}</span>}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 truncate font-semibold text-slate-900 group-hover:text-primary-600">{book.title}</span>
-          <TagChips tags={book.tags} max={1} link={false} />
-        </div>
-        <p className="mt-0.5 truncate text-sm text-slate-500">{book.description || '暂无简介'}</p>
-        <div className="mt-1 flex items-center gap-4 text-xs text-slate-400">
-          <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>
-          <span>{book.updated_at?.slice(0, 10) || book.created_at?.slice(0, 10)}</span>
-        </div>
-      </div>
-      <span className="flex shrink-0 items-center gap-2 text-sm text-slate-400">
-        <UserAvatar user={book.user} size="h-6 w-6" link={false} />
-        {book.user?.username || '佚名'}
-        <ArrowRightIcon className="h-4 w-4 text-slate-300 transition-colors group-hover:text-primary-500" />
-      </span>
-    </a>
-  )
 }
 
 export default function Explore({ site, siteUrl, keyword, tag, sort, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -264,7 +201,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
             </div>
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
-              {items.map((b) => view === 'grid' ? <ExploreCard key={b.id} book={b} /> : <ExploreRowCard key={b.id} book={b} />)}
+              {items.map((b) => <ExploreBookCard key={b.id} book={b} view={view} />)}
             </div>
           )}
 
