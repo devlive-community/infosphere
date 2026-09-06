@@ -1,5 +1,5 @@
 import type { GetServerSideProps } from 'next'
-import { authHeaderFrom, getSSRUser, isInstalled } from '@/lib/server-api'
+import { getSSRUser, isInstalled } from '@/lib/server-api'
 import WriterWorkbench from '@/components/WriterWorkbench'
 import type { User } from '@/lib/types'
 

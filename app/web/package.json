@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "highlight.js": "^11.10.0",
-    "isomorphic-dompurify": "^2.16.0",
+    "isomorphic-dompurify": "2.26.0",
     "katex": "^0.18.6",
     "lucide": "^1.41.0",
     "marked": "^9.1.6",
