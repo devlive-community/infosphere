@@ -38,7 +38,7 @@ jobs:
         run: go build -trimpath -o /tmp/infosphere-server .
 
   web:
-    name: Web checks (typecheck + lint + build)
+    name: Web checks (typecheck + lint + test + build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -62,6 +62,10 @@ jobs:
       - name: Typecheck
         working-directory: app/web
         run: pnpm exec tsc --noEmit
+
+      - name: Test
+        working-directory: app/web
+        run: pnpm test
 
       - name: Lint
         working-directory: app/web

@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "highlight.js": "^11.10.0",
@@ -20,6 +21,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "vitest": "^2.1.9",
     "@fortawesome/fontawesome-free": "^7.3.1",
     "@types/katex": "^0.16.8",
     "@types/node": "^20.14.0",

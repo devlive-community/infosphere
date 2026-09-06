@@ -51,7 +51,7 @@ release-linux: web-build web-package
 ## 全部检查（等同 CI）
 test: lint
 	cd $(SERVER_DIR) && go vet ./... && go test ./...
-	cd $(WEB_DIR) && pnpm exec tsc --noEmit
+	cd $(WEB_DIR) && pnpm exec tsc --noEmit && pnpm test
 
 lint:
 	cd $(WEB_DIR) && CI=1 pnpm exec next lint
