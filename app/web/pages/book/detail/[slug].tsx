@@ -4,6 +4,8 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
 import { API_BASE } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { getReadingProgress } from '@/lib/reading-progress'
+import { useEffect, useState } from 'react'
 import { ButtonLink } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
@@ -88,6 +90,13 @@ function countChapters(docs: Document[]): { chapters: number; sections: number }
 
 export default function BookDetail({ site, siteUrl, book, tree, related, needsAuth }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { user } = useApp()
+  // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
+  const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix: string } | null>(null)
+  const bookSlugSafe = book?.slug || ''
+  const username = user?.username || ''
+  useEffect(() => {
+    if (username && bookSlugSafe) setProgress(getReadingProgress(username, bookSlugSafe))
+  }, [username, bookSlugSafe])
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
@@ -189,10 +198,19 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
             </div>
 
             {/* 操作 */}
+            {/* 上次阅读（有进度且不是第一章时显示） */}
+            {progress && progress.docSlug !== readDocSlug && readDocSlug && (
+              <p className="mt-4 text-sm text-slate-500">
+                上次阅读：{progress.chapterPrefix}{progress.docTitle}
+                <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}`}
+                  className="ml-3 font-medium text-primary-600 hover:underline">继续阅读</Link>
+              </p>
+            )}
+
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {readUrl ? (
-                <ButtonLink href={readUrl} className="px-6">
-                  <BookIcon className="h-4 w-4" /> 开始阅读
+                <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="px-6">
+                  <BookIcon className="h-4 w-4" /> {progress && progress.docSlug !== readDocSlug ? '继续阅读' : '开始阅读'}
                 </ButtonLink>
               ) : (
                 <span className="text-sm text-slate-400">暂无已发布章节</span>

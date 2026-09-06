@@ -8,6 +8,7 @@ import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import { ButtonLink } from '@/components/ui'
 import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
+import { saveReadingProgress } from '@/lib/reading-progress'
 import type { Book, Document, User } from '@/lib/types'
 
 interface ReaderProps {
@@ -89,6 +90,13 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
     setExpanded(ids)
   }, [tree, flat.length])
 
+  // 记录阅读进度（登录用户按用户名隔离）
+  useEffect(() => {
+    if (user && book && doc) {
+      saveReadingProgress(user.username, book.slug, { docSlug: doc.slug, docTitle: doc.title, chapterPrefix: book.chapter_prefix || '' })
+    }
+  }, [user, book, doc])
+
   // 本章目录：滚动高亮
   useEffect(() => {
     if (!headings.length) return
@@ -112,6 +120,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
   }
 
   const canEdit = !!user && !!book && (user.id === book.user_id || user.role === 'admin')
+
   const index = doc ? flat.findIndex((d) => d.id === doc.id) : -1
   const prev = index > 0 ? flat[index - 1] : null
   const next = index >= 0 && index < flat.length - 1 ? flat[index + 1] : null
