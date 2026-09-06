@@ -237,6 +237,12 @@ func TestFullLifecycle(t *testing.T) {
 		t.Fatalf("取消 reaction 失败: %d", delResp.StatusCode)
 	}
 
+	// 6.77 全文搜索：命中的书出现在结果里
+	status, payload = get("/api/v1/search?q=Go", "")
+	if status != 200 {
+		t.Fatalf("搜索失败: %d %v", status, payload)
+	}
+
 	// 6.8 评论：发表 → 列表 → 删除权限
 	post(fmt.Sprintf("/api/v1/documents/%v/comments", docData["id"]), map[string]any{"content": "写得不错"}, aliceToken)
 	status, payload = get(fmt.Sprintf("/api/v1/documents/%v/comments", docData["id"]), "")

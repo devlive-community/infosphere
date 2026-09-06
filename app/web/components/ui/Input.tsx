@@ -15,9 +15,20 @@ const controlClass =
   'focus:border-primary-500 focus:outline-none ' +
   'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400'
 
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  /** 前置图标：输入框内左侧留出图标位置 */
+  leading?: ReactNode
+}
+
 // Input 通用文本输入框
-export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={`h-10 ${controlClass} ${className || ''}`.trim()} {...rest} />
+export function Input({ className, leading, ...rest }: InputProps) {
+  if (!leading) return <input className={`h-10 ${controlClass} ${className || ''}`.trim()} {...rest} />
+  return (
+    <div className={`relative ${className || ''}`.trim()}>
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{leading}</span>
+      <input className={`h-10 pl-9 ${controlClass}`} {...rest} />
+    </div>
+  )
 }
 
 // Textarea 通用多行文本域（forwardRef 供编辑器操作选区）

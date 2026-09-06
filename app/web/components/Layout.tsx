@@ -6,7 +6,7 @@ import Container from '@/components/Container'
 import { ListBulletIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
-import { ButtonLink } from '@/components/ui'
+import { ButtonLink, Input } from '@/components/ui'
 import { SearchIcon } from '@/components/icons'
 
 function UserMenu() {
@@ -72,7 +72,7 @@ function MobileNav() {
       </button>
       {open && (
         <div className="absolute left-0 top-11 z-40 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          {([['发现', '/explore'], ...(user ? [['我的书籍', '/books']] : [])] as [string, string][]).map(([label, href]) => (
+          {([['发现', '/explore'], ['搜索', '/search'], ...(user ? [['我的书籍', '/books']] : [])] as [string, string][]).map(([label, href]) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">{label}</Link>
           ))}
@@ -104,10 +104,8 @@ export default function Layout({ title, children }: { title?: string; children: 
             {user && <Link href="/books" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">我的书籍</Link>}
           </nav>
           <MobileNav />
-          <form action="/explore" method="get" className="relative ml-auto hidden w-full max-w-sm lg:block">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input name="title"
-              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:bg-white focus:outline-none"
+          <form action="/search" method="get" className="ml-auto hidden w-full max-w-sm lg:block">
+            <Input type="search" name="q" leading={<SearchIcon className="h-4 w-4" />}
               placeholder="搜索书籍、主题或作者" />
           </form>
           <div className="ml-auto flex items-center gap-2 lg:ml-0">

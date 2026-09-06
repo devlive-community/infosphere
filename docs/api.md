@@ -119,6 +119,7 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/explore/hot` | 浏览量最高的 6 本公开书籍 | `book:read` |
 | GET | `/explore/latest` | 最新发布的 6 本公开书籍 | `book:read` |
+| GET | `/search?q=` | 全局搜索：命中标题/简介的书籍 + 命中标题/正文的章节（各取前 10 条，含 `book_slug`/`doc_slug` 便于跳转）；登录时可见范围含本人私有书籍 | `search:read` |
 
 ## 用户（公开主页）
 
