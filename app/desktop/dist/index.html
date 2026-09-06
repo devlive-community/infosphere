@@ -47,19 +47,31 @@
 
   <script>
     const invoke = window.__TAURI__ ? window.__TAURI__.core.invoke : null
+    const urlInput = document.getElementById('url')
+    const errorBox = document.getElementById('error')
+
+    // 启动时读取已保存地址与连接失败原因：预填输入框、回显错误
+    if (invoke) {
+      invoke('get_server_info').then((info) => {
+        if (info && info.url) urlInput.value = info.url
+        if (info && info.error) {
+          errorBox.textContent = '上次连接失败：' + info.error
+          errorBox.style.display = 'block'
+        }
+      }).catch(() => {})
+    }
 
     document.getElementById('form').addEventListener('submit', async (e) => {
       e.preventDefault()
       const btn = document.getElementById('btn')
-      const error = document.getElementById('error')
-      error.style.display = 'none'
+      errorBox.style.display = 'none'
       btn.disabled = true
       btn.textContent = '连接中…'
       try {
-        await invoke('save_server_url', { url: document.getElementById('url').value })
+        await invoke('save_server_url', { url: urlInput.value })
       } catch (err) {
-        error.textContent = String(err)
-        error.style.display = 'block'
+        errorBox.textContent = String(err)
+        errorBox.style.display = 'block'
       } finally {
         btn.disabled = false
         btn.textContent = '连 接'
