@@ -137,8 +137,8 @@ func (a *App) MyBookReaction(c *gin.Context) {
 	a.DB.Model(&models.Reaction{}).Where("book_id = ? AND type = ?", bookID, "like").Count(&likeCount)
 	a.DB.Model(&models.Reaction{}).Where("book_id = ? AND type = ?", bookID, "favorite").Count(&favCount)
 	ok(c, gin.H{
-		"types":    types,
-		"like_count": likeCount,
+		"types":          types,
+		"like_count":     likeCount,
 		"favorite_count": favCount,
 	})
 }

@@ -35,7 +35,7 @@ func (a *App) ListComments(c *gin.Context) {
 		return
 	}
 	var all []models.Comment
-	if err := a.DB.Preload("User", func(tx interface{ }) { }).Preload("User").Error; err != nil {
+	if err := a.DB.Preload("User", func(tx interface{}) {}).Preload("User").Error; err != nil {
 	}
 	_ = all
 	q := a.DB.Preload("User").Where("document_id = ? AND status = ?", docID, "published").Order("created_at ASC")
