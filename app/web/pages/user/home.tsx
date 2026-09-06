@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
-import { Pagination, Select } from '@/components/ui'
+import { Pagination, Select, Loading } from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import { ArrowRightIcon, BookIcon, CalendarIcon, EyeIcon, GitHubIcon, GridIcon, ListIcon, ShareIcon } from '@/components/icons'
@@ -173,6 +173,8 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
     { value: 'title', label: '标题排序' },
   ]
   const [sort, setSort] = useState<SortKey>('updated')
+  const [loading, setLoading] = useState(false)
+  useEffect(() => { setLoading(false) }, [books])
   const profileUrl = `${siteUrl}/user/home?username=${encodeURIComponent(profile.username)}`
 
   async function share() {
@@ -237,8 +239,10 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
             </div>
           </div>
 
-          {items.length === 0 ? (
+          {books.total === 0 ? (
             <p className="py-16 text-center text-slate-400">暂无公开书籍</p>
+          ) : loading ? (
+            <Loading />
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
               {items.map((b) => <PublicBookCard key={b.id} book={b} author={profile} />)}
@@ -248,7 +252,7 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
       </div>
 
       <Pagination page={books.page} pageSize={books.page_size} total={books.total}
-        onChange={(p) => { window.location.search = p > 1 ? `?username=${encodeURIComponent(profile.username)}&page=${p}` : `?username=${encodeURIComponent(profile.username)}` }} />
+        onChange={(p) => { setLoading(true); window.location.search = p > 1 ? `?username=${encodeURIComponent(profile.username)}&page=${p}` : `?username=${encodeURIComponent(profile.username)}` }} />
     </Container>
   )
 }

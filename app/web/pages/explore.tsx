@@ -5,8 +5,9 @@ import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, site
 import TagChips from '@/components/TagChips'
 import UserAvatar from '@/components/UserAvatar'
 import { EyeIcon } from '@/components/icons'
-import { Button, Input, Pagination } from '@/components/ui'
+import { Button, Input, Pagination, Loading } from '@/components/ui'
 import { formatDate } from '@/lib/api'
+import { useEffect, useState } from 'react'
 import Seo from '@/components/Seo'
 import type { Book, PageResult, User } from '@/lib/types'
 
@@ -83,6 +84,8 @@ export default function Explore({ site, siteUrl, keyword, tag, page, data }: Inf
   } : undefined
 
   const hasItems = (data.items || []).length > 0
+  const [loading, setLoading] = useState(false)
+  useEffect(() => { setLoading(false) }, [data])
 
   return (
     <Container>
@@ -102,7 +105,9 @@ export default function Explore({ site, siteUrl, keyword, tag, page, data }: Inf
         </form>
       </div>
 
-      {!hasItems ? (
+      {loading ? (
+        <Loading />
+      ) : !hasItems ? (
         <p className="py-20 text-center text-slate-400">
           {keyword ? '没有找到相关书籍' : '还没有公开的书籍，创建一本吧！'}
         </p>
@@ -112,7 +117,7 @@ export default function Explore({ site, siteUrl, keyword, tag, page, data }: Inf
             {(data.items || []).map((book) => <ExploreMediaCard key={book.id} book={book} />)}
           </div>
           <Pagination page={data.page} pageSize={data.page_size} total={data.total}
-            onChange={(p) => { window.location.search = p > 1 ? `?page=${p}${keyword ? `&title=${encodeURIComponent(keyword)}` : ''}` : (keyword ? `?title=${encodeURIComponent(keyword)}` : '') }} />
+            onChange={(p) => { setLoading(true); window.location.search = p > 1 ? `?page=${p}${keyword ? `&title=${encodeURIComponent(keyword)}` : ''}` : (keyword ? `?title=${encodeURIComponent(keyword)}` : '') }} />
         </div>
       )}
     </Container>

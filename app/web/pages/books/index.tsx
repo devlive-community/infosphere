@@ -4,7 +4,7 @@ import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
-import { ButtonLink, Badge, EmptyState, Pagination, Select } from '@/components/ui'
+import { ButtonLink, Badge, EmptyState, Pagination, Select, Loading } from '@/components/ui'
 import { StatusBadge } from '@/components/BookCard'
 import TagChips from '@/components/TagChips'
 import {
@@ -60,18 +60,19 @@ export default function MyBooks() {
   const [menuFor, setMenuFor] = useState<number | null>(null)
   const [data, setData] = useState<PageResult<Book>>({ items: [], total: 0, page: 1, page_size: 10 })
   const [counts, setCounts] = useState<Record<string, number>>({ '': 0, published: 0, draft: 0, archived: 0 })
+  const [loading, setLoading] = useState(true)
 
   async function load() {
     if (!user) return
+    setLoading(true)
     try {
       setData(await api<PageResult<Book>>('/books', { params: { mine: 'true', page, page_size: 9, status, title: keyword } }))
-      // 各状态计数（一次取全部，本地聚合）
-      const all = await api<PageResult<Book>>('/books', { params: { mine: 'true', page: 1, page_size: 1 } })
       const summary = await api<Record<string, number>>('/books/counts').catch(() => null)
       if (summary) setCounts(summary)
-      else setCounts((c) => ({ ...c, '': all.total }))
     } catch (e) {
       alert((e as Error).message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -165,7 +166,9 @@ export default function MyBooks() {
 
       <p className="py-4 text-sm text-slate-400">共 {data.total} 本书籍</p>
 
-      {hasBooks ? (
+      {loading ? (
+        <Loading />
+      ) : hasBooks ? (
         <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
           {items.map((book) => (
             <BookCardMine key={book.id} book={book} view={view}
