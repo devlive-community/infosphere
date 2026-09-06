@@ -163,6 +163,37 @@ function PublicBookCard({ book, author }: { book: Book; author: UserProfile }) {
   )
 }
 
+// PublicBookRow 列表视图行卡（与「我的书籍」列表模式同构）
+function PublicBookRow({ book, author }: { book: Book; author: UserProfile }) {
+  const cover = book.cover_image ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : `/uploads/${book.cover_image.replace(/^\//, '')}`) : ''
+  return (
+    <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
+      className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+      <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
+        {cover
+          ? <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          : <span className="flex h-full w-full items-center justify-center text-xl font-bold text-white/80">{book.title.slice(0, 1)}</span>}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="min-w-0 truncate font-semibold text-slate-900 group-hover:text-primary-600">{book.title}</span>
+          <TagChips tags={book.tags} max={1} link={false} />
+        </div>
+        <p className="mt-0.5 truncate text-sm text-slate-500">{book.description || '暂无简介'}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+          <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>
+          <span className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> 更新于 {book.updated_at?.slice(0, 10)}</span>
+        </div>
+      </div>
+      <span className="flex shrink-0 items-center gap-2 text-sm text-slate-400">
+        <UserAvatar user={author} size="h-6 w-6" link={false} />
+        {author.username}
+        <ArrowRightIcon className="h-4 w-4 text-slate-300 transition-colors group-hover:text-primary-500" />
+      </span>
+    </a>
+  )
+}
+
 export default function UserHome({ site, siteUrl, profile, books }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
