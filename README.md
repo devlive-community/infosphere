@@ -109,11 +109,22 @@ cd app/android && ./gradlew assembleDebug
 | 文档 | `GET/POST /api/v1/books/:id/documents` · `GET/PUT/DELETE /api/v1/documents/:id` |
 | 探索 | `GET /api/v1/explore/hot` · `GET /api/v1/explore/latest` · `GET /api/v1/stats` |
 | 用户 | `GET /api/v1/users/:username` · `GET /api/v1/users/:username/books` |
-| 其他 | `GET/PUT /api/v1/site` · `POST /api/v1/upload` |
+| 搜索 | `GET /api/v1/search?q=` |
+| 标签 | `GET /api/v1/tags` · `GET /api/v1/tags/:slug/books` |
+| 评论 | `GET/POST /api/v1/documents/:id/comments` · `PUT/DELETE /api/v1/comments/:id` |
+| 点赞收藏 | `POST/DELETE /api/v1/books/:id/reactions` · `GET /api/v1/users/me/reactions` |
+| 通知 | `GET /api/v1/notifications` · `POST /api/v1/notifications/read` · `GET /api/v1/notifications/stream`（SSE） |
+| 协作 | `GET/POST /api/v1/books/:id/collaborators` · `DELETE /api/v1/books/:id/collaborators/:userId` |
+| OAuth | `GET /api/v1/auth/oauth/providers` · `GET /api/v1/auth/oauth/github` · `DELETE /api/v1/auth/oauth/:provider` |
+| 找回密码 | `POST /api/v1/auth/password/forgot` · `POST /api/v1/auth/password/reset` |
+| 导入导出 | `GET /api/v1/books/:id/export?format=markdown` · `POST /api/v1/import` |
+| 其他 | `GET/PUT /api/v1/site` · `POST /api/v1/upload` · `GET/PUT /api/v1/mail` · `GET/PUT /api/v1/storage` · `GET/PUT /api/v1/oauth` |
+
+完整端点、请求/响应与权限清单见 [docs/api.md](docs/api.md)。
 
 ## 版本历史
 
-- **2026.0.0**：全新架构 —— Go 服务端 + Next.js/TypeScript 前端 + 多数据库（SQLite/MySQL/PostgreSQL）+ 安装向导 + 单文件部署 + 桌面端/Android 客户端。
+- **2026.0.0**：全新架构 —— Go 服务端 + Next.js/TypeScript 前端 + 多数据库（SQLite/MySQL/PostgreSQL）+ 安装向导 + 单文件部署 + 桌面端/Android 客户端。详见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 鸣谢
 
