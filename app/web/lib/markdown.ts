@@ -1,6 +1,7 @@
 import { marked, type TokenizerAndRendererExtension, type Tokens, type Renderer } from 'marked'
 import hljs from 'highlight.js'
 import DOMPurify from 'isomorphic-dompurify'
+import { markdownExtensions } from './markdown-extensions'
 
 type AlertKind = 'NOTE' | 'TIP' | 'IMPORTANT' | 'WARNING' | 'CAUTION'
 
@@ -72,15 +73,40 @@ renderer.link = (href: string | null, title: string | null, text: string): strin
   return `<a href="${href ?? ''}"${title ? ` title="${title}"` : ''}${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${text}</a>`
 }
 
-marked.use({ renderer, extensions: [alertExtension], breaks: true, gfm: true })
+marked.use({ renderer, extensions: [alertExtension, ...markdownExtensions], breaks: true, gfm: true })
 
-// renderMarkdown 渲染 Markdown 为经过 XSS 净化的 HTML（仅客户端使用）
+// buildTocHtml 用 H2/H3 标题构建 [toc] 占位的目录内容（自身产出的安全 HTML）
+function buildTocHtml(headings: Heading[]): string {
+  if (!headings.length) return ''
+  const items = headings
+    .map((h) => {
+      const text = h.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const indent = h.level === 3 ? 'pl-5' : ''
+      return `<li class="${indent}"><a href="#${h.id}" class="text-slate-600 hover:text-primary-600">${text}</a></li>`
+    })
+    .join('')
+  return (
+    '<nav class="my-4 rounded-lg border border-slate-200 bg-slate-50 p-4">' +
+    '<div class="mb-2 text-sm font-semibold text-slate-700">目录</div>' +
+    `<ul class="space-y-1 text-sm" style="list-style:none;margin:0;padding:0">${items}</ul></nav>`
+  )
+}
+
+// renderMarkdown 渲染 Markdown 为经过 XSS 净化的 HTML（SSR 与客户端共用）
 export function renderMarkdown(source: string | null | undefined): string {
   if (!source) return ''
   headingSeq = 0 // 与 extractHeadings 保持相同的编号顺序
   const html = marked.parse(source, { async: false }) as string
-  return DOMPurify.sanitize(html, { ADD_ATTR: ['target', 'rel', 'id'] })
+  let out = DOMPurify.sanitize(html, { ADD_ATTR: ['target', 'rel', 'id'] })
+  // [toc] 扩展：用文档标题填充占位（须与 marked 解析使用同一份 source）
+  if (out.includes('data-md-toc')) {
+    out = out.replace(/<div[^>]*data-md-toc[^>]*>\s*<\/div>/g, buildTocHtml(extractHeadings(source)))
+  }
+  return out
 }
+
+export { bindMarkdownInteractivity } from './markdown-extensions'
+
 
 export interface Heading {
   level: number

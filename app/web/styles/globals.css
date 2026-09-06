@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import 'highlight.js/styles/github.css';
+@import 'katex/dist/katex.min.css';
 
 body {
   @apply bg-warm text-ink antialiased;

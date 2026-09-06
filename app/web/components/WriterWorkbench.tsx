@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { authHeaderFrom, getSSRUser, isInstalled } from '@/lib/server-api'
-import { renderMarkdown } from '@/lib/markdown'
+import { renderMarkdown, bindMarkdownInteractivity } from '@/lib/markdown'
 import Seo from '@/components/Seo'
 import { Button, Input, Textarea, Select, Field, Badge, EmptyState } from '@/components/ui'
 import {
@@ -81,6 +81,17 @@ export default function Writer({ user }: WriterProps) {
   const didInitExpand = useRef(false)
 
   const flatDocs = useMemo(() => flatten(tree), [tree])
+  const previewRef = useRef<HTMLDivElement>(null)
+  // 预览内容防抖：输入时避免每键全量重渲染 Markdown
+  const [previewHtml, setPreviewHtml] = useState('')
+  useEffect(() => {
+    if (!preview) return
+    const timer = setTimeout(() => {
+      setPreviewHtml(renderMarkdown(content))
+      if (previewRef.current) bindMarkdownInteractivity(previewRef.current)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [content, preview])
 
   const loadTree = useCallback(async (b: Book) => {
     setTree((await api<Document[]>(`/books/${b.id}/documents`)) || [])
@@ -554,8 +565,9 @@ export default function Writer({ user }: WriterProps) {
 
               {/* 正文：铺满剩余高度，内部滚动 */}
               {preview ? (
-                <div className="markdown-body min-h-0 flex-1 overflow-y-auto px-6 py-5"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
+                <div ref={previewRef}
+                  className="markdown-body min-h-0 flex-1 overflow-y-auto px-6 py-5"
+                  dangerouslySetInnerHTML={{ __html: previewHtml }} />
               ) : (
                 <textarea ref={textareaRef}
                   className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"

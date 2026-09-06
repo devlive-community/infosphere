@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, ReactNode } from 'react'
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
-import { renderMarkdown, extractHeadings } from '@/lib/markdown'
+import { renderMarkdown, extractHeadings, bindMarkdownInteractivity } from '@/lib/markdown'
 import { API_BASE, formatDate } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
@@ -78,6 +78,13 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
   const [activeHeading, setActiveHeading] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const didInit = useRef(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+  // M17 扩展交互：tabs 切换 / mermaid 渲染 / lucide 图标（html 变化后重挂）
+  useEffect(() => {
+    if (contentRef.current && typeof window !== 'undefined') {
+      bindMarkdownInteractivity(contentRef.current)
+    }
+  })
 
   const flat = useMemo(() => flatten(tree), [tree])
   const headings = useMemo(() => extractHeadings(doc?.content), [doc])
@@ -238,7 +245,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
                     )}
                   </div>
                   <hr className="my-6 border-slate-100" />
-                  <div className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
+                  <div ref={contentRef} className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
 
                   <Comments docId={doc.id} />
 
