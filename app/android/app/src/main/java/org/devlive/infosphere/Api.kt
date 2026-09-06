@@ -93,6 +93,8 @@ object Api {
         return payload.getJSONObject("data").getLong("unread_count")
     }
 
+    fun book(id: Long): JSONObject = request("GET", "/books/$id").getJSONObject("data")
+
     fun documents(bookId: Long): JSONArray =
         request("GET", "/books/$bookId/documents").getJSONArray("data")
 

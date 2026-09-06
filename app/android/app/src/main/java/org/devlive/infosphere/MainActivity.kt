@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import coil.compose.AsyncImage
+import com.mikepenz.markdown.m3.Markdown
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -78,7 +80,7 @@ class MainActivity : ComponentActivity() {
 }
 
 /** 屏幕状态机：服务器配置 → 登录 → 书籍列表 → 阅读器 */
-private enum class Screen { Server, Login, Books, Reader }
+private enum class Screen { Server, Login, Books, Detail, Reader }
 
 @Composable
 private fun App(prefs: android.content.SharedPreferences) {
@@ -105,7 +107,7 @@ private fun App(prefs: android.content.SharedPreferences) {
             user = user,
             onOpenBook = { book ->
                 selectedBook = book
-                screen = Screen.Reader
+                screen = Screen.Detail
             },
             onLogout = {
                 Api.setToken(null)
@@ -117,8 +119,15 @@ private fun App(prefs: android.content.SharedPreferences) {
                 screen = Screen.Server
             },
         )
+        Screen.Detail -> selectedBook?.let { book ->
+            DetailScreen(
+                book = book,
+                onBack = { screen = Screen.Books },
+                onStartReading = { screen = Screen.Reader },
+            )
+        }
         Screen.Reader -> selectedBook?.let { book ->
-            ReaderScreen(book = book, onBack = { screen = Screen.Books })
+            ReaderScreen(book = book, prefs = prefs, onBack = { screen = Screen.Detail })
         }
     }
 }
@@ -451,9 +460,104 @@ private fun flattenChapters(array: JSONArray, level: Int = 0): List<ChapterRow> 
     return rows
 }
 
+private data class BookDetail(
+    val id: Long,
+    val title: String,
+    val description: String,
+    val cover: String,
+    val author: String,
+    val tags: List<String>,
+    val views: Int,
+)
+
+private fun JSONObject.toBookDetail(): BookDetail = BookDetail(
+    id = optLong("id"),
+    title = optString("title", "未命名"),
+    description = optString("description", "暂无简介"),
+    cover = optString("cover_image"),
+    author = optJSONObject("user")?.optString("username", "") ?: "",
+    tags = optJSONArray("tags")?.let { arr -> (0 until arr.length()).map { arr.getJSONObject(it).optString("name") } } ?: emptyList(),
+    views = optInt("view_count", 0),
+)
+
+private fun coverUrl(cover: String): String? = when {
+    cover.isBlank() -> null
+    cover.startsWith("http") -> cover
+    else -> Api.baseUrl + cover
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ReaderScreen(book: BookRow, onBack: () -> Unit) {
+private fun DetailScreen(book: BookRow, onBack: () -> Unit, onStartReading: () -> Unit) {
+    var detail by remember { mutableStateOf<BookDetail?>(null) }
+    var error by remember { mutableStateOf("") }
+
+    LaunchedEffect(book.id) {
+        try {
+            detail = withContext(Dispatchers.IO) { Api.book(book.id).toBookDetail() }
+        } catch (e: Exception) {
+            error = e.message ?: "加载失败"
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(detail?.title ?: book.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text("返回") }
+                },
+            )
+        },
+    ) { padding ->
+        val d = detail
+        when {
+            d == null -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                if (error.isEmpty()) CircularProgressIndicator() else Text(error, color = MaterialTheme.colorScheme.error)
+            }
+            else -> Column(
+                modifier = Modifier.fillMaxSize().padding(padding)
+                    .verticalScroll(rememberScrollState()).padding(20.dp),
+            ) {
+                AsyncImage(
+                    model = coverUrl(d.cover),
+                    contentDescription = d.title,
+                    modifier = Modifier.fillMaxWidth().height(190.dp).background(
+                        MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium,
+                    ),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(d.title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    listOfNotNull(d.author.ifEmpty { null }, "浏览 ${d.views}").joinToString(" · "),
+                    fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (d.tags.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        d.tags.take(5).forEach { tag ->
+                            Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
+                                Text(tag, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(d.description, fontSize = 15.sp, lineHeight = 23.sp)
+                Spacer(Modifier.height(28.dp))
+                Button(onClick = onStartReading, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                    Text("开始阅读")
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReaderScreen(book: BookRow, prefs: android.content.SharedPreferences, onBack: () -> Unit) {
     var chapters by remember { mutableStateOf<List<ChapterRow>?>(null) }
     var current by remember { mutableStateOf<Pair<ChapterRow, String>?>(null) }
     var error by remember { mutableStateOf("") }
@@ -465,6 +569,23 @@ private fun ReaderScreen(book: BookRow, onBack: () -> Unit) {
             chapters = flattenChapters(tree)
         } catch (e: Exception) {
             error = e.message ?: "加载章节失败"
+        }
+    }
+
+    // 章节内容离线缓存：加载成功即写入，网络失败时回退缓存
+    suspend fun loadChapter(chapter: ChapterRow) {
+        val cacheKey = "${book.id}:${chapter.slug}"
+        try {
+            val content = withContext(Dispatchers.IO) { Api.document(book.id, chapter.slug) }
+            current = chapter to content.optString("content")
+            prefs.edit().putString("doc_cache_$cacheKey", content.optString("content")).apply()
+        } catch (e: Exception) {
+            val cached = prefs.getString("doc_cache_$cacheKey", null)
+            if (cached != null) {
+                current = chapter to cached
+            } else {
+                error = e.message ?: "加载章节失败"
+            }
         }
     }
 
@@ -493,7 +614,11 @@ private fun ReaderScreen(book: BookRow, onBack: () -> Unit) {
                     Text(chapter.title, fontSize = 22.sp)
                     Spacer(Modifier.height(16.dp))
                     SelectionContainer {
-                        Text(content.ifEmpty { "（空文档）" }, fontSize = 15.sp, lineHeight = 24.sp)
+                        if (content.isEmpty()) {
+                            Text("（空文档）", fontSize = 15.sp)
+                        } else {
+                            Markdown(content, modifier = Modifier.fillMaxWidth())
+                        }
                     }
                 }
             }
@@ -521,16 +646,7 @@ private fun ReaderScreen(book: BookRow, onBack: () -> Unit) {
                                 )
                             },
                             modifier = Modifier.fillMaxWidth().clickable {
-                                scope.launch {
-                                    try {
-                                        val doc = withContext(Dispatchers.IO) {
-                                            Api.document(book.id, chapter.slug)
-                                        }
-                                        current = chapter to doc.optString("content", "")
-                                    } catch (e: Exception) {
-                                        error = e.message ?: "读取失败"
-                                    }
-                                }
+                                scope.launch { loadChapter(chapter) }
                             },
                         )
                     }
