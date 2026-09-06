@@ -48,10 +48,16 @@ interface ButtonLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   variant?: Variant
   size?: Size
   external?: boolean
+  disabled?: boolean
 }
 
-// ButtonLink 路由跳转样式的按钮（内部走 next/link，外链走 <a>）
-export function ButtonLink({ href, external, variant, size, children, className, ...rest }: ButtonLinkProps) {
+// ButtonLink 路由跳转样式的按钮（内部走 next/link，外链走 <a>；disabled 渲染为占位文本）
+export function ButtonLink({ href, external, variant, size, children, className, disabled, ...rest }: ButtonLinkProps) {
+  if (disabled) {
+    return (
+      <span aria-disabled className={`${resolveClass(variant, size, className)} cursor-not-allowed opacity-60`.trim()}>{children}</span>
+    )
+  }
   const cls = resolveClass(variant, size, className)
   if (external || /^https?:\/\//.test(href)) {
     return (

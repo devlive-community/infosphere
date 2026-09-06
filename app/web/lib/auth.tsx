@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { useRouter } from 'next/router'
-import { api, getToken, getStoredUser, storeSession, clearSession } from './api'
+import { api, getToken, storeSession, clearSession } from './api'
 import type { SiteConfig, User } from './types'
 
 interface AppContextValue {
@@ -43,8 +43,9 @@ function ensureAuthCookie() {
 
 export function AppProvider({ children, initialSite, initialInstalled, initialUser }: AppProviderProps) {
   const router = useRouter()
-  // 立即用 localStorage 里缓存的用户初始化（同步、零网络等待），随后再由 /auth/me 校验
-  const [user, setUser] = useState<User | null>(initialUser ?? getStoredUser())
+  // 客户端首帧必须与 SSR 使用相同登录态，避免 hydration 时导航与管理操作结构不一致。
+  // SSR 未拿到用户但本地仍有令牌的旧会话，由下方 effect 在 hydration 后校验并恢复。
+  const [user, setUser] = useState<User | null>(initialUser ?? null)
   const [authReady, setAuthReady] = useState(false)
   // 仅信任 SSR 显式传入的安装状态；客户端页面走 boot 检测
   const [installed, setInstalled] = useState<boolean | null>(initialInstalled ?? null)

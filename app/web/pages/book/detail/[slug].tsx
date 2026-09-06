@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Container from '@/components/Container'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
+import { API_BASE } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { ButtonLink } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
@@ -96,10 +97,11 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
     return <ClientFallback slug={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('slug') || '' : ''} />
   }
 
-  const cover = book.cover_image ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : `/uploads/${book.cover_image.replace(/^\//, '')}`) : ''
+  const cover = book.cover_image ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : API_BASE + book.cover_image) : ''
   const { chapters } = countChapters(tree)
   const firstDoc = flatFirst(tree)
-  const readUrl = firstDoc ? `/book/reader/${encodeURIComponent(book.slug)}/${firstDoc.slug}` : ''
+  const readDocSlug = firstDoc?.slug || ''
+  const readUrl = readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${readDocSlug}` : ''
   const bookUrl = `${siteUrl}/book/detail/${encodeURIComponent(book.slug)}`
   const words = flatWords(tree)
   const readingMin = Math.max(1, Math.round(words / 400))
@@ -151,7 +153,7 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
           {/* 左：大封面 */}
           <div className="mx-auto w-64 lg:mx-0 lg:w-full">
             <div className="aspect-[3/4] w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF] shadow-md">
-              {cover && <img src={cover} alt={book.title} className="h-full w-full object-cover" />}
+              {cover && <img src={cover} alt={book.title} onError={(e) => { e.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" />}
             </div>
           </div>
 
@@ -165,7 +167,7 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
             {author && (
               <div className="mt-6 flex flex-wrap items-center gap-4">
                 <Link href={`/user/home?username=${encodeURIComponent(author.username)}`} className="flex items-center gap-3">
-                  <UserAvatar user={author} size="h-11 w-11" />
+                  <UserAvatar user={author} size="h-11 w-11" link={false} />
                   <span>
                     <span className="block font-semibold text-slate-900">{author.username}</span>
                     {author.bio && <span className="block text-xs text-slate-400">{author.bio}</span>}
@@ -197,7 +199,7 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
               )}
               {canManage && (
                 <>
-                  <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline">写作</ButtonLink>
+                  <ButtonLink href={readUrl ? `/book/writer/${encodeURIComponent(book.slug)}/${readDocSlug}` : `/book/settings/${encodeURIComponent(book.slug)}`} variant="outline" disabled={!readUrl}>写作</ButtonLink>
                   <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline">设置</ButtonLink>
                 </>
               )}
