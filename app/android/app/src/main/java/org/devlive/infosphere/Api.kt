@@ -1,6 +1,7 @@
 package org.devlive.infosphere
 
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -110,6 +111,46 @@ object Api {
         request("POST", "/documents/$docId/comments", JSONObject().put("content", content))
 
     fun isLoggedIn(): Boolean = token != null
+
+    fun documentById(id: Long): JSONObject =
+        request("GET", "/documents/$id").getJSONObject("data")
+
+    fun createDocument(bookId: Long, title: String, content: String, status: String): JSONObject {
+        val payload = request("POST", "/books/$bookId/documents",
+            JSONObject().put("title", title).put("content", content).put("status", status))
+        return payload.getJSONObject("data")
+    }
+
+    fun updateDocument(id: Long, title: String, content: String, status: String): JSONObject {
+        val payload = request("PUT", "/documents/$id",
+            JSONObject().put("title", title).put("content", content).put("status", status))
+        return payload.getJSONObject("data")
+    }
+
+    /** 上传图片，返回可访问的 URL（本地驱动为相对地址 /uploads/...） */
+    fun uploadImage(fileName: String, bytes: ByteArray): String {
+        val ext = fileName.substringAfterLast('.', "png").lowercase()
+        val media = when (ext) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "svg" -> "image/svg+xml"
+            else -> "image/png"
+        }.toMediaType()
+        val body = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("file", fileName, bytes.toRequestBody(media))
+            .build()
+        val builder = Request.Builder().url("$baseUrl/api/v1/upload").post(body)
+        if (token != null) builder.addHeader("Authorization", "Bearer $token")
+        client.newCall(builder.build()).execute().use { resp ->
+            val text = resp.body?.string() ?: "{}"
+            val payload = JSONObject(text)
+            if (!resp.isSuccessful || payload.optBoolean("success", false).not()) {
+                throw ApiException(payload.optString("message", "上传失败 (${resp.code})"), resp.code)
+            }
+            return payload.getJSONObject("data").getString("url")
+        }
+    }
 
     fun documents(bookId: Long): JSONArray =
         request("GET", "/books/$bookId/documents").getJSONArray("data")

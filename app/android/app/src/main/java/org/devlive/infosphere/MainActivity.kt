@@ -3,7 +3,9 @@ package org.devlive.infosphere
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import coil.compose.AsyncImage
 import com.mikepenz.markdown.m3.Markdown
@@ -35,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -54,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -80,7 +84,7 @@ class MainActivity : ComponentActivity() {
 }
 
 /** 屏幕状态机：服务器配置 → 登录 → 书籍列表 → 阅读器 */
-private enum class Screen { Server, Login, Books, Detail, Reader }
+private enum class Screen { Server, Login, Books, Detail, Reader, Editor }
 
 @Composable
 private fun App(prefs: android.content.SharedPreferences) {
@@ -122,9 +126,14 @@ private fun App(prefs: android.content.SharedPreferences) {
         Screen.Detail -> selectedBook?.let { book ->
             DetailScreen(
                 book = book,
+                isAuthor = user?.optLong("id") == book.authorId,
                 onBack = { screen = Screen.Books },
                 onStartReading = { screen = Screen.Reader },
+                onEdit = { screen = Screen.Editor },
             )
+        }
+        Screen.Editor -> selectedBook?.let { book ->
+            EditorScreen(book = book, onBack = { screen = Screen.Detail })
         }
         Screen.Reader -> selectedBook?.let { book ->
             ReaderScreen(book = book, prefs = prefs, onBack = { screen = Screen.Detail })
@@ -235,7 +244,14 @@ private fun LoginScreen(onLoggedIn: (JSONObject, String) -> Unit, onSkip: () -> 
     }
 }
 
-private data class BookRow(val id: Long, val title: String, val description: String, val views: Int, val author: String)
+private data class BookRow(
+    val id: Long,
+    val title: String,
+    val description: String,
+    val views: Int,
+    val author: String,
+    val authorId: Long,
+)
 
 private fun JSONObject.toBookRow(): BookRow = BookRow(
     id = optLong("id"),
@@ -243,6 +259,7 @@ private fun JSONObject.toBookRow(): BookRow = BookRow(
     description = optString("description", "暂无简介"),
     views = optInt("view_count", 0),
     author = optJSONObject("user")?.optString("username", "") ?: "",
+    authorId = optJSONObject("user")?.optLong("id") ?: 0,
 )
 
 private data class NotificationRow(val id: Long, val title: String, val readAt: String?, val createdAt: String)
@@ -615,7 +632,13 @@ private fun coverUrl(cover: String): String? = when {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DetailScreen(book: BookRow, onBack: () -> Unit, onStartReading: () -> Unit) {
+private fun DetailScreen(
+    book: BookRow,
+    isAuthor: Boolean,
+    onBack: () -> Unit,
+    onStartReading: () -> Unit,
+    onEdit: () -> Unit,
+) {
     var detail by remember { mutableStateOf<BookDetail?>(null) }
     var error by remember { mutableStateOf("") }
 
@@ -674,10 +697,191 @@ private fun DetailScreen(book: BookRow, onBack: () -> Unit, onStartReading: () -
                 Spacer(Modifier.height(14.dp))
                 Text(d.description, fontSize = 15.sp, lineHeight = 23.sp)
                 Spacer(Modifier.height(28.dp))
-                Button(onClick = onStartReading, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                    Text("开始阅读")
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = onStartReading, modifier = Modifier.weight(1f).height(48.dp)) {
+                        Text("开始阅读")
+                    }
+                    if (isAuthor) {
+                        OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f).height(48.dp)) {
+                            Text("编辑章节")
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditorScreen(book: BookRow, onBack: () -> Unit) {
+    var chapters by remember { mutableStateOf<List<ChapterRow>?>(null) }
+    var selected by remember { mutableStateOf<ChapterRow?>(null) }
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("draft") }
+    var saving by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
+    var showChapterPicker by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    suspend fun loadChapters() {
+        chapters = withContext(Dispatchers.IO) { flattenChapters(Api.documents(book.id)) }
+    }
+    LaunchedEffect(book.id) {
+        try {
+            loadChapters()
+        } catch (e: Exception) {
+            error = e.message ?: "目录加载失败"
+        }
+    }
+
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                try {
+                    val bytes = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    } ?: return@launch
+                    val name = "android-${System.currentTimeMillis()}.png"
+                    val url = withContext(Dispatchers.IO) { Api.uploadImage(name, bytes) }
+                    content += "\n![图片]($url)\n"
+                    message = "图片已插入"
+                } catch (e: Exception) {
+                    error = e.message ?: "上传失败"
+                }
+            }
+        }
+    }
+
+    fun save() {
+        if (title.isBlank()) {
+            error = "请填写章节标题"
+            return
+        }
+        saving = true
+        error = ""
+        scope.launch {
+            try {
+                val doc = withContext(Dispatchers.IO) {
+                    selected?.let { Api.updateDocument(it.id, title.trim(), content, status) }
+                        ?: Api.createDocument(book.id, title.trim(), content, status)
+                }
+                loadChapters()
+                selected = chapters?.find { it.id == doc.optLong("id") }
+                message = "已保存"
+            } catch (e: Exception) {
+                error = e.message ?: "保存失败"
+            } finally {
+                saving = false
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(if (selected == null) "新建章节" else "编辑章节") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("返回") } },
+                actions = { TextButton(onClick = { showChapterPicker = true }) { Text("章节") } },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding)
+                .verticalScroll(rememberScrollState()).padding(20.dp),
+        ) {
+            Text(
+                book.title,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("章节标题") },
+                singleLine = true,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("draft" to "草稿", "published" to "已发布").forEach { (key, label) ->
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = if (status == key) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        onClick = { status = key },
+                    ) {
+                        Text(
+                            label,
+                            fontSize = 13.sp,
+                            color = if (status == key) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { imagePicker.launch("image/*") }) { Text("插入图片") }
+            }
+            if (message.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(message, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+            }
+            if (error.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(error, fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = content,
+                onValueChange = { content = it },
+                modifier = Modifier.fillMaxWidth().height(360.dp),
+                label = { Text("正文（Markdown）") },
+            )
+            Spacer(Modifier.height(20.dp))
+            Button(onClick = { save() }, enabled = !saving, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Text(if (saving) "保存中…" else "保存")
+            }
+        }
+    }
+
+    if (showChapterPicker) {
+        ModalBottomSheet(onDismissRequest = { showChapterPicker = false }) {
+            Text("选择章节", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 20.dp))
+            Spacer(Modifier.height(8.dp))
+            ListItem(
+                headlineContent = { Text("＋ 新建章节", fontWeight = FontWeight.Medium) },
+                modifier = Modifier.fillMaxWidth().clickable {
+                    selected = null; title = ""; content = ""; status = "draft"
+                    showChapterPicker = false
+                },
+            )
+            (chapters ?: emptyList()).forEach { chapter ->
+                ListItem(
+                    headlineContent = { Text("　".repeat(chapter.level) + chapter.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        scope.launch {
+                            try {
+                                val doc = withContext(Dispatchers.IO) { Api.documentById(chapter.id) }
+                                selected = chapter
+                                title = doc.optString("title")
+                                content = doc.optString("content")
+                                status = doc.optString("status", "draft")
+                                message = ""
+                                error = ""
+                                showChapterPicker = false
+                            } catch (e: Exception) {
+                                error = e.message ?: "读取失败"
+                            }
+                        }
+                    },
+                )
+            }
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
