@@ -1,12 +1,26 @@
 import type { GetServerSideProps } from 'next'
+import { authHeaderFrom, getSSRUser, isInstalled } from '@/lib/server-api'
+import WriterWorkbench from '@/components/WriterWorkbench'
+import type { User } from '@/lib/types'
 
-// 兼容：/book/writer/{slug}（无章节）→ 跳书详情；由写作入口始终携带 doc 走双段路由
-export default function LegacyWriter() {
-  return null
+interface Props {
+  user: User | null
+  slug: string
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ params }) => {
-  const slug = typeof params?.slug === 'string' ? params.slug : ''
-  if (!slug) return { notFound: true }
-  return { redirect: { destination: `/book/detail/${encodeURIComponent(slug)}`, permanent: false } }
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, params }) => {
+  if (!(await isInstalled())) {
+    return { redirect: { destination: '/install', permanent: false } }
+  }
+  const user = await getSSRUser(req)
+  return {
+    props: {
+      user,
+      slug: typeof params?.slug === 'string' ? params.slug : '',
+    },
+  }
+}
+
+export default function WriterPage(props: Props) {
+  return <WriterWorkbench {...props} />
 }
