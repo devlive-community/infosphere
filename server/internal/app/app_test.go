@@ -47,6 +47,23 @@ func TestFullLifecycle(t *testing.T) {
 		}
 		return payload
 	}
+	put := func(path string, body any, token string) (int, map[string]any) {
+		t.Helper()
+		raw, _ := json.Marshal(body)
+		req, _ := http.NewRequest(http.MethodPut, ts.URL+path, bytes.NewReader(raw))
+		req.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("PUT %s: %v", path, err)
+		}
+		defer resp.Body.Close()
+		var payload map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&payload)
+		return resp.StatusCode, payload
+	}
 	get := func(path string, token string) (int, map[string]any) {
 		t.Helper()
 		req, _ := http.NewRequest(http.MethodGet, ts.URL+path, nil)
@@ -198,6 +215,23 @@ func TestFullLifecycle(t *testing.T) {
 	}
 	if !perms["book:create"] || perms["site:update"] || perms["system:upgrade"] || !perms["tag:create"] || perms["tag:delete"] {
 		t.Fatalf("普通用户权限集错误: %v", perms)
+	}
+
+	// 6.9 阅读进度：保存 → 查询 → 覆盖
+	status, payload = put(fmt.Sprintf("/api/v1/reading-progress/%d", bookID), map[string]any{
+		"doc_id": docData["id"], "doc_slug": docSlug, "doc_title": "Chapter One",
+	}, aliceToken)
+	if status != 200 {
+		t.Fatalf("保存阅读进度失败: %d %v", status, payload)
+	}
+	status, payload = get(fmt.Sprintf("/api/v1/reading-progress/%d", bookID), aliceToken)
+	if status != 200 || payload["data"].(map[string]any)["doc_slug"] != docSlug {
+		t.Fatalf("查询阅读进度失败: %d %v", status, payload)
+	}
+	// 无进度用户返回 null
+	status, payload = get(fmt.Sprintf("/api/v1/reading-progress/%d", bookID), adminToken)
+	if status != 200 || payload["data"] != nil {
+		t.Fatalf("无进度应返回 null: %d %v", status, payload)
 	}
 
 	// 7.1 普通用户可创建标签（tag:create）

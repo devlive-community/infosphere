@@ -173,6 +173,15 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | POST | `/upload` | `multipart/form-data` 字段 `file`，仅图片（png/jpg/jpeg/gif/webp/svg/ico），≤10MB；返回 `{ url }`（如 `/uploads/xxx.png`） | `upload:create` |
 
+## 阅读进度（登录用户）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/reading-progress/:bookId` | 当前用户在该书籍的最近阅读章节；无进度返回 `null` | `user:read` |
+| PUT | `/reading-progress/:bookId` | 记录/覆盖进度，请求体 `{ doc_id, doc_slug, doc_title }` | `user:read` |
+
+响应为进度对象 `{ id, user_id, book_id, doc_id, doc_slug, doc_title, updated_at }`，每用户每书一条（upsert）。
+
 ## 系统管理（仅管理员）
 
 | 方法 | 路径 | 说明 | 权限 |

@@ -93,7 +93,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
   // 记录阅读进度（登录用户按用户名隔离）
   useEffect(() => {
     if (user && book && doc) {
-      saveReadingProgress(user.username, book.slug, { docSlug: doc.slug, docTitle: doc.title, chapterPrefix: book.chapter_prefix || '' })
+      saveReadingProgress(user.username, book.id, { docId: doc.id, docSlug: doc.slug, docTitle: doc.title, chapterPrefix: book.chapter_prefix || '' } as any)
     }
   }, [user, book, doc])
 

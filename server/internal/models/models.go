@@ -79,6 +79,18 @@ type Tag struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// ReadingProgress 阅读进度：每个用户在每个书籍中最近读到的章节
+type ReadingProgress struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"uniqueIndex:uk_user_book;not null" json:"user_id"`
+	BookID    uint      `gorm:"uniqueIndex:uk_user_book;not null" json:"book_id"`
+	DocID     uint      `gorm:"not null" json:"doc_id"`
+	DocSlug   string    `gorm:"size:255;not null" json:"doc_slug"`
+	DocTitle  string    `gorm:"size:255" json:"doc_title"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // BookTag 书籍-标签联接表
 type BookTag struct {
 	BookID    uint      `gorm:"primaryKey" json:"book_id"`
@@ -114,5 +126,6 @@ func All(db *gorm.DB) error {
 		&Document{},
 		&Tag{},
 		&BookTag{},
+		&ReadingProgress{},
 	)
 }

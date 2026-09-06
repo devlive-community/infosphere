@@ -1,36 +1,46 @@
-// 阅读进度：localStorage 记录每个用户最近读到的章节（后续 M10/M13 可升级为服务端存储）
-const KEY = 'infosphere_reading_progress'
+// 阅读进度：优先服务端存储（跨设备），未登录时回退 localStorage
+import { api } from './api'
 
 interface ProgressEntry {
+  docId?: number
   docSlug: string
   docTitle: string
-  chapterPrefix: string
-  at: number
+  chapterPrefix?: string
 }
 
-type ProgressMap = Record<string, Record<string, ProgressEntry>> // user -> book -> entry
+const LOCAL_KEY = 'infosphere_reading_progress'
 
-function read(): ProgressMap {
+function localRead(): Record<string, ProgressEntry> {
   if (typeof window === 'undefined') return {}
   try {
-    return JSON.parse(localStorage.getItem(KEY) || '{}')
+    return JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}')
   } catch {
     return {}
   }
 }
 
-// save 记录用户在某本书读到的章节；username 为空时用 anonymous
-export function saveReadingProgress(username: string, bookSlug: string, entry: { docSlug: string; docTitle: string; chapterPrefix: string }): void {
+// save 记录阅读进度：登录用户写服务端（fire-and-forget），未登录写本地
+export function saveReadingProgress(username: string, bookId: number, entry: ProgressEntry): void {
   if (typeof window === 'undefined') return
-  const map = read()
-  const user = username || 'anonymous'
-  map[user] = map[user] || {}
-  map[user][bookSlug] = { ...entry, at: Date.now() }
-  localStorage.setItem(KEY, JSON.stringify(map))
+  if (!username) {
+    const map = localRead()
+    map[String(bookId)] = entry
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(map))
+    return
+  }
+  api(`/reading-progress/${bookId}`, { method: 'PUT', body: { doc_id: entry.docId, doc_slug: entry.docSlug, doc_title: entry.docTitle } }).catch(() => {})
 }
 
-// get 读取用户在某本书的进度
-export function getReadingProgress(username: string, bookSlug: string): ProgressEntry | null {
-  const map = read()
-  return map[username || 'anonymous']?.[bookSlug] || null
+// get 读取进度：登录走服务端（null 视为无），未登录读本地
+export async function getReadingProgress(username: string, bookId: number): Promise<ProgressEntry | null> {
+  if (!username) {
+    return localRead()[String(bookId)] || null
+  }
+  try {
+    const data = await api<ProgressEntry | null>(`/reading-progress/${bookId}`)
+    if (data && (data as any).doc_slug) return { docSlug: (data as any).doc_slug, docTitle: (data as any).doc_title }
+    return null
+  } catch {
+    return null
+  }
 }

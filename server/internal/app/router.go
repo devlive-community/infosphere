@@ -111,6 +111,13 @@ func (a *App) Router() *gin.Engine {
 			docs.DELETE("/documents/:id", a.RequirePermission(authz.DocumentDelete), a.DeleteDocument)
 		}
 
+		// ── 阅读进度（user 语义，读自己写自己） ──
+		progress := api.Group("/reading-progress", a.RequireAuth())
+		{
+			progress.GET("/:bookId", a.GetReadingProgress)
+			progress.PUT("/:bookId", a.RequirePermission(authz.UserRead), a.SaveReadingProgress)
+		}
+
 		// ── 上传 ──
 		api.POST("/upload", a.RequireAuth(), a.RequirePermission(authz.UploadCreate), a.Upload)
 

@@ -91,12 +91,14 @@ function countChapters(docs: Document[]): { chapters: number; sections: number }
 export default function BookDetail({ site, siteUrl, book, tree, related, needsAuth }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { user } = useApp()
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
-  const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix: string } | null>(null)
+  const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string } | null>(null)
   const bookSlugSafe = book?.slug || ''
   const username = user?.username || ''
   useEffect(() => {
-    if (username && bookSlugSafe) setProgress(getReadingProgress(username, bookSlugSafe))
-  }, [username, bookSlugSafe])
+    if (username && book) {
+      getReadingProgress(username, book.id).then(setProgress)
+    }
+  }, [username, book])
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
