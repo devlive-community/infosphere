@@ -44,9 +44,11 @@ jobs:
 
       - name: Package web
         run: |
-          mkdir -p release/web/.next
+          mkdir -p release/web/.next/static release/web/.next-build/static
           cp -R app/web/.next-build/standalone/. release/web/
+          # static 需同时满足：runtime 按 distDir(.next-build) 自取 + nginx 累积目录脚本取 .next
           cp -R app/web/.next-build/static/. release/web/.next/static/
+          cp -R app/web/.next-build/static/. release/web/.next-build/static/
           if [ -d app/web/public ]; then cp -R app/web/public release/web/public; fi
           tar -czf release/infosphere-web-linux-amd64.tar.gz -C release/web .
           rm -rf release/web

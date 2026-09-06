@@ -30,9 +30,10 @@ web-build:
 ## 打包前端独立部署包
 web-package:
 	rm -rf $(WEB_DIR)/.package $(BIN_DIR)/infosphere-web.tar.gz
-	mkdir -p $(WEB_DIR)/.package/.next $(BIN_DIR)
+	mkdir -p $(WEB_DIR)/.package/.next/static $(WEB_DIR)/.package/.next-build/static $(BIN_DIR)
 	cp -R $(WEB_DIR)/.next-build/standalone/. $(WEB_DIR)/.package/
 	cp -R $(WEB_DIR)/.next-build/static/. $(WEB_DIR)/.package/.next/static/
+	cp -R $(WEB_DIR)/.next-build/static/. $(WEB_DIR)/.package/.next-build/static/
 	if [ -d $(WEB_DIR)/public ]; then cp -R $(WEB_DIR)/public $(WEB_DIR)/.package/public; fi
 	tar -czf $(BIN_DIR)/infosphere-web.tar.gz -C $(WEB_DIR)/.package .
 	rm -rf $(WEB_DIR)/.package
