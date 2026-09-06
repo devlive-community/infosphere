@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState , Fragment } from 'react'
+import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import Link from 'next/link'
 import { api } from '@/lib/api'
@@ -15,6 +16,8 @@ interface SystemVersion {
 
 // 管理后台：系统状态与在线升级（仅管理员）
 export default function AdminSystem() {
+  const { site } = useApp()
+  const siteName = site.site_name || 'InfoSphere'
   const { user } = useApp()
   const [info, setInfo] = useState<SystemVersion | null>(null)
   const [message, setMessage] = useState('')
@@ -48,7 +51,9 @@ export default function AdminSystem() {
   if (!isAdmin) return <p className="py-20 text-center text-slate-400">仅管理员可访问</p>
 
   return (
-    <Container>
+    <>
+      <Seo siteName={siteName} title="系统管理" noindex />
+      <Container>
       <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">系统管理</h1>
 
@@ -102,5 +107,6 @@ export default function AdminSystem() {
       </p>
     </div>
     </Container>
+  </>
   )
 }

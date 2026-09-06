@@ -1,18 +1,23 @@
 import { useRouter } from 'next/router'
+import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import { api } from '@/lib/api'
-import { useRequireAuth } from '@/lib/auth'
+import { useRequireAuth , useApp} from '@/lib/auth'
 import BookForm from '@/components/BookForm'
 import type { Book } from '@/lib/types'
 
 export default function CreateBook() {
   const user = useRequireAuth()
+  const { site } = useApp()
+  const siteName = site.site_name || 'InfoSphere'
   const router = useRouter()
 
   if (!user) return null
 
   return (
-    <Container>
+    <>
+      <Seo siteName={siteName} title="新建书籍" noindex />
+      <Container>
       <BookForm
         heading="创建一本新书"
         subheading="先写下它的名字与方向，内容可以在创建后慢慢生长。"
@@ -25,5 +30,6 @@ export default function CreateBook() {
         }}
       />
     </Container>
+  </>
   )
 }

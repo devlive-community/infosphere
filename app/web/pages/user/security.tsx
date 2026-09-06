@@ -1,10 +1,13 @@
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent , Fragment } from 'react'
+import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import { api, formatDate } from '@/lib/api'
-import { useRequireAuth } from '@/lib/auth'
+import { useRequireAuth , useApp} from '@/lib/auth'
 import { Button, Input, Field } from '@/components/ui'
 
 export default function Security() {
+  const { site } = useApp()
+  const siteName = site.site_name || 'InfoSphere'
   const user = useRequireAuth()
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -38,7 +41,9 @@ export default function Security() {
   }
 
   return (
-    <Container>
+    <>
+      <Seo siteName={siteName} title="账户安全" noindex />
+      <Container>
       <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">账户安全</h1>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm mb-6 p-6">
@@ -69,5 +74,6 @@ export default function Security() {
       </form>
     </div>
     </Container>
+  </>
   )
 }

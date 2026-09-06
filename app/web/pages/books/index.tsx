@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState , Fragment } from 'react'
+import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber } from '@/lib/api'
-import { useRequireAuth } from '@/lib/auth'
+import { useRequireAuth , useApp} from '@/lib/auth'
 import { ButtonLink, Badge, EmptyState, Pagination, Select } from '@/components/ui'
 import { StatusBadge } from '@/components/BookCard'
 import TagChips from '@/components/TagChips'
@@ -49,6 +50,8 @@ function chapterCount(book: Book): number {
 
 export default function MyBooks() {
   const user = useRequireAuth()
+  const { site } = useApp()
+  const siteName = site.site_name || 'InfoSphere'
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const [keyword, setKeyword] = useState('')
@@ -108,7 +111,9 @@ export default function MyBooks() {
   const hasBooks = (data.items || []).length > 0
 
   return (
-    <Container>
+    <>
+      <Seo siteName={siteName} title="我的书籍" noindex />
+      <Container>
       {/* 页头 */}
       <div className="pb-8 pt-2">
         <p className="text-sm text-slate-400">个人知识库</p>
@@ -177,6 +182,7 @@ export default function MyBooks() {
       <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
 
     </Container>
+  </>
   )
 }
 

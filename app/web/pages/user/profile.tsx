@@ -1,10 +1,13 @@
-import { useEffect, useState, FormEvent } from 'react'
+import { useEffect, useState, FormEvent , Fragment } from 'react'
+import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { Button, Input, Textarea, Field } from '@/components/ui'
 
 export default function Profile() {
+  const { site } = useApp()
+  const siteName = site.site_name || 'InfoSphere'
   const user = useRequireAuth()
   const { refreshUser } = useApp()
   const [email, setEmail] = useState('')
@@ -46,7 +49,9 @@ export default function Profile() {
   }
 
   return (
-    <Container>
+    <>
+      <Seo siteName={siteName} title="个人资料" noindex />
+      <Container>
       <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-xl font-bold text-slate-900">个人资料</h1>
       <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white shadow-sm space-y-4 p-6">
@@ -81,5 +86,6 @@ export default function Profile() {
       </form>
     </div>
     </Container>
+  </>
   )
 }
