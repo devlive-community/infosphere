@@ -10,6 +10,7 @@ import UserAvatar from '@/components/UserAvatar'
 import { ButtonLink } from '@/components/ui'
 import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress } from '@/lib/reading-progress'
+import Comments from '@/components/Comments'
 import type { Book, Document, User } from '@/lib/types'
 
 interface ReaderProps {
@@ -238,6 +239,15 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
                   </div>
                   <hr className="my-6 border-slate-100" />
                   <div className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
+
+                  <Comments docId={doc.id} />
+
+                {canEdit && (
+                  <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${doc.slug}`}
+                    className="mt-6 inline-flex items-center gap-1.5 text-sm text-primary-600 hover:underline">
+                    <PencilIcon className="h-3.5 w-3.5" /> 编辑本章
+                  </Link>
+                )}
                 </article>
               ) : (
                 <div className="py-24 text-center text-slate-400">
