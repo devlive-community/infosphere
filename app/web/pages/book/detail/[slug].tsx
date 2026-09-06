@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Container from '@/components/Container'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
-import { API_BASE } from '@/lib/api'
+import { API_BASE, formatNumber } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useState } from 'react'
@@ -132,6 +132,15 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
     ] },
   ]
 
+  async function share() {
+    try {
+      await navigator.clipboard.writeText(bookUrl)
+      alert('链接已复制到剪贴板')
+    } catch {
+      window.prompt('复制以下链接分享本书', bookUrl)
+    }
+  }
+
   return (
     <div className="bg-warm">
       <Seo
@@ -145,7 +154,7 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
 
       <Container>
         {/* 面包屑 */}
-        <nav className="flex items-center gap-1.5 py-4 text-sm text-slate-500">
+        <nav className="flex items-center gap-1.5 py-3 text-sm text-slate-500">
           <Link href="/explore" className="hover:text-primary-600">发现</Link>
           {(book.tags || []).slice(0, 1).map((t) => (
             <span key={t.id} className="flex items-center gap-1.5">
@@ -173,7 +182,11 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
             <h1 className="text-3xl font-bold leading-tight text-ink md:text-4xl">{book.title}</h1>
             {book.description && <p className="mt-3 text-[15px] leading-7 text-slate-500">{book.description}</p>}
 
-            <div className="mt-4"><TagChips tags={book.tags} max={5} /></div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {(book.tags || []).map((t) => (
+                <span key={t.id} className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t.name}</span>
+              ))}
+            </div>
 
             {author && (
               <div className="mt-6 flex flex-wrap items-center gap-4">
@@ -195,14 +208,14 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
             <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
               <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {chapters} 个章节</span>
               <span className="flex items-center gap-1.5"><ClockIcon className="h-4 w-4" /> 约 {readingMin} 分钟</span>
-              <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {book.view_count} 次阅读</span>
+              <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {formatNumber(book.view_count)} 次阅读</span>
               <span className="flex items-center gap-1.5"><CalendarIcon className="h-4 w-4" /> 更新于 {fmtDate(book.updated_at)}</span>
             </div>
 
             {/* 操作 */}
             {/* 上次阅读（有进度且不是第一章时显示） */}
             {progress && progress.docSlug !== readDocSlug && readDocSlug && (
-              <p className="mt-4 text-sm text-slate-500">
+              <p className="mt-5 text-sm text-slate-500">
                 上次阅读：{progress.chapterPrefix}{progress.docTitle}
                 <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}`}
                   className="ml-3 font-medium text-primary-600 hover:underline">继续阅读</Link>
@@ -211,17 +224,22 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {readUrl ? (
-                <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="px-6">
-                  <BookIcon className="h-4 w-4" /> {progress && progress.docSlug !== readDocSlug ? '继续阅读' : '开始阅读'}
+                <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="h-11 px-7 text-base">
+                  <BookIcon className="h-5 w-5" /> {progress && progress.docSlug !== readDocSlug ? '继续阅读' : '开始阅读'}
                 </ButtonLink>
               ) : (
                 <span className="text-sm text-slate-400">暂无已发布章节</span>
               )}
+              <button type="button" onClick={() => alert('收藏功能即将上线')} title="收藏"
+                className="flex h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">
+                <BookmarkIcon className="h-4 w-4" /> 收藏
+              </button>
+              <button type="button" onClick={share} title="分享"
+                className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
+                <ShareIcon className="h-4 w-4" />
+              </button>
               {canManage && (
-                <>
-                  <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`}>写作</ButtonLink>
-                  <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline">设置</ButtonLink>
-                </>
+                <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">写作</ButtonLink>
               )}
             </div>
           </div>
@@ -285,18 +303,23 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
                   {tree.map((doc, i) => (
                     <li key={doc.id}>
                       <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${doc.slug}`}
-                        className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary-50/40">
-                        <span className="w-8 shrink-0 text-center text-lg font-bold text-slate-300 group-hover:text-primary-500">{String(i + 1).padStart(2, '0')}</span>
+                        className="group flex items-center gap-5 border-l-2 border-transparent px-6 py-4 transition-colors hover:bg-primary-50/40">
+                        <span className="w-10 shrink-0 text-center text-2xl font-bold text-slate-300 transition-colors group-hover:text-primary-500">{String(i + 1).padStart(2, '0')}</span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium text-slate-900">{chapterPrefix}{doc.title}</span>
+                          <span className="block truncate font-semibold text-slate-900">{chapterPrefix}{doc.title}</span>
                           {(doc.children?.length || 0) > 0 && (
-                            <span className="mt-1 block truncate text-xs text-slate-400">
-                              {doc.children!.slice(0, 3).map((c) => c.title).join(' · ')}
+                            <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                              {doc.children!.slice(0, 3).map((c) => (
+                                <span key={c.id} className="flex items-center gap-1 text-xs text-slate-400">
+                                  <span className="h-1 w-1 rounded-full bg-slate-300" /> {c.title}
+                                </span>
+                              ))}
+                              {doc.children!.length > 3 && <span className="text-xs text-slate-300">…</span>}
                             </span>
                           )}
                         </span>
                         {(doc.children?.length || 0) > 0 && (
-                          <span className="shrink-0 text-xs text-slate-400">{doc.children!.length} 节</span>
+                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{doc.children!.length} 节</span>
                         )}
                         <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-primary-500" />
                       </Link>
