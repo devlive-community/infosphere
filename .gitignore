@@ -56,3 +56,6 @@ bin/
 .Codex
 app/web/.next-dev/
 app/web/.next-build/
+
+# 构建验证误生成目录（NEXT_DIST_DIR 绝对路径被解析为项目内路径）
+app/web/private/
