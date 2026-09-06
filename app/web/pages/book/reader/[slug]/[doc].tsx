@@ -324,7 +324,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
                     {author.bio && <div className="line-clamp-2 text-xs text-slate-500">{author.bio}</div>}
                   </div>
                 </div>
-                <Link href={`/user/home?username=${encodeURIComponent(author.username)}`}
+                <Link href={`/user/${encodeURIComponent(author.username)}`}
                   className="mt-3 flex h-9 w-full items-center justify-center rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50">
                   查看作者主页
                 </Link>

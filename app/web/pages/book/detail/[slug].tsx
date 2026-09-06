@@ -190,14 +190,14 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
 
             {author && (
               <div className="mt-6 flex flex-wrap items-center gap-4">
-                <Link href={`/user/home?username=${encodeURIComponent(author.username)}`} className="flex items-center gap-3">
+                <Link href={`/user/${encodeURIComponent(author.username)}`} className="flex items-center gap-3">
                   <UserAvatar user={author} size="h-11 w-11" link={false} />
                   <span>
                     <span className="block font-semibold text-slate-900">{author.username}</span>
                     {author.bio && <span className="block text-xs text-slate-400">{author.bio}</span>}
                   </span>
                 </Link>
-                <Link href={`/user/home?username=${encodeURIComponent(author.username)}`}
+                <Link href={`/user/${encodeURIComponent(author.username)}`}
                   className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm text-slate-700 transition-colors hover:border-primary-400 hover:text-primary-600">
                   查看作者主页
                 </Link>
@@ -267,7 +267,7 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
                     {author.bio && <div className="line-clamp-2 text-xs text-slate-500">{author.bio}</div>}
                   </div>
                 </div>
-                <Link href={`/user/home?username=${encodeURIComponent(author.username)}`}
+                <Link href={`/user/${encodeURIComponent(author.username)}`}
                   className="mt-4 flex h-9 w-full items-center justify-center rounded-lg border border-slate-300 text-sm text-slate-700 transition-colors hover:border-primary-400 hover:text-primary-600">
                   查看全部作品
                 </Link>

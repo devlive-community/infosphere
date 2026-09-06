@@ -39,7 +39,7 @@ export default function UserAvatar({ user, size = 'h-7 w-7', tooltip = true, lin
   if (!link) return inner
   return (
     <Tooltip content={user.username}>
-      <Link href={`/user/home?username=${encodeURIComponent(user.username)}`} className="inline-flex shrink-0">
+      <Link href={`/user/${encodeURIComponent(user.username)}`} className="inline-flex shrink-0">
         {inner}
       </Link>
     </Tooltip>
