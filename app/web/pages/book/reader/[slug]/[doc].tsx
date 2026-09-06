@@ -4,6 +4,7 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
 import { renderMarkdown, extractHeadings } from '@/lib/markdown'
 import { API_BASE, formatDate } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import { ButtonLink } from '@/components/ui'
@@ -128,7 +129,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
   const parentDoc = doc?.parent_id ? flat.find((d) => d.id === doc.parent_id) : null
   const author = book.user
   const authorAvatar = author?.avatar ? (/^https?:\/\//.test(author.avatar) ? author.avatar : API_BASE + author.avatar) : ''
-  const cover = book.cover_image ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : API_BASE + book.cover_image) : ''
+  const cover = resolveMediaUrl(book.cover_image)
 
   const docUrl = doc ? `${siteUrl}/book/reader?slug=${encodeURIComponent(book.slug)}&doc=${encodeURIComponent(doc.slug)}` : siteUrl
   const jsonLd = doc ? [

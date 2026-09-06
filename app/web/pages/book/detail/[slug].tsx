@@ -3,6 +3,7 @@ import Container from '@/components/Container'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
 import { API_BASE, formatNumber } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import { useApp } from '@/lib/auth'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useState } from 'react'
@@ -108,7 +109,7 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
     return <ClientFallback slug={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('slug') || '' : ''} />
   }
 
-  const cover = book.cover_image ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : API_BASE + book.cover_image) : ''
+  const cover = resolveMediaUrl(book.cover_image)
   const { chapters } = countChapters(tree)
   const firstDoc = flatFirst(tree)
   const readDocSlug = firstDoc?.slug || ''

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Container from '@/components/Container'
 import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 import { api } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { Button, Input, Textarea, Field } from '@/components/ui'
 import { EyeIcon } from '@/components/icons'
@@ -35,7 +36,7 @@ export default function Profile() {
 
   if (!user) return null
 
-  const avatarSrc = avatar ? (/^https?:\/\//.test(avatar) ? avatar : `/uploads/${avatar.replace(/^\//, '')}`) : ''
+  const avatarSrc = resolveMediaUrl(avatar)
 
   async function submit(e: FormEvent) {
     e.preventDefault()

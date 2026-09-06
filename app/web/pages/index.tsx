@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { getSSRUser, authHeaderFrom, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatDate, formatNumber } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import { ButtonLink, EmptyState } from '@/components/ui'
 import HeroIllustration, { HotRankCard } from '@/components/HeroIllustration'
 import Seo from '@/components/Seo'
@@ -51,7 +52,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ req })
 
 // 首页最新发布横向卡片
 function LatestCard({ book }: { book: Book }) {
-  const cover = book.cover_image ? API_BASE + book.cover_image : ''
+  const cover = resolveMediaUrl(book.cover_image)
   return (
     <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
       className="group flex gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">

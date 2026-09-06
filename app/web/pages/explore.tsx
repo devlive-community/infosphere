@@ -3,6 +3,7 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { useEffect, useState } from 'react'
 import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, siteUrlFrom } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import Container from '@/components/Container'
 import { Button, Input, Loading, Pagination, Select , Tooltip} from '@/components/ui'
 import Seo from '@/components/Seo'
@@ -50,9 +51,7 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
 
 // ExploreCard 发现页宽图卡
 function ExploreCard({ book }: { book: Book }) {
-  const cover = book.cover_image
-    ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : `/uploads/${book.cover_image.replace(/^\//, '')}`)
-    : ''
+  const cover = resolveMediaUrl(book.cover_image)
   const date = book.updated_at?.slice(0, 10) || book.created_at?.slice(0, 10)
   return (
     <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
@@ -84,9 +83,7 @@ function ExploreCard({ book }: { book: Book }) {
 
 // ExploreRowCard 列表视图行卡
 function ExploreRowCard({ book }: { book: Book }) {
-  const cover = book.cover_image
-    ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : `/uploads/${book.cover_image.replace(/^\//, '')}`)
-    : ''
+  const cover = resolveMediaUrl(book.cover_image)
   return (
     <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
       className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">

@@ -3,6 +3,7 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import { Pagination, Select, Loading , Tooltip} from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
@@ -134,7 +135,7 @@ function KnowledgeNetwork() {
 
 // PublicBookCard 公开书籍宽图卡片（原型样式：宽封面 + 标签 + meta + 作者条）
 function PublicBookCard({ book, author }: { book: Book; author: UserProfile }) {
-  const cover = book.cover_image ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : `/uploads/${book.cover_image.replace(/^\//, '')}`) : ''
+  const cover = resolveMediaUrl(book.cover_image)
   return (
     <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
       className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
@@ -165,7 +166,7 @@ function PublicBookCard({ book, author }: { book: Book; author: UserProfile }) {
 
 // PublicBookRow 列表视图行卡（与「我的书籍」列表模式同构）
 function PublicBookRow({ book, author }: { book: Book; author: UserProfile }) {
-  const cover = book.cover_image ? (/^https?:\/\//.test(book.cover_image) ? book.cover_image : `/uploads/${book.cover_image.replace(/^\//, '')}`) : ''
+  const cover = resolveMediaUrl(book.cover_image)
   return (
     <a href={`/book/detail/${encodeURIComponent(book.slug)}`}
       className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">

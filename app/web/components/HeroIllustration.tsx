@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { API_BASE, formatNumber } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import { EyeIcon } from '@/components/icons'
 import type { Book } from '@/lib/types'
 
@@ -14,7 +15,7 @@ const topicChips = [
 const rankColors = ['text-amber-400', 'text-sky-400', 'text-violet-400', 'text-emerald-400', 'text-slate-400']
 
 function CardFace({ book }: { book?: Book }) {
-  const cover = book?.cover_image ? API_BASE + book.cover_image : ''
+  const cover = resolveMediaUrl(book?.cover_image)
   return (
     <>
       <div className={`h-20 w-full rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
@@ -71,7 +72,7 @@ export default function HeroIllustration({ books }: { books: Book[] }) {
 
 // HotRankCard 深色热门榜单卡片
 export function HotRankCard({ rank, book }: { rank: number; book: Book }) {
-  const cover = book.cover_image ? API_BASE + book.cover_image : ''
+  const cover = resolveMediaUrl(book.cover_image)
   return (
     <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
       className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
