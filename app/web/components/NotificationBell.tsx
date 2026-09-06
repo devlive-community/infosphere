@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { API_BASE, api, formatDate, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
@@ -153,6 +154,9 @@ export default function NotificationBell() {
                 </button>
               ))
             )}
+          </div>
+          <div className="border-t border-slate-100 px-4 py-2.5 text-center">
+            <Link href="/notifications" className="text-sm text-primary-600 hover:underline">查看全部</Link>
           </div>
         </div>
       )}
