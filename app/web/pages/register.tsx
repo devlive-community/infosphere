@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Button, Input, Field } from '@/components/ui'
+import OAuthButtons from '@/components/OAuthButtons'
 import type { User } from '@/lib/types'
 
 export default function Register() {
@@ -57,6 +58,7 @@ export default function Register() {
           </Field>
           <Button className="w-full" loading={loading}>注 册</Button>
         </form>
+        <OAuthButtons label="注册" />
         <p className="mt-4 text-center text-sm text-slate-500">
           已有账户？<Link href="/login" className="text-primary-600 hover:underline">直接登录</Link>
         </p>

@@ -64,6 +64,16 @@ func (a *App) Router() *gin.Engine {
 			authGroup.POST("/register", a.Register)
 			authGroup.POST("/login", a.Login)
 
+			// ── 第三方登录（auth:oauth；start/callback 匿名，绑定管理需登录） ──
+			authGroup.GET("/oauth/providers", a.OAuthProviders)
+			authGroup.GET("/oauth/:provider", a.OAuthStart)
+			authGroup.GET("/oauth/:provider/callback", a.OAuthCallback)
+			authed2 := authGroup.Group("", a.RequireAuth())
+			{
+				authed2.GET("/oauth/bindings", a.OAuthBindings)
+				authed2.DELETE("/oauth/:provider", a.RequirePermission(authz.AuthOauth), a.OAuthUnbind)
+			}
+
 			authed := authGroup.Group("", a.RequireAuth())
 			{
 				authed.GET("/me", a.Me)
@@ -148,6 +158,8 @@ func (a *App) Router() *gin.Engine {
 		admin := api.Group("", a.RequireAuth(), a.RequireAdmin())
 		{
 			admin.PUT("/site", a.RequirePermission(authz.SiteUpdate), a.UpdateSiteConfig)
+			admin.GET("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminGetOAuth)
+			admin.PUT("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminSaveOAuth)
 			admin.GET("/system/version", a.RequirePermission(authz.SystemRead), a.SystemVersion)
 			admin.POST("/system/upgrade", a.RequirePermission(authz.SystemUpgrade), a.SystemUpgrade)
 		}

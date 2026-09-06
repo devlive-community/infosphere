@@ -30,6 +30,9 @@ const (
 	// 搜索
 	SearchRead Permission = "search:read" // 全局搜索书籍与章节（含匿名访问，仅公开内容）
 
+	// 第三方登录
+	AuthOauth Permission = "auth:oauth" // 管理第三方登录绑定（登录用户）
+
 	// 点赞/收藏
 	ReactionCreate Permission = "reaction:create" // 点赞/收藏书籍
 	ReactionDelete Permission = "reaction:delete" // 取消点赞/收藏
@@ -66,6 +69,7 @@ var All = []Permission{
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	TagRead, TagCreate, TagDelete,
 	SearchRead,
+	AuthOauth,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	UserRead, UserUpdate,
@@ -81,6 +85,7 @@ var userPermissions = []Permission{
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	TagRead, TagCreate,
 	SearchRead,
+	AuthOauth,
 	CommentRead, CommentCreate, CommentUpdate,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	UserRead, UserUpdate,

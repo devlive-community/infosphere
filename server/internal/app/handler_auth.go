@@ -185,7 +185,8 @@ func (a *App) ChangePassword(c *gin.Context) {
 		return
 	}
 	u := currentUser(c)
-	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(req.OldPassword)) != nil {
+	// OAuth 注册的用户没有本地密码，首次设置免验原密码
+	if u.Password != "" && bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(req.OldPassword)) != nil {
 		fail(c, http.StatusBadRequest, "原密码不正确")
 		return
 	}

@@ -41,6 +41,15 @@ Authorization: Bearer <token>
 | `tag:read` | 浏览标签与按标签检索 | ✅ | ✅ |
 | `tag:create` | 创建标签（书籍打标时自动创建） | ✅ | ✅ |
 | `tag:delete` | 删除标签 | ❌ | ✅ |
+| `search:read` | 全局搜索书籍与章节（匿名仅公开内容） | ✅ | ✅ |
+| `comment:read` | 浏览章节评论（匿名可读） | ✅ | ✅ |
+| `comment:create` | 发表评论 | ✅ | ✅ |
+| `comment:update` | 编辑自己的评论 | ✅ | ✅ |
+| `comment:delete` | 删除评论（本人/书籍作者/管理员） | ✅ | ✅ |
+| `reaction:create` | 点赞/收藏书籍 | ✅ | ✅ |
+| `reaction:delete` | 取消点赞/收藏 | ✅ | ✅ |
+| `reaction:read` | 查看自己的点赞/收藏 | ✅ | ✅ |
+| `auth:oauth` | 管理第三方登录绑定 | ✅ | ✅ |
 | `site:update` | 更新站点配置 | ❌ | ✅ |
 | `stats:read` | 读取站点统计 | ✅ | ✅ |
 | `upload:create` | 上传图片 | ✅ | ✅ |
@@ -103,7 +112,20 @@ Authorization: Bearer <token>
 | GET | `/auth/me` | 当前用户信息 | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |
-| PUT | `/auth/password` | 修改密码（old_password/new_password） | `user:update` |
+| PUT | `/auth/password` | 修改密码（old_password/new_password；OAuth 用户未设密码时免验原密码，用于首次设置） | `user:update` |
+
+## 第三方登录（OAuth，当前支持 github）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/auth/oauth/providers` | 各 provider 启用状态：`{providers:[{provider,enabled}]}` | 匿名 |
+| GET | `/auth/oauth/:provider?origin=` | 发起登录：302 到授权页；未配置/不支持时 302 回 `{origin}/login?oauth_error=...` | 匿名 |
+| GET | `/auth/oauth/:provider/callback` | 授权回调：换取用户 → 已绑定直接登录 / 已验证邮箱自动关联 / 自动注册；签发 token + Cookie 后 302 回 `{origin}/oauth/callback?token=...` | 匿名 |
+| GET | `/auth/oauth/bindings` | 当前用户绑定列表 `[{provider,provider_username,provider_email,created_at}]` | 登录 |
+| DELETE | `/auth/oauth/:provider` | 解绑；未设置本地密码时拒绝（防止锁死） | `auth:oauth` |
+| GET/PUT | `/oauth` | 管理员读取/保存 GitHub 凭据（client_id/client_secret/enabled），存站点配置表，不出现在公开 `/site` | `site:update` |
+
+> 凭据存于站点配置（`oauth_github_*` 键）；state 防 CSRF 为内存态（10 分钟 TTL），适配当前单实例部署架构。
 
 ## 站点与统计（公开）
 

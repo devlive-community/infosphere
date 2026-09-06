@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Button, Input, Field } from '@/components/ui'
+import OAuthButtons, { oauthErrorText } from '@/components/OAuthButtons'
 import type { User } from '@/lib/types'
 
 export default function Login() {
@@ -16,6 +17,12 @@ export default function Login() {
   useEffect(() => {
     if (user) router.replace('/')
   }, [user, router])
+
+  useEffect(() => {
+    if (router.isReady && typeof router.query.oauth_error === 'string') {
+      setError(oauthErrorText(router.query.oauth_error))
+    }
+  }, [router.isReady, router.query.oauth_error])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -47,6 +54,7 @@ export default function Login() {
           </Field>
           <Button className="w-full" loading={loading}>登 录</Button>
         </form>
+        <OAuthButtons label="登录" />
         <p className="mt-4 text-center text-sm text-slate-500">
           还没有账户？<Link href="/register" className="text-primary-600 hover:underline">立即注册</Link>
         </p>

@@ -9,6 +9,7 @@ import { useRequireAuth, useApp } from '@/lib/auth'
 import { Button, Input, Textarea, Field } from '@/components/ui'
 import { EyeIcon } from '@/components/icons'
 import UserAvatar from '@/components/UserAvatar'
+import OAuthBindings from '@/components/OAuthBindings'
 
 const MAX_BIO = 200
 
@@ -157,6 +158,11 @@ export default function Profile() {
                 <Button type="submit" loading={saving}>✓ 保存资料</Button>
               </div>
             </form>
+          </div>
+
+          {/* 第三方账号绑定 */}
+          <div className="mt-6">
+            <OAuthBindings />
           </div>
         </AccountSettingsLayout>
       </Container>
