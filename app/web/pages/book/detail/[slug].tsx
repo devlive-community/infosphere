@@ -5,6 +5,7 @@ import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isI
 import { API_BASE, formatNumber } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { useApp } from '@/lib/auth'
+import { api } from '@/lib/api'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useState } from 'react'
 import { ButtonLink , Tooltip} from '@/components/ui'
@@ -93,6 +94,10 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
   const { user } = useApp()
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
   const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string } | null>(null)
+  const [favorited, setFavorited] = useState(false)
+  const [likeCount, setLikeCount] = useState(0)
+  const [liked, setLiked] = useState(false)
+  const [reactBusy, setReactBusy] = useState(false)
   const bookSlugSafe = book?.slug || ''
   const username = user?.username || ''
   useEffect(() => {
