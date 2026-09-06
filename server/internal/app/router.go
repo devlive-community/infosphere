@@ -125,6 +125,14 @@ func (a *App) Router() *gin.Engine {
 		// ── 全文搜索（search:read，匿名可搜公开内容） ──
 		api.GET("/search", a.GlobalSearch)
 
+		// ── 站内通知（notification:*；SSE 端点自行鉴权，EventSource 无法带请求头） ──
+		notif := api.Group("/notifications", a.RequireAuth())
+		{
+			notif.GET("", a.RequirePermission(authz.NotificationRead), a.ListNotifications)
+			notif.POST("/read", a.RequirePermission(authz.NotificationUpdate), a.MarkNotificationsRead)
+		}
+		api.GET("/notifications/stream", a.SSENotifications)
+
 		// ── 评论（comment:*） ──
 		api.GET("/documents/:id/comments", a.OptionalAuth(), a.ListComments)
 		api.POST("/documents/:id/comments", a.RequireAuth(), a.RequirePermission(authz.CommentCreate), a.CreateComment)

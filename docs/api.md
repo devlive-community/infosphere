@@ -50,6 +50,8 @@ Authorization: Bearer <token>
 | `reaction:delete` | 取消点赞/收藏 | ✅ | ✅ |
 | `reaction:read` | 查看自己的点赞/收藏 | ✅ | ✅ |
 | `auth:oauth` | 管理第三方登录绑定 | ✅ | ✅ |
+| `notification:read` | 查看自己的通知（含 SSE 流） | ✅ | ✅ |
+| `notification:update` | 标记通知已读 | ✅ | ✅ |
 | `site:update` | 更新站点配置 | ❌ | ✅ |
 | `stats:read` | 读取站点统计 | ✅ | ✅ |
 | `upload:create` | 上传图片 | ✅ | ✅ |
@@ -204,6 +206,18 @@ Authorization: Bearer <token>
 | DELETE | `/books/:id/reactions?type=` | 取消（like / favorite） | `reaction:delete` |
 | GET | `/books/:id/reactions/me` | 当前用户对该书的态度 + 全站计数 | `reaction:read` |
 | GET | `/users/me/reactions?type=&page=` | 我的点赞/收藏列表（含书籍对象，分页） | `reaction:read` |
+
+## 站内通知（登录用户）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/notifications?page=&per_page=&unread=true` | 当前用户通知（ newest 在前）+ `unread_count` | `notification:read` |
+| POST | `/notifications/read` | 标记已读：`{ids:[]}` 或 `{all:true}`，返回最新 `unread_count` | `notification:update` |
+| GET | `/notifications/stream` | SSE 实时流：连接即推 `{"unread_count":n}`，新通知实时推送；25s 心跳。**鉴权支持 `?token=`**（EventSource 无法带 Authorization 头） | `notification:read` |
+
+- 通知类型：`comment`（评论/回复）、`reaction`（点赞/收藏）、`system`（升级完成等）
+- `payload` 为 JSON 对象，含 `link`（点击跳转地址）等扩展字段
+- 触发规则：他人评论你的章节/回复你的评论、他人点赞/收藏你的书（重复操作不重复通知）、服务启动检测到版本变化时通知管理员
 
 ## 阅读进度（登录用户）
 

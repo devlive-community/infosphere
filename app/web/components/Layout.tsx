@@ -7,6 +7,7 @@ import { ListBulletIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
 import { ButtonLink, Input } from '@/components/ui'
+import NotificationBell from '@/components/NotificationBell'
 import { SearchIcon } from '@/components/icons'
 
 function UserMenu() {
@@ -108,7 +109,8 @@ export default function Layout({ title, children }: { title?: string; children: 
             <Input type="search" name="q" leading={<SearchIcon className="h-4 w-4" />}
               placeholder="搜索书籍、主题或作者" />
           </form>
-          <div className="ml-auto flex items-center gap-2 lg:ml-0">
+          <div className="ml-auto flex items-center gap-1.5 lg:ml-0">
+            <NotificationBell />
             <UserMenu />
           </div>
         </div>

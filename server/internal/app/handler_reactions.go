@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -33,10 +34,21 @@ func (a *App) PutReaction(c *gin.Context) {
 	}
 
 	reaction := models.Reaction{UserID: u.ID, BookID: book.ID, Type: req.Type}
-	if err := a.DB.Where(models.Reaction{UserID: u.ID, BookID: book.ID, Type: req.Type}).
-		FirstOrCreate(&reaction).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "操作失败: "+err.Error())
+	tx := a.DB.Where(models.Reaction{UserID: u.ID, BookID: book.ID, Type: req.Type}).
+		FirstOrCreate(&reaction)
+	if tx.Error != nil {
+		fail(c, http.StatusInternalServerError, "操作失败: "+tx.Error.Error())
 		return
+	}
+	// M13 通知触发：仅新建的点赞/收藏才通知书籍作者
+	if tx.RowsAffected > 0 && book.UserID != u.ID {
+		action := "点赞"
+		if req.Type == "favorite" {
+			action = "收藏"
+		}
+		a.Notify(book.UserID, "reaction",
+			fmt.Sprintf("「%s」%s了你的书籍《%s》", u.Username, action, book.Title),
+			map[string]any{"link": fmt.Sprintf("/book/detail/%s", book.Slug)})
 	}
 	ok(c, reaction)
 }

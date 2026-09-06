@@ -50,6 +50,17 @@ type SiteConfig struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// Notification 站内通知（M13）
+type Notification struct {
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	UserID    uint       `gorm:"index;not null" json:"user_id"`
+	Type      string     `gorm:"size:30;index" json:"type"` // comment | reaction | system
+	Title     string     `gorm:"size:255;not null" json:"title"`
+	Payload   string     `gorm:"type:text" json:"payload"` // JSON 字符串，如 {"link":"/book/detail/x"}
+	ReadAt    *time.Time `json:"read_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
 // Book 书籍
 type Book struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
@@ -153,5 +164,6 @@ func All(db *gorm.DB) error {
 		&ReadingProgress{},
 		&Comment{},
 		&Reaction{},
+		&Notification{},
 	)
 }

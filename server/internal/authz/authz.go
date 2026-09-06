@@ -33,6 +33,10 @@ const (
 	// 第三方登录
 	AuthOauth Permission = "auth:oauth" // 管理第三方登录绑定（登录用户）
 
+	// 站内通知
+	NotificationRead   Permission = "notification:read"   // 查看自己的通知（含 SSE 流）
+	NotificationUpdate Permission = "notification:update" // 标记通知已读
+
 	// 点赞/收藏
 	ReactionCreate Permission = "reaction:create" // 点赞/收藏书籍
 	ReactionDelete Permission = "reaction:delete" // 取消点赞/收藏
@@ -70,6 +74,7 @@ var All = []Permission{
 	TagRead, TagCreate, TagDelete,
 	SearchRead,
 	AuthOauth,
+	NotificationRead, NotificationUpdate,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	UserRead, UserUpdate,
@@ -86,6 +91,7 @@ var userPermissions = []Permission{
 	TagRead, TagCreate,
 	SearchRead,
 	AuthOauth,
+	NotificationRead, NotificationUpdate,
 	CommentRead, CommentCreate, CommentUpdate,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	UserRead, UserUpdate,

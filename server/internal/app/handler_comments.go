@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -123,6 +124,23 @@ func (a *App) CreateComment(c *gin.Context) {
 		return
 	}
 	a.DB.Preload("User").First(&comment, comment.ID)
+
+	// M13 通知触发：书籍作者 + 被回复人（不通知操作者本人，作者与被回复人重复时只发一条）
+	readerLink := fmt.Sprintf("/book/reader/%s/%s", book.Slug, doc.Slug)
+	if book.UserID != u.ID {
+		a.Notify(book.UserID, "comment",
+			fmt.Sprintf("「%s」评论了你的章节《%s》", u.Username, doc.Title),
+			map[string]any{"link": readerLink})
+	}
+	if comment.ParentID != nil {
+		var parent models.Comment
+		if err := a.DB.First(&parent, *comment.ParentID).Error; err == nil &&
+			parent.UserID != u.ID && parent.UserID != book.UserID {
+			a.Notify(parent.UserID, "comment",
+				fmt.Sprintf("「%s」回复了你的评论", u.Username),
+				map[string]any{"link": readerLink})
+		}
+	}
 	ok(c, comment)
 }
 
