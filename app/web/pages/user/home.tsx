@@ -141,7 +141,7 @@ function PublicBookCard({ book, author }: { book: Book; author: UserProfile }) {
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
         {cover && <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
         {cover && (
-          <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow transition-colors group-hover:bg-white group-hover:text-primary-600">
+          <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-600 opacity-0 shadow transition-opacity duration-200 group-hover:opacity-100">
             <ArrowRightIcon className="h-4 w-4" />
           </span>
         )}
