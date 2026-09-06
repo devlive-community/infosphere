@@ -10,7 +10,11 @@
 //   !tip[文本](提示)            内联悬浮提示（纯 CSS）
 //   !switch[文本](状态)         内联开关（静态展示）
 //   :icon-name{size,color}:     内联图标（客户端 lucide 填充）
-import type { TokenizerAndRendererExtension, Tokens } from 'marked'
+//   ![alt](url "标题" =WxH left) 图片（尺寸/对齐扩展，兼容普通图片语法）
+//   |:---:|---:| 表格（对齐语法，单元格支持行内 Markdown）
+//   owner/repo#123 或 #123      GitHub issue 链接徽章
+//   :::api METHOD /path         REST API 文档卡（=== "小节" 分节）
+import { marked, type TokenizerAndRendererExtension, type Tokens } from 'marked'
 import katex from 'katex'
 
 function escapeHtml(text: string): string {
@@ -416,6 +420,231 @@ const iconExtension: TokenizerAndRendererExtension = {
   },
 }
 
+
+// markdownExtensions 注册进 marked 的扩展集合
+// ── 图片（尺寸/对齐）─────────────────────────────────────────────────────
+
+const imageExtension: TokenizerAndRendererExtension = {
+  name: 'md-image',
+  level: 'inline',
+  start(src) {
+    const index = src.indexOf('![')
+    if (index === -1 || inInlineCode(src, index)) return undefined
+    return index
+  },
+  tokenizer(src) {
+    const rule = /^!\[(.*?)\]\((.*?)(?:\s+"(.*?)")?\s*(?:=(\d+)?x(\d+)?)?(?:\s+(left|center|right))?\)/
+    const match = rule.exec(src)
+    if (!match || inInlineCode(src, match.index)) return undefined
+    return {
+      type: 'md-image',
+      raw: match[0],
+      alt: match[1],
+      href: match[2],
+      title: match[3] || null,
+      width: match[4] || null,
+      height: match[5] || null,
+      align: match[6] || null,
+      tokens: [],
+    } as Tokens.Generic
+  },
+  renderer(token) {
+    const t = token as Tokens.Generic & { alt: string; href: string; title: string | null; width: string | null; height: string | null; align: string | null }
+    const classes = ['max-w-full', 'h-auto', 'my-1']
+    if (t.align === 'left') classes.push('float-left', 'mr-4')
+    else if (t.align === 'right') classes.push('float-right', 'ml-4')
+    else if (t.align === 'center') classes.push('mx-auto', 'block')
+    const styles: string[] = []
+    if (t.width) styles.push(`width:${t.width}px`)
+    if (t.height) styles.push(`height:${t.height}px`)
+    const styleAttr = styles.length > 0 ? ` style="${styles.join(';')}"` : ''
+    const titleAttr = t.title ? ` title="${escapeHtml(t.title)}"` : ''
+    return `<img src="${escapeHtml(t.href)}" alt="${escapeHtml(t.alt)}"${titleAttr}${styleAttr} class="${classes.join(' ')}" loading="lazy" />`
+  },
+}
+
+// ── 对齐表格 ─────────────────────────────────────────────────────────────
+
+const tableExtension: TokenizerAndRendererExtension = {
+  name: 'md-table',
+  level: 'block',
+  start(src) {
+    return src.match(/^\|(.+)\|/)?.index
+  },
+  tokenizer(src) {
+    const lines = src.split('\n')
+    if (lines.length < 2) return undefined
+    if (!/^\|(.+)\|$/.test(lines[0])) return undefined
+    // 对齐行允许 GFM 形式（冒号可选），由本扩展统一输出带样式的表格
+    if (!/^\|((?:[:]?-+[:]?\|)+)$/.test(lines[1])) return undefined
+    const alignLine = lines[1]
+    let currentLine = 2
+    while (currentLine < lines.length && /^\|(.+)\|$/.test(lines[currentLine])) currentLine++
+    const raw = lines.slice(0, currentLine).join('\n')
+
+    const parseRow = (row: string) => row.slice(1, -1).split('|').map((c) => c.trim())
+    const alignments = alignLine.slice(1, -1).split('|').map((col) => {
+      const left = col.trimStart().startsWith(':')
+      const right = col.trimEnd().endsWith(':')
+      return left && right ? 'center' : right ? 'right' : left ? 'left' : 'left'
+    })
+    const alignClass = (a: string) => (a === 'center' ? 'text-center' : a === 'right' ? 'text-right' : 'text-left')
+    return {
+      type: 'md-table',
+      raw,
+      tokens: [],
+      header: parseRow(lines[0]),
+      rows: lines.slice(2, currentLine).map(parseRow),
+      alignments,
+    } as Tokens.Generic
+  },
+  renderer(token) {
+    const t = token as Tokens.Generic & { header: string[]; rows: string[][]; alignments: string[] }
+    const inline = (text: string) => marked.parseInline(text)
+    const alignClass = (a: string) => (a === 'center' ? 'text-center' : a === 'right' ? 'text-right' : 'text-left')
+    const thead = t.header
+      .map((text, i) => `<th class="px-3 py-2 font-semibold ${alignClass(t.alignments[i] || 'left')}">${inline(text)}</th>`)
+      .join('')
+    const tbody = t.rows
+      .map((row) => `<tr class="border-t border-slate-100">${row.map((text, i) => `<td class="px-3 py-2 ${alignClass(t.alignments[i] || 'left')}">${inline(text)}</td>`).join('')}</tr>`)
+      .join('')
+    return `<div class="my-4 overflow-x-auto rounded-lg border border-slate-200"><table class="w-full border-collapse text-sm"><thead class="bg-slate-50"><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div>`
+  },
+}
+
+// ── GitHub issue 链接 ────────────────────────────────────────────────────
+
+// 与旧版一致的默认仓库
+const issuesDefaultRepo = { owner: 'devlive-community', name: 'infosphere' }
+
+const issuesExtension: TokenizerAndRendererExtension = {
+  name: 'md-issues',
+  level: 'inline',
+  start(src) {
+    const repoMatch = src.match(/[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+#\d/)
+    if (repoMatch?.index !== undefined) return repoMatch.index
+    const simpleMatch = src.match(/#\d/)
+    if (simpleMatch?.index !== undefined && !inInlineCode(src, simpleMatch.index)) return simpleMatch.index
+    return undefined
+  },
+  tokenizer(src) {
+    const match = /^(?:(?:([a-zA-Z0-9-]+)\/([a-zA-Z0-9-_.]+))?#(\d+))/.exec(src)
+    if (!match || (src.indexOf('`') > -1 && inInlineCode(src, match.index))) return undefined
+    const [, owner, repo, issueNumber] = match
+    const href = owner && repo
+      ? `https://github.com/${owner}/${repo}/issues/${issueNumber}`
+      : `https://github.com/${issuesDefaultRepo.owner}/${issuesDefaultRepo.name}/issues/${issueNumber}`
+    return { type: 'md-issues', raw: match[0], text: `#${issueNumber}`, href, tokens: [] } as Tokens.Generic
+  },
+  renderer(token) {
+    const t = token as Tokens.Generic & { text: string; href: string }
+    const label = t.href.includes('/issues/')
+      ? t.href.slice('https://github.com/'.length).replace('/issues/', '#')
+      : t.text
+    return (
+      `<a href="${escapeHtml(t.href)}" target="_blank" rel="noopener noreferrer"` +
+      ' class="inline-flex items-center px-2 py-1 mx-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors no-underline align-middle">' +
+      '<svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path>' +
+      '<path d="M9 18c-4.51 2-5-2-7-2"></path></svg>' +
+      `<span class="font-semibold text-xs">${escapeHtml(label)}</span></a>`
+    )
+  },
+}
+
+// ── REST API 文档卡 ──────────────────────────────────────────────────────
+
+const apiExtension: TokenizerAndRendererExtension = {
+  name: 'md-restapi',
+  level: 'block',
+  start(src) {
+    return src.match(/^:::\s*api(?:\s|$)/m)?.index
+  },
+  tokenizer(src) {
+    const header = /^:::\s*api\s+(GET|POST|PUT|DELETE|PATCH)\s+([^\n]+)\n/.exec(src)
+    if (!header) return undefined
+    const end = src.indexOf('\n:::')
+    if (end === -1) return undefined
+    const content = src.slice(header[0].length, end)
+    const raw = src.slice(0, end + 4)
+
+    let description: string | null = null
+    const sections: { title: string; src: string }[] = []
+    let currentSection: string | null = null
+    let currentContent: string[] = []
+    let baseIndent = 0
+
+    const flush = () => {
+      while (currentContent.length > 0 && currentContent[currentContent.length - 1] === '') currentContent.pop()
+      const text = currentContent.join('\n')
+      if (currentSection) sections.push({ title: currentSection, src: text })
+      else if (text) description = text
+    }
+
+    for (const line of content.split('\n')) {
+      const sectionMatch = line.match(/^(\s*)===\s*"([^"]*)"$/)
+      if (sectionMatch) {
+        flush()
+        currentSection = sectionMatch[2]
+        baseIndent = sectionMatch[1].length
+        currentContent = []
+        continue
+      }
+      if (line.trim() === '') {
+        currentContent.push('')
+        continue
+      }
+      if (currentSection) {
+        const indentMatch = line.match(/^(\s+)/)
+        if (!indentMatch || indentMatch[1].length <= baseIndent) return undefined
+        let relativeIndent = ''
+        if (indentMatch[1].length > baseIndent + 4) relativeIndent = ' '.repeat(indentMatch[1].length - (baseIndent + 4))
+        currentContent.push(relativeIndent + line.trim())
+      } else {
+        currentContent.push(line)
+      }
+    }
+    flush()
+
+    return {
+      type: 'md-restapi',
+      raw,
+      method: header[1],
+      path: header[2].trim(),
+      description: description ? this.lexer.blockTokens(description) : null,
+      sections: sections.map((sec) => ({ title: sec.title, tokens: this.lexer.blockTokens(sec.src) })),
+    } as Tokens.Generic
+  },
+  renderer(token) {
+    const t = token as Tokens.Generic & {
+      method: string
+      path: string
+      description: Tokens.Generic[] | null
+      sections: { title: string; tokens: Tokens.Generic[] }[]
+    }
+    const methodColors: Record<string, string> = {
+      GET: 'bg-sky-100 text-sky-700',
+      POST: 'bg-emerald-100 text-emerald-700',
+      PUT: 'bg-amber-100 text-amber-700',
+      PATCH: 'bg-orange-100 text-orange-700',
+      DELETE: 'bg-rose-100 text-rose-700',
+    }
+    const descriptionHtml = t.description
+      ? `<div class="mt-4 text-sm text-slate-600">${this.parser.parse(t.description)}</div>`
+      : ''
+    const sectionsHtml = t.sections
+      .map((sec) => `<div class="mt-5"><h3 class="text-base font-medium text-slate-900 mb-2">${escapeHtml(sec.title)}</h3>${this.parser.parse(sec.tokens)}</div>`)
+      .join('')
+    return (
+      '<div class="my-4 border border-slate-200 rounded-lg p-4">' +
+      `<div class="flex items-center gap-2 border-b border-slate-100 pb-2">` +
+      `<span class="px-3 py-1 rounded-md font-mono font-bold text-xs ${methodColors[t.method] || 'bg-slate-100 text-slate-700'}">${t.method}</span>` +
+      `<span class="font-mono text-sm text-slate-900">${escapeHtml(t.path)}</span></div>` +
+      `${descriptionHtml}${sectionsHtml}</div>`
+    )
+  },
+}
+
 // markdownExtensions 注册进 marked 的扩展集合
 export const markdownExtensions: TokenizerAndRendererExtension[] = [
   tabsExtension,
@@ -428,6 +657,10 @@ export const markdownExtensions: TokenizerAndRendererExtension[] = [
   tipExtension,
   switchExtension,
   iconExtension,
+  imageExtension,
+  tableExtension,
+  issuesExtension,
+  apiExtension,
 ]
 
 // ── 客户端交互绑定（tabs 切换 / mermaid 渲染 / lucide 图标填充）────────────
