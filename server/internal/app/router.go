@@ -116,6 +116,7 @@ func (a *App) Router() *gin.Engine {
 			books.GET("/status-counts", a.RequirePermission(authz.BookRead), a.MyBookCounts)
 			books.PUT("/:id", a.RequirePermission(authz.BookUpdate), a.UpdateBook)
 			books.DELETE("/:id", a.RequirePermission(authz.BookDelete), a.DeleteBook)
+			books.GET("/:id/export", a.RequirePermission(authz.BookExport), a.ExportBook)
 
 			// ── 协作者管理（collaborator:*；归属校验在 handler 内） ──
 			books.GET("/:id/collaborators", a.RequirePermission(authz.CollaboratorRead), a.ListCollaborators)
@@ -132,7 +133,7 @@ func (a *App) Router() *gin.Engine {
 		}
 
 		// ── 全文搜索（search:read，匿名可搜公开内容） ──
-		api.GET("/search", a.GlobalSearch)
+		api.GET("/search", a.OptionalAuth(), a.GlobalSearch)
 
 		// ── 站内通知（notification:*；SSE 端点自行鉴权，EventSource 无法带请求头） ──
 		notif := api.Group("/notifications", a.RequireAuth())
