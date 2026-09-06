@@ -38,6 +38,8 @@ jobs:
           NEXT_DIST_DIR: .next-build
         run: |
           pnpm install --frozen-lockfile
+          pnpm exec tsc --noEmit
+          pnpm test
           pnpm build
 
       - name: Package web

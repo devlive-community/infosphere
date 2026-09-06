@@ -39,10 +39,11 @@ jobs:
         working-directory: app/web
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck and lint web
+      - name: Typecheck, test and lint web
         working-directory: app/web
         run: |
           pnpm exec tsc --noEmit
+          pnpm test
           pnpm exec next lint
 
       - name: Build web (SSR standalone)
