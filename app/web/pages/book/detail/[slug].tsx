@@ -219,7 +219,7 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
               )}
               {canManage && (
                 <>
-                  <ButtonLink href={readUrl ? `/book/writer/${encodeURIComponent(book.slug)}/${readDocSlug}` : `/book/settings/${encodeURIComponent(book.slug)}`} variant="outline" disabled={!readUrl}>写作</ButtonLink>
+                  <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`}>写作</ButtonLink>
                   <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline">设置</ButtonLink>
                 </>
               )}
