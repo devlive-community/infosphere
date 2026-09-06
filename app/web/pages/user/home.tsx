@@ -274,9 +274,13 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
             <p className="py-16 text-center text-slate-400">暂无公开书籍</p>
           ) : loading ? (
             <Loading />
-          ) : (
-            <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+          ) : view === 'grid' ? (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {items.map((b) => <PublicBookCard key={b.id} book={b} author={profile} />)}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {items.map((b) => <PublicBookRow key={b.id} book={b} author={profile} />)}
             </div>
           )}
         </section>
