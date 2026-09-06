@@ -131,6 +131,8 @@ export const GitHubIcon = svg(<>
   <path d="M9 18c-4.51 2-5-2-7-2" />
 </>)
 
+export const UserCircleIcon = svg(<><circle cx="12" cy="12" r="10" /><circle cx="12" cy="10" r="3" /><path d="M7 20.66V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.66" /></>)
+
 export const GripIcon = svg(<>
   <circle cx="9" cy="6" r="1" /><circle cx="15" cy="6" r="1" /><circle cx="9" cy="12" r="1" />
   <circle cx="15" cy="12" r="1" /><circle cx="9" cy="18" r="1" /><circle cx="15" cy="18" r="1" />

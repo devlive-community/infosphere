@@ -1,9 +1,11 @@
 import { useState, FormEvent , Fragment } from 'react'
 import Seo from '@/components/Seo'
+import Link from 'next/link'
 import Container from '@/components/Container'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
 import { Button, Input, Field } from '@/components/ui'
+import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 
 export default function Security() {
   const { site } = useApp()
@@ -42,10 +44,19 @@ export default function Security() {
 
   return (
     <>
-      <Seo siteName={siteName} title="账户安全" noindex />
+      <Seo siteName={siteName} title="账户设置" noindex />
       <Container>
-      <div className="mx-auto max-w-xl">
-      <h1 className="mb-6 text-xl font-bold text-slate-900">账户安全</h1>
+        <nav className="flex items-center gap-1.5 py-4 text-sm text-slate-500">
+          <Link href="/" className="hover:text-primary-600">首页</Link>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-900">账户设置</span>
+        </nav>
+        <div className="pb-6">
+          <h1 className="text-3xl font-bold text-ink">账户设置</h1>
+          <p className="mt-2 text-[15px] text-slate-500">管理你的个人信息与登录安全</p>
+        </div>
+      <AccountSettingsLayout user={user} active="security">
+        <div className="min-w-0">
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm mb-6 p-6">
         <h2 className="mb-2 font-semibold text-slate-900">账户信息</h2>
         <dl className="space-y-1 text-sm text-slate-600">
@@ -71,8 +82,9 @@ export default function Security() {
         <div className="flex justify-end">
           <Button type="submit" loading={saving}>更新密码</Button>
         </div>
-      </form>
-    </div>
+        </form>
+      </div>
+      </AccountSettingsLayout>
     </Container>
   </>
   )
