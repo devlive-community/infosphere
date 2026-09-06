@@ -1,15 +1,15 @@
-import { useEffect, useState , Fragment } from 'react'
+import { useEffect, useState, useRef , Fragment } from 'react'
 import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import Link from 'next/link'
-import { api, formatDate, formatNumber } from '@/lib/api'
+import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
-import { ButtonLink, Badge, EmptyState, Pagination, Select, Loading , Tooltip} from '@/components/ui'
+import { Button, ButtonLink, Badge, EmptyState, Pagination, Select, Loading , Tooltip} from '@/components/ui'
 import { StatusBadge } from '@/components/BookCard'
 import TagChips from '@/components/TagChips'
 import {
   BookIcon, CalendarIcon, EyeIcon, FileTextIcon, GearIcon, GridIcon,
-  ListIcon, MoreIcon, PencilIcon, SearchIcon,
+  ListIcon, MoreIcon, PencilIcon, SearchIcon, UploadIcon,
 } from '@/components/icons'
 import type { Book, Document, PageResult } from '@/lib/types'
 
@@ -61,6 +61,8 @@ export default function MyBooks() {
   const [data, setData] = useState<PageResult<Book>>({ items: [], total: 0, page: 1, page_size: 10 })
   const [counts, setCounts] = useState<Record<string, number>>({ '': 0, published: 0, draft: 0, archived: 0 })
   const [loading, setLoading] = useState(true)
+  const [importing, setImporting] = useState(false)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   async function load() {
     if (!user) return
@@ -77,6 +79,31 @@ export default function MyBooks() {
   }
 
   useEffect(() => { if (user) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, page, status, keyword])
+
+  // 导入书籍 zip（M16）：成功后刷新列表
+  async function uploadImport(file: File) {
+    if (!file) return
+    setImporting(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const token = getToken()
+      const res = await fetch(`${API_BASE}/api/v1/import`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form,
+      })
+      const payload = await res.json()
+      if (!res.ok || !payload.success) throw new Error(payload.message || '导入失败')
+      alert(payload.data?.message || '导入完成')
+      load()
+    } catch (e) {
+      alert((e as Error).message)
+    } finally {
+      setImporting(false)
+      if (importInputRef.current) importInputRef.current.value = ''
+    }
+  }
 
   // 客户端排序（API 分页内排序字段当前仅支持基础列；数量小时在当前页排序即可）
   const items = [...(data.items || [])].sort((a, b) => {
@@ -123,9 +150,17 @@ export default function MyBooks() {
             <h1 className="text-3xl font-bold text-ink md:text-4xl">我的书籍</h1>
             <p className="mt-2 text-[15px] text-slate-500">在这里继续写作、整理章节，或者发布你的下一本知识作品。</p>
           </div>
-          <ButtonLink href="/books/create" className="h-11 px-5 text-base">
-            <PlusIcon className="h-5 w-5" /> 新建书籍
-          </ButtonLink>
+          <div className="flex flex-wrap items-center gap-3">
+            <input ref={importInputRef} type="file" accept=".zip" className="hidden"
+              onChange={(e) => uploadImport(e.target.files?.[0] as File)} />
+            <Button variant="outline" className="h-11 px-5 text-base" loading={importing}
+              onClick={() => importInputRef.current?.click()}>
+              <UploadIcon className="h-5 w-5" /> 导入书籍
+            </Button>
+            <ButtonLink href="/books/create" className="h-11 px-5 text-base">
+              <PlusIcon className="h-5 w-5" /> 新建书籍
+            </ButtonLink>
+          </div>
         </div>
       </div>
 

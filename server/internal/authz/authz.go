@@ -15,6 +15,8 @@ const (
 	BookCreate Permission = "book:create" // 创建书籍
 	BookUpdate Permission = "book:update" // 更新书籍（仅限本人或管理员）
 	BookDelete Permission = "book:delete" // 删除书籍（仅限本人或管理员）
+	BookExport Permission = "book:export" // 导出书籍为 markdown zip（owner/admin/editor 协作者）
+	BookImport Permission = "book:import" // 从 zip 导入书籍（登录用户，成为其个人书籍）
 
 	// 文档（章节）
 	DocumentRead   Permission = "document:read"   // 浏览文档树与正文（含公开匿名访问）
@@ -77,7 +79,7 @@ const (
 
 // All 全部权限，admin 角色默认拥有
 var All = []Permission{
-	BookRead, BookCreate, BookUpdate, BookDelete,
+	BookRead, BookCreate, BookUpdate, BookDelete, BookExport, BookImport,
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	TagRead, TagCreate, TagDelete,
 	SearchRead,
@@ -95,7 +97,7 @@ var All = []Permission{
 
 // userPermissions 普通用户（user 角色）拥有的权限
 var userPermissions = []Permission{
-	BookRead, BookCreate, BookUpdate, BookDelete,
+	BookRead, BookCreate, BookUpdate, BookDelete, BookExport, BookImport,
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	TagRead, TagCreate,
 	SearchRead,

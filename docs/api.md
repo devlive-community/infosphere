@@ -56,6 +56,8 @@ Authorization: Bearer <token>
 | `collaborator:read` | 查看书籍协作者列表 | ✅ | ✅ |
 | `collaborator:create` | 添加/更新协作者（仅书籍所有者/管理员） | ✅ | ✅ |
 | `collaborator:delete` | 移除协作者（所有者；协作者可自行退出） | ✅ | ✅ |
+| `book:export` | 导出书籍为 markdown zip（owner/admin/editor 协作者） | ✅ | ✅ |
+| `book:import` | 从 zip 导入书籍（成为导入者的个人书籍） | ✅ | ✅ |
 | `site:update` | 更新站点配置 | ❌ | ✅ |
 | `stats:read` | 读取站点统计 | ✅ | ✅ |
 | `upload:create` | 上传图片 | ✅ | ✅ |
@@ -235,6 +237,15 @@ Authorization: Bearer <token>
 - 通知类型：`comment`（评论/回复）、`reaction`（点赞/收藏）、`system`（升级完成等）
 - `payload` 为 JSON 对象，含 `link`（点击跳转地址）等扩展字段
 - 触发规则：他人评论你的章节/回复你的评论、他人点赞/收藏你的书（重复操作不重复通知）、服务启动检测到版本变化时通知管理员
+
+## 导入导出（M16）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/books/:id/export?format=markdown` | 导出书籍为 zip：`book.md`（front-matter：标题/简介/slug/状态/公开/排序/章节前缀/封面/标签）+ `chapters/<序号>-<slug>.md`（front-matter：标题/slug/排序/状态/父章节/评论开关 + 正文）+ `images/`（本站 `/uploads` 图片随包携带并改写为相对引用，外链保持原样） | `book:export` |
+| POST | `/import` | multipart 上传 `file`（zip），解析同一结构还原为新书：元数据/标签/章节树（按 parent slug 重建）/图片写回上传目录；slug 冲突自动追加 `-imported-N`；安全限制：≤500 文件、解压总量 ≤64MB、拒绝 `..` 路径 | `book:import` |
+
+> 验收标准：导出再导入内容无损（含嵌套章节、草稿状态、评论开关、标签、封面与正文图片）。
 
 ## 阅读进度（登录用户）
 
