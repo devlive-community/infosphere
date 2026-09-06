@@ -67,10 +67,30 @@ object Api {
 
     // ---------- 书籍 ----------
 
-    fun books(page: Int = 1, mine: Boolean = false): List<JSONObject> {
-        val payload = request("GET", "/books?page=$page&page_size=20${if (mine) "&mine=true" else ""}")
+    fun books(page: Int = 1, mine: Boolean = false, title: String = ""): List<JSONObject> {
+        val query = buildString {
+            append("/books?page=$page&page_size=20")
+            if (mine) append("&mine=true")
+            if (title.isNotBlank()) append("&title=").append(java.net.URLEncoder.encode(title.trim(), "UTF-8"))
+        }
+        val payload = request("GET", query)
         val items = payload.getJSONObject("data").getJSONArray("items")
         return (0 until items.length()).map { items.getJSONObject(it) }
+    }
+
+    fun unreadCount(): Long =
+        request("GET", "/notifications?page=1&per_page=1").getJSONObject("data").getLong("unread_count")
+
+    fun notifications(page: Int = 1): Pair<List<JSONObject>, Long> {
+        val data = request("GET", "/notifications?page=$page&per_page=20").getJSONObject("data")
+        val items = data.getJSONArray("notifications")
+        val list = (0 until items.length()).map { items.getJSONObject(it) }
+        return list to data.getLong("unread_count")
+    }
+
+    fun markAllNotificationsRead(): Long {
+        val payload = request("POST", "/notifications/read", JSONObject().put("all", true))
+        return payload.getJSONObject("data").getLong("unread_count")
     }
 
     fun documents(bookId: Long): JSONArray =

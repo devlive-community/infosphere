@@ -4,7 +4,10 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,20 +15,26 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SelectionContainer
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,12 +43,15 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,7 +86,7 @@ private fun App(prefs: android.content.SharedPreferences) {
         mutableStateOf(if (Api.baseUrl.isEmpty()) Screen.Server else Screen.Login)
     }
     var user by remember { mutableStateOf<JSONObject?>(null) }
-    var selectedBook by remember { mutableStateOf<JSONObject?>(null) }
+    var selectedBook by remember { mutableStateOf<BookRow?>(null) }
 
     when (screen) {
         Screen.Server -> ServerScreen { url ->
@@ -224,6 +236,91 @@ private fun JSONObject.toBookRow(): BookRow = BookRow(
     author = optJSONObject("user")?.optString("username", "") ?: "",
 )
 
+private data class NotificationRow(val id: Long, val title: String, val readAt: String?, val createdAt: String)
+
+private fun JSONObject.toNotificationRow(): NotificationRow = NotificationRow(
+    id = optLong("id"),
+    title = optString("title"),
+    readAt = if (isNull("read_at")) null else optString("read_at"),
+    createdAt = optString("created_at"),
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NotificationsSheet(
+    onDismiss: () -> Unit,
+    onAllRead: () -> Unit,
+) {
+    var items by remember { mutableStateOf<List<NotificationRow>?>(null) }
+    var error by remember { mutableStateOf("") }
+    var marking by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            items = withContext(Dispatchers.IO) { Api.notifications().first }.map { it.toNotificationRow() }
+        } catch (e: Exception) {
+            error = e.message ?: "加载失败"
+            items = emptyList()
+        }
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("通知", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            TextButton(onClick = {
+                marking = true
+                scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) { Api.markAllNotificationsRead() }
+                        items = items?.map { it.copy(readAt = it.readAt ?: "now") }
+                        onAllRead()
+                    } catch (_: Exception) {
+                    } finally {
+                        marking = false
+                    }
+                }
+            }) { Text(if (marking) "处理中…" else "全部已读") }
+        }
+        when {
+            items == null -> Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            error.isNotEmpty() -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                Text(error, color = MaterialTheme.colorScheme.error)
+            }
+            items!!.isEmpty() -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                Text("暂无通知", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            else -> LazyColumn(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                items(items!!) { n ->
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                n.title,
+                                fontSize = 14.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                fontWeight = if (n.readAt == null) FontWeight.Medium else FontWeight.Normal,
+                            )
+                        },
+                        supportingContent = { Text(n.createdAt.take(16).replace('T', ' '), fontSize = 12.sp) },
+                        leadingContent = {
+                            if (n.readAt == null) {
+                                Box(Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BooksScreen(
@@ -234,13 +331,34 @@ private fun BooksScreen(
 ) {
     var books by remember { mutableStateOf<List<BookRow>?>(null) }
     var error by remember { mutableStateOf("") }
+    var keyword by remember { mutableStateOf("") }
+    var unread by remember { mutableIntStateOf(0) }
+    var showNotifications by remember { mutableStateOf(false) }
 
-    LaunchedEffect(user) {
+    suspend fun loadBooks(title: String) {
         try {
-            books = withContext(Dispatchers.IO) { Api.books(mine = user != null) }.map { it.toBookRow() }
+            books = withContext(Dispatchers.IO) { Api.books(mine = user != null, title = title) }.map { it.toBookRow() }
         } catch (e: Exception) {
             error = e.message ?: "加载失败"
             books = emptyList()
+        }
+    }
+
+    LaunchedEffect(user) {
+        loadBooks("")
+        if (user != null) {
+            try {
+                unread = withContext(Dispatchers.IO) { Api.unreadCount() }.toInt()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    // 搜索防抖：输入停顿 300ms 后按关键词拉取
+    LaunchedEffect(keyword) {
+        if (user != null || keyword.isNotEmpty()) {
+            kotlinx.coroutines.delay(300)
+            loadBooks(keyword)
         }
     }
 
@@ -250,7 +368,14 @@ private fun BooksScreen(
                 title = { Text("我的知识库") },
                 actions = {
                     TextButton(onClick = onChangeServer) { Text("切换服务器") }
-                    if (user != null) TextButton(onClick = onLogout) { Text("退出") }
+                    if (user != null) {
+                        BadgedBox(badge = { if (unread > 0) Badge { Text(if (unread > 99) "99+" else unread.toString()) } }) {
+                            IconButton(onClick = { showNotifications = true }) {
+                                Text("🔔", fontSize = 18.sp)
+                            }
+                        }
+                        TextButton(onClick = onLogout) { Text("退出") }
+                    }
                 },
             )
         },
@@ -265,26 +390,52 @@ private fun BooksScreen(
             books!!.isEmpty() -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("暂无书籍", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            else -> LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-                items(books!!) { book ->
-                    Card(
-                        onClick = { onOpenBook(book) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(book.title, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Spacer(Modifier.height(4.dp))
-                            Text(book.description, fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Spacer(Modifier.height(6.dp))
-                            Text("👁 ${book.views} · ${book.author}", fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.outline)
+            else -> Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                OutlinedTextField(
+                    value = keyword,
+                    onValueChange = { keyword = it },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("搜索书籍标题") },
+                    singleLine = true,
+                    trailingIcon = {
+                        if (keyword.isNotEmpty()) {
+                            Text(
+                                "清空",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 12.dp).clickable { keyword = "" },
+                            )
+                        }
+                    },
+                )
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                    items(books!!) { book ->
+                        Card(
+                            onClick = { onOpenBook(book) },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(book.title, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Spacer(Modifier.height(4.dp))
+                                Text(book.description, fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Spacer(Modifier.height(6.dp))
+                                Text("浏览 ${book.views} · ${book.author}", fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.outline)
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showNotifications) {
+        NotificationsSheet(
+            onDismiss = { showNotifications = false },
+            onAllRead = { unread = 0 },
+        )
     }
 }
 
