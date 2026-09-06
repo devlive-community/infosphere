@@ -1,10 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::fs;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_opener::OpenerExt;
 
 /// 客户端配置文件路径（应用配置目录下 config.json）
 fn config_path(app: &AppHandle) -> Option<std::path::PathBuf> {
@@ -87,7 +88,23 @@ struct ServerInfo {
 }
 
 struct AppState {
-    info: Mutex<ServerInfo>,
+    info: Arc<Mutex<ServerInfo>>,
+}
+
+/// 站点根 origin（scheme://host[:port]），用于主窗口导航的同源判定
+fn origin_of(url: &tauri::Url) -> String {
+    let port = url.port().map(|p| format!(":{}", p)).unwrap_or_default();
+    format!(
+        "{}://{}{}",
+        url.scheme(),
+        url.host_str().unwrap_or(""),
+        port
+    )
+}
+
+/// 本地设置页地址（Linux 上自定义协议是 http://tauri.localhost）
+fn is_local_setup(url: &tauri::Url) -> bool {
+    url.scheme() == "tauri" || url.host_str() == Some("tauri.localhost")
 }
 
 #[tauri::command]
@@ -123,14 +140,60 @@ fn reset_server(app: AppHandle) -> Result<(), String> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState {
-            info: Mutex::new(ServerInfo::default()),
+            info: Arc::new(Mutex::new(ServerInfo::default())),
         })
         .setup(|app| {
             let handle = app.handle().clone();
 
+            // 主窗口运行时创建：挂接 new-window / navigation 拦截，
+            // target="_blank" 与跨源导航转交系统浏览器，webview 内只承载本站。
+            let shared = app.state::<AppState>().info.clone();
+            let nav_handle = handle.clone();
+            let new_window_handle = handle.clone();
+            let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+                .title("InfoSphere")
+                .inner_size(1280.0, 840.0)
+                .min_inner_size(960.0, 640.0)
+                .on_new_window(move |url, _| {
+                    let _ = new_window_handle
+                        .opener()
+                        .open_url(url.as_str(), None::<&str>);
+                    tauri::webview::NewWindowResponse::Deny
+                })
+                .on_navigation(move |url| {
+                    if is_local_setup(url) {
+                        return true;
+                    }
+                    if url.scheme() != "http" && url.scheme() != "https" {
+                        return true;
+                    }
+                    let saved = shared.lock().unwrap().url.clone();
+                    let same_origin = saved
+                        .as_deref()
+                        .and_then(|server| tauri::Url::parse(server).ok())
+                        .map(|server| origin_of(&server) == origin_of(url))
+                        .unwrap_or(false);
+                    if same_origin {
+                        true
+                    } else {
+                        let _ = nav_handle.opener().open_url(url.as_str(), None::<&str>);
+                        false
+                    }
+                })
+                .build()?;
+            let _ = window;
+
             // 已保存地址则先探测可达性：可达直接进入，失败留在设置页并显示原因
-            if let Some(saved) = read_server_url(&handle) {
+            let saved = read_server_url(&handle);
+            if let Some(saved) = &saved {
+                *app.state::<AppState>().info.lock().unwrap() = ServerInfo {
+                    url: Some(saved.clone()),
+                    error: None,
+                };
+            }
+            if let Some(saved) = saved {
                 match probe_server(&saved) {
                     Ok(()) => {
                         if let Some(state) = handle.try_state::<AppState>() {
