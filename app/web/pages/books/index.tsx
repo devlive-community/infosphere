@@ -3,7 +3,7 @@ import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber } from '@/lib/api'
 import { useRequireAuth } from '@/lib/auth'
-import { ButtonLink, Badge, EmptyState, Pagination } from '@/components/ui'
+import { ButtonLink, Badge, EmptyState, Pagination, Select } from '@/components/ui'
 import { StatusBadge } from '@/components/BookCard'
 import TagChips from '@/components/TagChips'
 import {
@@ -144,10 +144,7 @@ export default function MyBooks() {
               placeholder="搜索我的书籍"
               className="h-10 w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
           </div>
-          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}
-            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-primary-500 focus:outline-none">
-            {sortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <Select className="w-36" value={sort} onChange={(v) => setSort(v as SortKey)} options={sortOptions} />
           <div className="flex overflow-hidden rounded-lg border border-slate-200">
             <button onClick={() => setView('grid')} aria-label="网格视图"
               className={`flex h-10 w-10 items-center justify-center transition-colors ${view === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
