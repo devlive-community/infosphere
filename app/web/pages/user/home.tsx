@@ -3,7 +3,7 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
-import { Pagination } from '@/components/ui'
+import { Pagination, Select } from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import { ArrowRightIcon, BookIcon, CalendarIcon, EyeIcon, GitHubIcon, GridIcon, ListIcon, ShareIcon } from '@/components/icons'
@@ -166,6 +166,13 @@ function PublicBookCard({ book, author }: { book: Book; author: UserProfile }) {
 export default function UserHome({ site, siteUrl, profile, books }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
+  type SortKey = 'updated' | 'views' | 'title'
+  const sortOptions = [
+    { value: 'updated', label: '最近更新' },
+    { value: 'views', label: '浏览最多' },
+    { value: 'title', label: '标题排序' },
+  ]
+  const [sort, setSort] = useState<SortKey>('updated')
   const profileUrl = `${siteUrl}/user/home?username=${encodeURIComponent(profile.username)}`
 
   async function share() {
@@ -189,7 +196,11 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
     },
   }
 
-  const items = books.items || []
+  const items = [...(books.items || [])].sort((a, b) => {
+    if (sort === 'views') return b.view_count - a.view_count
+    if (sort === 'title') return a.title.localeCompare(b.title, 'zh-CN')
+    return a.updated_at < b.updated_at ? 1 : -1
+  })
 
   return (
     <Container>
@@ -212,7 +223,7 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
               <span className="text-sm text-slate-400">{profile.username}发布的 {books.total} 本知识作品</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="flex h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-500">最近更新</span>
+              <Select className="w-36" value={sort} onChange={(v) => setSort(v as SortKey)} options={sortOptions} />
               <div className="flex overflow-hidden rounded-lg border border-slate-200">
                 <button onClick={() => setView('grid')} aria-label="网格视图"
                   className={`flex h-10 w-10 items-center justify-center transition-colors ${view === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
