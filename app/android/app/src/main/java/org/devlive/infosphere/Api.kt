@@ -95,6 +95,22 @@ object Api {
 
     fun book(id: Long): JSONObject = request("GET", "/books/$id").getJSONObject("data")
 
+    fun favorites(page: Int = 1): Pair<List<JSONObject>, Int> {
+        val payload = request("GET", "/users/me/reactions?type=favorite&page=$page&page_size=20")
+        val data = payload.getJSONObject("data")
+        val items = data.getJSONArray("items")
+        val list = (0 until items.length()).mapNotNull { items.getJSONObject(it).optJSONObject("book") }
+        return list to data.optInt("total", list.size)
+    }
+
+    fun comments(docId: Long): JSONArray =
+        request("GET", "/documents/$docId/comments").getJSONArray("data")
+
+    fun addComment(docId: Long, content: String): JSONObject =
+        request("POST", "/documents/$docId/comments", JSONObject().put("content", content))
+
+    fun isLoggedIn(): Boolean = token != null
+
     fun documents(bookId: Long): JSONArray =
         request("GET", "/books/$bookId/documents").getJSONArray("data")
 

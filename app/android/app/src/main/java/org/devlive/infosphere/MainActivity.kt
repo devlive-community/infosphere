@@ -343,6 +343,7 @@ private fun BooksScreen(
     var keyword by remember { mutableStateOf("") }
     var unread by remember { mutableIntStateOf(0) }
     var showNotifications by remember { mutableStateOf(false) }
+    var shelf by remember { mutableStateOf("mine") } // mine | favorites
 
     suspend fun loadBooks(title: String) {
         try {
@@ -353,8 +354,18 @@ private fun BooksScreen(
         }
     }
 
-    LaunchedEffect(user) {
-        loadBooks("")
+    LaunchedEffect(user, shelf) {
+        error = ""
+        if (shelf == "favorites" && user != null) {
+            try {
+                books = withContext(Dispatchers.IO) { Api.favorites().first }.map { it.toBookRow() }
+            } catch (e: Exception) {
+                error = e.message ?: "加载失败"
+                books = emptyList()
+            }
+            return@LaunchedEffect
+        }
+        loadBooks(keyword)
         if (user != null) {
             try {
                 unread = withContext(Dispatchers.IO) { Api.unreadCount() }.toInt()
@@ -363,9 +374,9 @@ private fun BooksScreen(
         }
     }
 
-    // 搜索防抖：输入停顿 300ms 后按关键词拉取
+    // 搜索防抖：输入停顿 300ms 后按关键词拉取（收藏书架不走标题搜索）
     LaunchedEffect(keyword) {
-        if (user != null || keyword.isNotEmpty()) {
+        if (shelf == "mine" && (user != null || keyword.isNotEmpty())) {
             kotlinx.coroutines.delay(300)
             loadBooks(keyword)
         }
@@ -389,34 +400,51 @@ private fun BooksScreen(
             )
         },
     ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        if (user != null) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                listOf("mine" to "我的书籍", "favorites" to "收藏").forEach { (key, label) ->
+                    TextButton(onClick = { shelf = key }) {
+                        Text(
+                            label,
+                            fontSize = 14.sp,
+                            fontWeight = if (shelf == key) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (shelf == key) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
         when {
-            books == null -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            books == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            error.isNotEmpty() -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            error.isNotEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(error, color = MaterialTheme.colorScheme.error)
             }
-            books!!.isEmpty() -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("暂无书籍", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            books!!.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(if (shelf == "favorites") "还没有收藏的书籍" else "暂无书籍", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            else -> Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                OutlinedTextField(
-                    value = keyword,
-                    onValueChange = { keyword = it },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("搜索书籍标题") },
-                    singleLine = true,
-                    trailingIcon = {
-                        if (keyword.isNotEmpty()) {
-                            Text(
-                                "清空",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 12.dp).clickable { keyword = "" },
-                            )
-                        }
-                    },
-                )
+            else -> Column(modifier = Modifier.fillMaxSize()) {
+                if (shelf == "mine") {
+                    OutlinedTextField(
+                        value = keyword,
+                        onValueChange = { keyword = it },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        placeholder = { Text("搜索书籍标题") },
+                        singleLine = true,
+                        trailingIcon = {
+                            if (keyword.isNotEmpty()) {
+                                Text(
+                                    "清空",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 12.dp).clickable { keyword = "" },
+                                )
+                            }
+                        },
+                    )
+                }
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                     items(books!!) { book ->
                         Card(
@@ -438,6 +466,7 @@ private fun BooksScreen(
                 }
             }
         }
+        }
     }
 
     if (showNotifications) {
@@ -449,6 +478,104 @@ private fun BooksScreen(
 }
 
 private data class ChapterRow(val id: Long, val title: String, val slug: String, val level: Int)
+
+private data class CommentRow(val id: Long, val author: String, val content: String, val createdAt: String, val depth: Int)
+
+private fun flattenComments(arr: JSONArray): List<CommentRow> {
+    val out = mutableListOf<CommentRow>()
+    fun walk(node: JSONObject, depth: Int) {
+        out += CommentRow(
+            id = node.optLong("id"),
+            author = node.optJSONObject("user")?.optString("username", "") ?: "",
+            content = node.optString("content"),
+            createdAt = node.optString("created_at"),
+            depth = depth,
+        )
+        val replies = node.optJSONArray("replies")
+        if (replies != null) for (i in 0 until replies.length()) walk(replies.getJSONObject(i), depth + 1)
+    }
+    for (i in 0 until arr.length()) walk(arr.getJSONObject(i), 0)
+    return out
+}
+
+@Composable
+private fun CommentsSection(docId: Long) {
+    var items by remember(docId) { mutableStateOf<List<CommentRow>?>(null) }
+    var input by remember { mutableStateOf("") }
+    var posting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    suspend fun load() {
+        try {
+            items = withContext(Dispatchers.IO) { flattenComments(Api.comments(docId)) }
+        } catch (e: Exception) {
+            error = e.message ?: "评论加载失败"
+            items = emptyList()
+        }
+    }
+    LaunchedEffect(docId) { load() }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) {
+        Text("评论", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(10.dp))
+        if (Api.isLoggedIn()) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("说点什么…", fontSize = 13.sp) },
+                    minLines = 1,
+                    maxLines = 4,
+                )
+                Button(
+                    onClick = {
+                        if (input.isNotBlank()) {
+                            posting = true
+                            scope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) { Api.addComment(docId, input.trim()) }
+                                    input = ""
+                                    load()
+                                } catch (e: Exception) {
+                                    error = e.message ?: "发表失败"
+                                } finally {
+                                    posting = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !posting && input.isNotBlank(),
+                ) { Text(if (posting) "…" else "发表") }
+            }
+        } else {
+            Text("登录后可参与评论", fontSize = 13.sp, color = MaterialTheme.colorScheme.outline)
+        }
+        if (error.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(error, fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+        }
+        Spacer(Modifier.height(8.dp))
+        when {
+            items == null -> Box(Modifier.fillMaxWidth().height(60.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            items!!.isEmpty() -> Text("还没有评论", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items!!.forEach { c ->
+                    Column(modifier = Modifier.fillMaxWidth().padding(start = (c.depth * 20).dp)) {
+                        Text(
+                            listOf(c.author.ifEmpty { "匿名" }, c.createdAt.take(10)).joinToString(" · "),
+                            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(c.content, fontSize = 14.sp, lineHeight = 21.sp)
+                    }
+                }
+            }
+        }
+    }
+}
 
 private fun flattenChapters(array: JSONArray, level: Int = 0): List<ChapterRow> {
     val rows = mutableListOf<ChapterRow>()
@@ -620,6 +747,7 @@ private fun ReaderScreen(book: BookRow, prefs: android.content.SharedPreferences
                             Markdown(content, modifier = Modifier.fillMaxWidth())
                         }
                     }
+                    CommentsSection(docId = chapter.id)
                 }
             }
             else -> LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
