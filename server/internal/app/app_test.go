@@ -217,6 +217,25 @@ func TestFullLifecycle(t *testing.T) {
 		t.Fatalf("普通用户权限集错误: %v", perms)
 	}
 
+	// 6.8 评论：发表 → 列表 → 删除权限
+	post(fmt.Sprintf("/api/v1/documents/%v/comments", docData["id"]), map[string]any{"content": "写得不错"}, aliceToken)
+	status, payload = get(fmt.Sprintf("/api/v1/documents/%v/comments", docData["id"]), "")
+	if status != 200 {
+		t.Fatalf("获取评论失败: %d", status)
+	}
+	commentID := payload["data"].([]any)[0].(map[string]any)["id"].(float64)
+	// 非作者删除他人评论应 403
+	delReq, _ := http.NewRequest(http.MethodDelete, ts.URL+fmt.Sprintf("/api/v1/comments/%v", commentID), nil)
+	delReq.Header.Set("Authorization", "Bearer "+aliceToken)
+	delResp, err := client.Do(delReq)
+	if err != nil {
+		t.Fatalf("DELETE comment: %v", err)
+	}
+	delResp.Body.Close()
+	if delResp.StatusCode != 403 {
+		t.Fatalf("删除他人评论应 403: %d", delResp.StatusCode)
+	}
+
 	// 6.9 阅读进度：保存 → 查询 → 覆盖
 	status, payload = put(fmt.Sprintf("/api/v1/reading-progress/%d", bookID), map[string]any{
 		"doc_id": docData["id"], "doc_slug": docSlug, "doc_title": "Chapter One",

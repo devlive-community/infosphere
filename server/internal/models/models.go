@@ -79,6 +79,20 @@ type Tag struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Comment 章节评论：支持两级（parent_id 为空是顶层评论）
+type Comment struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	DocumentID uint     `gorm:"index;not null" json:"document_id"`
+	UserID    uint      `gorm:"index;not null" json:"user_id"`
+	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	ParentID  *uint     `gorm:"index" json:"parent_id"`
+	Parent    *Comment  `gorm:"foreignKey:ParentID" json:"-"`
+	Content   string    `gorm:"type:text;not null" json:"content"`
+	Status    string    `gorm:"size:20;default:published;index" json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // ReadingProgress 阅读进度：每个用户在每个书籍中最近读到的章节
 type ReadingProgress struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
@@ -127,5 +141,6 @@ func All(db *gorm.DB) error {
 		&Tag{},
 		&BookTag{},
 		&ReadingProgress{},
+		&Comment{},
 	)
 }
