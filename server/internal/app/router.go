@@ -183,6 +183,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminSaveOAuth)
 			admin.GET("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminGetMail)
 			admin.PUT("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminSaveMail)
+			admin.GET("/storage", a.RequirePermission(authz.SiteUpdate), a.AdminGetStorage)
+			admin.PUT("/storage", a.RequirePermission(authz.SiteUpdate), a.AdminSaveStorage)
 			admin.GET("/system/version", a.RequirePermission(authz.SystemRead), a.SystemVersion)
 			admin.POST("/system/upgrade", a.RequirePermission(authz.SystemUpgrade), a.SystemUpgrade)
 		}
