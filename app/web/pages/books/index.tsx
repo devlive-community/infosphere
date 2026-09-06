@@ -8,9 +8,9 @@ import { StatusBadge } from '@/components/BookCard'
 import TagChips from '@/components/TagChips'
 import {
   BookIcon, CalendarIcon, EyeIcon, FileTextIcon, GearIcon, GridIcon,
-  ListIcon, MoreIcon, SearchIcon,
+  ListIcon, MoreIcon, PencilIcon, SearchIcon,
 } from '@/components/icons'
-import type { Book, PageResult } from '@/lib/types'
+import type { Book, Document, PageResult } from '@/lib/types'
 
 const statusTabs = [
   { key: '', label: '全部' },
@@ -179,7 +179,6 @@ export default function MyBooks() {
 
       <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
 
-      <p className="border-t border-slate-200 py-8 text-center text-sm text-slate-400">让每一本书，都从一个清晰的想法开始。</p>
     </Container>
   )
 }
@@ -289,24 +288,78 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onDelete }: {
 
 function ActionRow({ book, menu }: { book: Book; menu: React.ReactNode }) {
   const isNew = !book.description
+  const [chaptersOpen, setChaptersOpen] = useState(false)
   return (
     <div className="flex items-center justify-between">
       <Link href={`/book/writer/${encodeURIComponent(book.slug)}`} className="text-sm font-medium text-primary-600 hover:underline">
         {isNew ? '开始写作' : '继续写作'}
       </Link>
-      <div className="flex items-center gap-1">
-        <Link href={`/book/writer/${encodeURIComponent(book.slug)}`} title="章节管理"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+      <div className="relative flex items-center gap-1">
+        <button title="章节列表" onClick={() => setChaptersOpen(!chaptersOpen)}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${chaptersOpen ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}>
           <FileTextIcon className="h-4 w-4" />
-        </Link>
+        </button>
         <Link href={`/book/settings/${encodeURIComponent(book.slug)}`} title="书籍设置"
           className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
           <GearIcon className="h-4 w-4" />
         </Link>
         {menu}
+        {chaptersOpen && <ChapterPanel book={book} onClose={() => setChaptersOpen(false)} />}
       </div>
     </div>
   )
+}
+
+// ChapterPanel 书籍章节弹出列表：懒加载文档树，点击进阅读，铅笔进编辑
+function ChapterPanel({ book, onClose }: { book: Book; onClose: () => void }) {
+  const [docs, setDocs] = useState<Document[] | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api<Document[]>(`/books/${book.id}/documents`)
+      .then((d) => setDocs(d || []))
+      .catch((e) => setError((e as Error).message))
+  }, [book.id])
+
+  const rows = flattenDocs(docs || [])
+  return (
+    <>
+      <div className="fixed inset-0 z-30" onClick={onClose} />
+      <div className="absolute bottom-10 right-0 z-40 w-80 max-w-[85vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+          <span className="text-sm font-semibold text-slate-900">章节列表</span>
+          <span className="text-xs text-slate-400">{docs ? `${rows.length} 个` : ''}</span>
+        </div>
+        <div className="max-h-72 overflow-y-auto">
+          {error && <p className="px-4 py-3 text-sm text-rose-500">{error}</p>}
+          {!error && docs === null && <p className="px-4 py-6 text-center text-sm text-slate-400">加载中…</p>}
+          {docs !== null && rows.length === 0 && <p className="px-4 py-6 text-center text-sm text-slate-400">暂无章节</p>}
+          {rows.map((row) => (
+            <div key={row.doc.id} className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50">
+              <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${row.doc.slug}`}
+                onClick={onClose}
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-slate-700 hover:text-primary-600"
+                style={{ paddingLeft: row.level * 12 }}>
+                <FileTextIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span className="truncate">{book.chapter_prefix}{row.doc.title}</span>
+              </Link>
+              <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${row.doc.slug}`} title="编辑" onClick={onClose}
+                className="shrink-0 text-slate-300 transition-colors hover:text-primary-600">
+                <PencilIcon className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-slate-100 px-4 py-2">
+          <Link href={`/book/writer/${encodeURIComponent(book.slug)}`} onClick={onClose}
+            className="text-sm font-medium text-primary-600 hover:underline">在编辑器中管理全部章节</Link>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function flattenDocs(docs: Document[], level = 0): { doc: Document; level: number }[] {
+  return docs.flatMap((d) => [{ doc: d, level }, ...flattenDocs(d.children || [], level + 1)])
 }
 
 function LinkIcon2({ className }: { className?: string }) {
