@@ -99,6 +99,7 @@ func (a *App) Router() *gin.Engine {
 		books := api.Group("/books", a.RequireAuth())
 		{
 			books.POST("", a.RequirePermission(authz.BookCreate), a.CreateBook)
+			books.GET("/status-counts", a.RequirePermission(authz.BookRead), a.MyBookCounts)
 			books.PUT("/:id", a.RequirePermission(authz.BookUpdate), a.UpdateBook)
 			books.DELETE("/:id", a.RequirePermission(authz.BookDelete), a.DeleteBook)
 		}

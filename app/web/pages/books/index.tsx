@@ -67,7 +67,7 @@ export default function MyBooks() {
     setLoading(true)
     try {
       setData(await api<PageResult<Book>>('/books', { params: { mine: 'true', page, page_size: 9, status, title: keyword } }))
-      const summary = await api<Record<string, number>>('/books/counts').catch(() => null)
+      const summary = await api<Record<string, number>>('/books/status-counts').catch(() => null)
       if (summary) setCounts(summary)
     } catch (e) {
       alert((e as Error).message)

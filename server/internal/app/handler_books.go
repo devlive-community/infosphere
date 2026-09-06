@@ -94,6 +94,29 @@ type bookPayload struct {
 	Tags          []string `json:"tags"`
 }
 
+// MyBookCounts GET /books/status-counts 当前用户各状态书籍数量
+func (a *App) MyBookCounts(c *gin.Context) {
+	u := currentUser(c)
+	type row struct {
+		Status string
+		Count  int64
+	}
+	var rows []row
+	a.DB.Model(&models.Book{}).
+		Select("status, COUNT(*) as count").
+		Where("user_id = ?", u.ID).
+		Group("status").Scan(&rows)
+
+	counts := gin.H{"": 0, "published": 0, "draft": 0, "archived": 0}
+	total := int64(0)
+	for _, r := range rows {
+		counts[r.Status] = r.Count
+		total += r.Count
+	}
+	counts[""] = total
+	ok(c, counts)
+}
+
 // CreateBook POST /books
 func (a *App) CreateBook(c *gin.Context) {
 	var req bookPayload
