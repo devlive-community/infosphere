@@ -5,8 +5,7 @@ import Link from 'next/link'
 import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
 import { Button, ButtonLink, Badge, EmptyState, Pagination, Select, Loading , Tooltip} from '@/components/ui'
-import { StatusBadge } from '@/components/BookCard'
-import TagChips from '@/components/TagChips'
+import BookCard from '@/components/BookCard'
 import {
   BookIcon, CalendarIcon, EyeIcon, FileTextIcon, GearIcon, GridIcon,
   ListIcon, MoreIcon, PencilIcon, SearchIcon, UploadIcon,
@@ -68,7 +67,7 @@ export default function MyBooks() {
     if (!user) return
     setLoading(true)
     try {
-      setData(await api<PageResult<Book>>('/books', { params: { mine: 'true', page, page_size: 9, status, title: keyword } }))
+      setData(await api<PageResult<Book>>('/books', { params: { mine: 'true', page, page_size: 9, status, title: keyword, sort } }))
       const summary = await api<Record<string, number>>('/books/status-counts').catch(() => null)
       if (summary) setCounts(summary)
     } catch (e) {
@@ -78,7 +77,7 @@ export default function MyBooks() {
     }
   }
 
-  useEffect(() => { if (user) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, page, status, keyword])
+  useEffect(() => { if (user) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, page, status, keyword, sort])
 
   // 导入书籍 zip（M16）：成功后刷新列表
   async function uploadImport(file: File) {
@@ -185,7 +184,7 @@ export default function MyBooks() {
               placeholder="搜索我的书籍"
               className="h-10 w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
           </div>
-          <Select className="w-36" value={sort} onChange={(v) => setSort(v as SortKey)} options={sortOptions} />
+          <Select className="w-36" value={sort} onChange={(v) => { setSort(v as SortKey); setPage(1) }} options={sortOptions} />
           <div className="flex overflow-hidden rounded-lg border border-slate-200">
             <button onClick={() => setView('grid')} aria-label="网格视图"
               className={`flex h-10 w-10 items-center justify-center transition-colors ${view === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
@@ -235,17 +234,13 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onDelete }: {
   onDelete: () => void
 }) {
   const detailUrl = `/book/detail/${encodeURIComponent(book.slug)}`
-  const cover = book.cover_image
-  const visibility = book.is_public
-    ? <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> 公开</span>
-    : <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> 仅自己可见</span>
 
-  const meta = (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+  // 章节计数与相对更新时间作为自定义元信息槽（含浏览量由统一卡片接管）
+  const metaSlot = (
+    <>
       <span className="flex items-center gap-1"><FileTextIcon className="h-3.5 w-3.5" /> {(book as any).chapter_count ?? '—'} 个章节</span>
       <span className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> {relativeUpdated(book.updated_at)}</span>
-      {view === 'list' && <span className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>}
-    </div>
+    </>
   )
 
   const menu = (
@@ -281,49 +276,23 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onDelete }: {
     </div>
   )
 
-  if (view === 'list') {
-    return (
-      <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <Link href={detailUrl} className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
-          {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center text-xl font-bold text-white/80">{book.title.slice(0, 1)}</span>}
-        </Link>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={detailUrl} className="min-w-0 truncate font-semibold text-slate-900 hover:text-primary-600">{book.title}</Link>
-            <StatusBadge status={book.status} />
-          </div>
-          <p className="mt-0.5 truncate text-sm text-slate-500">{book.description || '还没有填写简介'}</p>
-          {meta}
-        </div>
-        <div className="shrink-0"><ActionRow book={book} menu={menu} /></div>
-      </div>
-    )
-  }
+  // 写作操作行：继续/开始写作 + 章节列表 + 书籍设置。
+  // grid 走底部 actions 槽（统一卡片自带分隔线）；list 走右侧栏（含 menu）。
+  const actions = view === 'grid' ? <ActionRow book={book} menu={null} /> : <ActionRow book={book} menu={menu} />
 
   return (
-    <div className="group flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      <div className="flex gap-4">
-        <Link href={detailUrl} className="h-36 w-28 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
-          {cover
-            ? <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-            : <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-white/80">{book.title.slice(0, 1)}</span>}
-        </Link>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-start justify-between gap-2">
-            <Link href={detailUrl} className="min-w-0 truncate font-semibold text-slate-900 hover:text-primary-600">{book.title}</Link>
-            {menu}
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <StatusBadge status={book.status} />
-            {visibility}
-          </div>
-          <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '还没有填写简介'}</p>
-          <div className="mt-1.5"><TagChips tags={book.tags} max={3} link={false} /></div>
-          <div className="mt-auto pt-2">{meta}</div>
-        </div>
-      </div>
-      <div className="mt-3 border-t border-slate-100 pt-3"><ActionRow book={book} menu={null} /></div>
-    </div>
+    <BookCard
+      book={book}
+      view={view}
+      showAuthor={false}
+      showStatus
+      showVisibility
+      tagsMax={3}
+      tagsLink={false}
+      meta={metaSlot}
+      topActions={view === 'grid' ? menu : undefined}
+      actions={actions}
+    />
   )
 }
 

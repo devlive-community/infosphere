@@ -7,7 +7,7 @@ import { resolveMediaUrl } from '@/lib/media'
 import { Pagination, Select, Loading , Tooltip} from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
-import ExploreBookCard from '@/components/ExploreBookCard'
+import BookCard from '@/components/BookCard'
 import { ArrowRightIcon, BookIcon, CalendarIcon, EyeIcon, GitHubIcon, GridIcon, ListIcon, ShareIcon } from '@/components/icons'
 import TagChips from '@/components/TagChips'
 import type { Book, PageResult, User } from '@/lib/types'
@@ -30,6 +30,7 @@ interface UserHomeProps {
   siteUrl: string
   profile: UserProfile
   books: PageResult<Book>
+  sort: string
 }
 
 export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ req, query, params }) => {
@@ -43,6 +44,7 @@ export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ re
   const username = (typeof params?.username === 'string' ? params.username : '') || (typeof query.username === 'string' ? query.username : '')
   if (!username) return { notFound: true }
   const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1)
+  const sort = typeof query.sort === 'string' ? query.sort : 'updated'
 
   const [site, profile] = await Promise.all([
     getSiteConfig(),
@@ -50,10 +52,10 @@ export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ re
   ])
   if (!profile) return { notFound: true }
 
-  const books = await serverApi<PageResult<Book>>(`/users/${encodeURIComponent(username)}/books`, { params: { page, page_size: 9 } })
+  const books = await serverApi<PageResult<Book>>(`/users/${encodeURIComponent(username)}/books`, { params: { page, page_size: 9, sort } })
     .catch(() => ({ items: [], total: 0, page: 1, page_size: 9 }) as PageResult<Book>)
 
-  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), profile, books } }
+  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), profile, books, sort } }
 }
 
 function joinYear(input: string | null | undefined): string {
@@ -134,18 +136,22 @@ function KnowledgeNetwork() {
   )
 }
 
-export default function UserHome({ site, siteUrl, profile, books }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function UserHome({ site, siteUrl, profile, books, sort }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
-  type SortKey = 'updated' | 'views' | 'title'
   const sortOptions = [
     { value: 'updated', label: '最近更新' },
     { value: 'views', label: '浏览最多' },
     { value: 'title', label: '标题排序' },
   ]
-  const [sort, setSort] = useState<SortKey>('updated')
   const [loading, setLoading] = useState(false)
   useEffect(() => { setLoading(false) }, [books])
+
+  // 排序改由服务端处理：切换即带 sort 重新导航（页码归 1）
+  function changeSort(v: string) {
+    setLoading(true)
+    window.location.search = `?username=${encodeURIComponent(profile.username)}&sort=${encodeURIComponent(v)}`
+  }
   const profileUrl = `${siteUrl}/user/${encodeURIComponent(profile.username)}`
 
   async function share() {
@@ -196,7 +202,7 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
               <span className="text-sm text-slate-400">{profile.username}发布的 {books.total} 本知识作品</span>
             </div>
             <div className="flex items-center gap-2">
-              <Select className="w-36" value={sort} onChange={(v) => setSort(v as SortKey)} options={sortOptions} />
+              <Select className="w-36" value={sort} onChange={changeSort} options={sortOptions} />
               <div className="flex overflow-hidden rounded-lg border border-slate-200">
                 <Tooltip content="网格视图"><button onClick={() => setView('grid')}
                   className={`flex h-10 w-10 items-center justify-center transition-colors ${view === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
@@ -216,14 +222,14 @@ export default function UserHome({ site, siteUrl, profile, books }: InferGetServ
             <Loading />
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
-              {items.map((b) => <ExploreBookCard key={b.id} book={b} view={view} showAuthor={false} />)}
+              {items.map((b) => <BookCard key={b.id} book={b} view={view} showAuthor={false} />)}
             </div>
           )}
         </section>
       </div>
 
       <Pagination page={books.page} pageSize={books.page_size} total={books.total}
-        onChange={(p) => { setLoading(true); window.location.search = p > 1 ? `?username=${encodeURIComponent(profile.username)}&page=${p}` : `?username=${encodeURIComponent(profile.username)}` }} />
+        onChange={(p) => { setLoading(true); window.location.search = `?username=${encodeURIComponent(profile.username)}&sort=${encodeURIComponent(sort)}${p > 1 ? `&page=${p}` : ''}` }} />
     </Container>
   )
 }

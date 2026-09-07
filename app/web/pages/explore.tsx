@@ -9,7 +9,7 @@ import Container from '@/components/Container'
 import { Button, Input, Loading, Pagination, Select , Tooltip} from '@/components/ui'
 import Seo from '@/components/Seo'
 import TagChips from '@/components/TagChips'
-import ExploreBookCard from '@/components/ExploreBookCard'
+import BookCard from '@/components/BookCard'
 import { ArrowRightIcon, BookIcon, ClockIcon, EyeIcon, GlobeIcon, GridIcon, ListIcon, SearchIcon } from '@/components/icons'
 import type { Book, PageResult, Tag, User } from '@/lib/types'
 
@@ -62,6 +62,11 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
   function navLoad(href: string) {
     if (href !== router.asPath) setLoading(true)
   }
+
+  // 当前高亮的浏览项：按 URL 中的 sort 显式区分「全部公开书籍」(无 sort) 与「最新发布」(sort=latest)，
+  // 保证同一时刻只有一个高亮；含标签筛选时三项均不高亮
+  const rawSort = typeof router.query.sort === 'string' ? router.query.sort : ''
+  const activeMode = tag ? '' : rawSort === 'hot' ? 'hot' : rawSort === 'latest' ? 'latest' : 'all'
 
   const browseItems = [
     { mode: 'all' as const, label: '全部公开书籍', icon: <BookIcon className="h-4 w-4" />, href: '/explore' },
@@ -139,7 +144,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
           <h2 className="mb-2 px-2 text-sm font-semibold text-slate-900">浏览内容</h2>
           <ul className="space-y-0.5">
             {browseItems.map((item) => {
-              const active = !tag && ((sort === 'hot' && item.mode === 'hot') || (sort === 'latest' && item.mode !== 'hot'))
+              const active = item.mode === activeMode
               return (
                 <li key={item.mode}>
                   <Link href={item.href} onClick={() => navLoad(item.href)}
@@ -209,7 +214,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
             </div>
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
-              {items.map((b) => <ExploreBookCard key={b.id} book={b} view={view} />)}
+              {items.map((b) => <BookCard key={b.id} book={b} view={view} />)}
             </div>
           )}
 

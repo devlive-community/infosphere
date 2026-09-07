@@ -357,7 +357,7 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
           <Container>
             <h2 className="mb-6 text-xl font-bold text-slate-900">你可能也喜欢</h2>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {related.map((b) => <BookCard key={b.id} book={b} />)}
+              {related.map((b) => <BookCard key={b.id} book={b} showStatus tagsMax={2} tagsLink={false} dateField="created" />)}
             </div>
           </Container>
         </section>

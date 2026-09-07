@@ -1,15 +1,11 @@
 import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { getSSRUser, authHeaderFrom, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
-import { formatDate, formatNumber } from '@/lib/api'
-import { resolveMediaUrl } from '@/lib/media'
 import { ButtonLink, EmptyState } from '@/components/ui'
 import HeroIllustration, { HotRankCard } from '@/components/HeroIllustration'
 import Seo from '@/components/Seo'
-import UserAvatar from '@/components/UserAvatar'
 import Container from '@/components/Container'
-import TagChips from '@/components/TagChips'
-import { API_BASE } from '@/lib/api'
+import BookCard from '@/components/BookCard'
 import { BookIcon, ChevronRightIcon, CloudIcon, CodeIcon, EyeIcon, FileTextIcon, ShieldIcon, UsersIcon } from '@/components/icons'
 import type { Book, SiteStats , User} from '@/lib/types'
 
@@ -50,29 +46,9 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ req })
   }
 }
 
-// 首页最新发布横向卡片
+// 首页最新发布卡片：复用全站统一 BookCard，仅锁定参数（标签不可点 / 作者头像不可点 / 显示创建日期）。
 function LatestCard({ book }: { book: Book }) {
-  const cover = resolveMediaUrl(book.cover_image)
-  return (
-    <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
-      className="group flex gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      <div className={`h-28 w-28 shrink-0 overflow-hidden rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
-        {cover && <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <h3 className="truncate font-semibold text-slate-900 group-hover:text-primary-600">{book.title}</h3>
-        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-slate-500">{book.description || '暂无简介'}</p>
-        <div className="mt-2"><TagChips tags={book.tags} max={2} link={false} /></div>
-        <div className="mt-auto flex items-center gap-2 pt-3 text-xs text-slate-400">
-          <UserAvatar user={book.user} size="h-5 w-5" link={false} />
-          <span>{book.user?.username || '佚名'}</span>
-          <span>·</span>
-          <span>{formatDate(book.created_at).slice(0, 10)}</span>
-          <span className="ml-auto flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>
-        </div>
-      </div>
-    </Link>
-  )
+  return <BookCard book={book} tagsMax={2} tagsLink={false} authorLink={false} dateField="created" />
 }
 
 export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServerSidePropsType<typeof getServerSideProps>) {
