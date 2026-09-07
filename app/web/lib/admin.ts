@@ -53,6 +53,31 @@ export interface ConfigItem {
   updated_at: string
 }
 
+export interface ActivityUser {
+  id: number
+  username: string
+  email: string
+  role: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface ActivityBook {
+  id: number
+  title: string
+  slug: string
+  user_id: number
+  status: string
+  is_public: boolean
+  created_at: string
+  user?: { id: number; username: string } | null
+}
+
+export interface AdminActivity {
+  recent_users: ActivityUser[]
+  recent_books: ActivityBook[]
+}
+
 export const emptyMail: MailConfig = { driver: 'log', host: '', port: 587, username: '', password: '', from: '', site_url: '' }
 export const emptyStorage: StorageConfig = { driver: 'local', qiniu_access_key: '', qiniu_secret_key: '', qiniu_bucket: '', qiniu_domain: '', qiniu_upload_host: '' }
 

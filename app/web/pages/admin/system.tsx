@@ -7,12 +7,14 @@ import { Badge, ButtonLink } from '@/components/ui'
 import {
   ShieldCheckIcon, TagIcon, DatabaseIcon, CodeIcon, GlobeIcon, ServerIcon,
   ActivityIcon, ExternalLinkIcon, MailIcon, GithubIcon, UsersIcon,
-  BookIcon, FileTextIcon, EyeIcon,
+  BookIcon, FileTextIcon, EyeIcon, ClockIcon,
 } from '@/components/icons'
 import {
   SystemVersion, HealthInfo, MailConfig, StorageConfig, OAuthConfig,
+  AdminActivity, ActivityUser, ActivityBook,
   fetchHealth, measure,
 } from '@/lib/admin'
+import { formatDate } from '@/lib/api'
 
 interface Service { key: string; label: string; icon: (p: { className?: string }) => JSX.Element; ok: boolean; latency: number }
 
@@ -34,6 +36,7 @@ export default function AdminSystem() {
   const [docCount, setDocCount] = useState<number | null>(null)
   const [totalViews, setTotalViews] = useState<number | null>(null)
   const [tagCount, setTagCount] = useState<number | null>(null)
+  const [activity, setActivity] = useState<AdminActivity | null>(null)
 
   useEffect(() => {
     if (!isAdmin) return
@@ -59,6 +62,7 @@ export default function AdminSystem() {
         setTagCount(s.tag_count)
         setTotalViews(s.total_views)
       }).catch(() => {})
+    api<AdminActivity>('/admin/activity').then(setActivity).catch(() => {})
   }, [isAdmin])
 
   const dbName = DB_LABEL[dbType] || dbType || '—'
@@ -148,6 +152,46 @@ export default function AdminSystem() {
         </section>
       </div>
 
+      {/* 最近活动时间线 */}
+      <h2 className="mb-4 mt-8 text-lg font-semibold text-slate-900">最近活动</h2>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ActivityCard
+          icon={<UsersIcon className="h-5 w-5" />} title="最近注册"
+          empty="暂无注册用户"
+          items={activity?.recent_users.map((u) => ({
+            key: `u${u.id}`,
+            primary: u.username,
+            href: `/user/${u.username}`,
+            meta: (
+              <>
+                <Badge tone={u.role === 'admin' ? 'primary' : 'slate'}>{u.role === 'admin' ? '管理员' : '用户'}</Badge>
+                {!u.is_active && <Badge tone="rose">已停用</Badge>}
+              </>
+            ),
+            time: u.created_at,
+          })) ?? null}
+        />
+        <ActivityCard
+          icon={<BookIcon className="h-5 w-5" />} title="最近建书"
+          empty="暂无书籍"
+          items={activity?.recent_books.map((b) => ({
+            key: `b${b.id}`,
+            primary: b.title,
+            href: `/book/detail/${b.slug}`,
+            meta: (
+              <>
+                <Badge tone={b.status === 'published' ? 'emerald' : 'amber'}>
+                  {b.status === 'published' ? '已发布' : b.status === 'archived' ? '已归档' : '草稿'}
+                </Badge>
+                {b.is_public ? <Badge tone="sky">公开</Badge> : <Badge tone="slate">私有</Badge>}
+              </>
+            ),
+            time: b.created_at,
+            extra: b.user?.username,
+          })) ?? null}
+        />
+      </div>
+
       {/* 配置中心 */}
       <h2 className="mb-4 mt-8 text-lg font-semibold text-slate-900">配置中心</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -219,5 +263,53 @@ function ConfigCard({ icon: Icon, tone, title, status, href, ok }: {
         管理
       </Link>
     </div>
+  )
+}
+
+interface ActivityItem {
+  key: string
+  primary: string
+  href: string
+  meta: React.ReactNode
+  time: string
+  extra?: string
+}
+
+// ActivityCard 时间线卡片：最近用户/书籍列表，每行含主标题、状态徽标、相对时间与可选作者名
+function ActivityCard({ icon, title, items, empty }: {
+  icon: React.ReactNode; title: string; items: ActivityItem[] | null; empty: string
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
+        <span className="text-slate-400">{icon}</span> {title}
+      </h2>
+      {items && items.length > 0 ? (
+        <ul className="space-y-1">
+          {items.map((it) => (
+            <li key={it.key}>
+              <Link href={it.href}
+                className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-slate-50">
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate font-medium text-slate-800">{it.primary}</span>
+                    {it.extra && <span className="shrink-0 text-xs text-slate-400">· {it.extra}</span>}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1.5">{it.meta}</span>
+                <span className="hidden w-28 shrink-0 text-right text-xs text-slate-400 sm:block">
+                  <ClockIcon className="mr-1 inline h-3 w-3 align-text-bottom" />
+                  {formatDate(it.time)}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : items ? (
+        <p className="py-6 text-sm text-slate-400">{empty}</p>
+      ) : (
+        <p className="py-6 text-sm text-slate-400">加载中…</p>
+      )}
+    </section>
   )
 }
