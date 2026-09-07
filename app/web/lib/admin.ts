@@ -45,6 +45,14 @@ export interface StorageConfig {
   qiniu_upload_host: string
 }
 
+export interface ConfigItem {
+  key: string
+  value: string
+  description: string
+  reserved: boolean
+  updated_at: string
+}
+
 export const emptyMail: MailConfig = { driver: 'log', host: '', port: 587, username: '', password: '', from: '', site_url: '' }
 export const emptyStorage: StorageConfig = { driver: 'local', qiniu_access_key: '', qiniu_secret_key: '', qiniu_bucket: '', qiniu_domain: '', qiniu_upload_host: '' }
 
