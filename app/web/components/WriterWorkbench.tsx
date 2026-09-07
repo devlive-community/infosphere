@@ -32,6 +32,9 @@ const STATUS_META: Record<BookStatus, { label: string; tone: 'emerald' | 'primar
   archived: { label: '已归档', tone: 'slate', dot: 'bg-slate-400' },
 }
 
+// 临时关闭章节自动保存；恢复时只需改为 true，手动保存与发布流程不受影响。
+const AUTO_SAVE_ENABLED = false
+
 interface WriterProps {
   user: import('@/lib/types').User | null
 }
@@ -203,7 +206,7 @@ export default function Writer({ user }: WriterProps) {
   }, [book, title, content, status, parentId, sortOrder, allowComments, current, loadTree]) // eslint-disable-line react-hooks/exhaustive-deps
   saveRef.current = save
 
-  // 脏状态 + 自动保存（新建章节需有标题才落库）
+  // 脏状态检测；自动保存当前临时关闭，只保留手动保存、快捷键保存与发布。
   useEffect(() => {
     if (!book) return
     const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments])
@@ -211,6 +214,7 @@ export default function Writer({ user }: WriterProps) {
     if (loadedDocId.current !== null && loadedDocId.current !== current?.id) return
     if (!current && !title.trim()) return
     setSaveState('dirty')
+    if (!AUTO_SAVE_ENABLED) return
     const timer = setTimeout(() => { saveRef.current() }, 1500)
     return () => clearTimeout(timer)
   }, [book, title, content, status, parentId, sortOrder, allowComments, current])
@@ -323,7 +327,7 @@ export default function Writer({ user }: WriterProps) {
     setTitle(''); setContent(''); setSortOrder(newSort); setAllowComments(true)
     snapshot.current = JSON.stringify(['', '', 'draft', newParent, newSort, true])
     loadedDocId.current = null
-    setSaveState('dirty') // 标题输入后自动落库
+    setSaveState('dirty') // 新章节等待用户手动保存或发布
     setTimeout(() => textareaRef.current?.focus(), 0)
   }
 
