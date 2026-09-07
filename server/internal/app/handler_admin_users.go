@@ -9,7 +9,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AdminListUsers GET /admin/users 管理员分页查询用户（支持关键字与角色/状态筛选）
+// adminUserSorts 用户排序白名单：sort 值 → ORDER BY 子句。
+// last_login_at 可空，三种数据库（sqlite/mysql/postgres）对 NULL 的默认排序方向不一致，
+// 故用 (last_login_at IS NULL) 前置守卫，让从未登录者恒定落在列表末尾，与方向无关。
+// 仅接受白名单值，绝不把用户输入直接拼进 SQL。
+var adminUserSorts = map[string]string{
+	"created_at_desc":    "created_at DESC",
+	"created_at_asc":     "created_at ASC",
+	"last_login_at_desc": "(last_login_at IS NULL), last_login_at DESC",
+	"last_login_at_asc":  "(last_login_at IS NULL), last_login_at ASC",
+}
+
+// AdminListUsers GET /admin/users 管理员分页查询用户（支持关键字、角色/状态筛选与排序）
 func (a *App) AdminListUsers(c *gin.Context) {
 	page, pageSize := paginate(c)
 	query := a.DB.Model(&models.User{})
@@ -26,11 +37,15 @@ func (a *App) AdminListUsers(c *gin.Context) {
 	case "inactive":
 		query = query.Where("is_active = ?", false)
 	}
+	order := adminUserSorts["created_at_desc"]
+	if clause, ok := adminUserSorts[c.Query("sort")]; ok {
+		order = clause
+	}
 
 	var total int64
 	query.Count(&total)
 	users := []models.User{}
-	if err := query.Order("created_at DESC").
+	if err := query.Order(order).
 		Limit(pageSize).Offset((page - 1) * pageSize).Find(&users).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
