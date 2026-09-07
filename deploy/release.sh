@@ -13,7 +13,7 @@ SETUP_GO="server/internal/app/handler_setup.go"
 
 VERSION="${1:-$(grep -oE 'var Version = "[0-9.]+"' "$SETUP_GO" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)}"
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "无法确定版本号（收到：$VERSION）" >&2
+  echo "无法确定版本号（收到：${VERSION}）" >&2
   exit 1
 fi
 TAG="v${VERSION}"
@@ -21,7 +21,7 @@ TAG="v${VERSION}"
 # ── 预检 ──
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [ "$BRANCH" != "$RELEASE_BRANCH" ]; then
-  echo "当前分支为 $BRANCH，请切换到默认分支 $RELEASE_BRANCH 再发布" >&2
+  echo "当前分支为 ${BRANCH}，请切换到默认分支 ${RELEASE_BRANCH} 再发布" >&2
   exit 1
 fi
 if [ -n "$(git status --porcelain)" ]; then
@@ -39,7 +39,7 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "将发布 $TAG（版本 $VERSION）到 $(git remote get-url origin)"
+echo "将发布 ${TAG}（版本 ${VERSION}）到 $(git remote get-url origin)"
 read -r -p "确认发布？(y/N) " ans
 case "$ans" in
   y | Y) ;;
@@ -49,7 +49,7 @@ esac
 git tag -a "$TAG" -m "Release $VERSION"
 git push origin "$TAG"
 
-echo "✅ 已推送标签 $TAG，Release 工作流开始构建并发布。"
+echo "✅ 已推送标签 ${TAG}，Release 工作流开始构建并发布。"
 if command -v gh >/dev/null 2>&1; then
   echo "查看进度：gh run watch"
   gh run list --workflow=Release --limit=1 2>/dev/null || true
