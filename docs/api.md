@@ -267,10 +267,11 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/system/version` | 当前版本/commit + 上游最新版本 + 是否可升级 | `system:read` |
 | POST | `/system/upgrade` | 在线升级（下载 Release 资产 → 校验替换 → 重启服务） | `system:upgrade` |
-| GET | `/admin/users?page=&page_size=&q=&role=&status=` | 分页查询用户（`q` 匹配用户名/邮箱，`role` admin\|user，`status` active\|inactive） | `user:manage` |
+| GET | `/admin/users?page=&page_size=&q=&role=&status=&sort=` | 分页查询用户（`q` 匹配用户名/邮箱，`role` admin\|user，`status` active\|inactive，`sort` created_at_desc\|created_at_asc\|last_login_at_desc\|last_login_at_asc，默认 created_at_desc） | `user:manage` |
 | PUT | `/admin/users/:id/role` | 变更角色 `{role: admin\|user}`；禁止操作自身，保留至少一位启用管理员 | `user:manage` |
 | PUT | `/admin/users/:id/status` | 启停账户 `{is_active}`；禁止停用自身，保留至少一位启用管理员 | `user:manage` |
 | DELETE | `/admin/users/:id` | 删除用户；禁止删除自身，拥有书籍者需先清理书籍 | `user:manage` |
+| GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |

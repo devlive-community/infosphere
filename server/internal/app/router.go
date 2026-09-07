@@ -193,6 +193,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/admin/users/:id/role", a.RequirePermission(authz.UserManage), a.AdminUpdateUserRole)
 			admin.PUT("/admin/users/:id/status", a.RequirePermission(authz.UserManage), a.AdminUpdateUserStatus)
 			admin.DELETE("/admin/users/:id", a.RequirePermission(authz.UserManage), a.AdminDeleteUser)
+			// 控制台首页时间线（user:manage，仅管理员）：最近注册用户 + 最近建书（不限可见性）
+			admin.GET("/admin/activity", a.RequirePermission(authz.UserManage), a.AdminActivity)
 
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
 			admin.GET("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminListConfigs)
