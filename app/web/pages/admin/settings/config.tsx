@@ -58,10 +58,11 @@ export default function SettingsConfig() {
   }
 
   async function addConfig() {
-    if (!newKey.trim()) { setMessage('请填写配置键'); return }
-    if (await upsert(newKey.trim(), newValue, newDesc)) {
+    const key = newKey.trim()
+    if (!key) { setMessage('请填写配置键'); return }
+    if (await upsert(key, newValue, newDesc)) {
       setNewKey(''); setNewValue(''); setNewDesc('')
-      setMessage(`已保存配置 ${newKey.trim()}`)
+      setMessage(`已保存配置 ${key}`)
     }
   }
 
