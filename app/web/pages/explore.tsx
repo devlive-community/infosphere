@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { useEffect, useState } from 'react'
 import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, siteUrlFrom } from '@/lib/server-api'
@@ -53,7 +54,14 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [loading, setLoading] = useState(false)
-  useEffect(() => { setLoading(false) }, [data, tag, page])
+  const router = useRouter()
+  // 数据/筛选变化即视为加载完成，复位 loading（含 SSR 软导航返回新 props）
+  useEffect(() => { setLoading(false) }, [data, tag, page, sort, keyword])
+
+  // 目标地址与当前不同才进入加载态，避免点击当前项后 loading 卡住
+  function navLoad(href: string) {
+    if (href !== router.asPath) setLoading(true)
+  }
 
   const browseItems = [
     { mode: 'all' as const, label: '全部公开书籍', icon: <BookIcon className="h-4 w-4" />, href: '/explore' },
@@ -118,7 +126,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
             <span className="text-slate-400">热门搜索</span>
             {(hotTags || []).slice(0, 4).map((t) => (
-              <Link key={t.id} href={`/explore?tag=${encodeURIComponent(t.slug)}`}
+              <Link key={t.id} href={`/explore?tag=${encodeURIComponent(t.slug)}`} onClick={() => navLoad(`/explore?tag=${encodeURIComponent(t.slug)}`)}
                 className="rounded-full px-2.5 py-1 text-primary-600 transition-colors hover:bg-primary-50">{t.name}</Link>
             ))}
           </div>
@@ -134,7 +142,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
               const active = !tag && ((sort === 'hot' && item.mode === 'hot') || (sort === 'latest' && item.mode !== 'hot'))
               return (
                 <li key={item.mode}>
-                  <Link href={item.href}
+                  <Link href={item.href} onClick={() => navLoad(item.href)}
                     className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                       active ? 'bg-primary-50 font-medium text-primary-700 ring-1 ring-inset ring-primary-100' : 'text-slate-600 hover:bg-slate-50'
                     }`}>
@@ -150,7 +158,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
             <ul className="space-y-0.5">
               {(hotTags || []).map((t) => (
                 <li key={t.id}>
-                  <Link href={`/explore?tag=${encodeURIComponent(t.slug)}`}
+                  <Link href={`/explore?tag=${encodeURIComponent(t.slug)}`} onClick={() => navLoad(`/explore?tag=${encodeURIComponent(t.slug)}`)}
                     className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
                       tag === t.slug ? 'bg-primary-50 font-medium text-primary-700' : 'text-slate-600 hover:bg-slate-50'
                     }`}>
