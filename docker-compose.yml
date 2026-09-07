@@ -1,0 +1,27 @@
+# InfoSphere Docker Compose 部署
+# 默认使用零配置的 SQLite，数据（含数据库、上传、配置）持久化在命名卷 infosphere-data。
+# 首次启动后访问 http://<主机>:6969/install 完成安装向导。
+services:
+  infosphere:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: infosphere:latest
+    container_name: infosphere
+    restart: unless-stopped
+    ports:
+      - "6969:6969"
+    environment:
+      INFO_SPHERE_PORT: "6969"
+      # 数据目录已在镜像中固定为 /data，无需覆盖
+    volumes:
+      - infosphere-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:6969/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  infosphere-data:

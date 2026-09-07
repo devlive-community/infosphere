@@ -1,0 +1,22 @@
+# 构建产物与依赖（镜像内会重新生成）
+**/node_modules
+app/web/.next
+app/web/.next-build
+app/web/.next-dev
+app/web/out
+app/web/tsconfig.tsbuildinfo
+bin
+server/internal/webbundle/assets/web-runtime.tar.gz
+
+# 与服务端镜像无关的子项目
+app/desktop
+app/android
+
+# 运行时数据与本地文件
+data
+**/*.log
+.git
+.github
+.Codex
+.claude
+docs

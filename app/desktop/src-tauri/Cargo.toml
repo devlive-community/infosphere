@@ -1,6 +1,6 @@
 [package]
 name = "infosphere-desktop"
-version = "2026.0.0"
+version = "2026.0.1"
 description = "InfoSphere 桌面客户端"
 edition = "2021"
 

@@ -47,6 +47,26 @@ make build          # bin/infosphere-server（包含 Next.js SSR + Node.js 24）
 make test           # 与 CI 相同的质量门禁（vet/test/tsc/lint）
 ```
 
+### Docker 部署
+
+镜像内嵌 Next.js SSR 与 Node.js，默认使用零配置的 SQLite，数据持久化在数据卷。
+
+```bash
+# Docker Compose（推荐）
+docker compose up -d --build
+
+# 或直接使用 Docker
+docker build -t infosphere .
+docker run -d --name infosphere -p 6969:6969 -v infosphere-data:/data infosphere
+```
+
+启动后访问 `http://<主机>:6969/install` 完成安装向导。数据（数据库、上传、配置）都在容器内 `/data`（对应数据卷 `infosphere-data`）。
+
+- 端口：`INFO_SPHERE_PORT`（默认 `6969`）。
+- 数据目录：容器内固定为 `/data`，挂载数据卷或宿主目录持久化。
+- 外接数据库：安装向导中选择 MySQL/PostgreSQL 并填写连接信息即可（可另起 DB 容器并置于同一 network）。
+- 升级：Docker 部署下不使用应用内「在线升级」，改为拉取新镜像重建容器（`docker compose pull && docker compose up -d`）。
+
 ### 生产部署（CI 自动化）
 
 `push` 到 `dev` 分支即触发 [deploy.yml](.github/workflows/deploy.yml)：

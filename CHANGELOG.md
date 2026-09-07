@@ -2,6 +2,10 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本号采用日期式（YYYY.0.0）。
 
+## [2026.0.1] - 2026-09-07
+
+- 待补充
+
 ## [2026.0.0] - 2026-09-06
 
 InfoSphere 全新版本：后端从 Node.js/Express/EJS/MySQL 重构为 **Go + Next.js** 双服务架构，附带桌面与 Android 客户端。与旧版不共享运行时，可通过 `migrate-legacy` 命令迁移历史数据。
