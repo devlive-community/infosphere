@@ -8,7 +8,8 @@ import { useApp } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useState } from 'react'
-import { ButtonLink , Tooltip} from '@/components/ui'
+import { useRouter } from 'next/router'
+import { ButtonLink, Tooltip, Loading } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
@@ -95,8 +96,27 @@ function countChapters(docs: Document[]): { chapters: number; sections: number }
   return { chapters, sections }
 }
 
-export default function BookDetail({ site, siteUrl, book, tree, related, needsAuth, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree, related, needsAuth, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { user } = useApp()
+  const router = useRouter()
+  const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
+  // 私有/草稿书 SSR 无令牌取不到，挂载后携带本地令牌客户端重试（避免默认空白）
+  const [book, setBook] = useState<Book | null>(ssrBook ?? null)
+  const [tree, setTree] = useState<Document[]>(ssrTree || [])
+  const [fetching, setFetching] = useState<boolean>(!!needsAuth && !ssrBook)
+  useEffect(() => {
+    if (!needsAuth || ssrBook || !slug) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const b = await api<Book>(`/books/slug/${encodeURIComponent(slug)}`)
+        const t = await api<Document[]>(`/books/${b.id}/documents`).catch(() => [] as Document[])
+        if (!cancelled) { setBook(b); setTree(t) }
+      } catch { /* 无权限：保持 null，交给 ClientFallback 提示 */ }
+      finally { if (!cancelled) setFetching(false) }
+    })()
+    return () => { cancelled = true }
+  }, [needsAuth, ssrBook, slug])
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
   const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string } | null>(null)
   const [favorited, setFavorited] = useState(false)
@@ -113,11 +133,14 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
-  const canManage = access?.can_manage === true
-  const canEdit = access?.can_edit_content === true
+  const canManage = access?.can_manage === true || (!!user && !!book && (user.id === book.user_id || user.role === 'admin'))
+  const canEdit = access?.can_edit_content === true || canManage
 
-  if (needsAuth || !book) {
-    return <ClientFallback slug={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('slug') || '' : ''} />
+  if (fetching) {
+    return <Container><Loading className="min-h-[60vh]" label="正在加载书籍…" /></Container>
+  }
+  if (!book) {
+    return <ClientFallback slug={slug} />
   }
 
   const cover = resolveMediaUrl(book.cover_image)
@@ -371,8 +394,8 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
 function InfoRow({ icon, label, value, mono }: { icon: React.ReactNode; label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="flex items-center gap-2 text-slate-500"><span className="text-slate-400">{icon}</span>{label}</dt>
-      <dd className={`truncate text-right ${mono ? 'font-mono text-xs text-primary-600' : 'font-medium text-slate-900'}`}>{value}</dd>
+      <dt className="flex shrink-0 items-center gap-2 whitespace-nowrap text-slate-500"><span className="text-slate-400">{icon}</span>{label}</dt>
+      <dd className={`min-w-0 truncate text-right ${mono ? 'font-mono text-xs text-primary-600' : 'font-medium text-slate-900'}`} title={value}>{value}</dd>
     </div>
   )
 }
