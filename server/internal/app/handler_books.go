@@ -481,8 +481,20 @@ func (a *App) IncrementBookView(c *gin.Context) {
 		fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
-	a.DB.Model(book).UpdateColumn("view_count", book.ViewCount+1)
-	ok(c, gin.H{"view_count": book.ViewCount + 1})
+	if err := a.DB.Model(&models.Book{}).
+		Where("id = ?", book.ID).
+		UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "更新浏览量失败")
+		return
+	}
+	var viewCount int
+	if err := a.DB.Model(&models.Book{}).
+		Where("id = ?", book.ID).
+		Pluck("view_count", &viewCount).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "查询浏览量失败")
+		return
+	}
+	ok(c, gin.H{"view_count": viewCount})
 }
 
 // findBook 按路径参数 :id 查找书籍

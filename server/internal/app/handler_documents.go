@@ -240,9 +240,26 @@ func (a *App) IncrementDocumentView(c *gin.Context) {
 		fail(c, http.StatusNotFound, "文档不存在")
 		return
 	}
-	a.DB.Model(doc).UpdateColumn("view_count", doc.ViewCount+1)
-	a.DB.Model(book).UpdateColumn("view_count", book.ViewCount+1)
-	ok(c, gin.H{"view_count": doc.ViewCount + 1})
+	var viewCount int
+	if err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Document{}).
+			Where("id = ?", doc.ID).
+			UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&models.Book{}).
+			Where("id = ?", book.ID).
+			UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.Document{}).
+			Where("id = ?", doc.ID).
+			Pluck("view_count", &viewCount).Error
+	}); err != nil {
+		fail(c, http.StatusInternalServerError, "更新浏览量失败")
+		return
+	}
+	ok(c, gin.H{"view_count": viewCount})
 }
 
 // GetDocumentBySlug GET /books/:id/documents/slug/:slug
