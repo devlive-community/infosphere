@@ -600,8 +600,8 @@ export default function Writer({ user }: WriterProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">公开后允许评论</span>
               <button role="switch" aria-checked={allowComments} onClick={() => setAllowComments(!allowComments)}
-                className={`h-6 w-11 shrink-0 rounded-full transition-colors ${allowComments ? 'bg-primary-500' : 'bg-slate-300'}`}>
-                <span className={`inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow transition-transform ${allowComments ? 'translate-x-[18px]' : ''}`} />
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${allowComments ? 'bg-primary-500' : 'bg-slate-300'}`}>
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${allowComments ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
               </button>
             </div>
           </div>
