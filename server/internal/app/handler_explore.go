@@ -37,16 +37,18 @@ func (a *App) ExploreLatest(c *gin.Context) {
 
 // SiteStats GET /stats 站点统计
 func (a *App) SiteStats(c *gin.Context) {
-	var userCount, bookCount, docCount int64
+	var userCount, bookCount, docCount, tagCount int64
 	var views int64
 	a.DB.Model(&models.User{}).Count(&userCount)
 	a.DB.Model(&models.Book{}).Count(&bookCount)
 	a.DB.Model(&models.Document{}).Count(&docCount)
+	a.DB.Model(&models.Tag{}).Count(&tagCount)
 	a.DB.Model(&models.Book{}).Select("COALESCE(SUM(view_count), 0)").Scan(&views)
 	ok(c, gin.H{
 		"user_count":     userCount,
 		"book_count":     bookCount,
 		"document_count": docCount,
+		"tag_count":      tagCount,
 		"total_views":    views,
 	})
 }
