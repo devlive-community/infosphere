@@ -15,7 +15,7 @@ import BookCard from '@/components/BookCard'
 import Seo from '@/components/Seo'
 import {
   BookIcon, CalendarIcon, CheckCircleSmallIcon, ChevronRightIcon, EyeIcon,
-  GlobeIcon, HelpCircleIcon, LinkIcon, ShareIcon, BookmarkIcon, ClockIcon,
+  GlobeIcon, HelpCircleIcon, LinkIcon, ShareIcon, BookmarkIcon, ClockIcon, GearIcon,
 } from '@/components/icons'
 import type { Book, Document, User } from '@/lib/types'
 
@@ -245,7 +245,12 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
                   <ShareIcon className="h-4 w-4" />
                 </button></Tooltip>
               {canManage && (
-                <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">写作</ButtonLink>
+                <>
+                  <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">写作</ButtonLink>
+                  <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">
+                    <GearIcon className="h-4 w-4" /> 设置
+                  </ButtonLink>
+                </>
               )}
             </div>
           </div>
