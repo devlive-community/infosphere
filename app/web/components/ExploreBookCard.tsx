@@ -101,7 +101,7 @@ export default function ExploreBookCard({ book, view = 'grid', showAuthor = true
           {showAuthor && book.user && (
             <Link href={`/user/${encodeURIComponent(book.user.username)}`}
               className="flex shrink-0 items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-primary-600">
-              <UserAvatar user={book.user} size="h-5 w-5" />
+              <UserAvatar user={book.user} size="h-5 w-5" link={false} tooltip={false} />
               {book.user.username}
             </Link>
           )}
