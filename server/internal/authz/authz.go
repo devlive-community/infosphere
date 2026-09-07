@@ -61,6 +61,7 @@ const (
 	// 用户
 	UserRead   Permission = "user:read"   // 查看用户公开主页
 	UserUpdate Permission = "user:update" // 更新个人资料与密码
+	UserManage Permission = "user:manage" // 管理后台管理用户：列表/角色/启停/删除（仅管理员）
 
 	// 站点
 	SiteRead   Permission = "site:read"   // 读取站点公开配置
@@ -88,7 +89,7 @@ var All = []Permission{
 	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
-	UserRead, UserUpdate,
+	UserRead, UserUpdate, UserManage,
 	SiteRead, SiteUpdate,
 	StatsRead,
 	UploadCreate,

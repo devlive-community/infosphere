@@ -187,6 +187,12 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/storage", a.RequirePermission(authz.SiteUpdate), a.AdminSaveStorage)
 			admin.GET("/system/version", a.RequirePermission(authz.SystemRead), a.SystemVersion)
 			admin.POST("/system/upgrade", a.RequirePermission(authz.SystemUpgrade), a.SystemUpgrade)
+
+			// 用户管理（user:manage，仅管理员）
+			admin.GET("/users", a.RequirePermission(authz.UserManage), a.AdminListUsers)
+			admin.PUT("/users/:id/role", a.RequirePermission(authz.UserManage), a.AdminUpdateUserRole)
+			admin.PUT("/users/:id/status", a.RequirePermission(authz.UserManage), a.AdminUpdateUserStatus)
+			admin.DELETE("/users/:id", a.RequirePermission(authz.UserManage), a.AdminDeleteUser)
 		}
 	}
 

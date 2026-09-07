@@ -37,6 +37,7 @@ Authorization: Bearer <token>
 | `document:delete` | 删除文档（仅本人书籍） | ✅ | ✅ |
 | `user:read` | 查看用户公开主页 | ✅ | ✅ |
 | `user:update` | 更新个人资料与密码 | ✅ | ✅ |
+| `user:manage` | 管理后台管理用户：列表/角色/启停/删除 | ❌ | ✅ |
 | `site:read` | 读取站点公开配置 | ✅ | ✅ |
 | `tag:read` | 浏览标签与按标签检索 | ✅ | ✅ |
 | `tag:create` | 创建标签（书籍打标时自动创建） | ✅ | ✅ |
@@ -265,6 +266,10 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/system/version` | 当前版本/commit + 上游最新版本 + 是否可升级 | `system:read` |
 | POST | `/system/upgrade` | 在线升级（下载 Release 资产 → 校验替换 → 重启服务） | `system:upgrade` |
+| GET | `/admin/users?page=&page_size=&q=&role=&status=` | 分页查询用户（`q` 匹配用户名/邮箱，`role` admin\|user，`status` active\|inactive） | `user:manage` |
+| PUT | `/admin/users/:id/role` | 变更角色 `{role: admin\|user}`；禁止操作自身，保留至少一位启用管理员 | `user:manage` |
+| PUT | `/admin/users/:id/status` | 启停账户 `{is_active}`；禁止停用自身，保留至少一位启用管理员 | `user:manage` |
+| DELETE | `/admin/users/:id` | 删除用户；禁止删除自身，拥有书籍者需先清理书籍 | `user:manage` |
 
 ---
 
