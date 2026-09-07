@@ -60,6 +60,7 @@ Authorization: Bearer <token>
 | `book:export` | 导出书籍为 markdown zip（owner/admin/editor 协作者） | ✅ | ✅ |
 | `book:import` | 从 zip 导入书籍（成为导入者的个人书籍） | ✅ | ✅ |
 | `site:update` | 更新站点配置 | ❌ | ✅ |
+| `config:manage` | 管理任意系统配置键值对 | ❌ | ✅ |
 | `stats:read` | 读取站点统计 | ✅ | ✅ |
 | `upload:create` | 上传图片 | ✅ | ✅ |
 | `system:read` | 查看系统版本信息 | ❌ | ✅ |
@@ -146,7 +147,7 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/site` | 站点公开配置（site_name/site_description/version） | `site:read` |
 | PUT | `/site` | 更新站点配置 | `site:update` |
-| GET | `/stats` | 站点统计（user_count/book_count/document_count/total_views） | `stats:read` |
+| GET | `/stats` | 站点统计（user_count/book_count/document_count/tag_count/total_views） | `stats:read` |
 
 ## 发现（公开）
 
@@ -270,6 +271,9 @@ Authorization: Bearer <token>
 | PUT | `/admin/users/:id/role` | 变更角色 `{role: admin\|user}`；禁止操作自身，保留至少一位启用管理员 | `user:manage` |
 | PUT | `/admin/users/:id/status` | 启停账户 `{is_active}`；禁止停用自身，保留至少一位启用管理员 | `user:manage` |
 | DELETE | `/admin/users/:id` | 删除用户；禁止删除自身，拥有书籍者需先清理书籍 | `user:manage` |
+| GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
+| PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
+| DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |
 
 ---
 

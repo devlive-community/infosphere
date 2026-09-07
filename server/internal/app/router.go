@@ -193,6 +193,11 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/admin/users/:id/role", a.RequirePermission(authz.UserManage), a.AdminUpdateUserRole)
 			admin.PUT("/admin/users/:id/status", a.RequirePermission(authz.UserManage), a.AdminUpdateUserStatus)
 			admin.DELETE("/admin/users/:id", a.RequirePermission(authz.UserManage), a.AdminDeleteUser)
+
+			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
+			admin.GET("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminListConfigs)
+			admin.PUT("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminUpsertConfig)
+			admin.DELETE("/admin/configs/:key", a.RequirePermission(authz.ConfigManage), a.AdminDeleteConfig)
 		}
 	}
 

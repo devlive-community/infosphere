@@ -67,6 +67,9 @@ const (
 	SiteRead   Permission = "site:read"   // 读取站点公开配置
 	SiteUpdate Permission = "site:update" // 更新站点配置（仅管理员）
 
+	// 系统配置（通用 key-value）
+	ConfigManage Permission = "config:manage" // 管理任意系统配置键值对（仅管理员）
+
 	// 统计
 	StatsRead Permission = "stats:read" // 读取站点统计（含匿名访问）
 
@@ -90,7 +93,7 @@ var All = []Permission{
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	UserRead, UserUpdate, UserManage,
-	SiteRead, SiteUpdate,
+	SiteRead, SiteUpdate, ConfigManage,
 	StatsRead,
 	UploadCreate,
 	SystemRead, SystemUpgrade,
