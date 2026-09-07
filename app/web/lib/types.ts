@@ -36,6 +36,7 @@ export interface Book {
   order_col: string
   order_dir: 'asc' | 'desc'
   chapter_prefix: string
+  chapter_count?: number
   watermark_enabled: boolean
   watermark_text: string
   user?: Pick<User, 'id' | 'username' | 'avatar' | 'email' | 'bio' | 'github_url' | 'role'>

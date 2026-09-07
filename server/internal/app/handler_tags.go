@@ -109,6 +109,7 @@ func (a *App) BooksByTag(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
 	}
+	a.attachChapterCounts(books)
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }
 

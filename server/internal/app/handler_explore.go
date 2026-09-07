@@ -21,6 +21,7 @@ func (a *App) ExploreHot(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
 	}
+	a.attachChapterCounts(books)
 	ok(c, books)
 }
 
@@ -32,6 +33,7 @@ func (a *App) ExploreLatest(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
 	}
+	a.attachChapterCounts(books)
 	ok(c, books)
 }
 
@@ -139,5 +141,6 @@ func (a *App) GetUserBooks(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
 	}
+	a.attachChapterCounts(books)
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }

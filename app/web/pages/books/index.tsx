@@ -238,7 +238,7 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onDelete }: {
   // 章节计数与相对更新时间作为自定义元信息槽（含浏览量由统一卡片接管）
   const metaSlot = (
     <>
-      <span className="flex items-center gap-1"><FileTextIcon className="h-3.5 w-3.5" /> {(book as any).chapter_count ?? '—'} 个章节</span>
+      <span className="flex items-center gap-1"><FileTextIcon className="h-3.5 w-3.5" /> {book.chapter_count ?? 0} 个章节</span>
       <span className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> {relativeUpdated(book.updated_at)}</span>
     </>
   )

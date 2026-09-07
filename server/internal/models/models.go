@@ -101,6 +101,8 @@ type Book struct {
 	Tags             []Tag     `gorm:"many2many:book_tags" json:"tags,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
+	// ChapterCount 非持久化：列表接口按需回填的章节（文档）数量
+	ChapterCount int `gorm:"-" json:"chapter_count"`
 }
 
 // Tag 标签

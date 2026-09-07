@@ -32,6 +32,33 @@ func bookOrder(sort string) string {
 	return "books.updated_at DESC"
 }
 
+// attachChapterCounts 一次分组查询回填各书籍的章节（文档）数量，避免 N+1
+func (a *App) attachChapterCounts(books []models.Book) {
+	if len(books) == 0 {
+		return
+	}
+	ids := make([]uint, len(books))
+	for i := range books {
+		ids[i] = books[i].ID
+	}
+	type countRow struct {
+		BookID uint
+		Cnt    int
+	}
+	var rows []countRow
+	a.DB.Model(&models.Document{}).
+		Select("book_id, COUNT(*) as cnt").
+		Where("book_id IN ?", ids).
+		Group("book_id").Scan(&rows)
+	counts := make(map[uint]int, len(rows))
+	for _, r := range rows {
+		counts[r.BookID] = r.Cnt
+	}
+	for i := range books {
+		books[i].ChapterCount = counts[books[i].ID]
+	}
+}
+
 // canManageBook 判断用户能否管理书籍（设置与删除：owner/admin）
 func (a *App) canManageBook(u *models.User, b *models.Book) bool {
 	return IsAdmin(u) || (u != nil && u.ID == b.UserID)
@@ -156,6 +183,7 @@ func (a *App) ListBooks(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
 	}
+	a.attachChapterCounts(books)
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }
 
