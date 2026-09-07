@@ -7,6 +7,7 @@ import { Badge, ButtonLink } from '@/components/ui'
 import {
   ShieldCheckIcon, TagIcon, DatabaseIcon, CodeIcon, GlobeIcon, ServerIcon,
   ActivityIcon, ExternalLinkIcon, MailIcon, GithubIcon, UsersIcon,
+  BookIcon, FileTextIcon, EyeIcon,
 } from '@/components/icons'
 import {
   SystemVersion, HealthInfo, MailConfig, StorageConfig, OAuthConfig,
@@ -29,6 +30,10 @@ export default function AdminSystem() {
   const [mail, setMail] = useState<MailConfig | null>(null)
   const [oauth, setOauth] = useState<OAuthConfig | null>(null)
   const [userCount, setUserCount] = useState<number | null>(null)
+  const [bookCount, setBookCount] = useState<number | null>(null)
+  const [docCount, setDocCount] = useState<number | null>(null)
+  const [totalViews, setTotalViews] = useState<number | null>(null)
+  const [tagCount, setTagCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!isAdmin) return
@@ -46,7 +51,14 @@ export default function AdminSystem() {
     api<StorageConfig>('/storage').then(setStorage).catch(() => {})
     api<MailConfig>('/mail').then(setMail).catch(() => {})
     api<OAuthConfig>('/oauth').then(setOauth).catch(() => {})
-    api<{ user_count: number }>('/stats').then((s) => setUserCount(s.user_count)).catch(() => {})
+    api<{ user_count: number; book_count: number; document_count: number; tag_count: number; total_views: number }>('/stats')
+      .then((s) => {
+        setUserCount(s.user_count)
+        setBookCount(s.book_count)
+        setDocCount(s.document_count)
+        setTagCount(s.tag_count)
+        setTotalViews(s.total_views)
+      }).catch(() => {})
   }, [isAdmin])
 
   const dbName = DB_LABEL[dbType] || dbType || '—'
@@ -65,8 +77,16 @@ export default function AdminSystem() {
         </ButtonLink>
       </div>
 
-      {/* 状态卡片 */}
+      {/* 内容统计卡片 */}
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={UsersIcon} tone="primary" label="用户" value={fmtNum(userCount)} />
+        <StatCard icon={BookIcon} tone="sky" label="书籍" value={fmtNum(bookCount)} />
+        <StatCard icon={FileTextIcon} tone="violet" label="文档" value={fmtNum(docCount)} />
+        <StatCard icon={EyeIcon} tone="amber" label="累计浏览" value={fmtNum(totalViews)} />
+      </div>
+
+      {/* 运行环境卡片 */}
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={ShieldCheckIcon} tone="emerald" label="系统状态"
           value={healthy ? '运行正常' : '异常'} valueClass={healthy ? 'text-emerald-600' : 'text-rose-600'}
           dot={healthy ? 'bg-emerald-500' : 'bg-rose-500'} />
@@ -132,18 +152,24 @@ export default function AdminSystem() {
       <h2 className="mb-4 mt-8 text-lg font-semibold text-slate-900">配置中心</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <ConfigCard icon={UsersIcon} tone="primary" title="用户管理" href="/admin/users"
-          status={userCount !== null ? `${userCount} 位用户` : '查看与管理用户'} ok />
+          status={userCount !== null ? `${userCount} 位用户 · ${fmtNum(bookCount)} 本书` : '查看与管理用户'} ok />
         <ConfigCard icon={ServerIcon} tone="sky" title="存储配置" href="/admin/settings/storage"
           status={storage ? (storage.driver === 'qiniu' ? '七牛云 · 已启用' : '本地磁盘 · 运行正常') : '加载中…'} ok />
         <ConfigCard icon={MailIcon} tone="amber" title="邮件服务" href="/admin/settings/mail"
           status={mail ? (mail.driver === 'smtp' ? 'SMTP · 已配置' : '日志驱动 · 待配置') : '加载中…'} ok={mail?.driver === 'smtp'} />
         <ConfigCard icon={GithubIcon} tone="emerald" title="GitHub OAuth" href="/admin/settings/oauth"
           status={oauth ? (oauth.client_id && oauth.client_secret ? '已启用' : '未配置') : '加载中…'} ok={!!(oauth?.client_id && oauth?.client_secret)} />
-        <ConfigCard icon={ShieldCheckIcon} tone="violet" title="安全与备份" href="/admin/upgrade"
-          status="运行配置与数据备份" ok />
+        <ConfigCard icon={TagIcon} tone="violet" title="标签分类" href="/explore"
+          status={tagCount !== null ? `${tagCount} 个标签` : '前往发现页'} ok />
       </div>
     </AdminLayout>
   )
+}
+
+// fmtNum 数字本地化展示，null 显示为 —；大数加千分位
+function fmtNum(n: number | null): string {
+  if (n === null) return '—'
+  return n.toLocaleString('zh-CN')
 }
 
 type Tone = 'emerald' | 'violet' | 'sky' | 'primary' | 'amber'
