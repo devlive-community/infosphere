@@ -14,6 +14,11 @@ import (
 // fmtUID 将用户 ID 格式化为路径片段
 func fmtUID(n uint64) string { return strconv.FormatUint(n, 10) }
 
+// uid 从列表元素取 id
+func uid(item any) uint64 {
+	return uint64(item.(map[string]any)["id"].(float64))
+}
+
 // 用户管理后台集成测试（user:manage，仅管理员）：
 //   - 匿名与普通用户访问被拒绝（401/403）
 //   - 管理员列表/筛选/关键字检索
@@ -117,6 +122,28 @@ func TestAdminUsers(t *testing.T) {
 	status, list = request(http.MethodGet, "/api/v1/admin/users?status=inactive", nil, adminToken)
 	if status != http.StatusOK || list["data"].(map[string]any)["total"].(float64) != 1 {
 		t.Fatalf("停用筛选应命中 1 条: %v", list["data"].(map[string]any)["total"])
+	}
+
+	// 5b. 排序 sort=last_login_at_desc：管理员已登录排在最前，三个新注册用户无登录记录排最后
+	status, list = request(http.MethodGet, "/api/v1/admin/users?sort=last_login_at_desc", nil, adminToken)
+	if status != http.StatusOK {
+		t.Fatalf("排序查询应 200: %d", status)
+	}
+	firstItems := list["data"].(map[string]any)["items"].([]any)
+	if uid(firstItems[0]) != adminID {
+		t.Fatalf("按最近登录排序时首位应为已登录的管理员: %v", uid(firstItems[0]))
+	}
+	// 末位是从未登录者之一，last_login_at 应为 null
+	if last := firstItems[len(firstItems)-1].(map[string]any)["last_login_at"]; last != nil {
+		t.Fatalf("从未登录者应排最后且 last_login_at 为 null: %v", last)
+	}
+
+	// 5c. 非法 sort 值回退到默认（created_at DESC），不报错
+	if status, _ := request(http.MethodGet, "/api/v1/admin/users?sort=evil;DROP", nil, adminToken); status != http.StatusOK {
+		t.Fatalf("非法 sort 应回退默认而非报错: %d", status)
+	}
+	if status, _ := request(http.MethodGet, "/api/v1/admin/users?sort=last_login_at_desc&role=admin", nil, adminToken); status != http.StatusOK {
+		t.Fatalf("排序可与筛选叠加: %d", status)
 	}
 
 	// 6. 角色变更：alice → admin 再降回 user；非法角色被拒
