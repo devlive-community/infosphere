@@ -8,7 +8,7 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/infosphere/current/web
-ExecStart=/usr/bin/node server.js
+ExecStart=/var/www/infosphere/current/web/node/bin/node server.js
 EnvironmentFile=/etc/infosphere/infosphere.env
 Environment=NODE_ENV=production
 Environment=PORT=6900

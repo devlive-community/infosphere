@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  NODE_VERSION: "24.20.0"
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -28,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: app/web/pnpm-lock.yaml
 
@@ -50,6 +53,7 @@ jobs:
           cp -R app/web/.next-build/static/. release/web/.next/static/
           cp -R app/web/.next-build/static/. release/web/.next-build/static/
           if [ -d app/web/public ]; then cp -R app/web/public release/web/public; fi
+          deploy/package-node-runtime.sh "$NODE_VERSION" release/web/node
           tar -czf release/infosphere-web-linux-amd64.tar.gz -C release/web .
           rm -rf release/web
 

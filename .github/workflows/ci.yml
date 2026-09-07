@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+env:
+  NODE_VERSION: "24.20.0"
+
 jobs:
   server:
     name: Go server checks
@@ -51,7 +54,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: app/web/pnpm-lock.yaml
 
