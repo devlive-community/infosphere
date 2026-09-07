@@ -35,7 +35,8 @@ function UserMenu() {
     { label: '我的书籍', href: '/books' },
     { label: '个人资料', href: '/user/profile' },
     { label: '账户安全', href: '/user/security' },
-    { label: '系统管理', href: '/admin/system' },
+    // 控制台仅对管理员开放
+    ...(user.role === 'admin' ? [{ label: '控制台', href: '/admin/system' }] : []),
   ]
   return (
     <div className="relative" ref={ref}>

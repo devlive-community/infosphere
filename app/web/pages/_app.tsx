@@ -8,8 +8,8 @@ import Seo from '@/components/Seo'
 import type { ReactNode } from 'react'
 import type { SiteConfig } from '@/lib/types'
 
-// 安装向导、登录注册与全屏编辑器/阅读器使用独立布局（前缀匹配，覆盖动态路由）
-const bareRoutes = ['/install', '/login', '/register', '/book/writer', '/book/reader']
+// 安装向导、登录注册、全屏编辑器/阅读器与管理控制台使用独立布局（前缀匹配，覆盖动态路由）
+const bareRoutes = ['/install', '/login', '/register', '/book/writer', '/book/reader', '/admin']
 
 // 无 SEO 价值的交互页统一 noindex（前缀匹配）
 const noindexRoutes = ['/books', '/book/writer', '/user/profile', '/user/security', '/admin']
