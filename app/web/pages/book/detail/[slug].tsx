@@ -229,7 +229,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
       {/* Hero */}
       <Container>
-        <section className="grid gap-10 pb-10 lg:grid-cols-[300px_1fr_300px]">
+        <section className="grid items-start gap-x-10 gap-y-8 pb-8 lg:grid-cols-[300px_1fr_300px]">
           {/* 左：大封面 */}
           <div className="mx-auto w-64 lg:mx-0 lg:w-full">
             <div className="aspect-[3/4] w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF] shadow-md">
@@ -323,23 +323,6 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 <InfoRow icon={<LinkIcon className="h-4 w-4" />} label="访问路径" value={`/${book.slug}`} mono />
               </dl>
             </div>
-
-            {author && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="mb-4 font-bold text-slate-900">关于作者</h2>
-                <div className="flex items-center gap-3">
-                  <UserAvatar user={author} size="h-12 w-12" />
-                  <div className="min-w-0">
-                    <div className="font-semibold text-slate-900">{author.username}</div>
-                    {author.bio && <div className="line-clamp-2 text-xs text-slate-500">{author.bio}</div>}
-                  </div>
-                </div>
-                <Link href={`/user/${encodeURIComponent(author.username)}`}
-                  className="mt-4 flex h-9 w-full items-center justify-center rounded-lg border border-slate-300 text-sm text-slate-700 transition-colors hover:border-primary-400 hover:text-primary-600">
-                  查看全部作品
-                </Link>
-              </div>
-            )}
 
             <Link href="https://github.com/devlive-community/infosphere/issues" target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm text-primary-600 hover:underline">
