@@ -185,6 +185,20 @@ type Document struct {
 	Children      []*Document `gorm:"-" json:"children,omitempty"`
 }
 
+// DocumentRevision 章节不可变历史版本。只允许新增与读取，不提供更新接口。
+type DocumentRevision struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	DocumentID    uint      `gorm:"index;not null" json:"document_id"`
+	BookID        uint      `gorm:"index;not null" json:"book_id"`
+	UserID        uint      `gorm:"index;not null" json:"user_id"`
+	Title         string    `gorm:"size:255;not null" json:"title"`
+	Content       string    `gorm:"type:text" json:"content"`
+	Status        string    `gorm:"size:20;not null" json:"status"`
+	AllowComments bool      `gorm:"not null;default:true" json:"allow_comments"`
+	Reason        string    `gorm:"size:20;not null" json:"reason"` // create | save | publish | pre_restore | restore
+	CreatedAt     time.Time `gorm:"index" json:"created_at"`
+}
+
 // All 执行多数据库迁移
 func All(db *gorm.DB) error {
 	return db.AutoMigrate(
@@ -193,6 +207,7 @@ func All(db *gorm.DB) error {
 		&SiteConfig{},
 		&Book{},
 		&Document{},
+		&DocumentRevision{},
 		&Tag{},
 		&BookTag{},
 		&ReadingProgress{},

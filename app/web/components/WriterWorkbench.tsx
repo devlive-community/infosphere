@@ -8,10 +8,10 @@ import Seo from '@/components/Seo'
 import { Button, Input, Textarea, Select, Field, Badge, EmptyState, Loading } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
-  EyeIcon, FileTextIcon, FolderIcon, GripIcon, ImageIcon, LinkIcon, ListBulletIcon,
-  ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
+  CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
+  ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
 } from '@/components/icons'
-import type { Book, Document, BookStatus } from '@/lib/types'
+import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, PageResult } from '@/lib/types'
 
 type SaveState = 'saved' | 'dirty' | 'saving'
 type TabKey = 'toc' | 'settings'
@@ -63,6 +63,7 @@ export default function Writer({ user }: WriterProps) {
   const [preview, setPreview] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [message, setMessage] = useState('')
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   // 章节表单
   const [title, setTitle] = useState('')
@@ -134,9 +135,14 @@ export default function Writer({ user }: WriterProps) {
     setSaveState('saved')
   }
 
+  function confirmDiscard() {
+    return saveState !== 'dirty' || window.confirm('当前章节有未保存的更改，确定放弃并继续吗？')
+  }
+
   // 取消选中当前章节（点击目录空白处）
   function deselect() {
     if (!current) return
+    if (!confirmDiscard()) return
     resetForm()
     router.push(`/book/writer/${encodeURIComponent(bookSlug)}`, undefined, { shallow: true })
   }
@@ -175,6 +181,7 @@ export default function Writer({ user }: WriterProps) {
     const payload = {
       title: title.trim(), content, status: effectiveStatus, sort_order: sortOrder,
       parent_id: parentId ? Number(parentId) : null, allow_comments: allowComments,
+      create_revision: Boolean(current), revision_reason: opts?.status ? 'publish' : 'save',
     }
     setSaveState('saving')
     const startedAt = Date.now()
@@ -186,7 +193,7 @@ export default function Writer({ user }: WriterProps) {
         setCurrent(updated)
         if (opts?.status) setStatus(opts.status)
         await loadTree(book)
-        selectDoc(updated.slug)
+        selectDoc(updated.slug, true)
       } else {
         const created = await api<Document>(`/books/${book.id}/documents`, { method: 'POST', body: payload })
         snapshot.current = JSON.stringify([created.title, created.content || '', created.status, created.parent_id ? String(created.parent_id) : '', created.sort_order, created.allow_comments !== false])
@@ -194,7 +201,7 @@ export default function Writer({ user }: WriterProps) {
         setCurrent(created)
         if (opts?.status) setStatus(opts.status)
         await loadTree(book)
-        selectDoc(created.slug)
+        selectDoc(created.slug, true)
       }
       const elapsed = Date.now() - startedAt
       if (elapsed < 500) await new Promise((r) => setTimeout(r, 500 - elapsed)) // 让“保存中”至少可见片刻
@@ -231,7 +238,19 @@ export default function Writer({ user }: WriterProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  function selectDoc(slug: string) {
+  // 浏览器关闭/刷新时保留原生离开提醒；站内切换由各入口主动确认。
+  useEffect(() => {
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      if (saveState !== 'dirty') return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [saveState])
+
+  function selectDoc(slug: string, force = false) {
+    if (!force && slug !== current?.slug && !confirmDiscard()) return
     // 切换章节：本页内更新地址与表单（shallow，不重载）
     router.replace(`/book/writer/${encodeURIComponent(bookSlug)}/${encodeURIComponent(slug)}`, undefined, { shallow: true })
   }
@@ -312,6 +331,7 @@ export default function Writer({ user }: WriterProps) {
 
   // 新建章节/子章节：有选中项时都建到该章节之下（子级）；无选中项时建到顶级
   function createNew() {
+    if (!confirmDiscard()) return
     let newParent = ''
     let newSort = 0
     if (current) {
@@ -344,6 +364,23 @@ export default function Writer({ user }: WriterProps) {
       setMessage('书籍设置已保存')
       setTimeout(() => setMessage(''), 2000)
     } catch (e) { setMessage((e as Error).message) }
+  }
+
+  async function applyRestoredDocument(restored: Document) {
+    setTitle(restored.title)
+    setContent(restored.content || '')
+    setStatus(restored.status)
+    setAllowComments(restored.allow_comments !== false)
+    snapshot.current = JSON.stringify([
+      restored.title, restored.content || '', restored.status,
+      restored.parent_id ? String(restored.parent_id) : '', restored.sort_order,
+      restored.allow_comments !== false,
+    ])
+    loadedDocId.current = restored.id
+    setCurrent(restored)
+    setSaveState('saved')
+    setMessage('历史版本已恢复，并已保留恢复前快照')
+    if (book) await loadTree(book)
   }
 
   // Markdown 工具：选区包裹 / 行首插入
@@ -400,12 +437,12 @@ export default function Writer({ user }: WriterProps) {
       {/* 顶栏 */}
       <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <Link href="/" className="flex shrink-0 items-center gap-2 font-bold text-slate-900">
+          <Link href="/" onClick={(event) => { if (!confirmDiscard()) event.preventDefault() }} className="flex shrink-0 items-center gap-2 font-bold text-slate-900">
             <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
             {siteName}
           </Link>
           <span className="text-slate-300">/</span>
-          <Link href="/books" className="shrink-0 text-slate-500 hover:text-primary-600">我的书籍</Link>
+          <Link href="/books" onClick={(event) => { if (!confirmDiscard()) event.preventDefault() }} className="shrink-0 text-slate-500 hover:text-primary-600">我的书籍</Link>
           <span className="text-slate-300">/</span>
           <span className="truncate font-medium text-slate-900">{book.title}</span>
         </div>
@@ -415,6 +452,9 @@ export default function Writer({ user }: WriterProps) {
           {saveState === 'saving' && <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> <span className="text-primary-600">保存中…</span></>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Button variant="ghost" onClick={() => setHistoryOpen(true)} disabled={!current}>
+            <HistoryIcon className="h-4 w-4" /> 历史
+          </Button>
           <Button variant="ghost" onClick={() => setPreview(!preview)}>
             <EyeIcon className="h-4 w-4" /> {preview ? '编辑' : '预览'}
           </Button>
@@ -628,6 +668,12 @@ export default function Writer({ user }: WriterProps) {
           </div>
 
           <div className="mt-6 border-t border-slate-100 pt-5">
+            <Button variant="outline" className="w-full" onClick={() => setHistoryOpen(true)} disabled={!current}>
+              <HistoryIcon className="h-4 w-4" /> 查看版本历史
+            </Button>
+          </div>
+
+          <div className="mt-6 border-t border-slate-100 pt-5">
             <button onClick={() => current && removeDoc(current)} disabled={!current}
               className="flex items-center gap-1.5 text-sm text-rose-500 transition-colors hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40">
               <TrashIcon className="h-4 w-4" /> 删除本章
@@ -635,11 +681,223 @@ export default function Writer({ user }: WriterProps) {
           </div>
         </aside>
       </div>
+      <RevisionDrawer
+        open={historyOpen}
+        document={current}
+        currentContent={content}
+        hasUnsavedChanges={saveState === 'dirty'}
+        onClose={() => setHistoryOpen(false)}
+        onRestored={applyRestoredDocument}
+      />
     </div>
   )
 }
 
 /* ── 子组件 ── */
+
+const REVISION_REASON_LABEL: Record<DocumentRevisionSummary['reason'], string> = {
+  create: '创建章节',
+  save: '手动保存',
+  publish: '发布版本',
+  pre_restore: '恢复前备份',
+  restore: '恢复完成',
+}
+
+function RevisionDrawer({
+  open, document, currentContent, hasUnsavedChanges, onClose, onRestored,
+}: {
+  open: boolean
+  document: Document | null
+  currentContent: string
+  hasUnsavedChanges: boolean
+  onClose: () => void
+  onRestored: (document: Document) => Promise<void>
+}) {
+  const [result, setResult] = useState<PageResult<DocumentRevisionSummary> | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [detail, setDetail] = useState<DocumentRevision | null>(null)
+  const [listLoading, setListLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const [error, setError] = useState('')
+
+  const loadList = useCallback(async () => {
+    if (!document) return
+    setListLoading(true)
+    setError('')
+    try {
+      const next = await api<PageResult<DocumentRevisionSummary>>(`/documents/${document.id}/revisions`, { params: { page_size: 50 } })
+      setResult(next)
+      setSelectedId((currentId) => next.items.some((item) => item.id === currentId) ? currentId : next.items[0]?.id ?? null)
+    } catch (e) {
+      setError((e as Error).message)
+      setResult({ items: [], total: 0, page: 1, page_size: 50 })
+    } finally {
+      setListLoading(false)
+    }
+  }, [document])
+
+  useEffect(() => {
+    if (!open || !document) return
+    setDetail(null)
+    setSelectedId(null)
+    loadList()
+  }, [open, document, loadList])
+
+  useEffect(() => {
+    if (!open || !document || selectedId == null) { setDetail(null); return }
+    let active = true
+    setDetailLoading(true)
+    setError('')
+    api<DocumentRevision>(`/documents/${document.id}/revisions/${selectedId}`)
+      .then((value) => { if (active) setDetail(value) })
+      .catch((e) => { if (active) { setDetail(null); setError((e as Error).message) } })
+      .finally(() => { if (active) setDetailLoading(false) })
+    return () => { active = false }
+  }, [open, document, selectedId])
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(event: KeyboardEvent) { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open || !document) return null
+
+  async function restore() {
+    if (hasUnsavedChanges) {
+      setError('当前编辑内容尚未保存。请关闭版本历史并先手动保存，再执行恢复。')
+      return
+    }
+    if (!detail || !window.confirm(`确定恢复到 ${formatDate(detail.created_at)} 的版本吗？当前内容会先自动备份。`)) return
+    setRestoring(true)
+    setError('')
+    try {
+      const restored = await api<Document>(`/documents/${document!.id}/revisions/${detail.id}/restore`, { method: 'POST' })
+      await onRestored(restored)
+      await loadList()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setRestoring(false)
+    }
+  }
+
+  async function loadMore() {
+    if (!document || !result || result.items.length >= result.total) return
+    setLoadingMore(true)
+    setError('')
+    try {
+      const next = await api<PageResult<DocumentRevisionSummary>>(`/documents/${document.id}/revisions`, {
+        params: { page: result.page + 1, page_size: 50 },
+      })
+      setResult({ ...next, items: [...result.items, ...next.items] })
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const difference = detail ? detail.content_length - Array.from(currentContent).length : 0
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/25 backdrop-blur-[1px]" role="dialog" aria-modal="true" aria-label="章节版本历史" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <section className="flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+              <HistoryIcon className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="truncate font-bold text-slate-900">版本历史</h2>
+              <p className="truncate text-xs text-slate-500">{document.title} · 每次手动保存均生成版本</p>
+            </div>
+          </div>
+          <button type="button" aria-label="关闭版本历史" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </header>
+
+        {error && <div className="border-b border-rose-100 bg-rose-50 px-5 py-2.5 text-sm text-rose-700">{error}</div>}
+
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          <aside className="h-52 shrink-0 overflow-y-auto border-b border-slate-200 bg-slate-50/70 p-3 md:h-auto md:w-72 md:border-b-0 md:border-r">
+            {listLoading ? (
+              <Loading className="h-full py-8" label="正在加载版本…" />
+            ) : !result?.items.length ? (
+              <EmptyState>暂无历史版本</EmptyState>
+            ) : (
+              <div className="space-y-1.5">
+                {result.items.map((revision) => (
+                  <button key={revision.id} type="button" onClick={() => setSelectedId(revision.id)}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${selectedId === revision.id ? 'border-primary-200 bg-white shadow-sm ring-1 ring-primary-100' : 'border-transparent hover:border-slate-200 hover:bg-white'}`}>
+                    <span className="flex items-center justify-between gap-2">
+                      <span className={`text-sm font-semibold ${selectedId === revision.id ? 'text-primary-700' : 'text-slate-800'}`}>{REVISION_REASON_LABEL[revision.reason]}</span>
+                      <span className="text-[11px] text-slate-400">{revision.content_length} 字</span>
+                    </span>
+                    <span className="mt-1 block text-xs text-slate-500">{formatDate(revision.created_at)}</span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-400">{revision.author?.username || '未知用户'}</span>
+                  </button>
+                ))}
+                {result.items.length < result.total && (
+                  <Button variant="ghost" size="sm" className="w-full" loading={loadingMore} onClick={loadMore}>
+                    加载更早版本
+                  </Button>
+                )}
+              </div>
+            )}
+          </aside>
+
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {detailLoading ? (
+              <Loading className="h-full" label="正在加载版本内容…" />
+            ) : detail ? (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900">{REVISION_REASON_LABEL[detail.reason]}</span>
+                      <Badge tone={STATUS_META[detail.status].tone}>{STATUS_META[detail.status].label}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {formatDate(detail.created_at)} · 相较当前 {difference === 0 ? '字数相同' : `${difference > 0 ? '多' : '少'} ${Math.abs(difference)} 字`}
+                    </p>
+                  </div>
+                  <Button variant="outline" loading={restoring} disabled={hasUnsavedChanges} onClick={restore}>
+                    <HistoryIcon className="h-4 w-4" /> 恢复此版本
+                  </Button>
+                </div>
+                {hasUnsavedChanges && (
+                  <div className="border-b border-amber-100 bg-amber-50 px-5 py-2.5 text-xs text-amber-800">
+                    当前编辑内容尚未保存。为防止内容丢失，请先关闭面板并手动保存后再恢复。
+                  </div>
+                )}
+                <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-slate-200 overflow-hidden lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+                  <RevisionContent title="历史版本" content={detail.content} />
+                  <RevisionContent title="当前编辑内容" content={currentContent} />
+                </div>
+              </>
+            ) : (
+              <EmptyState>选择左侧版本查看内容</EmptyState>
+            )}
+          </main>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function RevisionContent({ title, content }: { title: string; content: string }) {
+  return (
+    <section className="flex min-h-0 flex-col">
+      <h3 className="shrink-0 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
+      <pre className="min-h-0 flex-1 whitespace-pre-wrap break-words overflow-y-auto px-5 py-4 font-mono text-sm leading-6 text-slate-700">{content || '（空内容）'}</pre>
+    </section>
+  )
+}
 
 function VisibilityCard({ active, onClick, title, desc }: { active: boolean; onClick: () => void; title: string; desc: string }) {
   return (

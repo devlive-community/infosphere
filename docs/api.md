@@ -35,6 +35,8 @@ Authorization: Bearer <token>
 | `document:create` | 创建文档（仅本人书籍） | ✅ | ✅ |
 | `document:update` | 更新文档（仅本人书籍） | ✅ | ✅ |
 | `document:delete` | 删除文档（仅本人书籍） | ✅ | ✅ |
+| `document-revision:read` | 查看章节版本历史（所有者/admin/editor） | ✅ | ✅ |
+| `document-revision:restore` | 恢复章节历史版本（所有者/admin/editor） | ✅ | ✅ |
 | `user:read` | 查看用户公开主页 | ✅ | ✅ |
 | `user:update` | 更新个人资料与密码 | ✅ | ✅ |
 | `user:manage` | 管理后台管理用户：列表/角色/启停/删除 | ❌ | ✅ |
@@ -189,14 +191,19 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/books/:id/documents` | 可见书籍的文档树（不含正文）；未授权统一 404，普通读者/viewer 仅含已发布章节 | `document:read` |
-| POST | `/books/:id/documents` | 创建文档（title 必填；slug 留空自动生成；parent_id 归属校验） | `document:create` |
+| POST | `/books/:id/documents` | 创建文档（title 必填；slug 留空自动生成；parent_id 归属校验；成功后生成初始版本） | `document:create` |
 | GET | `/books/:id/documents/slug/:slug` | 按 slug 查文档（含正文） | `document:read` |
 | GET | `/documents/:id` | 文档详情（含正文） | `document:read` |
-| PUT | `/documents/:id` | 更新（title/content/parent_id/sort_order/status/slug；防环校验） | `document:update` |
+| PUT | `/documents/:id` | 更新（title/content/parent_id/sort_order/status/slug；防环校验）；手动保存传 `create_revision: true` 与 `revision_reason: save|publish` 生成不可变版本 | `document:update` |
 | DELETE | `/documents/:id` | 删除文档及其子树 | `document:delete` |
 | POST | `/documents/:id/view` | 章节浏览计数 +1，并同步累加所属书籍的 `view_count`（书籍总浏览=各章节浏览之和）；不可见返回 404 | `document:read` |
+| GET | `/documents/:id/revisions` | 章节版本列表（分页，不含正文）；未授权统一 404 | `document-revision:read` |
+| GET | `/documents/:id/revisions/:revisionId` | 版本详情（含正文）；未授权或版本不属于章节时统一 404 | `document-revision:read` |
+| POST | `/documents/:id/revisions/:revisionId/restore` | 恢复标题、正文、发布状态与评论设置；自动保留恢复前及恢复后快照 | `document-revision:restore` |
 
 文档字段：`id, book_id, parent_id, title, slug, content( markdown), user_id, sort_order, view_count, status, allow_comments(公开后允许评论，默认 true), created_at, updated_at, children`；创建/更新请求体同样接受 `allow_comments`
+
+版本列表字段：`id, document_id, book_id, title, content_length, status, allow_comments, reason(create|save|publish|pre_restore|restore), author(仅公开字段), created_at`；详情额外返回 `content`。版本记录只新增、不提供修改接口，目录排序等结构调整不会生成版本。
 
 > **协作（M14）**：书籍协作者（editor）拥有章节内容的增删改权限，与所有者相同；书籍设置与删除仍限所有者/管理员。viewer 可访问私有协作书籍及其已发布章节。协作者查看章节/文档端点直接复用上表权限。
 

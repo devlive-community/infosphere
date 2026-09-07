@@ -133,6 +133,9 @@ func (a *App) Router() *gin.Engine {
 			docs.POST("/books/:id/documents", a.RequirePermission(authz.DocumentCreate), a.CreateDocument)
 			docs.PUT("/documents/:id", a.RequirePermission(authz.DocumentUpdate), a.UpdateDocument)
 			docs.DELETE("/documents/:id", a.RequirePermission(authz.DocumentDelete), a.DeleteDocument)
+			docs.GET("/documents/:id/revisions", a.RequirePermission(authz.DocumentRevisionRead), a.ListDocumentRevisions)
+			docs.GET("/documents/:id/revisions/:revisionId", a.RequirePermission(authz.DocumentRevisionRead), a.GetDocumentRevision)
+			docs.POST("/documents/:id/revisions/:revisionId/restore", a.RequirePermission(authz.DocumentRevisionRestore), a.RestoreDocumentRevision)
 		}
 
 		// ── 全文搜索（search:read，匿名可搜公开内容） ──

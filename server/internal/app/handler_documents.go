@@ -61,13 +61,15 @@ func buildDocTree(docs []models.Document, parent *uint) []*models.Document {
 }
 
 type documentPayload struct {
-	Title         *string         `json:"title"`
-	Slug          *string         `json:"slug"`
-	Content       *string         `json:"content"`
-	ParentID      json.RawMessage `json:"parent_id"`
-	SortOrder     *int            `json:"sort_order"`
-	Status        *string         `json:"status"`
-	AllowComments *bool           `json:"allow_comments"`
+	Title          *string         `json:"title"`
+	Slug           *string         `json:"slug"`
+	Content        *string         `json:"content"`
+	ParentID       json.RawMessage `json:"parent_id"`
+	SortOrder      *int            `json:"sort_order"`
+	Status         *string         `json:"status"`
+	AllowComments  *bool           `json:"allow_comments"`
+	CreateRevision *bool           `json:"create_revision"`
+	RevisionReason *string         `json:"revision_reason"`
 }
 
 // parseParentID 解析 parent_id 三态：缺省(present=false)不改动；显式 null 表示置为顶级；数字表示挂到该父级
@@ -179,7 +181,13 @@ func (a *App) CreateDocument(c *gin.Context) {
 		return
 	}
 
-	if err := a.DB.Create(&doc).Error; err != nil {
+	if err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&doc).Error; err != nil {
+			return err
+		}
+		revision := newDocumentRevision(&doc, u.ID, "create")
+		return tx.Create(&revision).Error
+	}); err != nil {
 		fail(c, http.StatusInternalServerError, "创建失败: "+err.Error())
 		return
 	}
@@ -353,7 +361,20 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		}
 	}
 
-	if err := a.DB.Save(doc).Error; err != nil {
+	if err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(doc).Error; err != nil {
+			return err
+		}
+		if req.CreateRevision != nil && *req.CreateRevision {
+			reason := "save"
+			if req.RevisionReason != nil && (*req.RevisionReason == "save" || *req.RevisionReason == "publish") {
+				reason = *req.RevisionReason
+			}
+			revision := newDocumentRevision(doc, currentUser(c).ID, reason)
+			return tx.Create(&revision).Error
+		}
+		return nil
+	}); err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
 	}
@@ -404,7 +425,12 @@ func (a *App) DeleteDocument(c *gin.Context) {
 		}
 		frontier = next
 	}
-	if err := a.DB.Where("id IN ?", ids).Delete(&models.Document{}).Error; err != nil {
+	if err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("document_id IN ?", ids).Delete(&models.DocumentRevision{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("id IN ?", ids).Delete(&models.Document{}).Error
+	}); err != nil {
 		fail(c, http.StatusInternalServerError, "删除失败: "+err.Error())
 		return
 	}

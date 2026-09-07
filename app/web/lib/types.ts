@@ -70,6 +70,25 @@ export interface Document {
   children?: Document[]
 }
 
+export type DocumentRevisionReason = 'create' | 'save' | 'publish' | 'pre_restore' | 'restore'
+
+export interface DocumentRevisionSummary {
+  id: number
+  document_id: number
+  book_id: number
+  title: string
+  content_length: number
+  status: BookStatus
+  allow_comments: boolean
+  reason: DocumentRevisionReason
+  author?: Pick<User, 'id' | 'username' | 'avatar'>
+  created_at: string
+}
+
+export interface DocumentRevision extends DocumentRevisionSummary {
+  content: string
+}
+
 export interface SiteConfig {
   site_name?: string
   site_description?: string
