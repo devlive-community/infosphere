@@ -16,7 +16,7 @@ import BookCard from '@/components/BookCard'
 import Seo from '@/components/Seo'
 import {
   BookIcon, CalendarIcon, CheckCircleSmallIcon, ChevronRightIcon, EyeIcon,
-  GlobeIcon, HelpCircleIcon, LinkIcon, ShareIcon, BookmarkIcon, ClockIcon, GearIcon,
+  GlobeIcon, HeartIcon, HelpCircleIcon, LinkIcon, ShareIcon, BookmarkIcon, ClockIcon, GearIcon,
 } from '@/components/icons'
 import type { Book, BookAccess, Document, User } from '@/lib/types'
 
@@ -119,11 +119,13 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   }, [needsAuth, ssrBook, slug])
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
   const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string } | null>(null)
+  const [liked, setLiked] = useState(false)
+  const [likeCount, setLikeCount] = useState<number | null>(null)
   const [favorited, setFavorited] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState<number | null>(null)
-  const [favoriteReady, setFavoriteReady] = useState(false)
-  const [favoriteError, setFavoriteError] = useState('')
-  const [reactBusy, setReactBusy] = useState(false)
+  const [reactionsReady, setReactionsReady] = useState(false)
+  const [reactionError, setReactionError] = useState('')
+  const [reactBusy, setReactBusy] = useState<'like' | 'favorite' | null>(null)
   const bookSlugSafe = book?.slug || ''
   const username = user?.username || ''
   useEffect(() => {
@@ -134,34 +136,41 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
   useEffect(() => {
     if (!authReady || !book) {
-      setFavoriteReady(false)
+      setReactionsReady(false)
       return
     }
     if (!user) {
+      setLiked(false)
+      setLikeCount(null)
       setFavorited(false)
       setFavoriteCount(null)
-      setFavoriteError('')
-      setFavoriteReady(true)
+      setReactionError('')
+      setReactionsReady(true)
       return
     }
 
     let cancelled = false
-    setFavoriteReady(false)
-    setFavoriteError('')
-    api<{ types: string[]; favorite_count: number }>(`/books/${book.id}/reactions/me`)
+    setReactionsReady(false)
+    setReactionError('')
+    api<{ types: string[]; like_count: number; favorite_count: number }>(`/books/${book.id}/reactions/me`)
       .then((result) => {
         if (cancelled) return
-        setFavorited((result.types || []).includes('favorite'))
+        const types = result.types || []
+        setLiked(types.includes('like'))
+        setLikeCount(result.like_count || 0)
+        setFavorited(types.includes('favorite'))
         setFavoriteCount(result.favorite_count || 0)
       })
       .catch((error) => {
         if (cancelled) return
+        setLiked(false)
+        setLikeCount(null)
         setFavorited(false)
         setFavoriteCount(null)
-        setFavoriteError((error as Error).message || '收藏状态加载失败')
+        setReactionError((error as Error).message || '互动状态加载失败')
       })
       .finally(() => {
-        if (!cancelled) setFavoriteReady(true)
+        if (!cancelled) setReactionsReady(true)
       })
 
     return () => { cancelled = true }
@@ -227,7 +236,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
     }
   }
 
-  async function toggleFavorite() {
+  async function toggleReaction(type: 'like' | 'favorite') {
     const currentBook = book
     if (!currentBook) return
     if (!user) {
@@ -235,26 +244,36 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       await router.push(`/login?next=${encodeURIComponent(next)}`)
       return
     }
-    if (!favoriteReady || reactBusy) return
+    if (!reactionsReady || reactBusy) return
 
-    const previousFavorited = favorited
-    const previousCount = favoriteCount
-    setReactBusy(true)
-    setFavoriteError('')
-    setFavorited(!previousFavorited)
-    setFavoriteCount((count) => count === null ? count : Math.max(0, count + (previousFavorited ? -1 : 1)))
+    const wasActive = type === 'like' ? liked : favorited
+    const previousCount = type === 'like' ? likeCount : favoriteCount
+    setReactBusy(type)
+    setReactionError('')
+    if (type === 'like') {
+      setLiked(!wasActive)
+      setLikeCount((count) => count === null ? count : Math.max(0, count + (wasActive ? -1 : 1)))
+    } else {
+      setFavorited(!wasActive)
+      setFavoriteCount((count) => count === null ? count : Math.max(0, count + (wasActive ? -1 : 1)))
+    }
     try {
-      if (previousFavorited) {
-        await api(`/books/${currentBook.id}/reactions`, { method: 'DELETE', params: { type: 'favorite' } })
+      if (wasActive) {
+        await api(`/books/${currentBook.id}/reactions`, { method: 'DELETE', params: { type } })
       } else {
-        await api(`/books/${currentBook.id}/reactions`, { method: 'POST', body: { type: 'favorite' } })
+        await api(`/books/${currentBook.id}/reactions`, { method: 'POST', body: { type } })
       }
     } catch (error) {
-      setFavorited(previousFavorited)
-      setFavoriteCount(previousCount)
-      setFavoriteError((error as Error).message || '收藏操作失败，请稍后重试')
+      if (type === 'like') {
+        setLiked(wasActive)
+        setLikeCount(previousCount)
+      } else {
+        setFavorited(wasActive)
+        setFavoriteCount(previousCount)
+      }
+      setReactionError((error as Error).message || `${type === 'like' ? '点赞' : '收藏'}操作失败，请稍后重试`)
     } finally {
-      setReactBusy(false)
+      setReactBusy(null)
     }
   }
 
@@ -347,14 +366,25 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               ) : (
                 <span className="text-sm text-slate-400">暂无已发布章节</span>
               )}
-              <Button type="button" variant="outline" onClick={toggleFavorite}
-                disabled={!authReady || (!!user && !favoriteReady) || reactBusy}
+              <Button type="button" variant="outline" onClick={() => toggleReaction('like')}
+                disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
+                aria-pressed={liked}
+                className={`h-11 px-5 ${liked
+                  ? 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100'
+                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
+                <HeartIcon className="h-4 w-4" />
+                {!authReady || (!!user && !reactionsReady) || reactBusy === 'like'
+                  ? '处理中…'
+                  : `${liked ? '已点赞' : '点赞'}${likeCount !== null ? ` ${formatNumber(likeCount)}` : ''}`}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => toggleReaction('favorite')}
+                disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
                 aria-pressed={favorited}
                 className={`h-11 px-5 ${favorited
                   ? 'border-primary-200 bg-primary-50 text-primary-700 hover:border-primary-300 hover:bg-primary-100'
                   : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
                 <BookmarkIcon className="h-4 w-4" />
-                {!authReady || (!!user && !favoriteReady) || reactBusy
+                {!authReady || (!!user && !reactionsReady) || reactBusy === 'favorite'
                   ? '处理中…'
                   : `${favorited ? '已收藏' : '收藏'}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
               </Button>
@@ -373,7 +403,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 </>
               )}
             </div>
-            {favoriteError && <p role="alert" className="mt-2 text-sm text-rose-600">{favoriteError}</p>}
+            {reactionError && <p role="alert" className="mt-2 text-sm text-rose-600">{reactionError}</p>}
           </div>
 
           {/* 右：书籍信息卡 */}
