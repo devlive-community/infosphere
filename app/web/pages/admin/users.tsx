@@ -119,6 +119,10 @@ export default function AdminUsers() {
 
       {message && <div className="mb-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
 
+      {loading ? (
+        <Loading className="py-24" label="正在加载用户…" />
+      ) : (
+      <>
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
@@ -133,9 +137,7 @@ export default function AdminUsers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr><td colSpan={6}><Loading className="py-10" label="正在加载用户…" /></td></tr>
-              ) : items.length === 0 ? (
+              {items.length === 0 ? (
                 <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-400">没有符合条件的用户</td></tr>
               ) : items.map((u) => {
                 const self = u.id === user?.id
@@ -187,6 +189,8 @@ export default function AdminUsers() {
       </div>
 
       <Pagination page={page} pageSize={PAGE_SIZE} total={total} onChange={setPage} />
+      </>
+      )}
     </AdminLayout>
   )
 }

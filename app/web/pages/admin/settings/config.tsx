@@ -113,6 +113,9 @@ export default function SettingsConfig() {
       {message && <div className="mb-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
 
       {/* 配置列表 */}
+      {loading ? (
+        <Loading className="py-24" label="正在加载系统配置…" />
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
@@ -126,9 +129,7 @@ export default function SettingsConfig() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr><td colSpan={5}><Loading className="py-10" label="正在加载系统配置…" /></td></tr>
-              ) : items.length === 0 ? (
+              {items.length === 0 ? (
                 <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-400">暂无配置</td></tr>
               ) : items.map((it) => {
                 const editing = editKey === it.key
@@ -173,6 +174,7 @@ export default function SettingsConfig() {
           </table>
         </div>
       </div>
+      )}
     </SettingsLayout>
   )
 }
