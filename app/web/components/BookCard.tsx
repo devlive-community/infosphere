@@ -125,8 +125,9 @@ export default function BookCard({
     </Link>
   )
 
+  // 头像始终非链接：authorLink 为真时外层已是 <Link>，内部再套 Link 会产生嵌套 <a> 破坏水合
   const authorInner = book.user && (
-    <UserAvatar user={book.user} size="h-5 w-5" link={authorLink} />
+    <UserAvatar user={book.user} size="h-5 w-5" link={false} tooltip={false} />
   )
 
   const authorBlock = showAuthor && book.user && (
