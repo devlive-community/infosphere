@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -54,6 +55,7 @@ func contentImportRouter(app *App, user *models.User) *gin.Engine {
 	})
 	router.POST("/import/pdf", app.ImportPDFBook)
 	router.POST("/import/web", app.ImportWebBook)
+	router.POST("/books/:id/documents/import-web", app.ImportWebDocument)
 	return router
 }
 
@@ -199,6 +201,72 @@ func TestImportWebRejectsPrivateAndUnsupportedURLs(t *testing.T) {
 		if recorder.Code != http.StatusBadRequest {
 			t.Fatalf("危险 URL 应被拒绝: url=%s status=%d body=%s", rawURL, recorder.Code, recorder.Body.String())
 		}
+	}
+}
+
+func TestImportWebDocumentRemovesPageChromeAndCreatesRevision(t *testing.T) {
+	app, owner, db := newContentImportTestApp(t)
+	book := models.Book{Title: "采集测试书", Slug: "collect-test", UserID: owner.ID, Status: "draft", IsPublic: false}
+	if err := db.Create(&book).Error; err != nil {
+		t.Fatal(err)
+	}
+	parent := models.Document{BookID: book.ID, UserID: owner.ID, Title: "资料", Slug: "sources", Status: "draft"}
+	if err := db.Create(&parent).Error; err != nil {
+		t.Fatal(err)
+	}
+	app.WebFetcher = func(_ context.Context, target *url.URL) (webPage, error) {
+		return webPage{
+			HTML: `<html><head><title>需要的正文</title></head><body>
+			<header>站点标题和登录注册</header><nav>全站导航</nav>
+			<main><article class="article-content"><h1>需要的正文</h1>
+			<p>这是需要采集到书籍章节里的主要文章内容，应当被完整保留下来。</p>
+			<aside>作者推荐</aside><div class="ad-container">广告内容</div>
+			<div id="comments">读者评论</div><div class="article-footer">分享与相关推荐</div>
+			</article></main><footer>备案信息与版权导航</footer></body></html>`,
+			FinalURL: target,
+		}, nil
+	}
+	router := contentImportRouter(app, owner)
+	body := `{"url":"https://8.8.8.8/posts/clean","render_mode":"static","parent_id":` + strconv.FormatUint(uint64(parent.ID), 10) + `,"sort_order":3}`
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/documents/import-web", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("采集网页章节失败: %d %v", recorder.Code, decodeImportResponse(t, recorder))
+	}
+
+	var doc models.Document
+	if err := db.Where("book_id = ? AND id <> ?", book.ID, parent.ID).First(&doc).Error; err != nil {
+		t.Fatal(err)
+	}
+	if doc.Status != "draft" || doc.ParentID == nil || *doc.ParentID != parent.ID || doc.SortOrder != 3 {
+		t.Fatalf("采集章节结构错误: %+v", doc)
+	}
+	for _, noise := range []string{"站点标题", "全站导航", "作者推荐", "广告内容", "读者评论", "分享与相关推荐", "备案信息"} {
+		if strings.Contains(doc.Content, noise) {
+			t.Fatalf("采集正文包含页面噪声 %q: %s", noise, doc.Content)
+		}
+	}
+	if !strings.Contains(doc.Content, "主要文章内容") || !strings.Contains(doc.Content, "[原始网页](https://8.8.8.8/posts/clean)") {
+		t.Fatalf("采集正文或来源链接缺失: %s", doc.Content)
+	}
+	var revision models.DocumentRevision
+	if err := db.Where("document_id = ? AND reason = ?", doc.ID, "create").First(&revision).Error; err != nil {
+		t.Fatalf("采集章节未生成初始版本: %v", err)
+	}
+
+	viewer := &models.User{Username: "import-viewer", Email: "import-viewer@test.local", IsActive: true}
+	if err := db.Create(viewer).Error; err != nil {
+		t.Fatal(err)
+	}
+	viewerRouter := contentImportRouter(app, viewer)
+	denied := httptest.NewRecorder()
+	deniedRequest := httptest.NewRequest(http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/documents/import-web", strings.NewReader(body))
+	deniedRequest.Header.Set("Content-Type", "application/json")
+	viewerRouter.ServeHTTP(denied, deniedRequest)
+	if denied.Code != http.StatusNotFound {
+		t.Fatalf("无权用户采集私有书籍时应统一返回 404: %d", denied.Code)
 	}
 }
 

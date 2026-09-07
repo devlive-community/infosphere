@@ -273,6 +273,8 @@ Authorization: Bearer <token>
 | POST | `/import` | multipart 上传 `file`（zip），可选 `title`；解析同一结构还原为新书：元数据/标签/章节树（按 parent slug 重建）/图片写回上传目录；slug 冲突自动追加 `-imported-N`；安全限制：≤500 文件、解压总量 ≤64MB、拒绝 `..` 路径 | `book:import` |
 | POST | `/import/pdf` | multipart 上传 `file`（PDF，≤64MB），可选 `title`；提取文本后优先按“第 N 章/篇/部/卷”或 `Chapter N` 拆章，无明确结构时按长度分段；扫描版 PDF 需预先 OCR；结果固定为私有草稿 | `book:import` |
 | POST | `/import/web` | JSON `{url,title?,render_mode?}`，`render_mode` 为 `auto`（默认）、`static` 或 `browser`；自动模式先静态抓取，检测到 SPA 空壳或正文不足时使用 Chromium 执行 JavaScript；正文转为 Markdown 并将相对链接补全；结果固定为私有草稿 | `book:import` |
+| POST | `/books/:id/documents/import-web` | JSON `{url,title?,render_mode?,parent_id?,sort_order?}`；复用网页正文提取与 SPA 渲染，剔除页头、页脚、导航、侧栏、广告、分享、评论、相关推荐与弹窗，直接在可编辑书籍内创建草稿章节并记录原始来源 | `document:create` |
+| POST | `/books/:id/documents/import-web` | JSON `{url,title?,render_mode?,parent_id?,sort_order?}`；复用网页正文提取与 SPA 渲染，剔除页头、页脚、导航、侧栏、广告、分享、评论、相关推荐与弹窗，直接在可编辑书籍内创建草稿章节并记录原始来源 | `document:create` |
 
 > 安全边界：网页导入只允许 HTTP(S)，拒绝 localhost、内网、回环及链路本地地址；重定向和浏览器发起的子资源请求也执行同一校验。动态网页首次导入若系统没有 Chrome/Chromium，会在数据目录准备 Chromium 运行环境。所有导入章节都会生成 `create` 初始版本。
 

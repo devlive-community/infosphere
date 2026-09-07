@@ -8,7 +8,7 @@ import Seo from '@/components/Seo'
 import { Button, Input, Textarea, Select, Field, Badge, EmptyState, Loading } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
-  CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
+  CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
   ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
 } from '@/components/icons'
 import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, PageResult } from '@/lib/types'
@@ -64,6 +64,7 @@ export default function Writer({ user }: WriterProps) {
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [message, setMessage] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [webImportOpen, setWebImportOpen] = useState(false)
 
   // 章节表单
   const [title, setTitle] = useState('')
@@ -351,6 +352,21 @@ export default function Writer({ user }: WriterProps) {
     setTimeout(() => textareaRef.current?.focus(), 0)
   }
 
+  function openWebImport() {
+    if (!confirmDiscard()) return
+    setNewMenuOpen(false)
+    setWebImportOpen(true)
+  }
+
+  async function handleWebImported(document: Document) {
+    setWebImportOpen(false)
+    if (document.parent_id) setExpanded((value) => new Set(value).add(document.parent_id as number))
+    if (book) await loadTree(book)
+    await router.push(`/book/writer/${encodeURIComponent(bookSlug)}/${encodeURIComponent(document.slug)}`, undefined, { shallow: true })
+    setMessage(`已采集为草稿章节《${document.title}》`)
+    setTimeout(() => setMessage(''), 2500)
+  }
+
   async function saveBookSettings() {
     if (!book) return
     try {
@@ -514,6 +530,7 @@ export default function Writer({ user }: WriterProps) {
                     <div className="absolute left-0 right-0 top-11 z-20 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                       <button onClick={() => { createNew(); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> 新建章节</button>
                       <button onClick={() => { setNewMenuOpen(false); if (!current) { setMessage('请先选择一个章节作为父级'); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
+                      <button onClick={openWebImport} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> 从网页采集</button>
                     </div>
                   )}
                 </div>
@@ -689,6 +706,16 @@ export default function Writer({ user }: WriterProps) {
         onClose={() => setHistoryOpen(false)}
         onRestored={applyRestoredDocument}
       />
+      {book && (
+        <WebDocumentImportDialog
+          open={webImportOpen}
+          bookId={book.id}
+          parent={current}
+          topLevelCount={tree.length}
+          onClose={() => setWebImportOpen(false)}
+          onImported={handleWebImported}
+        />
+      )}
     </div>
   )
 }
@@ -701,6 +728,115 @@ const REVISION_REASON_LABEL: Record<DocumentRevisionSummary['reason'], string> =
   publish: '发布版本',
   pre_restore: '恢复前备份',
   restore: '恢复完成',
+}
+
+type WebRenderMode = 'auto' | 'static' | 'browser'
+
+function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose, onImported }: {
+  open: boolean
+  bookId: number
+  parent: Document | null
+  topLevelCount: number
+  onClose: () => void
+  onImported: (document: Document) => Promise<void>
+}) {
+  const [url, setURL] = useState('')
+  const [title, setTitle] = useState('')
+  const [renderMode, setRenderMode] = useState<WebRenderMode>('auto')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setURL('')
+    setTitle('')
+    setRenderMode('auto')
+    setError('')
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(event: KeyboardEvent) { if (event.key === 'Escape' && !loading) onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, loading, onClose])
+
+  if (!open) return null
+
+  async function collect() {
+    if (!url.trim()) {
+      setError('请输入要采集的网页地址')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const result = await api<{ document: Document }>(`/books/${bookId}/documents/import-web`, {
+        method: 'POST',
+        body: {
+          url: url.trim(), title: title.trim(), render_mode: renderMode,
+          parent_id: parent?.id ?? null,
+          sort_order: parent ? parent.children?.length || 0 : topLevelCount,
+        },
+      })
+      await onImported(result.document)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4 backdrop-blur-[2px]"
+      role="dialog" aria-modal="true" aria-label="从网页采集章节"
+      onMouseDown={(event) => { if (!loading && event.target === event.currentTarget) onClose() }}>
+      <section className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <header className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+          <div className="flex gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+              <GlobeIcon className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">从网页采集章节</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {parent ? `将作为《${parent.title}》的子章节保存` : '将作为顶级章节保存'}，默认保持草稿状态。
+              </p>
+            </div>
+          </div>
+          <button type="button" aria-label="关闭网页采集" disabled={loading} onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40">
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </header>
+
+        <div className="space-y-5 px-6 py-6">
+          <Field label="网页地址" hint="自动提取正文，导航、页头、页脚、侧栏、广告、评论与相关推荐不会写入章节。">
+            <Input className="h-11" type="url" value={url} onChange={(event) => setURL(event.target.value)}
+              placeholder="https://example.com/article" leading={<GlobeIcon className="h-4 w-4" />} />
+          </Field>
+          <Field label={<>章节标题 <span className="font-normal text-slate-400">（可选）</span></>} hint="留空时使用网页标题。">
+            <Input className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="使用网页标题" />
+          </Field>
+          <Field label="解析方式">
+            <Select value={renderMode} onChange={(value) => setRenderMode(value as WebRenderMode)} options={[
+              { value: 'auto', label: '自动识别（推荐）' },
+              { value: 'static', label: '仅静态抓取' },
+              { value: 'browser', label: '使用浏览器运行 JavaScript' },
+            ]} />
+          </Field>
+
+          {error && <div role="alert" className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
+          {loading && <div className="rounded-xl border border-primary-100 bg-primary-50/50 px-4 py-4"><Loading className="py-1" label="正在提取网页正文并构建章节…" /></div>}
+
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
+            <Button variant="outline" disabled={loading} onClick={onClose}>取消</Button>
+            <Button loading={loading} onClick={collect}>采集为章节</Button>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 function RevisionDrawer({

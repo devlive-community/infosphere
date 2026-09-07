@@ -131,6 +131,7 @@ func (a *App) Router() *gin.Engine {
 		docs := api.Group("", a.RequireAuth())
 		{
 			docs.POST("/books/:id/documents", a.RequirePermission(authz.DocumentCreate), a.CreateDocument)
+			docs.POST("/books/:id/documents/import-web", a.RequirePermission(authz.DocumentCreate), a.ImportWebDocument)
 			docs.PUT("/documents/:id", a.RequirePermission(authz.DocumentUpdate), a.UpdateDocument)
 			docs.DELETE("/documents/:id", a.RequirePermission(authz.DocumentDelete), a.DeleteDocument)
 			docs.GET("/documents/:id/revisions", a.RequirePermission(authz.DocumentRevisionRead), a.ListDocumentRevisions)

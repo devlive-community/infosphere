@@ -59,6 +59,8 @@ type webImportPayload struct {
 	URL        string `json:"url"`
 	Title      string `json:"title"`
 	RenderMode string `json:"render_mode"` // auto | static | browser
+	ParentID   *uint  `json:"parent_id,omitempty"`
+	SortOrder  *int   `json:"sort_order,omitempty"`
 }
 
 type webArticle struct {
@@ -160,22 +162,92 @@ func (a *App) ImportWebBook(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
+	defer cancel()
+	article, page, usedMode, err := a.collectWebArticle(ctx, req)
+	if err != nil {
+		failWebImport(c, err)
+		return
+	}
+	if customTitle := strings.TrimSpace(req.Title); customTitle != "" {
+		article.Title = truncateText(customTitle, 255)
+	}
+	chapter := importedChapter{Title: "正文", Content: article.Markdown}
+	book, err := a.createContentImportBook(u, article.Title, article.Description, []importedChapter{chapter})
+	if err != nil {
+		fail(c, http.StatusInternalServerError, "创建网页书籍失败: "+err.Error())
+		return
+	}
+	ok(c, gin.H{
+		"book": book, "imported_doc": 1, "source": "web", "render_mode": usedMode,
+		"source_url": page.FinalURL.String(),
+		"message":    fmt.Sprintf("导入完成：《%s》已创建为草稿", book.Title),
+	})
+}
+
+// ImportWebDocument POST /books/:id/documents/import-web 抓取网页并建立草稿章节。
+func (a *App) ImportWebDocument(c *gin.Context) {
+	book, status := a.findBook(c)
+	if book == nil {
+		fail(c, status, "书籍不存在")
+		return
+	}
+	u := currentUser(c)
+	if !a.canEditBookContent(u, book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	var req webImportPayload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	if req.ParentID != nil {
+		var count int64
+		if err := a.DB.Model(&models.Document{}).Where("id = ? AND book_id = ?", *req.ParentID, book.ID).Count(&count).Error; err != nil {
+			fail(c, http.StatusInternalServerError, "校验父章节失败")
+			return
+		}
+		if count == 0 {
+			fail(c, http.StatusBadRequest, "父章节不存在")
+			return
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
+	defer cancel()
+	article, page, usedMode, err := a.collectWebArticle(ctx, req)
+	if err != nil {
+		failWebImport(c, err)
+		return
+	}
+	if customTitle := strings.TrimSpace(req.Title); customTitle != "" {
+		article.Title = truncateText(customTitle, 255)
+	}
+	content := strings.TrimSpace(article.Markdown) + "\n\n> 来源：[原始网页](" + page.FinalURL.String() + ")"
+	doc, err := a.createImportedWebDocument(book, u, article.Title, content, req.ParentID, req.SortOrder)
+	if err != nil {
+		fail(c, http.StatusInternalServerError, "创建网页章节失败: "+err.Error())
+		return
+	}
+	ok(c, gin.H{
+		"document": doc, "source_url": page.FinalURL.String(), "render_mode": usedMode,
+		"message": fmt.Sprintf("已采集为草稿章节《%s》", doc.Title),
+	})
+}
+
+func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webArticle, webPage, string, error) {
 	mode := strings.ToLower(strings.TrimSpace(req.RenderMode))
 	if mode == "" {
 		mode = "auto"
 	}
 	if mode != "auto" && mode != "static" && mode != "browser" {
-		fail(c, http.StatusBadRequest, "render_mode 必须为 auto、static 或 browser")
-		return
+		return webArticle{}, webPage{}, "", errors.New("render_mode 必须为 auto、static 或 browser")
 	}
 	target, err := validateImportURL(req.URL)
 	if err != nil {
-		fail(c, http.StatusBadRequest, err.Error())
-		return
+		return webArticle{}, webPage{}, "", err
 	}
-
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
-	defer cancel()
 	fetcher := a.WebFetcher
 	if fetcher == nil {
 		fetcher = fetchStaticWebPage
@@ -214,32 +286,69 @@ func (a *App) ImportWebBook(c *gin.Context) {
 		}
 	}
 	if err != nil {
-		status := http.StatusUnprocessableEntity
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			status = http.StatusGatewayTimeout
-		}
-		fail(c, status, "网页获取失败: "+err.Error())
-		return
+		return webArticle{}, webPage{}, "", err
 	}
 	article, err := extractWebArticle(page)
 	if err != nil {
-		fail(c, http.StatusUnprocessableEntity, "网页正文解析失败: "+err.Error())
-		return
+		return webArticle{}, webPage{}, "", fmt.Errorf("网页正文解析失败: %w", err)
 	}
-	if customTitle := strings.TrimSpace(req.Title); customTitle != "" {
-		article.Title = truncateText(customTitle, 255)
+	return article, page, usedMode, nil
+}
+
+func failWebImport(c *gin.Context, err error) {
+	status := http.StatusUnprocessableEntity
+	if strings.Contains(err.Error(), "render_mode") || strings.Contains(err.Error(), "网页地址") || strings.Contains(err.Error(), "不允许访问") {
+		status = http.StatusBadRequest
 	}
-	chapter := importedChapter{Title: "正文", Content: article.Markdown}
-	book, err := a.createContentImportBook(u, article.Title, article.Description, []importedChapter{chapter})
-	if err != nil {
-		fail(c, http.StatusInternalServerError, "创建网页书籍失败: "+err.Error())
-		return
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		status = http.StatusGatewayTimeout
 	}
-	ok(c, gin.H{
-		"book": book, "imported_doc": 1, "source": "web", "render_mode": usedMode,
-		"source_url": page.FinalURL.String(),
-		"message":    fmt.Sprintf("导入完成：《%s》已创建为草稿", book.Title),
+	fail(c, status, "网页获取失败: "+err.Error())
+}
+
+func (a *App) createImportedWebDocument(book *models.Book, u *models.User, title, content string, parentID *uint, sortOrder *int) (models.Document, error) {
+	title = truncateText(strings.TrimSpace(title), 255)
+	if title == "" {
+		title = "采集的网页"
+	}
+	allowComments := true
+	doc := models.Document{
+		BookID: book.ID, UserID: u.ID, Title: title, Content: strings.TrimSpace(content),
+		ParentID: parentID, Status: "draft", AllowComments: &allowComments,
+	}
+	if sortOrder != nil {
+		doc.SortOrder = *sortOrder
+	}
+	baseSlug := slugify(title)
+	if baseSlug == "" {
+		baseSlug = randomSlug("doc")
+	}
+	err := a.DB.Transaction(func(tx *gorm.DB) error {
+		availableSlug := false
+		for suffix := 1; suffix <= 50; suffix++ {
+			doc.Slug = baseSlug
+			if suffix > 1 {
+				doc.Slug = fmt.Sprintf("%s-%d", baseSlug, suffix)
+			}
+			var count int64
+			if err := tx.Model(&models.Document{}).Where("book_id = ? AND slug = ?", book.ID, doc.Slug).Count(&count).Error; err != nil {
+				return err
+			}
+			if count == 0 {
+				availableSlug = true
+				break
+			}
+		}
+		if !availableSlug {
+			return errors.New("章节 slug 生成失败")
+		}
+		if err := tx.Create(&doc).Error; err != nil {
+			return err
+		}
+		revision := newDocumentRevision(&doc, u.ID, "create")
+		return tx.Create(&revision).Error
 	})
+	return doc, err
 }
 
 func extractPDFText(path string) (pdfExtractResult, error) {
@@ -699,13 +808,13 @@ func largestContentNode(doc *html.Node) *html.Node {
 	walk = func(node *html.Node) {
 		if node.Type == html.ElementNode {
 			tag := strings.ToLower(node.Data)
-			if tag == "script" || tag == "style" || tag == "noscript" || tag == "svg" || tag == "nav" || tag == "footer" || tag == "header" || tag == "form" {
+			if shouldIgnoreWebNode(node) {
 				return
 			}
 			if tag == "body" {
 				body = node
 			}
-			if tag == "article" || tag == "main" || attribute(node, "role") == "main" {
+			if isWebContentCandidate(node) {
 				length := utf8.RuneCountInString(nodeText(node))
 				if length > semanticLength {
 					semanticBest, semanticLength = node, length
@@ -726,17 +835,80 @@ func largestContentNode(doc *html.Node) *html.Node {
 func pruneIgnoredNodes(root *html.Node) {
 	for child := root.FirstChild; child != nil; {
 		next := child.NextSibling
-		if child.Type == html.ElementNode {
-			tag := strings.ToLower(child.Data)
-			if tag == "script" || tag == "style" || tag == "noscript" || tag == "svg" || tag == "nav" || tag == "footer" || tag == "header" || tag == "form" {
-				root.RemoveChild(child)
-				child = next
-				continue
-			}
+		if child.Type == html.ElementNode && shouldIgnoreWebNode(child) {
+			root.RemoveChild(child)
+			child = next
+			continue
 		}
 		pruneIgnoredNodes(child)
 		child = next
 	}
+}
+
+var ignoredWebRegionTokens = map[string]bool{
+	"ad": true, "ads": true, "advert": true, "advertisement": true,
+	"aside": true, "banner": true, "breadcrumb": true, "breadcrumbs": true,
+	"comment": true, "comments": true, "cookie": true, "dialog": true,
+	"footer": true, "header": true, "menu": true, "modal": true,
+	"nav": true, "navigation": true, "popup": true, "recommend": true,
+	"recommendation": true, "related": true, "share": true, "sharing": true,
+	"sidebar": true, "social": true, "subscribe": true, "toolbar": true,
+}
+
+var webContentRegionTokens = map[string]bool{
+	"article-body": true, "article-content": true, "content-body": true,
+	"entry-content": true, "post-body": true, "post-content": true,
+}
+
+func shouldIgnoreWebNode(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	tag := strings.ToLower(node.Data)
+	if tag == "script" || tag == "style" || tag == "noscript" || tag == "svg" || tag == "nav" || tag == "footer" || tag == "header" || tag == "form" || tag == "aside" || tag == "dialog" || tag == "template" {
+		return true
+	}
+	if strings.EqualFold(attribute(node, "aria-hidden"), "true") || hasAttribute(node, "hidden") {
+		return true
+	}
+	role := strings.ToLower(attribute(node, "role"))
+	if role == "banner" || role == "complementary" || role == "contentinfo" || role == "dialog" || role == "navigation" {
+		return true
+	}
+	for _, token := range webRegionTokens(node) {
+		if ignoredWebRegionTokens[token] {
+			return true
+		}
+	}
+	return false
+}
+
+func isWebContentCandidate(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	tag := strings.ToLower(node.Data)
+	if tag == "article" || tag == "main" || strings.EqualFold(attribute(node, "role"), "main") || strings.EqualFold(attribute(node, "itemprop"), "articleBody") {
+		return true
+	}
+	for _, token := range webRegionTokens(node) {
+		if webContentRegionTokens[token] {
+			return true
+		}
+	}
+	return false
+}
+
+func webRegionTokens(node *html.Node) []string {
+	raw := strings.ToLower(attribute(node, "id") + " " + attribute(node, "class"))
+	compound := strings.FieldsFunc(raw, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r) && r != '-'
+	})
+	tokens := append([]string(nil), compound...)
+	for _, token := range compound {
+		tokens = append(tokens, strings.FieldsFunc(token, func(r rune) bool { return r == '-' })...)
+	}
+	return tokens
 }
 
 func firstElement(root *html.Node, tag string) *html.Node {
@@ -778,6 +950,15 @@ func attribute(node *html.Node, key string) string {
 	return ""
 }
 
+func hasAttribute(node *html.Node, key string) bool {
+	for _, attr := range node.Attr {
+		if strings.EqualFold(attr.Key, key) {
+			return true
+		}
+	}
+	return false
+}
+
 func nodeText(node *html.Node) string {
 	if node == nil {
 		return ""
@@ -785,11 +966,8 @@ func nodeText(node *html.Node) string {
 	if node.Type == html.TextNode {
 		return node.Data
 	}
-	if node.Type == html.ElementNode {
-		tag := strings.ToLower(node.Data)
-		if tag == "script" || tag == "style" || tag == "noscript" || tag == "svg" || tag == "nav" || tag == "footer" || tag == "header" || tag == "form" {
-			return ""
-		}
+	if node.Type == html.ElementNode && shouldIgnoreWebNode(node) {
+		return ""
 	}
 	var result strings.Builder
 	for child := node.FirstChild; child != nil; child = child.NextSibling {
