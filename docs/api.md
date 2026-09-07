@@ -271,7 +271,8 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/reading-progress/:bookId` | 当前用户在可见书籍中的最近阅读章节；无进度返回 `null` | `reading-progress:read` |
-| PUT | `/reading-progress/:bookId` | 记录/覆盖进度；`doc_id` 必须属于该书且当前可读，slug/title 由服务端真实章节覆盖 | `reading-progress:update` |
+| PUT | `/reading-progress/:bookId` | 记录/覆盖进度；`doc_id` 必须属于该书且当前可读，slug/title 由服务端真实章节覆盖；同时将该章节标记为已读 | `reading-progress:update` |
+| GET | `/books/:id/read-chapters` | 当前用户在该书已读的章节 ID 列表 `{doc_ids:[]}`，用于详情页进度标记 | `user:read` |
 
 响应为进度对象 `{ id, user_id, book_id, doc_id, doc_slug, doc_title, updated_at }`，每用户每书一条（upsert）。
 

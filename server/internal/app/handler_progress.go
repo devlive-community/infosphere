@@ -57,7 +57,30 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 		return
 	}
 	a.DB.Model(&progress).Updates(map[string]any{"doc_id": doc.ID, "doc_slug": doc.Slug, "doc_title": doc.Title})
+
+	// 记录该章节已读（每用户每章一条，重复读不重复插入）
+	read := models.ReadChapter{UserID: u.ID, BookID: book.ID, DocID: doc.ID}
+	a.DB.Where("user_id = ? AND doc_id = ?", u.ID, doc.ID).FirstOrCreate(&read)
+
 	ok(c, progress)
+}
+
+// ReadChapters GET /books/:id/read-chapters 当前用户在该书籍已读的章节 ID 列表
+func (a *App) ReadChapters(c *gin.Context) {
+	u := currentUser(c)
+	bookID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	var book models.Book
+	if err := a.DB.First(&book, bookID).Error; err != nil || !a.canReadBook(u, &book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	docIDs := []uint{}
+	a.DB.Model(&models.ReadChapter{}).Where("user_id = ? AND book_id = ?", u.ID, book.ID).Pluck("doc_id", &docIDs)
+	ok(c, gin.H{"doc_ids": docIDs})
 }
 
 // GetReadingProgress GET /reading-progress/:bookId 当前用户在该书籍的进度

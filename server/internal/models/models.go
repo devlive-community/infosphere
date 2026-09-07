@@ -150,6 +150,15 @@ type ReadingProgress struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// ReadChapter 记录用户读过的每个章节（用于详情页阅读进度标记），每用户每章一条
+type ReadChapter struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"uniqueIndex:uk_user_doc;not null" json:"user_id"`
+	BookID    uint      `gorm:"index;not null" json:"book_id"`
+	DocID     uint      `gorm:"uniqueIndex:uk_user_doc;not null" json:"doc_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // BookTag 书籍-标签联接表
 type BookTag struct {
 	BookID    uint      `gorm:"primaryKey" json:"book_id"`
@@ -186,6 +195,7 @@ func All(db *gorm.DB) error {
 		&Tag{},
 		&BookTag{},
 		&ReadingProgress{},
+		&ReadChapter{},
 		&Comment{},
 		&Reaction{},
 		&Notification{},

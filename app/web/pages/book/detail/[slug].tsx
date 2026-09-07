@@ -140,6 +140,15 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       .then((r) => setViews(r.view_count))
       .catch(() => { /* 计数失败不影响浏览 */ })
   }, [book?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 阅读进度：登录用户读过的章节 ID 集合，用于目录标记与整体进度
+  const [readSet, setReadSet] = useState<Set<number>>(new Set())
+  useEffect(() => {
+    if (!user || !book) { setReadSet(new Set()); return }
+    api<{ doc_ids: number[] }>(`/books/${book.id}/read-chapters`)
+      .then((r) => setReadSet(new Set(r.doc_ids || [])))
+      .catch(() => { /* 未登录或无进度：空集合 */ })
+  }, [user?.id, book?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
@@ -162,6 +171,12 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const words = flatWords(tree)
   const readingMin = Math.max(1, Math.round(words / 400))
   const author = book.user
+
+  // 整体阅读进度：已读章节数 / 全部章节数
+  const allDocIds = flatDocIds(tree)
+  const totalChapters = allDocIds.length
+  const readCount = allDocIds.filter((id) => readSet.has(id)).length
+  const progressPct = totalChapters > 0 ? Math.round((readCount / totalChapters) * 100) : 0
 
   const jsonLd = [
     {
@@ -347,6 +362,19 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               <h2 className="text-xl font-bold text-slate-900">目录</h2>
               <span className="text-sm text-slate-400">共 {chapters} 个章节</span>
             </div>
+
+            {user && totalChapters > 0 && (
+              <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-slate-700">我的阅读进度</span>
+                  <span className="text-slate-500">已读 {readCount} / {totalChapters} 章 · {progressPct}%</span>
+                </div>
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <span className="block h-full rounded-full bg-primary-500 transition-all duration-300" style={{ width: `${progressPct}%` }} />
+                </div>
+              </div>
+            )}
+
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               {tree.length === 0 ? (
                 <p className="py-10 text-center text-sm text-slate-400">暂无章节</p>
@@ -356,14 +384,17 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                     <li key={doc.id}>
                       <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${doc.slug}`}
                         className="group flex items-center gap-5 border-l-2 border-transparent px-6 py-4 transition-colors hover:bg-primary-50/40">
-                        <span className="w-10 shrink-0 text-center text-2xl font-bold text-slate-300 transition-colors group-hover:text-primary-500">{String(i + 1).padStart(2, '0')}</span>
+                        <span className={`w-10 shrink-0 text-center text-2xl font-bold transition-colors group-hover:text-primary-500 ${readSet.has(doc.id) ? 'text-emerald-400' : 'text-slate-300'}`}>{String(i + 1).padStart(2, '0')}</span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold text-slate-900">{chapterPrefix}{doc.title}</span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="truncate font-semibold text-slate-900">{chapterPrefix}{doc.title}</span>
+                            {readSet.has(doc.id) && <CheckCircleSmallIcon className="h-4 w-4 shrink-0 text-emerald-500" />}
+                          </span>
                           {(doc.children?.length || 0) > 0 && (
                             <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
                               {doc.children!.slice(0, 3).map((c) => (
-                                <span key={c.id} className="flex items-center gap-1 text-xs text-slate-400">
-                                  <span className="h-1 w-1 rounded-full bg-slate-300" /> {c.title}
+                                <span key={c.id} className={`flex items-center gap-1 text-xs ${readSet.has(c.id) ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                  <span className={`h-1 w-1 rounded-full ${readSet.has(c.id) ? 'bg-emerald-500' : 'bg-slate-300'}`} /> {c.title}
                                 </span>
                               ))}
                               {doc.children!.length > 3 && <span className="text-xs text-slate-300">…</span>}
@@ -426,6 +457,11 @@ function flatFirst(docs: Document[]): Document | null {
     if (child) return child
   }
   return null
+}
+
+// flatDocIds 递归收集全部章节 ID（含子章节），用于阅读进度统计
+function flatDocIds(docs: Document[]): number[] {
+  return docs.flatMap((d) => [d.id, ...flatDocIds(d.children || [])])
 }
 
 function flatWords(docs: Document[]): number {
