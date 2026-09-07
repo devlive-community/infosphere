@@ -146,21 +146,26 @@ export default function BookCard({
       )
   )
 
-  const metaBits: ReactNode[] = []
+  // 底部 meta：浏览量与自定义元信息居左，日期居右
+  const leftMetaBits: ReactNode[] = []
   if (showViews) {
-    metaBits.push(
+    leftMetaBits.push(
       <span key="views" className="flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> {formatNumber(book.view_count)}</span>
     )
   }
-  if (showDate && date) {
-    metaBits.push(
-      <span key="date" className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> {date}</span>
-    )
-  }
-  if (meta) metaBits.push(<span key="extra" className="flex items-center gap-1">{meta}</span>)
+  if (meta) leftMetaBits.push(<span key="extra" className="flex items-center gap-1">{meta}</span>)
 
-  const metaBlock = metaBits.length > 0 && (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">{metaBits}</div>
+  const dateBit = showDate && date && (
+    <span key="date" className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> {date}</span>
+  )
+
+  const metaBlock = (leftMetaBits.length > 0 || dateBit) && (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-400">
+      {leftMetaBits.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">{leftMetaBits}</div>
+      )}
+      {dateBit}
+    </div>
   )
 
   const badgeBlock = hasBadges && (
