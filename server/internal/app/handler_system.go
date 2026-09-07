@@ -1,11 +1,8 @@
 package app
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -38,6 +35,7 @@ func (a *App) Health(c *gin.Context) {
 			}
 		}
 	}
+	webStatus, nodeVersion := a.web.Status()
 	c.JSON(http.StatusOK, gin.H{
 		"status":     "ok",
 		"db":         dbStatus,
@@ -45,6 +43,8 @@ func (a *App) Health(c *gin.Context) {
 		"version":    Version,
 		"commit":     Commit,
 		"build_date": BuildDate,
+		"web":        webStatus,
+		"node":       nodeVersion,
 	})
 }
 
@@ -185,7 +185,7 @@ func (a *App) SystemUpgrade(c *gin.Context) {
 		return
 	}
 
-	serverAsset, webAsset := findUpgradeAssets(info)
+	serverAsset := findUpgradeAsset(info)
 	if serverAsset == nil {
 		fail(c, http.StatusNotFound, "最新版本未提供当前平台（"+runtime.GOOS+"/"+runtime.GOARCH+"）的升级包")
 		return
@@ -207,7 +207,8 @@ func (a *App) SystemUpgrade(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "设置执行权限失败: "+err.Error())
 		return
 	}
-	if out, err := exec.Command(newBin, "-version").Output(); err != nil || !strings.Contains(string(out), info.TagName) {
+	expectedVersion := strings.TrimPrefix(info.TagName, "v")
+	if out, err := exec.Command(newBin, "-version").Output(); err != nil || !strings.Contains(string(out), expectedVersion) {
 		fail(c, http.StatusBadGateway, "升级包自检失败，已中止")
 		return
 	}
@@ -229,104 +230,25 @@ func (a *App) SystemUpgrade(c *gin.Context) {
 		return
 	}
 
-	// 2. 下载并替换前端资源（可选资产）
-	if webAsset != nil {
-		if webRoot := os.Getenv("INFO_SPHERE_WEB_ROOT"); webRoot != "" {
-			webPkg := filepath.Join(workDir, "web.tar.gz")
-			if err := downloadFile(webAsset.BrowserDownloadURL, webPkg); err != nil {
-				fail(c, http.StatusBadGateway, "下载前端升级包失败: "+err.Error())
-				return
-			}
-			if err := extractTarGz(webPkg, filepath.Dir(webRoot)+"/.webnew"); err != nil {
-				fail(c, http.StatusInternalServerError, "解压前端升级包失败: "+err.Error())
-				return
-			}
-			_ = os.RemoveAll(filepath.Dir(webRoot) + "/.webold")
-			if err := os.Rename(webRoot, filepath.Dir(webRoot)+"/.webold"); err != nil {
-				fail(c, http.StatusInternalServerError, "备份前端资源失败: "+err.Error())
-				return
-			}
-			if err := os.Rename(filepath.Dir(webRoot)+"/.webnew", webRoot); err != nil {
-				_ = os.Rename(filepath.Dir(webRoot)+"/.webold", webRoot)
-				fail(c, http.StatusInternalServerError, "替换前端资源失败: "+err.Error())
-				return
-			}
-			_ = os.RemoveAll(filepath.Dir(webRoot) + "/.webold")
-		}
-	}
-
-	// 3. 响应后延迟重启服务（前端先重启，后端最后）
+	// 2. 响应后延迟重启唯一的 InfoSphere 服务。新二进制已同时包含
+	// Go API、Next.js standalone 与 Node.js 运行时。
 	go func() {
 		time.Sleep(2 * time.Second)
-		_ = exec.Command("sudo", "systemctl", "restart", "infosphere-web").Run()
 		_ = exec.Command("sudo", "systemctl", "restart", "infosphere-api").Run()
 		_ = exec.Command("sudo", "systemctl", "restart", "infosphere.service").Run() // 单机模式兜底
 	}()
 	ok(c, gin.H{"message": "已升级到 " + strings.TrimPrefix(info.TagName, "v") + "，服务正在重启，页面稍后将自动刷新。"})
 }
 
-// findUpgradeAssets 在 Release 资产中定位当前平台的升级包
-func findUpgradeAssets(info *releaseInfo) (server, web *releaseAsset) {
+// findUpgradeAsset 在 Release 资产中定位包含 API 与 Web 运行时的当前平台单文件。
+func findUpgradeAsset(info *releaseInfo) *releaseAsset {
 	serverName := fmt.Sprintf("infosphere-server-%s-%s", runtime.GOOS, runtime.GOARCH)
 	for i := range info.Assets {
-		switch {
-		case info.Assets[i].Name == serverName:
-			server = &info.Assets[i]
-		case strings.HasPrefix(info.Assets[i].Name, "infosphere-web-") && strings.HasSuffix(info.Assets[i].Name, ".tar.gz"):
-			web = &info.Assets[i]
+		if info.Assets[i].Name == serverName {
+			return &info.Assets[i]
 		}
 	}
-	return server, web
-}
-
-// extractTarGz 解压 tar.gz 到目标目录（防路径穿越）
-func extractTarGz(src, dst string) error {
-	f, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return err
-	}
-	defer gz.Close()
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return err
-	}
-	tr := tar.NewReader(gz)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(dst, filepath.Clean("/"+header.Name))
-		if !strings.HasPrefix(target, filepath.Clean(dst)+string(os.PathSeparator)) {
-			return fmt.Errorf("非法的归档路径: %s", header.Name)
-		}
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-				return err
-			}
-			out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode)&0o777|0o600)
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(out, tr); err != nil {
-				_ = out.Close()
-				return err
-			}
-			_ = out.Close()
-		}
-	}
+	return nil
 }
 
 // downloadFile 流式下载文件

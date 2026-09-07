@@ -45,19 +45,7 @@ jobs:
           pnpm test
           pnpm build
 
-      - name: Package web
-        run: |
-          mkdir -p release/web/.next/static release/web/.next-build/static
-          cp -R app/web/.next-build/standalone/. release/web/
-          # static 需同时满足：runtime 按 distDir(.next-build) 自取 + nginx 累积目录脚本取 .next
-          cp -R app/web/.next-build/static/. release/web/.next/static/
-          cp -R app/web/.next-build/static/. release/web/.next-build/static/
-          if [ -d app/web/public ]; then cp -R app/web/public release/web/public; fi
-          deploy/package-node-runtime.sh "$NODE_VERSION" release/web/node
-          tar -czf release/infosphere-web-linux-amd64.tar.gz -C release/web .
-          rm -rf release/web
-
-      # ── 后端（多架构） ──
+      # ── 单文件（每个架构嵌入匹配的 Node.js + 同一份 Next.js） ──
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -65,27 +53,30 @@ jobs:
           cache-dependency-path: server/go.sum
 
       - name: Test backend
-        working-directory: server
-        run: go test ./...
+        run: |
+          deploy/package-web-runtime.sh "$NODE_VERSION" linux amd64 server/internal/webbundle/assets/web-runtime.tar.gz
+          cd server
+          go test ./...
 
       - name: Build backend binaries
-        working-directory: server
         env:
           CGO_ENABLED: "0"
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
+          mkdir -p release
           LDFLAGS="-s -w \
             -X 'infosphere/server/internal/app.Version=${VERSION}' \
             -X 'infosphere/server/internal/app.Commit=${GITHUB_SHA::7}' \
             -X 'infosphere/server/internal/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
           for arch in amd64 arm64; do
-            GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$LDFLAGS" \
+            deploy/package-web-runtime.sh "$NODE_VERSION" linux "$arch" server/internal/webbundle/assets/web-runtime.tar.gz
+            GOOS=linux GOARCH=$arch go -C server build -trimpath -ldflags "$LDFLAGS" \
               -o ../release/infosphere-server-linux-$arch .
           done
 
       - name: Generate checksums
         working-directory: release
-        run: sha256sum infosphere-server-linux-* infosphere-web-*.tar.gz > SHA256SUMS.txt
+        run: sha256sum infosphere-server-linux-* > SHA256SUMS.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -94,5 +85,4 @@ jobs:
           files: |
             release/infosphere-server-linux-amd64
             release/infosphere-server-linux-arm64
-            release/infosphere-web-linux-amd64.tar.gz
             release/SHA256SUMS.txt

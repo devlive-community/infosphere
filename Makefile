@@ -1,64 +1,69 @@
 # InfoSphere 构建脚本
-# 架构：Go API（infosphere-server）+ Next.js SSR（infosphere-web）+ nginx 分流
+# 架构：Go 服务托管内嵌的 Next.js SSR 与 Node.js 24 运行时
 SHELL := /bin/bash
 
 SERVER_DIR := server
 WEB_DIR := app/web
 BIN_DIR := bin
 VERSION := 2026.0.0
+NODE_VERSION := 24.20.0
+TARGET_GOOS ?= $(shell go env GOOS)
+TARGET_GOARCH ?= $(shell go env GOARCH)
+WEB_RUNTIME := $(SERVER_DIR)/internal/webbundle/assets/web-runtime.tar.gz
 
 LDFLAGS := -s -w -X 'infosphere/server/internal/app.Version=$(VERSION)'
 
-.PHONY: all build web-install web-build web-package server-build release-linux clean dev-web dev-server lint test
+.PHONY: all build check-node web-install web-build web-runtime server-build release-linux clean dev-web dev-server lint test
 
 all: build
 
-## 本机构建：前端独立包 + Go 二进制（输出到 bin/）
-build: web-build server-build web-package
+## 本机构建：单个二进制（内嵌 Next.js standalone 与 Node.js 24）
+build: server-build
 	@echo ""
-	@echo "✅ 构建完成: $(BIN_DIR)/infosphere-server + $(BIN_DIR)/infosphere-web.tar.gz"
+	@echo "构建完成: $(BIN_DIR)/infosphere-server"
 	@echo ""
 
 ## 安装前端依赖
-web-install:
+web-install: check-node
 	cd $(WEB_DIR) && pnpm install
 
+## Web 构建只允许项目锁定的 Node.js 精确版本
+check-node:
+	@test "$$(node -p 'process.versions.node')" = "$(NODE_VERSION)" || \
+		(echo "需要 Node.js $(NODE_VERSION)，当前为 $$(node --version)" >&2; exit 1)
+
 ## 构建 Next.js SSR 产物（隔离目录，不干扰 dev 的 .next）
-web-build:
+web-build: check-node
 	cd $(WEB_DIR) && NEXT_DIST_DIR=.next-build pnpm build
 
-## 打包前端独立部署包
-web-package:
-	rm -rf $(WEB_DIR)/.package $(BIN_DIR)/infosphere-web.tar.gz
-	mkdir -p $(WEB_DIR)/.package/.next/static $(WEB_DIR)/.package/.next-build/static $(BIN_DIR)
-	cp -R $(WEB_DIR)/.next-build/standalone/. $(WEB_DIR)/.package/
-	cp -R $(WEB_DIR)/.next-build/static/. $(WEB_DIR)/.package/.next/static/
-	cp -R $(WEB_DIR)/.next-build/static/. $(WEB_DIR)/.package/.next-build/static/
-	if [ -d $(WEB_DIR)/public ]; then cp -R $(WEB_DIR)/public $(WEB_DIR)/.package/public; fi
-	tar -czf $(BIN_DIR)/infosphere-web.tar.gz -C $(WEB_DIR)/.package .
-	rm -rf $(WEB_DIR)/.package
+## 为目标平台打包内嵌 Web 运行时
+web-runtime: web-build
+	deploy/package-web-runtime.sh $(NODE_VERSION) $(TARGET_GOOS) $(TARGET_GOARCH) $(WEB_RUNTIME)
 
 ## 构建 Go 二进制（当前平台）
-server-build:
+server-build: web-runtime
 	mkdir -p $(BIN_DIR)
 	cd $(SERVER_DIR) && go build -trimpath -ldflags "$(LDFLAGS)" -o ../$(BIN_DIR)/infosphere-server .
+	rm -f $(WEB_RUNTIME)
 
 ## 交叉编译 Linux 发布组合（本地复刻 CI 产物）
-release-linux: web-build web-package
+release-linux: web-build
 	mkdir -p $(BIN_DIR)
+	deploy/package-web-runtime.sh $(NODE_VERSION) linux amd64 $(WEB_RUNTIME)
 	cd $(SERVER_DIR) && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 		go build -trimpath -ldflags "$(LDFLAGS)" -o ../$(BIN_DIR)/infosphere-server-linux-amd64 .
+	rm -f $(WEB_RUNTIME)
 
 ## 全部检查（等同 CI）
 test: lint
 	cd $(SERVER_DIR) && go vet ./... && go test ./...
 	cd $(WEB_DIR) && pnpm exec tsc --noEmit && pnpm test
 
-lint:
+lint: check-node
 	cd $(WEB_DIR) && CI=1 pnpm exec next lint
 
 ## 前端开发模式（浏览器与 SSR 均直连本机 API）
-dev-web:
+dev-web: check-node
 	cd $(WEB_DIR) && NEXT_PUBLIC_API_BASE=http://localhost:6969 INFO_SPHERE_API_URL=http://localhost:6969 pnpm dev
 
 ## Go API 开发模式
@@ -67,4 +72,5 @@ dev-server:
 
 ## 清理构建产物
 clean:
-	rm -rf $(BIN_DIR) $(WEB_DIR)/.next $(WEB_DIR)/.package
+	rm -rf $(BIN_DIR) $(WEB_DIR)/.next $(WEB_DIR)/.next-build
+	rm -f $(WEB_RUNTIME)

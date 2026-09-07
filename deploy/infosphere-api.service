@@ -1,5 +1,5 @@
 [Unit]
-Description=InfoSphere API service (Go)
+Description=InfoSphere service (Go API + embedded Next.js)
 After=network-online.target
 Wants=network-online.target
 
@@ -11,7 +11,8 @@ WorkingDirectory=/var/www/infosphere/current
 ExecStart=/var/www/infosphere/current/infosphere-server -port 6969
 EnvironmentFile=/etc/infosphere/infosphere.env
 Environment=INFO_SPHERE_UPGRADE=enabled
-Environment=INFO_SPHERE_WEB_ROOT=/var/www/infosphere/current/web
+Environment=INFO_SPHERE_WEB_PORT=6900
+Environment=INFO_SPHERE_STATIC_ROOT=/var/www/infosphere/static
 Restart=always
 RestartSec=3
 TimeoutStopSec=15
@@ -19,7 +20,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/var/lib/infosphere /var/www/infosphere
+ReadWritePaths=/var/lib/infosphere /var/www/infosphere/static /var/www/infosphere
 
 [Install]
 WantedBy=multi-user.target

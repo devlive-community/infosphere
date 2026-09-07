@@ -19,7 +19,7 @@ infosphere/
 ├── server/               # Go 服务端（单文件二进制，内嵌前端产物）
 │   ├── main.go
 │   └── internal/
-│       ├── app/          # HTTP 路由、处理器、前端静态资源 embed
+│       ├── app/          # HTTP 路由、处理器、内嵌 Web 运行时管理
 │       ├── auth/         # JWT 签发与校验
 │       ├── config/       # 安装配置持久化（data/config.json）
 │       ├── database/     # SQLite / MySQL / PostgreSQL 多数据库支持
@@ -43,21 +43,21 @@ infosphere/
 ### 构建
 
 ```bash
-make build          # bin/infosphere-server + bin/infosphere-web.tar.gz
+make build          # bin/infosphere-server（包含 Next.js SSR + Node.js 24）
 make test           # 与 CI 相同的质量门禁（vet/test/tsc/lint）
 ```
 
 ### 生产部署（CI 自动化）
 
 `push` 到 `dev` 分支即触发 [deploy.yml](.github/workflows/deploy.yml)：
-前端 SSR + Go API 构建后经 scp 上传服务器，原子切换 `releases/<sha>` 并重启 systemd 服务，健康检查通过后清理旧版本。
+前端 SSR、Node.js 24 与 Go API 构建成一个二进制，经 scp 上传服务器，原子切换 `releases/<sha>` 并重启唯一的 systemd 服务，健康检查通过后清理旧版本。
 
 服务器架构（见 [deploy/](deploy/)）：
 
 ```
 nginx (:80/:443)
- ├─ /api /uploads /health  → infosphere-api  (Go,    127.0.0.1:6969)
- └─ /*                     → infosphere-web  (Next.js SSR, 127.0.0.1:6900)
+ └─ /* → infosphere-api（Go, 127.0.0.1:6969）
+          └─ 托管内嵌 Next.js + Node.js 24（内部 127.0.0.1:6900）
 ```
 
 首次部署后访问 `/install` 完成安装向导（数据库选择 → 站点信息 → 管理员账户）。
@@ -68,7 +68,7 @@ nginx (:80/:443)
 git tag v2026.0.1 && git push origin v2026.0.1
 ```
 
-[release.yml](.github/workflows/release.yml) 自动构建多架构二进制与前端包并发布 GitHub Release。
+[release.yml](.github/workflows/release.yml) 自动构建包含完整 Web 运行时的多架构单文件二进制，并发布 GitHub Release。
 线上管理员在「系统管理」页可一键在线升级（自动下载、校验、替换、重启、回滚备份）。
 
 ### 本地开发

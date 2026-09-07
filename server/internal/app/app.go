@@ -1,8 +1,15 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/database"
@@ -20,6 +27,7 @@ type App struct {
 	Notifications *notificationHub
 	// MailSender 邮件发送器；为空时按站点配置解析（测试可注入替代实现）
 	MailSender mail.Sender
+	web        *webRuntime
 }
 
 // New 创建应用实例；已安装时建立数据库连接
@@ -47,8 +55,55 @@ func New(cfg *config.Config) (*App, error) {
 // Run 启动 HTTP 服务
 func (a *App) Run(port int) error {
 	gin.SetMode(gin.ReleaseMode)
+	web, err := prepareWebRuntime(port)
+	if err != nil {
+		return err
+	}
+	a.web = web
 	r := a.Router()
 	addr := fmt.Sprintf(":%d", port)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	server := &http.Server{Handler: r, ReadHeaderTimeout: 10 * time.Second}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(listener) }()
+
+	if web != nil {
+		if err := web.Start(port); err != nil {
+			ctx, cancel := shutdownContext()
+			defer cancel()
+			_ = server.Shutdown(ctx)
+			return err
+		}
+	}
 	log.Printf("InfoSphere 服务已启动: http://localhost%s", addr)
-	return r.Run(addr)
+
+	signalCtx, stopSignals := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stopSignals()
+	select {
+	case <-signalCtx.Done():
+		ctx, cancel := shutdownContext()
+		defer cancel()
+		_ = server.Shutdown(ctx)
+		web.Stop(ctx)
+		return nil
+	case err := <-serveErr:
+		ctx, cancel := shutdownContext()
+		defer cancel()
+		web.Stop(ctx)
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-web.Wait():
+		ctx, cancel := shutdownContext()
+		defer cancel()
+		_ = server.Shutdown(ctx)
+		if webErr := web.Err(); webErr != nil {
+			return fmt.Errorf("内嵌 Next.js 已退出: %w", webErr)
+		}
+		return errors.New("内嵌 Next.js 意外退出")
+	}
 }

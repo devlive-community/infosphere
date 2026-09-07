@@ -25,7 +25,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v6
 
-      # ── 前端：类型检查 + lint + SSR 构建，打包为独立 Node 服务 ──
+      # ── 前端：类型检查 + lint + SSR 构建 ──
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -55,20 +55,10 @@ jobs:
           NEXT_DIST_DIR: .next-build
         run: pnpm build
 
-      - name: Package web
-        run: |
-          mkdir -p release/web/.next/static release/web/.next-build/static
-          cp -R app/web/.next-build/standalone/. release/web/
-          # static 需同时满足：runtime 按 distDir(.next-build) 自取 + nginx 累积目录脚本取 .next
-          cp -R app/web/.next-build/static/. release/web/.next/static/
-          cp -R app/web/.next-build/static/. release/web/.next-build/static/
-          if [ -d app/web/public ]; then cp -R app/web/public release/web/public; fi
-          deploy/package-node-runtime.sh "$NODE_VERSION" release/web/node
-          tar -czf release/infosphere-web-linux-amd64.tar.gz -C release/web .
-          rm -rf release/web
-          test -s release/infosphere-web-linux-amd64.tar.gz
+      - name: Package embedded web runtime
+        run: deploy/package-web-runtime.sh "$NODE_VERSION" linux amd64 server/internal/webbundle/assets/web-runtime.tar.gz
 
-      # ── 后端：测试 + 交叉编译 Linux 单文件二进制 ──
+      # ── 单文件：Go API + Next.js standalone + Node.js 24 ──
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -89,22 +79,23 @@ jobs:
           GOARCH: amd64
           COMMIT_SHA: ${{ github.sha }}
         run: |
+          mkdir -p ../release
           go build -trimpath \
             -ldflags="-s -w \
               -X 'infosphere/server/internal/app.Commit=${COMMIT_SHA::7}' \
               -X 'infosphere/server/internal/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" \
             -o ../release/infosphere-server .
 
-      # ── 打包发布：二进制 + 前端包 + systemd unit + env ──
+      # ── 打包发布：只有一个应用二进制 + systemd unit + env ──
       - name: Assemble release
         env:
           INFO_SPHERE_ENV_FILE: ${{ secrets.INFO_SPHERE_ENV_FILE }}
         run: |
           test -n "$INFO_SPHERE_ENV_FILE"
-          cp deploy/infosphere-api.service deploy/infosphere-web.service deploy/infosphere.sudoers release/
+          cp deploy/infosphere-api.service deploy/infosphere.sudoers release/
           printf '%s\n' "$INFO_SPHERE_ENV_FILE" > release/infosphere.env
           chmod 600 release/infosphere.env
-          (cd release && sha256sum infosphere-server infosphere-web-linux-amd64.tar.gz > SHA256SUMS)
+          (cd release && sha256sum infosphere-server > SHA256SUMS)
           ls -la release/
 
       - name: Upload release to server
@@ -121,12 +112,11 @@ jobs:
         uses: appleboy/ssh-action@v1.2.5
         env:
           RELEASE_SHA: ${{ github.sha }}
-          NODE_RUNTIME_VERSION: ${{ env.NODE_VERSION }}
         with:
           host: ${{ secrets.SSH_PRIVATE_HOST }}
           username: ${{ secrets.SSH_PRIVATE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: RELEASE_SHA,NODE_RUNTIME_VERSION
+          envs: RELEASE_SHA
           script: |
             set -eu
             deploy_root=/var/www/infosphere
@@ -134,30 +124,20 @@ jobs:
             release_dir=$deploy_root/releases/$RELEASE_SHA
 
             test -f "$staged_dir/infosphere-server"
-            test -s "$staged_dir/infosphere-web-linux-amd64.tar.gz"
             test -s "$staged_dir/infosphere.env"
 
             # 目录骨架
-            sudo install -d -m 755 "$deploy_root/releases" "$release_dir/web" /etc/infosphere
+            sudo install -d -m 755 "$deploy_root/releases" "$release_dir" /etc/infosphere
             sudo install -d -m 755 -o www-data -g www-data /var/lib/infosphere /var/lib/infosphere/uploads
+            sudo install -d -m 755 -o www-data -g www-data /var/www/infosphere/static
 
-            # 发布内容
+            # 发布单文件
             sudo cp -a "$staged_dir/." "$release_dir/"
             sudo chmod 755 "$release_dir/infosphere-server"
-            sudo tar -xzf "$release_dir/infosphere-web-linux-amd64.tar.gz" -C "$release_dir/web"
-            test "$("$release_dir/web/node/bin/node" --version)" = "v$NODE_RUNTIME_VERSION"
-            sudo install -d -m 755 -o www-data -g www-data "$release_dir/web/.next/cache"
-            sudo chown -R www-data:www-data "$release_dir/web"
-
-            # 累积式静态资源目录：chunk 文件名带内容哈希永不冲突，
-            # 合并而非替换，保证已打开的旧页面引用的旧 chunk 仍然可用
-            sudo mkdir -p /var/www/infosphere/static
-            sudo cp -a "$release_dir/web/.next/static/." /var/www/infosphere/static/
 
             # 配置与服务
             sudo install -m 600 "$release_dir/infosphere.env" /etc/infosphere/infosphere.env
             sudo install -m 644 "$release_dir/infosphere-api.service" /etc/systemd/system/infosphere-api.service
-            sudo install -m 644 "$release_dir/infosphere-web.service" /etc/systemd/system/infosphere-web.service
             sudo install -m 440 "$release_dir/infosphere.sudoers" /etc/sudoers.d/infosphere
             sudo visudo -c >/dev/null
 
@@ -165,21 +145,21 @@ jobs:
             sudo ln -sfn "$release_dir" "$deploy_root/current.next"
             sudo mv -Tf "$deploy_root/current.next" "$deploy_root/current"
 
+            # 首次单文件部署时停止并禁用旧的独立 Web unit，释放 6900 给 Go 托管的 Node 子进程
+            sudo systemctl disable --now infosphere-web.service || true
             sudo systemctl daemon-reload
-            sudo systemctl enable infosphere-api.service infosphere-web.service
+            sudo systemctl enable infosphere-api.service
             sudo systemctl restart infosphere-api.service
-            sudo systemctl restart infosphere-web.service
 
-            # 健康检查：API 包含当前 commit，前端可访问
+            # 健康检查：单服务包含当前 commit，内嵌 Web 与 Go 页面代理均可访问
             attempt=0
             until curl -fsS http://127.0.0.1:6969/api/v1/health | grep -q "\"commit\":\"${RELEASE_SHA::7}\"" \
-              && curl -fsS -o /dev/null http://127.0.0.1:6900/; do
+              && curl -fsS -o /dev/null http://127.0.0.1:6900/ \
+              && curl -fsS -o /dev/null http://127.0.0.1:6969/; do
               attempt=$((attempt + 1))
               if [ "$attempt" -ge 15 ]; then
                 sudo systemctl status infosphere-api.service --no-pager || true
-                sudo systemctl status infosphere-web.service --no-pager || true
                 sudo journalctl -u infosphere-api.service -n 30 --no-pager || true
-                sudo journalctl -u infosphere-web.service -n 30 --no-pager || true
                 exit 1
               fi
               sleep 2

@@ -190,6 +190,6 @@ func (a *App) Router() *gin.Engine {
 		}
 	}
 
-	RegisterWeb(r)
+	RegisterWeb(r, a.web)
 	return r
 }
