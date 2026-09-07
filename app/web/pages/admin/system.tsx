@@ -7,7 +7,7 @@ import { Badge, ButtonLink } from '@/components/ui'
 import {
   ShieldCheckIcon, TagIcon, DatabaseIcon, CodeIcon, GlobeIcon, ServerIcon,
   ActivityIcon, ExternalLinkIcon, MailIcon, GithubIcon, UsersIcon,
-  BookIcon, FileTextIcon, EyeIcon, ClockIcon,
+  BookIcon, FileTextIcon, EyeIcon, ClockIcon, GearIcon,
 } from '@/components/icons'
 import {
   SystemVersion, HealthInfo, MailConfig, StorageConfig, OAuthConfig,
@@ -37,6 +37,7 @@ export default function AdminSystem() {
   const [totalViews, setTotalViews] = useState<number | null>(null)
   const [tagCount, setTagCount] = useState<number | null>(null)
   const [activity, setActivity] = useState<AdminActivity | null>(null)
+  const [configCount, setConfigCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!isAdmin) return
@@ -63,6 +64,7 @@ export default function AdminSystem() {
         setTotalViews(s.total_views)
       }).catch(() => {})
     api<AdminActivity>('/admin/activity').then(setActivity).catch(() => {})
+    api<{ items?: unknown[] }>('/admin/configs').then((c) => setConfigCount(c?.items?.length ?? 0)).catch(() => {})
   }, [isAdmin])
 
   const dbName = DB_LABEL[dbType] || dbType || '—'
@@ -205,6 +207,8 @@ export default function AdminSystem() {
           status={oauth ? (oauth.client_id && oauth.client_secret ? '已启用' : '未配置') : '加载中…'} ok={!!(oauth?.client_id && oauth?.client_secret)} />
         <ConfigCard icon={TagIcon} tone="violet" title="标签分类" href="/explore"
           status={tagCount !== null ? `${tagCount} 个标签` : '前往发现页'} ok />
+        <ConfigCard icon={GearIcon} tone="primary" title="系统配置" href="/admin/settings/config"
+          status={configCount !== null ? `${configCount} 个配置项` : '键值对配置管理'} ok />
       </div>
     </AdminLayout>
   )
