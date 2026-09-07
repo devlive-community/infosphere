@@ -23,6 +23,10 @@ func (a *App) ListDocumentTree(c *gin.Context) {
 		return
 	}
 	u := currentUser(c)
+	if !a.canReadBook(u, book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
 
 	var docs []models.Document
 	query := a.DB.Where("book_id = ?", book.ID).

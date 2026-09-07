@@ -2,13 +2,14 @@ import { useEffect, useRef, useState, ReactNode, KeyboardEvent } from 'react'
 import { useRouter } from 'next/router'
 import { API_BASE, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { Button, Input, Textarea, Select } from '@/components/ui'
+import { Button, Input, Textarea, Select, Switch } from '@/components/ui'
 import { BookIcon, CheckCircleIcon, ImageIcon, LinkIcon, UploadIcon } from '@/components/icons'
 import type { Book, BookStatus } from '@/lib/types'
 
 const MAX_TITLE = 60
 const MAX_DESC = 200
 const MAX_TAGS = 10
+const MAX_WATERMARK = 80
 const validSlug = (s: string) => /^[a-z0-9-]+$/.test(s)
 
 const statusOptions = [
@@ -46,6 +47,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [status, setStatus] = useState<BookStatus>(initial?.status || 'draft')
   const [isPublic, setIsPublic] = useState(initial?.is_public || false)
   const [chapterPrefix, setChapterPrefix] = useState(initial?.chapter_prefix || '')
+  const [watermarkEnabled, setWatermarkEnabled] = useState(initial?.watermark_enabled || false)
+  const [watermarkText, setWatermarkText] = useState(initial?.watermark_text || '')
   const [tags, setTags] = useState<string[]>((initial?.tags || []).map((t) => t.name))
   const [tagInput, setTagInput] = useState('')
   const [error, setError] = useState('')
@@ -95,6 +98,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
     setError('')
     if (!title.trim()) { setError('请填写书籍标题'); return }
     if (slug && !validSlug(slug)) { setError('访问路径仅支持小写字母、数字和中划线'); return }
+    if (watermarkEnabled && !watermarkText.trim()) { setError('开启水印后请填写水印内容'); return }
     setSaving(true)
     try {
       await onSubmit({
@@ -105,6 +109,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
         status: overrideStatus ?? status,
         is_public: isPublic,
         chapter_prefix: chapterPrefix,
+        watermark_enabled: watermarkEnabled,
+        watermark_text: watermarkText.trim(),
         tags,
       })
     } catch (err) {
@@ -224,6 +230,33 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                 <p className="mt-1.5 text-xs text-slate-400">用于章节标题前的统一前缀</p>
               </div>
             </div>
+          </Section>
+
+          {/* 阅读水印 */}
+          <Section icon={<i className="fa-solid fa-stamp text-sm" aria-hidden="true" />} title="阅读水印">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
+              <div>
+                <div className="text-sm font-medium text-slate-900">在阅读页显示水印</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">水印会以低透明度重复覆盖章节正文，不影响选择、复制和链接点击。</p>
+              </div>
+              <Switch checked={watermarkEnabled} onChange={setWatermarkEnabled} ariaLabel="在阅读页显示水印" />
+            </div>
+            {watermarkEnabled && (
+              <RowField label="水印内容" hint="建议填写站点名、作者名或版权声明，关闭后仍会保留此内容。">
+                <div className="relative">
+                  <Input
+                    value={watermarkText}
+                    maxLength={MAX_WATERMARK}
+                    onChange={(e) => setWatermarkText(e.target.value)}
+                    placeholder="例如：InfoSphere · 仅供学习交流"
+                    className="pr-16"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                    {watermarkText.length} / {MAX_WATERMARK}
+                  </span>
+                </div>
+              </RowField>
+            )}
           </Section>
 
           {/* 发布设置 */}

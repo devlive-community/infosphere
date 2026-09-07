@@ -11,7 +11,7 @@ import { ButtonLink } from '@/components/ui'
 import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress } from '@/lib/reading-progress'
 import Comments from '@/components/Comments'
-import type { Book, Document, User } from '@/lib/types'
+import type { Book, BookAccess, Document, User } from '@/lib/types'
 
 interface ReaderProps {
   installed: boolean
@@ -22,9 +22,27 @@ interface ReaderProps {
   doc: Document
   html: string
   tree: Document[]
+  access: BookAccess | null
 }
 
 const FONT_SIZES = [15, 16, 18, 20, 22]
+const WATERMARK_CELLS = Array.from({ length: 36 }, (_, index) => index)
+
+function WatermarkLayer({ text }: { text: string }) {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden select-none">
+      <div className="grid h-full min-h-[640px] grid-cols-2 sm:grid-cols-3">
+        {WATERMARK_CELLS.map((cell) => (
+          <div key={cell} className="flex items-center justify-center overflow-hidden px-4">
+            <span className="-rotate-[28deg] whitespace-nowrap text-sm font-medium tracking-[0.16em] text-slate-500/10">
+              {text}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 // AuthorAvatars 创作者头像列表：hover 提示用户名，点击跳转用户主页
 function AuthorAvatars({ users }: { users: { username: string; avatar?: string }[] }) {
@@ -62,14 +80,17 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
         : Promise.resolve(null),
     ])
     if (!doc) return { notFound: true }
-    return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc, html: renderMarkdown(doc.content), tree, needsAuth: false } }
+    const access = user
+      ? await serverApi<BookAccess>(`/books/slug/${encodeURIComponent(slug)}/access`, { headers: auth }).catch(() => null)
+      : null
+    return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc, html: renderMarkdown(doc.content), tree, access } }
   } catch (e) {
     // 404/403 一律按不存在处理：不向未授权访客泄露私有章节的存在
     return { notFound: true }
   }
 }
 
-export default function Reader({ site, siteUrl, user, book, doc, html, tree }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Reader({ site, siteUrl, user, book, doc, html, tree, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
@@ -128,7 +149,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
     )
   }
 
-  const canEdit = !!user && !!book && (user.id === book.user_id || user.role === 'admin')
+  const canEdit = access?.can_edit_content === true
 
   const index = doc ? flat.findIndex((d) => d.id === doc.id) : -1
   const prev = index > 0 ? flat[index - 1] : null
@@ -229,7 +250,8 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
           <div className="min-w-0 flex-1 overflow-y-auto">
             <div className="px-8 py-10 lg:px-14">
               {doc ? (
-                <article>
+                <article className="relative isolate">
+                  {book.watermark_enabled && book.watermark_text && <WatermarkLayer text={book.watermark_text} />}
                   {parentDoc && <div className="mb-1 text-sm font-medium text-primary-600">{chapterPrefix}{parentDoc.title}</div>}
                   <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">{doc.title}</h1>
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-400">
@@ -247,7 +269,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree }: I
                   <hr className="my-6 border-slate-100" />
                   <div ref={contentRef} className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
 
-                  <Comments docId={doc.id} />
+                  <Comments docId={doc.id} allowComments={doc.allow_comments !== false} />
 
                 {canEdit && (
                   <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${doc.slug}`}

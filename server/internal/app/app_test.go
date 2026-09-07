@@ -128,6 +128,27 @@ func TestFullLifecycle(t *testing.T) {
 	if slug != "go-handbook" {
 		t.Fatalf("slug 生成错误: %s", slug)
 	}
+	if bookData["watermark_enabled"] != false || bookData["watermark_text"] != "" {
+		t.Fatalf("新书水印应默认关闭且内容为空: %v", bookData)
+	}
+	status, payload = put(fmt.Sprintf("/api/v1/books/%d", bookID), map[string]any{
+		"watermark_enabled": true,
+		"watermark_text":    "   ",
+	}, adminToken)
+	if status != http.StatusBadRequest {
+		t.Fatalf("开启水印但内容为空应返回 400: %d %v", status, payload)
+	}
+	status, payload = put(fmt.Sprintf("/api/v1/books/%d", bookID), map[string]any{
+		"watermark_enabled": true,
+		"watermark_text":    "  测试站 · 仅供学习  ",
+	}, adminToken)
+	if status != 200 {
+		t.Fatalf("保存书籍水印失败: %d %v", status, payload)
+	}
+	watermarkedBook := payload["data"].(map[string]any)
+	if watermarkedBook["watermark_enabled"] != true || watermarkedBook["watermark_text"] != "测试站 · 仅供学习" {
+		t.Fatalf("书籍水印保存结果异常: %v", watermarkedBook)
+	}
 
 	// 5. 发章节
 	doc := post(fmt.Sprintf("/api/v1/books/%d/documents", bookID), map[string]any{
@@ -250,7 +271,7 @@ func TestFullLifecycle(t *testing.T) {
 		t.Fatalf("获取评论失败: %d", status)
 	}
 	commentID := payload["data"].([]any)[0].(map[string]any)["id"].(float64)
-	// 非作者删除他人评论应 403
+	// 评论作者可删除自己的评论
 	commentDelReq, commentDelReqErr := http.NewRequest(http.MethodDelete, ts.URL+fmt.Sprintf("/api/v1/comments/%v", commentID), nil)
 	if commentDelReqErr != nil {
 		t.Fatalf("new DELETE request: %v", commentDelReqErr)
@@ -261,8 +282,8 @@ func TestFullLifecycle(t *testing.T) {
 		t.Fatalf("DELETE comment: %v", commentDelErr)
 	}
 	commentDelResp.Body.Close()
-	if commentDelResp.StatusCode != 403 {
-		t.Fatalf("删除他人评论应 403: %d", delResp.StatusCode)
+	if commentDelResp.StatusCode != 200 {
+		t.Fatalf("评论作者删除自己的评论应 200: %d", commentDelResp.StatusCode)
 	}
 
 	// 6.9 阅读进度：保存 → 查询 → 覆盖

@@ -50,6 +50,8 @@ Authorization: Bearer <token>
 | `reaction:create` | 点赞/收藏书籍 | ✅ | ✅ |
 | `reaction:delete` | 取消点赞/收藏 | ✅ | ✅ |
 | `reaction:read` | 查看自己的点赞/收藏 | ✅ | ✅ |
+| `reading-progress:read` | 查看自己的阅读进度 | ✅ | ✅ |
+| `reading-progress:update` | 保存自己的阅读进度 | ✅ | ✅ |
 | `auth:oauth` | 管理第三方登录绑定 | ✅ | ✅ |
 | `auth:password-reset` | 申请/执行密码重置（匿名语义，端点公开） | ✅ | ✅ |
 | `notification:read` | 查看自己的通知（含 SSE 流） | ✅ | ✅ |
@@ -99,8 +101,8 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 说明 | 认证 |
 | --- | --- | --- | --- |
-| GET | `/setup/status` | 安装状态、版本、可选数据库类型、默认数据目录与 SQLite 路径 | 匿名 |
-| POST | `/setup/test-connection` | 测试数据库连接 | 匿名 |
+| GET | `/setup/status` | 安装状态、版本、可选数据库类型；仅未安装时返回默认数据目录与 SQLite 路径 | 匿名 |
+| POST | `/setup/test-connection` | 测试数据库连接；安装完成后返回 404 | 匿名，仅未安装 |
 | POST | `/setup/install` | 执行安装（迁移建表 + 站点配置 + 管理员），成功即登录 | 匿名 |
 
 `POST /setup/install` 请求体：
@@ -131,9 +133,9 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/auth/oauth/providers` | 各 provider 启用状态：`{providers:[{provider,enabled}]}` | 匿名 |
-| GET | `/auth/oauth/:provider?origin=` | 发起登录：302 到授权页；未配置/不支持时 302 回 `{origin}/login?oauth_error=...` | 匿名 |
-| GET | `/auth/oauth/:provider/callback` | 授权回调：换取用户 → 已绑定直接登录 / 已验证邮箱自动关联 / 自动注册；签发 token + Cookie 后 302 回 `{origin}/oauth/callback?token=...` | 匿名 |
-| GET | `/auth/oauth/bindings` | 当前用户绑定列表 `[{provider,provider_username,provider_email,created_at}]` | 登录 |
+| GET | `/auth/oauth/:provider` | 发起登录：302 到授权页；回跳地址固定使用管理员配置的 `site_url`，未配置时使用当前服务地址 | 匿名 |
+| GET | `/auth/oauth/:provider/callback` | 授权回调：换取用户 → 已绑定直接登录 / 已验证邮箱自动关联 / 自动注册；签发 token + Cookie 后回到可信站点地址 | 匿名 |
+| GET | `/auth/oauth/bindings` | 当前用户绑定列表 `[{provider,provider_username,provider_email,created_at}]` | `auth:oauth` |
 | DELETE | `/auth/oauth/:provider` | 解绑；未设置本地密码时拒绝（防止锁死） | `auth:oauth` |
 | GET/PUT | `/oauth` | 管理员读取/保存 GitHub 凭据（client_id/client_secret/enabled），存站点配置表，不出现在公开 `/site` | `site:update` |
 | GET/PUT | `/mail` | 管理员读取/保存邮件配置（driver log\|smtp、host/port/username/password/from）与 `site_url`（找回邮件链接前缀） | `site:update` |
@@ -147,7 +149,7 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/site` | 站点公开配置（site_name/site_description/version） | `site:read` |
 | PUT | `/site` | 更新站点配置 | `site:update` |
-| GET | `/stats` | 站点统计（user_count/book_count/document_count/tag_count/total_views） | `stats:read` |
+| GET | `/stats` | 公开站点统计；书籍、章节、标签和浏览量仅统计公开且已发布内容 | `stats:read` |
 
 ## 发现（公开）
 
@@ -155,7 +157,7 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/explore/hot` | 浏览量最高的 6 本公开书籍 | `book:read` |
 | GET | `/explore/latest` | 最新发布的 6 本公开书籍 | `book:read` |
-| GET | `/search?q=` | 全局搜索：命中标题/简介的书籍 + 命中标题/正文的章节（各取前 10 条，含 `book_slug`/`doc_slug` 便于跳转）；登录时可见范围含本人私有书籍 | `search:read` |
+| GET | `/search?q=` | 全局搜索：匿名仅查公开且已发布的书籍与章节；owner/admin/editor 可搜索草稿，viewer 仅可搜索已发布章节 | `search:read` |
 
 ## 用户（公开主页）
 
@@ -172,18 +174,21 @@ Authorization: Bearer <token>
 | POST | `/books` | 创建书籍 | `book:create` |
 | GET | `/books/:id` | 书籍详情（含作者） | `book:read` |
 | GET | `/books/slug/:slug` | 按 slug 查书籍 | `book:read` |
-| PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀） | `book:update` |
+| GET | `/books/slug/:slug/access` | 服务端计算当前用户的对象级能力：`can_read/can_manage/can_edit_content/can_export/collaborator_role` | `book:read` + 登录 |
+| PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀/阅读水印） | `book:update` |
 | DELETE | `/books/:id` | 删除书籍及其全部文档 | `book:delete` |
-| GET | `/books/summary` | 当前用户书籍统计（按状态汇总） | `book:read` |
-| POST | `/books/:id/view` | 浏览计数 +1 | `book:read` |
+| GET | `/books/status-counts` | 当前用户书籍统计（按状态汇总） | `book:read` |
+| POST | `/books/:id/view` | 可见书籍浏览计数 +1；不可见资源统一返回 404 | `book:read` |
 
-书籍字段：`id, title, description, cover_image, slug, status(draft|published|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, user, tags, created_at, updated_at`
+书籍字段：`id, title, description, cover_image, slug, status(draft|published|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, watermark_enabled, watermark_text, user, tags, created_at, updated_at`
+
+- 阅读水印默认关闭。创建或更新书籍时传 `watermark_enabled: true` 与自定义 `watermark_text`（去除首尾空白后最多 80 个字符）；开启时水印内容不能为空。关闭水印不会清除已经保存的自定义内容。
 
 ## 文档（章节，支持树形）
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| GET | `/books/:id/documents` | 文档树（不含正文），节点含 `children` | `document:read` |
+| GET | `/books/:id/documents` | 可见书籍的文档树（不含正文）；未授权统一 404，普通读者/viewer 仅含已发布章节 | `document:read` |
 | POST | `/books/:id/documents` | 创建文档（title 必填；slug 留空自动生成；parent_id 归属校验） | `document:create` |
 | GET | `/books/:id/documents/slug/:slug` | 按 slug 查文档（含正文） | `document:read` |
 | GET | `/documents/:id` | 文档详情（含正文） | `document:read` |
@@ -222,14 +227,23 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | POST | `/upload` | `multipart/form-data` 字段 `file`，仅图片（png/jpg/jpeg/gif/webp/svg/ico），≤10MB；返回 `{ url }`（如 `/uploads/xxx.png`） | `upload:create` |
 
+## 评论
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/documents/:id/comments` | 可读章节的公开评论列表；用户仅返回公开资料字段 | `comment:read`（匿名语义） |
+| POST | `/documents/:id/comments` | 向可读且开启评论的章节发表评论/回复 | `comment:create` |
+| PUT | `/comments/:id` | 编辑自己的评论 | `comment:update` |
+| DELETE | `/comments/:id` | 评论作者、书籍所有者或管理员删除评论 | `comment:delete` |
+
 ## 点赞 / 收藏（登录用户）
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| POST | `/books/:id/reactions` | 点赞或收藏，请求体 `{ "type": "like" \| "favorite" }`，重复请求幂等 | `reaction:create` |
+| POST | `/books/:id/reactions` | 对当前可见书籍点赞或收藏，请求体 `{ "type": "like" \| "favorite" }`，重复请求幂等 | `reaction:create` |
 | DELETE | `/books/:id/reactions?type=` | 取消（like / favorite） | `reaction:delete` |
 | GET | `/books/:id/reactions/me` | 当前用户对该书的态度 + 全站计数 | `reaction:read` |
-| GET | `/users/me/reactions?type=&page=` | 我的点赞/收藏列表（含书籍对象，分页） | `reaction:read` |
+| GET | `/users/me/reactions?type=&page=` | 我的点赞/收藏列表；自动过滤当前已失去访问权的书籍 | `reaction:read` |
 
 ## 站内通知（登录用户）
 
@@ -256,8 +270,8 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| GET | `/reading-progress/:bookId` | 当前用户在该书籍的最近阅读章节；无进度返回 `null` | `user:read` |
-| PUT | `/reading-progress/:bookId` | 记录/覆盖进度，请求体 `{ doc_id, doc_slug, doc_title }` | `user:read` |
+| GET | `/reading-progress/:bookId` | 当前用户在可见书籍中的最近阅读章节；无进度返回 `null` | `reading-progress:read` |
+| PUT | `/reading-progress/:bookId` | 记录/覆盖进度；`doc_id` 必须属于该书且当前可读，slug/title 由服务端真实章节覆盖 | `reading-progress:update` |
 
 响应为进度对象 `{ id, user_id, book_id, doc_id, doc_slug, doc_title, updated_at }`，每用户每书一条（upsert）。
 
@@ -272,6 +286,7 @@ Authorization: Bearer <token>
 | PUT | `/admin/users/:id/status` | 启停账户 `{is_active}`；禁止停用自身，保留至少一位启用管理员 | `user:manage` |
 | DELETE | `/admin/users/:id` | 删除用户；禁止删除自身，拥有书籍者需先清理书籍 | `user:manage` |
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
+| GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |

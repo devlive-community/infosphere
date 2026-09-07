@@ -55,7 +55,7 @@ export default function AdminSystem() {
     api<StorageConfig>('/storage').then(setStorage).catch(() => {})
     api<MailConfig>('/mail').then(setMail).catch(() => {})
     api<OAuthConfig>('/oauth').then(setOauth).catch(() => {})
-    api<{ user_count: number; book_count: number; document_count: number; tag_count: number; total_views: number }>('/stats')
+    api<{ user_count: number; book_count: number; document_count: number; tag_count: number; total_views: number }>('/admin/stats')
       .then((s) => {
         setUserCount(s.user_count)
         setBookCount(s.book_count)

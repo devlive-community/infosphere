@@ -1,20 +1,47 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import Container from '@/components/Container'
 import { useRouter } from 'next/router'
 import { api, API_BASE, getToken } from '@/lib/api'
-import { useRequireAuth, useApp } from '@/lib/auth'
+import { authHeaderFrom, getSSRUser, isInstalled, serverApi } from '@/lib/server-api'
 import { Button } from '@/components/ui'
 import { DownloadIcon } from '@/components/icons'
 import BookForm from '@/components/BookForm'
 import CollaboratorManager from '@/components/CollaboratorManager'
-import type { Book } from '@/lib/types'
+import type { Book, BookAccess, User } from '@/lib/types'
 
-export default function EditBook() {
-  const user = useRequireAuth()
+interface Props {
+  installed: true
+  user: User
+  initialBook: Book
+}
+
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, params, resolvedUrl }) => {
+  if (!(await isInstalled())) {
+    return { redirect: { destination: '/install', permanent: false } }
+  }
+  const user = await getSSRUser(req)
+  if (!user) {
+    return { redirect: { destination: `/login?next=${encodeURIComponent(resolvedUrl)}`, permanent: false } }
+  }
+  const slug = typeof params?.slug === 'string' ? params.slug : ''
+  if (!slug) return { notFound: true }
+  const headers = authHeaderFrom(req)
+  try {
+    const [initialBook, access] = await Promise.all([
+      serverApi<Book>(`/books/slug/${encodeURIComponent(slug)}`, { headers }),
+      serverApi<BookAccess>(`/books/slug/${encodeURIComponent(slug)}/access`, { headers }),
+    ])
+    if (!access.can_manage) return { notFound: true }
+    return { props: { installed: true, user, initialBook } }
+  } catch {
+    return { notFound: true }
+  }
+}
+
+export default function EditBook({ initialBook }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter()
-  const slug = (router.query.slug as string) || ''
-  const [book, setBook] = useState<Book | null>(null)
-  const [error, setError] = useState('')
+  const [book] = useState<Book>(initialBook)
   const [exporting, setExporting] = useState(false)
 
   // 导出书籍 zip：携带令牌下载（M16）
@@ -40,17 +67,6 @@ export default function EditBook() {
       setExporting(false)
     }
   }
-
-  useEffect(() => {
-    if (!user || !slug) return
-    api<Book>(`/books/slug/${encodeURIComponent(slug)}`)
-      .then(setBook)
-      .catch((e) => setError((e as Error).message))
-  }, [user, slug])
-
-  if (!user) return null
-  if (error) return <p className="py-20 text-center text-rose-500">{error}</p>
-  if (!book) return <p className="py-20 text-center text-slate-400">加载中…</p>
 
   return (
     <Container>

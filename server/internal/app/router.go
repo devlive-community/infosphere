@@ -74,7 +74,7 @@ func (a *App) Router() *gin.Engine {
 			authGroup.GET("/oauth/:provider/callback", a.OAuthCallback)
 			authed2 := authGroup.Group("", a.RequireAuth())
 			{
-				authed2.GET("/oauth/bindings", a.OAuthBindings)
+				authed2.GET("/oauth/bindings", a.RequirePermission(authz.AuthOauth), a.OAuthBindings)
 				authed2.DELETE("/oauth/:provider", a.RequirePermission(authz.AuthOauth), a.OAuthUnbind)
 			}
 
@@ -114,6 +114,7 @@ func (a *App) Router() *gin.Engine {
 		{
 			books.POST("", a.RequirePermission(authz.BookCreate), a.CreateBook)
 			books.GET("/status-counts", a.RequirePermission(authz.BookRead), a.MyBookCounts)
+			books.GET("/slug/:slug/access", a.RequirePermission(authz.BookRead), a.GetBookAccess)
 			books.PUT("/:id", a.RequirePermission(authz.BookUpdate), a.UpdateBook)
 			books.DELETE("/:id", a.RequirePermission(authz.BookDelete), a.DeleteBook)
 			books.GET("/:id/export", a.RequirePermission(authz.BookExport), a.ExportBook)
@@ -161,8 +162,8 @@ func (a *App) Router() *gin.Engine {
 		// ── 阅读进度（user 语义，读自己写自己） ──
 		progress := api.Group("/reading-progress", a.RequireAuth())
 		{
-			progress.GET("/:bookId", a.GetReadingProgress)
-			progress.PUT("/:bookId", a.RequirePermission(authz.UserRead), a.SaveReadingProgress)
+			progress.GET("/:bookId", a.RequirePermission(authz.ReadingProgressRead), a.GetReadingProgress)
+			progress.PUT("/:bookId", a.RequirePermission(authz.ReadingProgressUpdate), a.SaveReadingProgress)
 		}
 
 		// ── 上传 ──
@@ -195,6 +196,7 @@ func (a *App) Router() *gin.Engine {
 			admin.DELETE("/admin/users/:id", a.RequirePermission(authz.UserManage), a.AdminDeleteUser)
 			// 控制台首页时间线（user:manage，仅管理员）：最近注册用户 + 最近建书（不限可见性）
 			admin.GET("/admin/activity", a.RequirePermission(authz.UserManage), a.AdminActivity)
+			admin.GET("/admin/stats", a.RequirePermission(authz.StatsRead), a.AdminStats)
 
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
 			admin.GET("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminListConfigs)

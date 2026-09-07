@@ -17,7 +17,7 @@ import {
   BookIcon, CalendarIcon, CheckCircleSmallIcon, ChevronRightIcon, EyeIcon,
   GlobeIcon, HelpCircleIcon, LinkIcon, ShareIcon, BookmarkIcon, ClockIcon, GearIcon,
 } from '@/components/icons'
-import type { Book, Document, User } from '@/lib/types'
+import type { Book, BookAccess, Document, User } from '@/lib/types'
 
 interface BookDetailProps {
   installed: boolean
@@ -29,6 +29,7 @@ interface BookDetailProps {
   /** true 表示 SSR 阶段无法公开访问（草稿/私有），交给客户端携带令牌重试 */
   needsAuth: boolean
   related: Book[]
+  access: BookAccess | null
 }
 
 interface BookData {
@@ -63,7 +64,7 @@ export const getServerSideProps: GetServerSideProps<BookDetailProps> = async ({ 
   // 公开访问失败且用户带了令牌（草稿/私有书），交给客户端重试
   if (!first.book) {
     if (auth.Authorization) {
-      return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, tree: [], needsAuth: true, related: [] } }
+      return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book: null as unknown as Book, tree: [], needsAuth: true, related: [], access: null } }
     }
     return { notFound: true }
   }
@@ -75,7 +76,11 @@ export const getServerSideProps: GetServerSideProps<BookDetailProps> = async ({ 
         .then((d) => (d as unknown as { items?: Book[] }).items || []).catch(() => [] as Book[])
     : []
 
-  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book: first.book, tree: first.tree, needsAuth: false, related: related.filter((b) => b.id !== first.book!.id).slice(0, 3) } }
+  const access = user
+    ? await serverApi<BookAccess>(`/books/slug/${encodeURIComponent(slug)}/access`, { headers: auth }).catch(() => null)
+    : null
+
+  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book: first.book, tree: first.tree, needsAuth: false, related: related.filter((b) => b.id !== first.book!.id).slice(0, 3), access } }
 }
 
 // —— 计算辅助 ——
@@ -90,7 +95,7 @@ function countChapters(docs: Document[]): { chapters: number; sections: number }
   return { chapters, sections }
 }
 
-export default function BookDetail({ site, siteUrl, book, tree, related, needsAuth }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function BookDetail({ site, siteUrl, book, tree, related, needsAuth, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { user } = useApp()
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
   const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string } | null>(null)
@@ -108,7 +113,8 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
-  const canManage = !!user && !!book && (user.id === book.user_id || user.role === 'admin')
+  const canManage = access?.can_manage === true
+  const canEdit = access?.can_edit_content === true
 
   if (needsAuth || !book) {
     return <ClientFallback slug={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('slug') || '' : ''} />
@@ -244,12 +250,14 @@ export default function BookDetail({ site, siteUrl, book, tree, related, needsAu
                 className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
                   <ShareIcon className="h-4 w-4" />
                 </button></Tooltip>
-              {canManage && (
+              {(canManage || canEdit) && (
                 <>
-                  <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">写作</ButtonLink>
-                  <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">
-                    <GearIcon className="h-4 w-4" /> 设置
-                  </ButtonLink>
+                  {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">写作</ButtonLink>}
+                  {canManage && (
+                    <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">
+                      <GearIcon className="h-4 w-4" /> 设置
+                    </ButtonLink>
+                  )}
                 </>
               )}
             </div>

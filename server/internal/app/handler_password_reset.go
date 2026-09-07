@@ -51,7 +51,7 @@ func (a *App) mailSender() mail.Sender {
 func (a *App) resetLinkBase(c *gin.Context) string {
 	base := strings.TrimRight(a.getSetting("site_url"), "/")
 	if base == "" {
-		base = frontendOrigin(c)
+		base = a.frontendOrigin(c)
 	}
 	return base
 }

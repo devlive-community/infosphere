@@ -8,6 +8,7 @@ import (
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type reactionPayload struct {
@@ -29,6 +30,10 @@ func (a *App) PutReaction(c *gin.Context) {
 	}
 	var book models.Book
 	if err := a.DB.First(&book, bookID).Error; err != nil {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	if !a.canReadBook(u, &book) {
 		fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
@@ -88,14 +93,22 @@ func (a *App) MyReactions(c *gin.Context) {
 	}
 
 	var reactions []models.Reaction
-	q := a.DB.Where("user_id = ? AND type = ?", u.ID, rType).
-		Order("created_at DESC")
+	q := a.DB.Model(&models.Reaction{}).
+		Joins("JOIN books b ON b.id = reactions.book_id").
+		Where("reactions.user_id = ? AND reactions.type = ?", u.ID, rType)
+	if !IsAdmin(u) {
+		q = q.Where(
+			"(b.is_public = ? AND b.status = ?) OR b.user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ?)",
+			true, "published", u.ID, u.ID,
+		)
+	}
+	q = q.Select("reactions.*").Order("reactions.created_at DESC")
 	if err := q.Limit(pageSize).Offset((page - 1) * pageSize).Find(&reactions).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
 	}
 	var total int64
-	a.DB.Model(&models.Reaction{}).Where("user_id = ? AND type = ?", u.ID, rType).Count(&total)
+	q.Session(&gorm.Session{}).Limit(-1).Offset(-1).Count(&total)
 
 	// 批量取书籍
 	bookIDs := make([]uint, 0, len(reactions))
@@ -124,6 +137,11 @@ func (a *App) MyBookReaction(c *gin.Context) {
 	bookID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	var book models.Book
+	if err := a.DB.First(&book, bookID).Error; err != nil || !a.canReadBook(u, &book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
 	var reactions []models.Reaction

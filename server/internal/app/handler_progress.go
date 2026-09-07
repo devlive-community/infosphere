@@ -37,13 +37,18 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 		fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
+	var doc models.Document
+	if err := a.DB.Where("id = ? AND book_id = ?", req.DocID, book.ID).First(&doc).Error; err != nil || !a.canReadDocument(u, &doc, &book) {
+		fail(c, http.StatusNotFound, "章节不存在")
+		return
+	}
 
 	progress := models.ReadingProgress{
 		UserID:   u.ID,
 		BookID:   book.ID,
 		DocID:    req.DocID,
-		DocSlug:  req.DocSlug,
-		DocTitle: req.DocTitle,
+		DocSlug:  doc.Slug,
+		DocTitle: doc.Title,
 	}
 	// upsert：每用户每书一条
 	if err := a.DB.Where("user_id = ? AND book_id = ?", u.ID, book.ID).
@@ -51,7 +56,7 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
 	}
-	a.DB.Model(&progress).Updates(map[string]any{"doc_id": req.DocID, "doc_slug": req.DocSlug, "doc_title": req.DocTitle})
+	a.DB.Model(&progress).Updates(map[string]any{"doc_id": doc.ID, "doc_slug": doc.Slug, "doc_title": doc.Title})
 	ok(c, progress)
 }
 
@@ -61,6 +66,11 @@ func (a *App) GetReadingProgress(c *gin.Context) {
 	bookID, err := strconv.Atoi(c.Param("bookId"))
 	if err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	var book models.Book
+	if err := a.DB.First(&book, bookID).Error; err != nil || !a.canReadBook(u, &book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
 	var progress models.ReadingProgress

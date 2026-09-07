@@ -82,6 +82,8 @@ func (a *App) ExportBook(c *gin.Context) {
 		set("order_col", book.OrderCol).
 		set("order_dir", book.OrderDir).
 		set("chapter_prefix", book.ChapterPrefix).
+		set("watermark_enabled", strconv.FormatBool(book.WatermarkEnabled)).
+		set("watermark_text", book.WatermarkText).
 		set("cover_image", cover)
 	tagNames := []string{}
 	for _, t := range book.Tags {
@@ -354,16 +356,28 @@ func (a *App) ImportBook(c *gin.Context) {
 	if !bookStatuses[status] {
 		status = "draft"
 	}
+	watermarkText, validWatermark := normalizeWatermark(bookFields.get("watermark_text"))
+	watermarkEnabled := bookFields.get("watermark_enabled") == "true"
+	if !validWatermark {
+		fail(c, http.StatusBadRequest, "book.md 的 watermark_text 不能超过 80 个字符")
+		return
+	}
+	if watermarkEnabled && watermarkText == "" {
+		fail(c, http.StatusBadRequest, "book.md 开启水印后必须提供 watermark_text")
+		return
+	}
 	book := models.Book{
-		Title:         title,
-		Description:   bookFields.get("description"),
-		Slug:          slugify(bookFields.get("slug")),
-		UserID:        u.ID,
-		Status:        status,
-		IsPublic:      bookFields.get("is_public") == "true",
-		OrderCol:      bookFields.get("order_col"),
-		OrderDir:      strings.ToLower(bookFields.get("order_dir")),
-		ChapterPrefix: bookFields.get("chapter_prefix"),
+		Title:            title,
+		Description:      bookFields.get("description"),
+		Slug:             slugify(bookFields.get("slug")),
+		UserID:           u.ID,
+		Status:           status,
+		IsPublic:         bookFields.get("is_public") == "true",
+		OrderCol:         bookFields.get("order_col"),
+		OrderDir:         strings.ToLower(bookFields.get("order_dir")),
+		ChapterPrefix:    bookFields.get("chapter_prefix"),
+		WatermarkEnabled: watermarkEnabled,
+		WatermarkText:    watermarkText,
 	}
 	if !allowedOrderCols[book.OrderCol] {
 		book.OrderCol = "created_at"

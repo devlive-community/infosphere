@@ -52,6 +52,10 @@ const (
 	ReactionDelete Permission = "reaction:delete" // 取消点赞/收藏
 	ReactionRead   Permission = "reaction:read"   // 查看自己的点赞/收藏
 
+	// 阅读进度
+	ReadingProgressRead   Permission = "reading-progress:read"   // 查看自己的阅读进度
+	ReadingProgressUpdate Permission = "reading-progress:update" // 保存自己的阅读进度
+
 	// 评论
 	CommentRead   Permission = "comment:read"   // 浏览章节评论（含匿名访问）
 	CommentCreate Permission = "comment:create" // 发表评论（登录用户）
@@ -92,6 +96,7 @@ var All = []Permission{
 	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
+	ReadingProgressRead, ReadingProgressUpdate,
 	UserRead, UserUpdate, UserManage,
 	SiteRead, SiteUpdate, ConfigManage,
 	StatsRead,
@@ -108,8 +113,9 @@ var userPermissions = []Permission{
 	AuthOauth, AuthPasswordReset,
 	NotificationRead, NotificationUpdate,
 	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
-	CommentRead, CommentCreate, CommentUpdate,
+	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
+	ReadingProgressRead, ReadingProgressUpdate,
 	UserRead, UserUpdate,
 	SiteRead, StatsRead,
 	UploadCreate,

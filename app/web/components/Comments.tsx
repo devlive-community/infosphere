@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from 'react'
+import { useCallback, useEffect, useState, FormEvent } from 'react'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import UserAvatar from '@/components/UserAvatar'
@@ -8,6 +8,7 @@ import type { User } from '@/lib/types'
 
 interface CommentItem {
   id: number
+  user_id: number
   content: string
   created_at: string
   user: { username: string; avatar?: string }
@@ -15,7 +16,7 @@ interface CommentItem {
 }
 
 // Comments 章节评论区（两级）
-export default function Comments({ docId }: { docId: number }) {
+export default function Comments({ docId, allowComments = true }: { docId: number; allowComments?: boolean }) {
   const { user } = useApp()
   const [comments, setComments] = useState<CommentItem[] | null>(null)
   const [content, setContent] = useState('')
@@ -23,15 +24,15 @@ export default function Comments({ docId }: { docId: number }) {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setComments(await api<CommentItem[]>(`/documents/${docId}/comments`))
     } catch (e) {
       setComments([])
     }
-  }
+  }, [docId])
 
-  useEffect(() => { load() }, [docId])
+  useEffect(() => { load() }, [load])
 
   async function submit(e: FormEvent, parentId?: number) {
     e.preventDefault()
@@ -62,8 +63,6 @@ export default function Comments({ docId }: { docId: number }) {
     }
   }
 
-  const canComment = !!user
-
   function CommentNode({ comment }: { comment: CommentItem }) {
     return (
       <div className="flex gap-3 py-3">
@@ -72,7 +71,7 @@ export default function Comments({ docId }: { docId: number }) {
           <div className="flex items-center gap-2 text-sm">
             <span className="font-medium text-slate-900">{comment.user?.username || '佚名'}</span>
             <span className="text-xs text-slate-400">{formatDate(comment.created_at)}</span>
-            {user?.id === (comment as any).user_id && (
+            {user?.id === comment.user_id && (
               <button onClick={() => remove(comment.id)} className="text-xs text-rose-400 hover:text-rose-600">删除</button>
             )}
           </div>
@@ -105,7 +104,7 @@ export default function Comments({ docId }: { docId: number }) {
     <section className="border-t border-slate-200 pt-8">
       <h2 className="text-xl font-bold text-slate-900">评论</h2>
 
-      {user ? (
+      {user && allowComments ? (
         <form onSubmit={(e) => submit(e, replyTo ?? undefined)} className="mt-4">
           {replyTo && (
             <p className="mb-2 text-xs text-slate-400">
@@ -122,6 +121,8 @@ export default function Comments({ docId }: { docId: number }) {
             </button>
           </div>
         </form>
+      ) : !allowComments ? (
+        <p className="py-4 text-sm text-slate-400">该章节已关闭评论</p>
       ) : (
         <p className="py-4 text-sm text-slate-400">
           <Link href="/login" className="text-primary-600 hover:underline">登录</Link>后参与评论

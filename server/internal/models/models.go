@@ -83,22 +83,24 @@ type PasswordResetToken struct {
 
 // Book 书籍
 type Book struct {
-	ID            uint      `gorm:"primaryKey" json:"id"`
-	Title         string    `gorm:"size:255;not null" json:"title"`
-	Description   string    `gorm:"type:text" json:"description"`
-	CoverImage    string    `gorm:"size:500" json:"cover_image"`
-	Slug          string    `gorm:"size:255;uniqueIndex;not null" json:"slug"`
-	UserID        uint      `gorm:"index;not null" json:"user_id"`
-	Status        string    `gorm:"size:20;default:draft;index" json:"status"` // draft | published | archived
-	IsPublic      bool      `gorm:"default:false;index" json:"is_public"`
-	ViewCount     int       `gorm:"default:0" json:"view_count"`
-	OrderCol      string    `gorm:"size:50;default:created_at" json:"order_col"`
-	OrderDir      string    `gorm:"size:10;default:desc" json:"order_dir"`
-	ChapterPrefix string    `gorm:"size:20;default:''" json:"chapter_prefix"`
-	User          *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Tags          []Tag     `gorm:"many2many:book_tags" json:"tags,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID               uint      `gorm:"primaryKey" json:"id"`
+	Title            string    `gorm:"size:255;not null" json:"title"`
+	Description      string    `gorm:"type:text" json:"description"`
+	CoverImage       string    `gorm:"size:500" json:"cover_image"`
+	Slug             string    `gorm:"size:255;uniqueIndex;not null" json:"slug"`
+	UserID           uint      `gorm:"index;not null" json:"user_id"`
+	Status           string    `gorm:"size:20;default:draft;index" json:"status"` // draft | published | archived
+	IsPublic         bool      `gorm:"default:false;index" json:"is_public"`
+	ViewCount        int       `gorm:"default:0" json:"view_count"`
+	OrderCol         string    `gorm:"size:50;default:created_at" json:"order_col"`
+	OrderDir         string    `gorm:"size:10;default:desc" json:"order_dir"`
+	ChapterPrefix    string    `gorm:"size:20;default:''" json:"chapter_prefix"`
+	WatermarkEnabled bool      `gorm:"default:false" json:"watermark_enabled"`
+	WatermarkText    string    `gorm:"size:255;default:''" json:"watermark_text"`
+	User             *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Tags             []Tag     `gorm:"many2many:book_tags" json:"tags,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // Tag 标签

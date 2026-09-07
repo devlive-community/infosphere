@@ -111,17 +111,11 @@ func schemeHost(c *gin.Context) string {
 	return scheme + "://" + c.Request.Host
 }
 
-// frontendOrigin 推断发起跳转的前端来源：origin 参数 > Referer > 本请求自身
-func frontendOrigin(c *gin.Context) string {
-	if o := safeOrigin(c.Query("origin")); o != "" {
-		return o
-	}
-	if ref := c.GetHeader("Referer"); ref != "" {
-		if u, err := url.Parse(ref); err == nil {
-			if o := safeOrigin(u.Scheme + "://" + u.Host); o != "" {
-				return o
-			}
-		}
+// frontendOrigin 只使用管理员配置的站点地址或当前服务地址。
+// 禁止信任 query/Referer，否则 OAuth JWT 与找回密码令牌可被重定向到攻击者域名。
+func (a *App) frontendOrigin(c *gin.Context) string {
+	if configured := safeOrigin(a.getSetting("site_url")); configured != "" {
+		return configured
 	}
 	return schemeHost(c)
 }
@@ -137,7 +131,7 @@ func (a *App) OAuthProviders(c *gin.Context) {
 // OAuthStart GET /auth/oauth/:provider 发起第三方登录，302 到授权页
 func (a *App) OAuthStart(c *gin.Context) {
 	provider := c.Param("provider")
-	origin := frontendOrigin(c)
+	origin := a.frontendOrigin(c)
 	if provider != "github" {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=unsupported_provider")
 		return
@@ -176,7 +170,7 @@ type ghEmail struct {
 // OAuthCallback GET /auth/oauth/:provider/callback 换取用户信息并登录/绑定
 func (a *App) OAuthCallback(c *gin.Context) {
 	provider := c.Param("provider")
-	origin := frontendOrigin(c)
+	origin := a.frontendOrigin(c)
 	if provider != "github" {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=unsupported_provider")
 		return

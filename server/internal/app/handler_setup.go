@@ -41,20 +41,26 @@ type installRequest struct {
 // SetupStatus GET /setup/status
 func (a *App) SetupStatus(c *gin.Context) {
 	resp := gin.H{
-		"installed":           a.Config.Installed,
-		"version":             Version,
-		"db_types":            database.SupportedTypes(),
-		"data_dir":            config.DataDir(),
-		"sqlite_default_path": filepath.Join(config.DataDir(), "infosphere.db"),
+		"installed": a.Config.Installed,
+		"version":   Version,
+		"db_types":  database.SupportedTypes(),
 	}
 	if a.Config.Installed {
 		resp["db_type"] = a.Config.Database.Type
+	} else {
+		// 安装器需要默认路径；安装完成后不再公开服务器文件系统位置。
+		resp["data_dir"] = config.DataDir()
+		resp["sqlite_default_path"] = filepath.Join(config.DataDir(), "infosphere.db")
 	}
 	ok(c, resp)
 }
 
 // SetupTest POST /setup/test-connection
 func (a *App) SetupTest(c *gin.Context) {
+	if a.Config.Installed {
+		fail(c, http.StatusNotFound, "接口不存在")
+		return
+	}
 	var req config.DatabaseConfig
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误: "+err.Error())

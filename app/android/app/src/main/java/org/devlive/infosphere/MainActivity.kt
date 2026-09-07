@@ -1,12 +1,14 @@
 package org.devlive.infosphere
 
 import android.content.Context
+import android.graphics.Paint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import coil.compose.AsyncImage
 import com.mikepenz.markdown.m3.Markdown
 import androidx.compose.foundation.clickable
@@ -56,6 +58,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -251,6 +255,8 @@ private data class BookRow(
     val views: Int,
     val author: String,
     val authorId: Long,
+    val watermarkEnabled: Boolean,
+    val watermarkText: String,
 )
 
 private fun JSONObject.toBookRow(): BookRow = BookRow(
@@ -260,6 +266,8 @@ private fun JSONObject.toBookRow(): BookRow = BookRow(
     views = optInt("view_count", 0),
     author = optJSONObject("user")?.optString("username", "") ?: "",
     authorId = optJSONObject("user")?.optLong("id") ?: 0,
+    watermarkEnabled = optBoolean("watermark_enabled", false),
+    watermarkText = optString("watermark_text", ""),
 )
 
 private data class NotificationRow(val id: Long, val title: String, val readAt: String?, val createdAt: String)
@@ -938,20 +946,25 @@ private fun ReaderScreen(book: BookRow, prefs: android.content.SharedPreferences
             }
             current != null -> {
                 val (chapter, content) = current!!
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(padding)
-                        .verticalScroll(rememberScrollState()).padding(20.dp),
-                ) {
-                    Text(chapter.title, fontSize = 22.sp)
-                    Spacer(Modifier.height(16.dp))
-                    SelectionContainer {
-                        if (content.isEmpty()) {
-                            Text("（空文档）", fontSize = 15.sp)
-                        } else {
-                            Markdown(content, modifier = Modifier.fillMaxWidth())
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState()).padding(20.dp),
+                    ) {
+                        Text(chapter.title, fontSize = 22.sp)
+                        Spacer(Modifier.height(16.dp))
+                        SelectionContainer {
+                            if (content.isEmpty()) {
+                                Text("（空文档）", fontSize = 15.sp)
+                            } else {
+                                Markdown(content, modifier = Modifier.fillMaxWidth())
+                            }
                         }
+                        CommentsSection(docId = chapter.id)
                     }
-                    CommentsSection(docId = chapter.id)
+                    if (book.watermarkEnabled && book.watermarkText.isNotBlank()) {
+                        WatermarkOverlay(book.watermarkText)
+                    }
                 }
             }
             else -> LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -984,6 +997,32 @@ private fun ReaderScreen(book: BookRow, prefs: android.content.SharedPreferences
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WatermarkOverlay(text: String) {
+    val color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f).toArgb()
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            textSize = 14.sp.toPx()
+            textAlign = Paint.Align.CENTER
+        }
+        val stepX = 180.dp.toPx()
+        val stepY = 120.dp.toPx()
+        var y = stepY / 2
+        while (y < size.height + stepY) {
+            var x = stepX / 2
+            while (x < size.width + stepX) {
+                drawContext.canvas.nativeCanvas.save()
+                drawContext.canvas.nativeCanvas.rotate(-28f, x, y)
+                drawContext.canvas.nativeCanvas.drawText(text, x, y, paint)
+                drawContext.canvas.nativeCanvas.restore()
+                x += stepX
+            }
+            y += stepY
         }
     }
 }

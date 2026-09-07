@@ -96,7 +96,7 @@ func TestBookExportImport(t *testing.T) {
 	// 建书：标签 + 封面 + 三个章节（含子章节与草稿）
 	status, book := request(http.MethodPost, "/api/v1/books", map[string]any{
 		"title": "便携之书", "description": "带回车的\n描述: 冒号", "status": "published", "is_public": true,
-		"tags": []any{"Go", "测试"},
+		"tags": []any{"Go", "测试"}, "watermark_enabled": true, "watermark_text": "Alice · 内部资料",
 	}, aliceToken)
 	bookData := book["data"].(map[string]any)
 	bookID := int(bookData["id"].(float64))
@@ -237,7 +237,8 @@ func TestBookExportImport(t *testing.T) {
 	}
 	gotBook := got["data"].(map[string]any)
 	if gotBook["title"] != "便携之书" || gotBook["description"] != "带回车的\n描述: 冒号" ||
-		gotBook["cover_image"] != imageURL || gotBook["is_public"] != true {
+		gotBook["cover_image"] != imageURL || gotBook["is_public"] != true ||
+		gotBook["watermark_enabled"] != true || gotBook["watermark_text"] != "Alice · 内部资料" {
 		t.Fatalf("书籍元数据未无损还原: %v", gotBook)
 	}
 	if len(gotBook["tags"].([]any)) != 2 {

@@ -8,6 +8,7 @@ import (
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type commentPayload struct {
@@ -27,6 +28,23 @@ func (a *App) canManageComment(c *gin.Context, comment *models.Comment, book *mo
 	return book.UserID == u.ID
 }
 
+func publicCommentUser(u *models.User) gin.H {
+	if u == nil {
+		return gin.H{}
+	}
+	return gin.H{
+		"id": u.ID, "username": u.Username, "avatar": u.Avatar,
+		"bio": u.Bio, "github_url": u.GithubURL, "role": u.Role,
+	}
+}
+
+func publicCommentItem(comment models.Comment) gin.H {
+	return gin.H{
+		"id": comment.ID, "user_id": comment.UserID, "user": publicCommentUser(comment.User),
+		"content": comment.Content, "created_at": comment.CreatedAt,
+	}
+}
+
 // ListComments GET /documents/:docId/comments 章节评论（两级）
 func (a *App) ListComments(c *gin.Context) {
 	docID, err := strconv.Atoi(c.Param("id"))
@@ -34,11 +52,19 @@ func (a *App) ListComments(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
-	var all []models.Comment
-	if err := a.DB.Preload("User", func(tx interface{}) {}).Preload("User").Error; err != nil {
+	var doc models.Document
+	if err := a.DB.First(&doc, docID).Error; err != nil {
+		fail(c, http.StatusNotFound, "章节不存在")
+		return
 	}
-	_ = all
-	q := a.DB.Preload("User").Where("document_id = ? AND status = ?", docID, "published").Order("created_at ASC")
+	var book models.Book
+	if err := a.DB.First(&book, doc.BookID).Error; err != nil || !a.canReadDocument(currentUser(c), &doc, &book) {
+		fail(c, http.StatusNotFound, "章节不存在")
+		return
+	}
+	q := a.DB.Preload("User", func(tx *gorm.DB) *gorm.DB {
+		return tx.Select("id", "username", "avatar", "bio", "github_url", "role")
+	}).Where("document_id = ? AND status = ?", docID, "published").Order("created_at ASC")
 	var comments []models.Comment
 	if err := q.Find(&comments).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
@@ -54,21 +80,15 @@ func (a *App) ListComments(c *gin.Context) {
 			byParent[*cm.ParentID] = append(byParent[*cm.ParentID], cm)
 		}
 	}
-	type node struct {
-		models.Comment
-		Replies []models.Comment `json:"replies"`
-	}
-	build := func(parentID uint) []models.Comment {
-		return byParent[parentID]
-	}
-	_ = build
 	result := make([]gin.H, 0, len(roots))
 	for _, root := range roots {
-		replies := byParent[root.ID]
-		result = append(result, gin.H{
-			"id": root.ID, "user": root.User, "content": root.Content,
-			"created_at": root.CreatedAt, "replies": replies,
-		})
+		replies := make([]gin.H, 0, len(byParent[root.ID]))
+		for _, reply := range byParent[root.ID] {
+			replies = append(replies, publicCommentItem(reply))
+		}
+		item := publicCommentItem(root)
+		item["replies"] = replies
+		result = append(result, item)
 	}
 	ok(c, result)
 }
@@ -102,6 +122,14 @@ func (a *App) CreateComment(c *gin.Context) {
 	var book models.Book
 	if err := a.DB.First(&book, doc.BookID).Error; err != nil {
 		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	if !a.canReadDocument(u, &doc, &book) {
+		fail(c, http.StatusNotFound, "章节不存在")
+		return
+	}
+	if doc.AllowComments != nil && !*doc.AllowComments {
+		fail(c, http.StatusForbidden, "该章节已关闭评论")
 		return
 	}
 
@@ -141,7 +169,7 @@ func (a *App) CreateComment(c *gin.Context) {
 				map[string]any{"link": readerLink})
 		}
 	}
-	ok(c, comment)
+	ok(c, publicCommentItem(comment))
 }
 
 // UpdateComment PUT /comments/:id 编辑自己的评论
@@ -161,6 +189,16 @@ func (a *App) UpdateComment(c *gin.Context) {
 		fail(c, http.StatusForbidden, "只能编辑自己的评论")
 		return
 	}
+	var doc models.Document
+	if err := a.DB.First(&doc, comment.DocumentID).Error; err != nil {
+		fail(c, http.StatusNotFound, "章节不存在")
+		return
+	}
+	var book models.Book
+	if err := a.DB.First(&book, doc.BookID).Error; err != nil || !a.canReadDocument(u, &doc, &book) {
+		fail(c, http.StatusNotFound, "章节不存在")
+		return
+	}
 	var req struct {
 		Content string `json:"content"`
 	}
@@ -168,14 +206,17 @@ func (a *App) UpdateComment(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "请填写评论内容")
 		return
 	}
+	if len([]rune(req.Content)) > 2000 {
+		fail(c, http.StatusBadRequest, "评论最多 2000 字")
+		return
+	}
 	comment.Content = req.Content
 	a.DB.Save(&comment)
-	ok(c, comment)
+	ok(c, publicCommentItem(comment))
 }
 
 // DeleteComment DELETE /comments/:id 本人或书籍作者/管理员
 func (a *App) DeleteComment(c *gin.Context) {
-	u := currentUser(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
@@ -186,12 +227,17 @@ func (a *App) DeleteComment(c *gin.Context) {
 		fail(c, http.StatusNotFound, "评论不存在")
 		return
 	}
+	var doc models.Document
+	if err := a.DB.First(&doc, comment.DocumentID).Error; err != nil {
+		fail(c, http.StatusNotFound, "章节不存在")
+		return
+	}
 	var book models.Book
-	if err := a.DB.First(&book, comment.DocumentID).Error; err != nil {
+	if err := a.DB.First(&book, doc.BookID).Error; err != nil {
 		fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
-	if comment.UserID != u.ID && u.Role != "admin" && book.UserID != u.ID {
+	if !a.canManageComment(c, &comment, &book) {
 		fail(c, http.StatusForbidden, "无权删除该评论")
 		return
 	}

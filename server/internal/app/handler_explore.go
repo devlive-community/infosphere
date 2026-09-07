@@ -40,10 +40,18 @@ func (a *App) SiteStats(c *gin.Context) {
 	var userCount, bookCount, docCount, tagCount int64
 	var views int64
 	a.DB.Model(&models.User{}).Count(&userCount)
-	a.DB.Model(&models.Book{}).Count(&bookCount)
-	a.DB.Model(&models.Document{}).Count(&docCount)
-	a.DB.Model(&models.Tag{}).Count(&tagCount)
-	a.DB.Model(&models.Book{}).Select("COALESCE(SUM(view_count), 0)").Scan(&views)
+	publicBooks := a.DB.Model(&models.Book{}).Where("is_public = ? AND status = ?", true, "published")
+	publicBooks.Count(&bookCount)
+	a.DB.Model(&models.Document{}).
+		Joins("JOIN books b ON b.id = documents.book_id").
+		Where("b.is_public = ? AND b.status = ? AND documents.status = ?", true, "published", "published").
+		Count(&docCount)
+	a.DB.Model(&models.Tag{}).
+		Joins("JOIN book_tags bt ON bt.tag_id = tags.id").
+		Joins("JOIN books b ON b.id = bt.book_id").
+		Where("b.is_public = ? AND b.status = ?", true, "published").
+		Distinct("tags.id").Count(&tagCount)
+	publicBooks.Select("COALESCE(SUM(view_count), 0)").Scan(&views)
 	ok(c, gin.H{
 		"user_count":     userCount,
 		"book_count":     bookCount,

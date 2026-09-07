@@ -3,6 +3,8 @@ package app
 import (
 	"net/http"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"infosphere/server/internal/models"
 
@@ -57,9 +59,42 @@ func (a *App) canReadBook(u *models.User, b *models.Book) bool {
 func preloadBookUser(db *gorm.DB) *gorm.DB {
 	return db.
 		Preload("User", func(tx *gorm.DB) *gorm.DB {
-			return tx.Select("id", "username", "avatar", "email", "bio", "github_url", "role")
+			// 公开书籍响应只能携带公开资料，禁止通过嵌套 User 泄露邮箱、登录时间和账户状态。
+			return tx.Select("id", "username", "avatar", "bio", "github_url", "role", "created_at")
 		}).
 		Preload("Tags")
+}
+
+type bookAccess struct {
+	CanRead          bool   `json:"can_read"`
+	CanManage        bool   `json:"can_manage"`
+	CanEditContent   bool   `json:"can_edit_content"`
+	CanExport        bool   `json:"can_export"`
+	CollaboratorRole string `json:"collaborator_role,omitempty"`
+}
+
+// GetBookAccess GET /books/slug/:slug/access 返回由服务端计算的对象级能力，供受保护页面守卫使用。
+func (a *App) GetBookAccess(c *gin.Context) {
+	var book models.Book
+	if err := a.DB.Where("slug = ?", c.Param("slug")).First(&book).Error; err != nil {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	u := currentUser(c)
+	if !a.canReadBook(u, &book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	role, _ := a.collaboratorRole(u, book.ID)
+	canManage := a.canManageBook(u, &book)
+	canEdit := a.canEditBookContent(u, &book)
+	ok(c, bookAccess{
+		CanRead:          true,
+		CanManage:        canManage,
+		CanEditContent:   canEdit,
+		CanExport:        canEdit,
+		CollaboratorRole: role,
+	})
 }
 
 // ListBooks GET /books
@@ -109,16 +144,25 @@ func (a *App) ListBooks(c *gin.Context) {
 }
 
 type bookPayload struct {
-	Title         *string  `json:"title"`
-	Description   *string  `json:"description"`
-	CoverImage    *string  `json:"cover_image"`
-	Slug          *string  `json:"slug"`
-	Status        *string  `json:"status"`
-	IsPublic      *bool    `json:"is_public"`
-	OrderCol      *string  `json:"order_col"`
-	OrderDir      *string  `json:"order_dir"`
-	ChapterPrefix *string  `json:"chapter_prefix"`
-	Tags          []string `json:"tags"`
+	Title            *string  `json:"title"`
+	Description      *string  `json:"description"`
+	CoverImage       *string  `json:"cover_image"`
+	Slug             *string  `json:"slug"`
+	Status           *string  `json:"status"`
+	IsPublic         *bool    `json:"is_public"`
+	OrderCol         *string  `json:"order_col"`
+	OrderDir         *string  `json:"order_dir"`
+	ChapterPrefix    *string  `json:"chapter_prefix"`
+	WatermarkEnabled *bool    `json:"watermark_enabled"`
+	WatermarkText    *string  `json:"watermark_text"`
+	Tags             []string `json:"tags"`
+}
+
+const maxWatermarkLength = 80
+
+func normalizeWatermark(text string) (string, bool) {
+	trimmed := strings.TrimSpace(text)
+	return trimmed, utf8.RuneCountInString(trimmed) <= maxWatermarkLength
 }
 
 // MyBookCounts GET /books/status-counts 当前用户各状态书籍数量
@@ -197,6 +241,21 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 	if req.ChapterPrefix != nil {
 		book.ChapterPrefix = *req.ChapterPrefix
+	}
+	if req.WatermarkText != nil {
+		watermarkText, valid := normalizeWatermark(*req.WatermarkText)
+		if !valid {
+			fail(c, http.StatusBadRequest, "水印内容不能超过 80 个字符")
+			return
+		}
+		book.WatermarkText = watermarkText
+	}
+	if req.WatermarkEnabled != nil {
+		book.WatermarkEnabled = *req.WatermarkEnabled
+	}
+	if book.WatermarkEnabled && book.WatermarkText == "" {
+		fail(c, http.StatusBadRequest, "开启水印后请填写水印内容")
+		return
 	}
 
 	for i := 0; i < 50; i++ {
@@ -303,6 +362,21 @@ func (a *App) UpdateBook(c *gin.Context) {
 	if req.ChapterPrefix != nil {
 		book.ChapterPrefix = *req.ChapterPrefix
 	}
+	if req.WatermarkText != nil {
+		watermarkText, valid := normalizeWatermark(*req.WatermarkText)
+		if !valid {
+			fail(c, http.StatusBadRequest, "水印内容不能超过 80 个字符")
+			return
+		}
+		book.WatermarkText = watermarkText
+	}
+	if req.WatermarkEnabled != nil {
+		book.WatermarkEnabled = *req.WatermarkEnabled
+	}
+	if book.WatermarkEnabled && book.WatermarkText == "" {
+		fail(c, http.StatusBadRequest, "开启水印后请填写水印内容")
+		return
+	}
 	if req.Slug != nil && *req.Slug != book.Slug {
 		if !validSlug(*req.Slug) {
 			fail(c, http.StatusBadRequest, "slug 仅支持小写字母、数字和中划线")
@@ -357,6 +431,10 @@ func (a *App) IncrementBookView(c *gin.Context) {
 	book, status := a.findBook(c)
 	if book == nil {
 		fail(c, status, "书籍不存在")
+		return
+	}
+	if !a.canReadBook(currentUser(c), book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
 	a.DB.Model(book).UpdateColumn("view_count", book.ViewCount+1)

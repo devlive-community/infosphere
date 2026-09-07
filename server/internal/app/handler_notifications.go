@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"infosphere/server/internal/auth"
+	"infosphere/server/internal/authz"
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -184,7 +185,12 @@ func (a *App) SSENotifications(c *gin.Context) {
 		fail(c, http.StatusUnauthorized, "令牌无效")
 		return
 	}
-	userID := claims.UserID
+	var user models.User
+	if err := a.DB.First(&user, claims.UserID).Error; err != nil || !user.IsActive || !authz.Has(user.Role, authz.NotificationRead) {
+		fail(c, http.StatusUnauthorized, "令牌无效")
+		return
+	}
+	userID := user.ID
 
 	var unread int64
 	a.DB.Model(&models.Notification{}).Where("user_id = ? AND read_at IS NULL", userID).Count(&unread)
