@@ -91,7 +91,7 @@ export default function SettingsConfig() {
   return (
     <SettingsLayout active="config" description="以键值对形式管理所有系统配置。站点、邮件、存储、第三方登录等配置也存于此，可在此统一查看，并按需自由新增自定义配置。">
       {/* 新增配置 */}
-      <div className="mb-6 max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="mb-4 font-semibold text-slate-900">新增配置</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="配置键" hint="字母数字与 . _ : -">
@@ -109,10 +109,10 @@ export default function SettingsConfig() {
         </div>
       </div>
 
-      {message && <div className="mb-4 max-w-4xl rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
+      {message && <div className="mb-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
 
       {/* 配置列表 */}
-      <div className="max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>

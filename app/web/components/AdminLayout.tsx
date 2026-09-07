@@ -173,7 +173,7 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl">{children}</div>
+          <div className="w-full">{children}</div>
         </main>
       </div>
     </div>
