@@ -91,15 +91,19 @@ struct AppState {
     info: Arc<Mutex<ServerInfo>>,
 }
 
-/// 站点根 origin（scheme://host[:port]），用于主窗口导航的同源判定
-fn origin_of(url: &tauri::Url) -> String {
-    let port = url.port().map(|p| format!(":{}", p)).unwrap_or_default();
-    format!(
-        "{}://{}{}",
-        url.scheme(),
-        url.host_str().unwrap_or(""),
-        port
-    )
+/// 归一化主机名：localhost 与回环地址视为等价，忽略大小写
+fn host_key(url: &tauri::Url) -> String {
+    match url.host_str() {
+        Some("127.0.0.1") | Some("::1") | Some("localhost") => "localhost".to_string(),
+        Some(h) => h.to_ascii_lowercase(),
+        None => String::new(),
+    }
+}
+
+/// 是否与已连接服务器同站：仅比较主机名，忽略协议与端口。
+/// 服务端在 http/https 或不同端口间重定向时不再把整个站点弹到系统浏览器。
+fn same_site(server: &tauri::Url, url: &tauri::Url) -> bool {
+    host_key(server) == host_key(url)
 }
 
 /// 本地设置页地址（Linux 上自定义协议是 http://tauri.localhost）
@@ -157,29 +161,32 @@ fn main() {
                 .inner_size(1280.0, 840.0)
                 .min_inner_size(960.0, 640.0)
                 .on_new_window(move |url, _| {
+                    eprintln!("[desktop] new-window -> 系统浏览器: {}", url);
                     let _ = new_window_handle
                         .opener()
                         .open_url(url.as_str(), None::<&str>);
                     tauri::webview::NewWindowResponse::Deny
                 })
                 .on_navigation(move |url| {
-                    if is_local_setup(url) {
-                        return true;
-                    }
-                    if url.scheme() != "http" && url.scheme() != "https" {
+                    // 本地设置页与非 http(s) 资源（tauri://、about:、data: 等）始终留在 webview 内
+                    if is_local_setup(url) || (url.scheme() != "http" && url.scheme() != "https") {
+                        eprintln!("[desktop] nav 本地/资源 -> webview: {}", url);
                         return true;
                     }
                     let saved = shared.lock().unwrap().url.clone();
-                    let same_origin = saved
-                        .as_deref()
-                        .and_then(|server| tauri::Url::parse(server).ok())
-                        .map(|server| origin_of(&server) == origin_of(url))
-                        .unwrap_or(false);
-                    if same_origin {
-                        true
-                    } else {
-                        let _ = nav_handle.opener().open_url(url.as_str(), None::<&str>);
-                        false
+                    let server = saved.as_deref().and_then(|s| tauri::Url::parse(s).ok());
+                    match server {
+                        // 已连接服务器：仅真正的外站（如 GitHub OAuth）转系统浏览器，同站留在 webview
+                        Some(server) if !same_site(&server, url) => {
+                            eprintln!("[desktop] nav 外站 -> 系统浏览器: {}", url);
+                            let _ = nav_handle.opener().open_url(url.as_str(), None::<&str>);
+                            false
+                        }
+                        // 未连接（设置阶段）或与服务器同站：留在 webview
+                        _ => {
+                            eprintln!("[desktop] nav 同站 -> webview: {}", url);
+                            true
+                        }
                     }
                 })
                 .build()?;
