@@ -9,7 +9,7 @@ import { api } from '@/lib/api'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { ButtonLink, Tooltip, Loading } from '@/components/ui'
+import { Button, ButtonLink, Tooltip, Loading } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
@@ -97,7 +97,7 @@ function countChapters(docs: Document[]): { chapters: number; sections: number }
 }
 
 export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree, related, needsAuth, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { user } = useApp()
+  const { user, authReady } = useApp()
   const router = useRouter()
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
   // 私有/草稿书 SSR 无令牌取不到，挂载后携带本地令牌客户端重试（避免默认空白）
@@ -120,8 +120,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
   const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string } | null>(null)
   const [favorited, setFavorited] = useState(false)
-  const [likeCount, setLikeCount] = useState(0)
-  const [liked, setLiked] = useState(false)
+  const [favoriteCount, setFavoriteCount] = useState<number | null>(null)
+  const [favoriteReady, setFavoriteReady] = useState(false)
+  const [favoriteError, setFavoriteError] = useState('')
   const [reactBusy, setReactBusy] = useState(false)
   const bookSlugSafe = book?.slug || ''
   const username = user?.username || ''
@@ -130,6 +131,41 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       getReadingProgress(username, book.id).then(setProgress)
     }
   }, [username, book])
+
+  useEffect(() => {
+    if (!authReady || !book) {
+      setFavoriteReady(false)
+      return
+    }
+    if (!user) {
+      setFavorited(false)
+      setFavoriteCount(null)
+      setFavoriteError('')
+      setFavoriteReady(true)
+      return
+    }
+
+    let cancelled = false
+    setFavoriteReady(false)
+    setFavoriteError('')
+    api<{ types: string[]; favorite_count: number }>(`/books/${book.id}/reactions/me`)
+      .then((result) => {
+        if (cancelled) return
+        setFavorited((result.types || []).includes('favorite'))
+        setFavoriteCount(result.favorite_count || 0)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setFavorited(false)
+        setFavoriteCount(null)
+        setFavoriteError((error as Error).message || '收藏状态加载失败')
+      })
+      .finally(() => {
+        if (!cancelled) setFavoriteReady(true)
+      })
+
+    return () => { cancelled = true }
+  }, [authReady, user, book])
 
   // 阅读进度：登录用户读过的章节 ID 集合，用于目录标记与整体进度
   const [readSet, setReadSet] = useState<Set<number>>(new Set())
@@ -188,6 +224,37 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       alert('链接已复制到剪贴板')
     } catch {
       window.prompt('复制以下链接分享本书', bookUrl)
+    }
+  }
+
+  async function toggleFavorite() {
+    const currentBook = book
+    if (!currentBook) return
+    if (!user) {
+      const next = router.asPath.startsWith('/') && !router.asPath.startsWith('//') ? router.asPath : `/book/detail/${encodeURIComponent(currentBook.slug)}`
+      await router.push(`/login?next=${encodeURIComponent(next)}`)
+      return
+    }
+    if (!favoriteReady || reactBusy) return
+
+    const previousFavorited = favorited
+    const previousCount = favoriteCount
+    setReactBusy(true)
+    setFavoriteError('')
+    setFavorited(!previousFavorited)
+    setFavoriteCount((count) => count === null ? count : Math.max(0, count + (previousFavorited ? -1 : 1)))
+    try {
+      if (previousFavorited) {
+        await api(`/books/${currentBook.id}/reactions`, { method: 'DELETE', params: { type: 'favorite' } })
+      } else {
+        await api(`/books/${currentBook.id}/reactions`, { method: 'POST', body: { type: 'favorite' } })
+      }
+    } catch (error) {
+      setFavorited(previousFavorited)
+      setFavoriteCount(previousCount)
+      setFavoriteError((error as Error).message || '收藏操作失败，请稍后重试')
+    } finally {
+      setReactBusy(false)
     }
   }
 
@@ -280,10 +347,17 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               ) : (
                 <span className="text-sm text-slate-400">暂无已发布章节</span>
               )}
-              <Tooltip content="收藏"><button type="button" onClick={() => alert('收藏功能即将上线')}
-                className="flex h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">
-                  <BookmarkIcon className="h-4 w-4" /> 收藏
-                </button></Tooltip>
+              <Button type="button" variant="outline" onClick={toggleFavorite}
+                disabled={!authReady || (!!user && !favoriteReady) || reactBusy}
+                aria-pressed={favorited}
+                className={`h-11 px-5 ${favorited
+                  ? 'border-primary-200 bg-primary-50 text-primary-700 hover:border-primary-300 hover:bg-primary-100'
+                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
+                <BookmarkIcon className="h-4 w-4" />
+                {!authReady || (!!user && !favoriteReady) || reactBusy
+                  ? '处理中…'
+                  : `${favorited ? '已收藏' : '收藏'}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
+              </Button>
               <Tooltip content="分享"><button type="button" onClick={share}
                 className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
                   <ShareIcon className="h-4 w-4" />
@@ -299,6 +373,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 </>
               )}
             </div>
+            {favoriteError && <p role="alert" className="mt-2 text-sm text-rose-600">{favoriteError}</p>}
           </div>
 
           {/* 右：书籍信息卡 */}

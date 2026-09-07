@@ -7,6 +7,10 @@ import { Button, Input, Field } from '@/components/ui'
 import OAuthButtons, { oauthErrorText } from '@/components/OAuthButtons'
 import type { User } from '@/lib/types'
 
+function safeNextPath(next: string | string[] | undefined): string {
+  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\') ? next : '/'
+}
+
 export default function Login() {
   const router = useRouter()
   const { user, login } = useApp()
@@ -15,7 +19,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) router.replace('/')
+    if (user && router.isReady) router.replace(safeNextPath(router.query.next))
   }, [user, router])
 
   useEffect(() => {
@@ -31,7 +35,7 @@ export default function Login() {
     try {
       const data = await api<{ token: string; user: User }>('/auth/login', { method: 'POST', body: form })
       login(data.token, data.user)
-      router.replace('/')
+      router.replace(safeNextPath(router.query.next))
     } catch (err) {
       setError((err as Error).message)
     } finally {
