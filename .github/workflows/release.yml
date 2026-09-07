@@ -17,10 +17,27 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # 需要完整历史与标签以生成提交历史 Release Note
 
       - name: Extract version from tag
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # Release Note = 自上一个 v 标签以来的提交历史
+      - name: Build release notes from commit history
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV="$(git describe --tags --match 'v*' --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          if [ -n "$PREV" ]; then
+            RANGE="${PREV}..${TAG}"
+            echo "### 自 ${PREV} 起的变更" > release-notes.md
+          else
+            RANGE="${TAG}"
+            echo "### 变更记录" > release-notes.md
+          fi
+          echo >> release-notes.md
+          git log --no-merges -n 200 --pretty=format:'- %s (%h)' "$RANGE" >> release-notes.md
 
       # ── 前端 ──
       - name: Setup pnpm
@@ -81,7 +98,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: release-notes.md
           files: |
             release/infosphere-server-linux-amd64
             release/infosphere-server-linux-arm64
