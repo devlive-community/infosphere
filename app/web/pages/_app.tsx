@@ -65,10 +65,9 @@ function RouteLoading() {
 
   if (!loading) return null
   return (
-    <div className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center bg-white/70 backdrop-blur-[1px]" role="status" aria-live="polite">
-      <div className="rounded-2xl border border-slate-200 bg-white px-10 shadow-xl">
-        <Loading className="py-8" label="页面加载中…" />
-      </div>
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-1 overflow-hidden bg-primary-100 shadow-[0_1px_5px_rgba(65,105,225,0.18)]" role="status" aria-live="polite">
+      <span className="block h-full w-2/3 animate-pulse bg-gradient-to-r from-primary-300 via-primary-600 to-primary-400" />
+      <span className="sr-only">页面加载中…</span>
     </div>
   )
 }
