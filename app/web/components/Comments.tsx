@@ -5,6 +5,7 @@ import UserAvatar from '@/components/UserAvatar'
 import { formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import type { User } from '@/lib/types'
+import { Loading } from '@/components/ui'
 
 interface CommentItem {
   id: number
@@ -130,7 +131,9 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
       )}
 
       <div className="mt-6 divide-y divide-slate-100">
-        {(comments || []).map((c) => <CommentNode key={c.id} comment={c} />)}
+        {comments === null ? (
+          <Loading className="py-8" label="正在加载评论…" />
+        ) : comments.map((c) => <CommentNode key={c.id} comment={c} />)}
         {comments !== null && comments.length === 0 && (
           <p className="py-6 text-center text-sm text-slate-400">还没有评论</p>
         )}

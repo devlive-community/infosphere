@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
-import { Badge, ButtonLink } from '@/components/ui'
+import { Badge, ButtonLink, Loading } from '@/components/ui'
 import {
   ShieldCheckIcon, TagIcon, DatabaseIcon, CodeIcon, GlobeIcon, ServerIcon,
   ActivityIcon, ExternalLinkIcon, MailIcon, GithubIcon, UsersIcon,
@@ -38,10 +38,11 @@ export default function AdminSystem() {
   const [tagCount, setTagCount] = useState<number | null>(null)
   const [activity, setActivity] = useState<AdminActivity | null>(null)
   const [configCount, setConfigCount] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!isAdmin) return
-    fetchHealth().then(async ({ health, latency }) => {
+    const healthRequest = fetchHealth().then(async ({ health, latency }) => {
       setHealth(health)
       const [webMs, dbMs] = await Promise.all([measure('/', { method: 'HEAD' }), measure('/api/v1/stats')])
       setServices([
@@ -49,27 +50,39 @@ export default function AdminSystem() {
         { key: 'web', label: 'Web SSR', icon: GlobeIcon, ok: health.web !== 'down', latency: webMs },
         { key: 'db', label: '数据库连接', icon: DatabaseIcon, ok: health.db === 'up', latency: dbMs },
       ])
-    }).catch(() => { /* 健康检查失败时保持加载态 */ })
-    api<SystemVersion>('/system/version').then(setVersion).catch(() => {})
-    api<{ db_type?: string }>('/setup/status').then((s) => setDbType(s.db_type || '')).catch(() => {})
-    api<StorageConfig>('/storage').then(setStorage).catch(() => {})
-    api<MailConfig>('/mail').then(setMail).catch(() => {})
-    api<OAuthConfig>('/oauth').then(setOauth).catch(() => {})
-    api<{ user_count: number; book_count: number; document_count: number; tag_count: number; total_views: number }>('/admin/stats')
+    })
+    const statsRequest = api<{ user_count: number; book_count: number; document_count: number; tag_count: number; total_views: number }>('/admin/stats')
       .then((s) => {
         setUserCount(s.user_count)
         setBookCount(s.book_count)
         setDocCount(s.document_count)
         setTagCount(s.tag_count)
         setTotalViews(s.total_views)
-      }).catch(() => {})
-    api<AdminActivity>('/admin/activity').then(setActivity).catch(() => {})
-    api<{ items?: unknown[] }>('/admin/configs').then((c) => setConfigCount(c?.items?.length ?? 0)).catch(() => {})
+      })
+    Promise.allSettled([
+      healthRequest,
+      api<SystemVersion>('/system/version').then(setVersion),
+      api<{ db_type?: string }>('/setup/status').then((s) => setDbType(s.db_type || '')),
+      api<StorageConfig>('/storage').then(setStorage),
+      api<MailConfig>('/mail').then(setMail),
+      api<OAuthConfig>('/oauth').then(setOauth),
+      statsRequest,
+      api<AdminActivity>('/admin/activity').then(setActivity),
+      api<{ items?: unknown[] }>('/admin/configs').then((c) => setConfigCount(c?.items?.length ?? 0)),
+    ]).finally(() => setLoading(false))
   }, [isAdmin])
 
   const dbName = DB_LABEL[dbType] || dbType || '—'
   const nodeVer = health?.node ? `Node.js ${health.node.replace(/^v/, '')}` : '—'
   const healthy = health?.status === 'ok'
+
+  if (loading) {
+    return (
+      <AdminLayout current="system" breadcrumb="系统概览">
+        <Loading className="min-h-[60vh]" label="正在加载控制台数据…" />
+      </AdminLayout>
+    )
+  }
 
   return (
     <AdminLayout current="system" breadcrumb="系统概览">
@@ -123,7 +136,7 @@ export default function AdminSystem() {
                   <span className="w-16 text-right font-mono text-sm text-slate-400">{s.latency >= 0 ? `${s.latency} ms` : '—'}</span>
                 </div>
               )
-            }) : <p className="py-6 text-sm text-slate-400">加载中…</p>}
+            }) : <p className="py-6 text-sm text-slate-400">暂时无法获取服务状态</p>}
           </div>
         </section>
 
@@ -312,7 +325,7 @@ function ActivityCard({ icon, title, items, empty }: {
       ) : items ? (
         <p className="py-6 text-sm text-slate-400">{empty}</p>
       ) : (
-        <p className="py-6 text-sm text-slate-400">加载中…</p>
+        <p className="py-6 text-sm text-slate-400">暂时无法获取活动数据</p>
       )}
     </section>
   )

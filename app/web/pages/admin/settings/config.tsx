@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
-import { Badge, Button, Input, Field } from '@/components/ui'
+import { Badge, Button, Input, Field, Loading } from '@/components/ui'
 import { TrashIcon, PencilIcon, SaveIcon } from '@/components/icons'
 import type { ConfigItem } from '@/lib/admin'
 
@@ -127,7 +127,7 @@ export default function SettingsConfig() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-400">加载中…</td></tr>
+                <tr><td colSpan={5}><Loading className="py-10" label="正在加载系统配置…" /></td></tr>
               ) : items.length === 0 ? (
                 <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-400">暂无配置</td></tr>
               ) : items.map((it) => {

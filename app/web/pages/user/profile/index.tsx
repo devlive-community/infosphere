@@ -6,8 +6,8 @@ import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 import { api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Button, Input, Textarea, Field } from '@/components/ui'
-import { EyeIcon } from '@/components/icons'
+import { Button, Input, Textarea, Field, Loading } from '@/components/ui'
+import { EyeIcon, SaveIcon } from '@/components/icons'
 import UserAvatar from '@/components/UserAvatar'
 import OAuthBindings from '@/components/OAuthBindings'
 
@@ -35,7 +35,7 @@ export default function Profile() {
     }
   }, [user])
 
-  if (!user) return null
+  if (!user) return <Loading className="min-h-[60vh]" label="正在加载账户资料…" />
 
   const avatarSrc = resolveMediaUrl(avatar)
 
@@ -155,7 +155,7 @@ export default function Profile() {
               {/* 底部操作 */}
               <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
                 <Button variant="outline" type="button" onClick={() => { setEmail(user.email || ''); setAvatar(user.avatar || ''); setBio(user.bio || ''); setGithubUrl(user.github_url || '') }}>取消</Button>
-                <Button type="submit" loading={saving}>✓ 保存资料</Button>
+                <Button type="submit" loading={saving}><SaveIcon className="h-4 w-4" /> 保存资料</Button>
               </div>
             </form>
           </div>

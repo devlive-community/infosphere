@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Container from '@/components/Container'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
-import { Button, Input, Field } from '@/components/ui'
+import { Button, Input, Field, Loading } from '@/components/ui'
 import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 import { CalendarIcon, CheckCircleSmallIcon, HistoryIcon, ShieldIcon, UserCircleIcon } from '@/components/icons'
 
@@ -22,7 +22,7 @@ export default function Security() {
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  if (!user) return null
+  if (!user) return <Loading className="min-h-[60vh]" label="正在加载账户信息…" />
 
   async function submit(e: FormEvent) {
     e.preventDefault()

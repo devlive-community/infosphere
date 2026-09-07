@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
-import { Button, Input, Field, Select } from '@/components/ui'
+import { Button, Input, Field, Select, Loading } from '@/components/ui'
 import { StorageConfig, emptyStorage } from '@/lib/admin'
 
 // 系统设置 · 存储配置：本地磁盘或七牛云对象存储（仅管理员）
@@ -12,10 +12,14 @@ export default function SettingsStorage() {
   const [storage, setStorage] = useState<StorageConfig>(emptyStorage)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!isAdmin) return
-    api<StorageConfig>('/storage').then(setStorage).catch(() => {})
+    api<StorageConfig>('/storage')
+      .then(setStorage)
+      .catch((e) => setMessage((e as Error).message))
+      .finally(() => setLoading(false))
   }, [isAdmin])
 
   async function save() {
@@ -33,6 +37,7 @@ export default function SettingsStorage() {
 
   return (
     <SettingsLayout active="storage" description="图片上传的存储位置：本地磁盘（默认，随数据目录备份）或七牛云对象存储（切换后新上传的图片写入七牛，历史图片仍在本地）。">
+      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label="正在加载存储配置…" /> : (
       <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4">
           <Field label="存储驱动">
@@ -65,6 +70,7 @@ export default function SettingsStorage() {
           <Button loading={saving} onClick={save}>保存存储配置</Button>
         </div>
       </div>
+      )}
     </SettingsLayout>
   )
 }

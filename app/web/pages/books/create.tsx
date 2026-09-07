@@ -4,6 +4,7 @@ import Container from '@/components/Container'
 import { api } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
 import BookForm from '@/components/BookForm'
+import { Loading } from '@/components/ui'
 import type { Book } from '@/lib/types'
 
 export default function CreateBook() {
@@ -12,7 +13,7 @@ export default function CreateBook() {
   const siteName = site.site_name || 'InfoSphere'
   const router = useRouter()
 
-  if (!user) return null
+  if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
 
   return (
     <>

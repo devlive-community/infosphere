@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, API_BASE, formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
-import { Badge, Button, Input, Select, Pagination } from '@/components/ui'
+import { Badge, Button, Input, Select, Pagination, Loading } from '@/components/ui'
 import { SearchIcon } from '@/components/icons'
 import type { PageResult, User } from '@/lib/types'
 
@@ -134,7 +134,7 @@ export default function AdminUsers() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-400">加载中…</td></tr>
+                <tr><td colSpan={6}><Loading className="py-10" label="正在加载用户…" /></td></tr>
               ) : items.length === 0 ? (
                 <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-400">没有符合条件的用户</td></tr>
               ) : items.map((u) => {

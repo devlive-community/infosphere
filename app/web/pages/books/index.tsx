@@ -134,7 +134,7 @@ export default function MyBooks() {
     setMenuFor(null)
   }
 
-  if (!user) return null
+  if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
 
   const hasBooks = (data.items || []).length > 0
 
@@ -372,7 +372,7 @@ function ChapterPanel({ book, onClose }: { book: Book; onClose: () => void }) {
         </div>
         <div className="max-h-72 overflow-y-auto">
           {error && <p className="px-4 py-3 text-sm text-rose-500">{error}</p>}
-          {!error && docs === null && <p className="px-4 py-6 text-center text-sm text-slate-400">加载中…</p>}
+          {!error && docs === null && <Loading className="py-6" label="正在加载章节…" />}
           {docs !== null && rows.length === 0 && <p className="px-4 py-6 text-center text-sm text-slate-400">暂无章节</p>}
           {rows.map((row) => (
             <div key={row.doc.id} className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50">

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { API_BASE, api, formatDate, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { Button } from '@/components/ui'
+import { Button, Loading } from '@/components/ui'
 import { BellIcon } from '@/components/icons'
 
 interface NotificationItem {
@@ -137,7 +137,7 @@ export default function NotificationBell() {
           </div>
           <div className="max-h-96 overflow-y-auto">
             {!loaded ? (
-              <p className="py-10 text-center text-sm text-slate-400">加载中…</p>
+              <Loading className="py-10" label="正在加载通知…" />
             ) : items.length === 0 ? (
               <p className="py-10 text-center text-sm text-slate-400">暂无通知</p>
             ) : (

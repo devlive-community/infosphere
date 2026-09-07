@@ -21,15 +21,18 @@ export default function Favorites() {
   const siteName = site.site_name || 'InfoSphere'
   const [page, setPage] = useState(1)
   const [data, setData] = useState<{ items: FavItem[]; total: number; page: number; page_size: number } | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!user) return
+    setLoading(true)
     api<{ items: FavItem[]; total: number; page: number; page_size: number }>(`/users/me/reactions`, { params: { type: 'favorite', page, page_size: 9 } })
       .then(setData)
       .catch(() => setData({ items: [], total: 0, page: 1, page_size: 9 }))
+      .finally(() => setLoading(false))
   }, [user, page])
 
-  if (!user) return null
+  if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
 
   return (
     <>
@@ -40,8 +43,8 @@ export default function Favorites() {
           <p className="mt-1 text-sm text-slate-500">你收藏的全部书籍</p>
         </div>
 
-        {data === null ? (
-          <Loading />
+        {loading || data === null ? (
+          <Loading label="正在加载收藏书籍…" />
         ) : data.total === 0 ? (
           <EmptyState>还没有收藏书籍，去书籍详情页收藏喜欢的作品吧</EmptyState>
         ) : (

@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import { API_BASE, api } from '@/lib/api'
 import { GithubIcon } from '@/components/icons'
-import { Button } from '@/components/ui'
+import { Button, Loading } from '@/components/ui'
 
 // OAuthButtons 第三方登录入口：拉取启用中的 provider，渲染对应按钮（登录/注册页共用）
 export default function OAuthButtons({ label }: { label: string }) {
   const [githubEnabled, setGithubEnabled] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     api<{ providers: { provider: string; enabled: boolean }[] }>('/auth/oauth/providers')
       .then((d) => setGithubEnabled(!!d.providers?.some((p) => p.provider === 'github' && p.enabled)))
       .catch(() => { /* providers 拉取失败时不展示入口 */ })
+      .finally(() => setLoaded(true))
   }, [])
 
+  if (!loaded) return <Loading className="py-4" label="正在加载登录方式…" />
   if (!githubEnabled) return null
   return (
     <>

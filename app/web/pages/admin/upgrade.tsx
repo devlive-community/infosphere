@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
-import { Button, Badge } from '@/components/ui'
+import { Button, Badge, Loading } from '@/components/ui'
 import { SystemVersion } from '@/lib/admin'
 
 // 版本更新：版本信息与在线升级（仅管理员）
@@ -12,10 +12,14 @@ export default function AdminUpgrade() {
   const [info, setInfo] = useState<SystemVersion | null>(null)
   const [message, setMessage] = useState('')
   const [upgrading, setUpgrading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!isAdmin) return
-    api<SystemVersion>('/system/version').then(setInfo).catch((e) => setMessage((e as Error).message))
+    api<SystemVersion>('/system/version')
+      .then(setInfo)
+      .catch((e) => setMessage((e as Error).message))
+      .finally(() => setLoading(false))
   }, [isAdmin])
 
   async function upgrade() {
@@ -42,7 +46,9 @@ export default function AdminUpgrade() {
       <div className="grid max-w-3xl grid-cols-1 gap-6">
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-semibold text-slate-900">版本信息</h2>
-          {info ? (
+          {loading ? (
+            <Loading className="py-8" label="正在获取版本信息…" />
+          ) : info ? (
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between border-b border-slate-100 pb-2">
                 <dt className="text-slate-500">当前版本</dt>
@@ -65,7 +71,7 @@ export default function AdminUpgrade() {
                 <dd>{info.update_available ? <Badge tone="amber">有新版本可升级</Badge> : <Badge tone="emerald">已是最新</Badge>}</dd>
               </div>
             </dl>
-          ) : <p className="text-sm text-slate-400">加载中…</p>}
+          ) : <p className="py-6 text-sm text-slate-400">暂时无法获取版本信息</p>}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

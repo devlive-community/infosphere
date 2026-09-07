@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { API_BASE, api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { Button, Badge } from '@/components/ui'
+import { Button, Badge, Loading } from '@/components/ui'
 import { GithubIcon } from '@/components/icons'
 import type { User } from '@/lib/types'
 
@@ -32,7 +32,14 @@ export default function OAuthBindings() {
 
   useEffect(() => { load() }, [load])
 
-  if (!user || !loaded) return null
+  if (!user) return null
+  if (!loaded) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <Loading className="py-10" label="正在加载第三方账号…" />
+      </div>
+    )
+  }
 
   async function unbind(provider: string) {
     if (!confirm(`确定解绑 ${PROVIDER_NAMES[provider] || provider} 账号吗？`)) return

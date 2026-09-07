@@ -64,7 +64,7 @@ export default function NotificationsPage() {
 
   useEffect(() => { load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [page, tab])
 
-  if (!user) return null
+  if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
 
   async function markRead(ids: number[]) {
     try {

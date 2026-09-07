@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
-import { Button, Input, Field, Select } from '@/components/ui'
+import { Button, Input, Field, Select, Loading } from '@/components/ui'
 import { MailConfig, emptyMail } from '@/lib/admin'
 
 // 系统设置 · 邮件服务：SMTP 配置与找回密码发信（仅管理员）
@@ -12,10 +12,14 @@ export default function SettingsMail() {
   const [mail, setMail] = useState<MailConfig>(emptyMail)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!isAdmin) return
-    api<MailConfig>('/mail').then(setMail).catch(() => {})
+    api<MailConfig>('/mail')
+      .then(setMail)
+      .catch((e) => setMessage((e as Error).message))
+      .finally(() => setLoading(false))
   }, [isAdmin])
 
   async function save() {
@@ -33,6 +37,7 @@ export default function SettingsMail() {
 
   return (
     <SettingsLayout active="mail" description="配置 SMTP 后用户可通过邮箱找回密码；「日志驱动」不真实发信，重置链接会输出到后端日志（开发期使用）。">
+      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label="正在加载邮件配置…" /> : (
       <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -71,6 +76,7 @@ export default function SettingsMail() {
           <Button loading={saving} onClick={save}>保存邮件配置</Button>
         </div>
       </div>
+      )}
     </SettingsLayout>
   )
 }

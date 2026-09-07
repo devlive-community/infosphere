@@ -5,7 +5,7 @@ import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown, bindMarkdownInteractivity } from '@/lib/markdown'
 import Seo from '@/components/Seo'
-import { Button, Input, Textarea, Select, Field, Badge, EmptyState } from '@/components/ui'
+import { Button, Input, Textarea, Select, Field, Badge, EmptyState, Loading } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   EyeIcon, FileTextIcon, FolderIcon, GripIcon, ImageIcon, LinkIcon, ListBulletIcon,
@@ -48,6 +48,7 @@ export default function Writer({ user }: WriterProps) {
   const [book, setBook] = useState<Book | null>(null)
   const [tree, setTree] = useState<Document[]>([])
   const [current, setCurrent] = useState<Document | null>(null)
+  const [documentLoading, setDocumentLoading] = useState(false)
   const [tab, setTab] = useState<TabKey>('toc')
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
@@ -110,13 +111,13 @@ export default function Writer({ user }: WriterProps) {
     if (!user || !bookSlug) return
     api<Book>(`/books/slug/${encodeURIComponent(bookSlug)}`)
       .then(async (b) => {
-        setBook(b)
         setBookForm({
           title: b.title, description: b.description || '', status: b.status,
           isPublic: b.is_public, tags: (b.tags || []).map((t) => t.name),
           chapterPrefix: b.chapter_prefix || '',
         })
         await loadTree(b)
+        setBook(b)
       })
       .catch((e) => alert((e as Error).message))
   }, [user, bookSlug, loadTree])
@@ -142,6 +143,7 @@ export default function Writer({ user }: WriterProps) {
     if (!flatDocs.length && !docSlug) { resetForm(); return }
     const doc = docSlug ? flatDocs.find((d) => d.slug === docSlug) : null
     if (doc) {
+      setDocumentLoading(true)
       setCurrent(doc)
       setCreatingUnder(null)
       api<Document>(`/documents/${doc.id}`).then((full) => {
@@ -155,7 +157,9 @@ export default function Writer({ user }: WriterProps) {
         loadedDocId.current = full.id
         setSaveState('saved')
       }).catch((e) => alert((e as Error).message))
+        .finally(() => setDocumentLoading(false))
     } else if (!docSlug) {
+      setDocumentLoading(false)
       resetForm()
     }
   }, [docSlug, flatDocs]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -357,7 +361,7 @@ export default function Writer({ user }: WriterProps) {
     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(s + prefix.length, s + prefix.length) })
   }
 
-  if (!user) return null
+  if (!user) return <Loading className="min-h-screen" label="正在验证编辑权限…" />
 
   const chapterPrefix = book?.chapter_prefix || ''
   const byId = new Map(flatDocs.map((d) => [d.id, d]))
@@ -376,8 +380,8 @@ export default function Writer({ user }: WriterProps) {
 
   if (!book) {
     return (
-      <div className="flex h-screen items-center justify-center text-slate-400">
-        <span className="animate-pulse">加载中…</span>
+      <div className="flex h-screen items-center justify-center bg-warm">
+        <Loading label="正在加载书籍与章节…" />
       </div>
     )
   }
@@ -531,7 +535,12 @@ export default function Writer({ user }: WriterProps) {
         </aside>
 
         {/* 中栏：编辑器 */}
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          {documentLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/75 backdrop-blur-[1px]">
+              <Loading label="正在加载章节内容…" />
+            </div>
+          )}
           <div className="flex min-h-0 w-full flex-1 flex-col px-8 py-6">
             {parentDoc && (
               <p className="mb-1 shrink-0 text-sm text-slate-400">{chapterPrefix}{parentDoc.title}</p>

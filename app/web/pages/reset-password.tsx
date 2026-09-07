@@ -2,7 +2,7 @@ import { useState, FormEvent, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
-import { Button, Input, Field } from '@/components/ui'
+import { Button, Input, Field, Loading } from '@/components/ui'
 
 // 重置密码：通过邮件链接进入，携带一次性令牌
 export default function ResetPassword() {
@@ -39,7 +39,7 @@ export default function ResetPassword() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-50 to-slate-50 px-4">
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm w-full max-w-sm p-8">
         {!ready ? (
-          <p className="py-6 text-center text-sm text-slate-400">加载中…</p>
+          <Loading className="py-6" label="正在验证重置链接…" />
         ) : done ? (
           <>
             <h1 className="text-center text-xl font-bold text-emerald-600">密码已重置</h1>

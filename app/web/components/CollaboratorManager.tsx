@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, FormEvent } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { Button, Input, Select, Badge, EmptyState } from '@/components/ui'
+import { Button, Input, Select, Badge, EmptyState, Loading } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
 import type { Book, User } from '@/lib/types'
 
@@ -84,7 +84,9 @@ export default function CollaboratorManager({ book }: { book: Book }) {
       {message && <div className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{message}</div>}
       {error && <div className="mt-3 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
 
-      {loaded && collaborators.length === 0 ? (
+      {!loaded ? (
+        <Loading className="py-8" label="正在加载协作者…" />
+      ) : collaborators.length === 0 ? (
         <div className="mt-4">
           <EmptyState>还没有协作者，通过下方输入框邀请</EmptyState>
         </div>

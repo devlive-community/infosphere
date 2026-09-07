@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, ReactNode } from 'react'
 import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
 import NotificationBell from '@/components/NotificationBell'
+import { Loading } from '@/components/ui'
 import {
   GridIcon, GearIcon, UsersIcon, CloudIcon,
   SearchIcon, ArrowLeftIcon, ChevronDownIcon, ListBulletIcon,
@@ -108,8 +109,8 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
   // 鉴权就绪前只渲染极简占位，绝不渲染后台骨架，避免向游客/普通用户泄露布局
   if (!authReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-400">
-        <span className="animate-pulse">加载中…</span>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Loading label="正在验证管理权限…" />
       </div>
     )
   }

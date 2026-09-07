@@ -1,7 +1,8 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { api, storeSession } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { Button, Input, Field } from '@/components/ui'
+import { Button, Input, Field, Loading } from '@/components/ui'
+import { CheckCircleIcon } from '@/components/icons'
 import type { DatabasePayload, SetupStatus, User } from '@/lib/types'
 
 const dbTypes = [
@@ -22,6 +23,7 @@ export default function Install() {
   const [testing, setTesting] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [done, setDone] = useState(false)
+  const [setupLoading, setSetupLoading] = useState(true)
 
   const [dbType, setDbType] = useState<'sqlite' | 'mysql' | 'postgres'>('sqlite')
   const [db, setDb] = useState({ host: '127.0.0.1', port: '', name: 'infosphere', user: 'root', password: '', path: '' })
@@ -31,6 +33,7 @@ export default function Install() {
     api<SetupStatus>('/setup/status')
       .then((s) => setSqliteDefaultPath(s.sqlite_default_path || ''))
       .catch(() => {})
+      .finally(() => setSetupLoading(false))
   }, [])
   const [site, setSite] = useState({ name: '', description: '' })
   const [admin, setAdmin] = useState({ username: '', email: '', password: '', confirm: '' })
@@ -42,6 +45,14 @@ export default function Install() {
           <h1 className="text-lg font-bold">系统已安装</h1>
           <p className="mt-2 text-sm text-slate-500">如需重新安装，请停止服务并删除数据目录下的 config.json。</p>
         </div>
+      </div>
+    )
+  }
+
+  if (setupLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-50 to-slate-50">
+        <Loading label="正在读取安装配置…" />
       </div>
     )
   }
@@ -104,7 +115,9 @@ export default function Install() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-50 to-slate-50 px-4">
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm w-full max-w-md p-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl">✅</div>
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <CheckCircleIcon className="h-8 w-8" />
+          </div>
           <h1 className="text-xl font-bold text-slate-900">安装完成！</h1>
           <p className="mt-2 text-sm text-slate-500">站点「{site.name}」已就绪，管理员 <b>{admin.username}</b> 已自动登录。</p>
           {/* 刻意整页刷新，让 AppProvider 重新读取本地会话 */}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
-import { Button, Input, Field, Select } from '@/components/ui'
+import { Button, Input, Field, Select, Loading } from '@/components/ui'
 import { OAuthConfig } from '@/lib/admin'
 
 // 系统设置 · 第三方登录：GitHub OAuth 应用凭据（仅管理员）
@@ -14,14 +14,18 @@ export default function SettingsOAuth() {
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [siteOrigin, setSiteOrigin] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!isAdmin) return
     setSiteOrigin(window.location.origin)
-    api<OAuthConfig>('/oauth').then((cfg) => {
-      setOauth({ client_id: cfg.client_id || '', client_secret: cfg.client_secret || '' })
-      setEnabled(cfg.client_id && cfg.client_secret ? 'true' : 'false')
-    }).catch(() => {})
+    api<OAuthConfig>('/oauth')
+      .then((cfg) => {
+        setOauth({ client_id: cfg.client_id || '', client_secret: cfg.client_secret || '' })
+        setEnabled(cfg.client_id && cfg.client_secret ? 'true' : 'false')
+      })
+      .catch((e) => setMessage((e as Error).message))
+      .finally(() => setLoading(false))
   }, [isAdmin])
 
   async function save() {
@@ -39,6 +43,7 @@ export default function SettingsOAuth() {
 
   return (
     <SettingsLayout active="oauth" description="接入 GitHub OAuth 后，用户可使用 GitHub 账户一键登录。">
+      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label="正在加载第三方登录配置…" /> : (
       <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="mb-4 text-sm text-slate-500">
           在 GitHub「Developer settings → OAuth Apps」创建应用后填入凭据，回调地址填写{' '}
@@ -64,6 +69,7 @@ export default function SettingsOAuth() {
           <Button loading={saving} onClick={save}>保存配置</Button>
         </div>
       </div>
+      )}
     </SettingsLayout>
   )
 }
