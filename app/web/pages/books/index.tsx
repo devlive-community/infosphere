@@ -1,13 +1,13 @@
-import { useEffect, useState, useRef , Fragment } from 'react'
+import { useEffect, useState } from 'react'
 import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
-import { Button, ButtonLink, Badge, EmptyState, Pagination, Select, Loading , Tooltip} from '@/components/ui'
+import { Button, ButtonLink, Badge, EmptyState, Field, Input, Pagination, Select, Loading , Tooltip} from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import {
-  BookIcon, CalendarIcon, EyeIcon, FileTextIcon, GearIcon, GridIcon,
+  CalendarIcon, CloseIcon, EyeIcon, FileTextIcon, GearIcon, GlobeIcon, GridIcon,
   ListIcon, MoreIcon, PencilIcon, SearchIcon, UploadIcon,
 } from '@/components/icons'
 import type { Book, Document, PageResult } from '@/lib/types'
@@ -60,8 +60,7 @@ export default function MyBooks() {
   const [data, setData] = useState<PageResult<Book>>({ items: [], total: 0, page: 1, page_size: 10 })
   const [counts, setCounts] = useState<Record<string, number>>({ '': 0, published: 0, draft: 0, archived: 0 })
   const [loading, setLoading] = useState(true)
-  const [importing, setImporting] = useState(false)
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   async function load() {
     if (!user) return
@@ -78,31 +77,6 @@ export default function MyBooks() {
   }
 
   useEffect(() => { if (user) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, page, status, keyword, sort])
-
-  // 导入书籍 zip（M16）：成功后刷新列表
-  async function uploadImport(file: File) {
-    if (!file) return
-    setImporting(true)
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      const token = getToken()
-      const res = await fetch(`${API_BASE}/api/v1/import`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: form,
-      })
-      const payload = await res.json()
-      if (!res.ok || !payload.success) throw new Error(payload.message || '导入失败')
-      alert(payload.data?.message || '导入完成')
-      load()
-    } catch (e) {
-      alert((e as Error).message)
-    } finally {
-      setImporting(false)
-      if (importInputRef.current) importInputRef.current.value = ''
-    }
-  }
 
   // 客户端排序（API 分页内排序字段当前仅支持基础列；数量小时在当前页排序即可）
   const items = [...(data.items || [])].sort((a, b) => {
@@ -150,10 +124,7 @@ export default function MyBooks() {
             <p className="mt-2 text-[15px] text-slate-500">在这里继续写作、整理章节，或者发布你的下一本知识作品。</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <input ref={importInputRef} type="file" accept=".zip" className="hidden"
-              onChange={(e) => uploadImport(e.target.files?.[0] as File)} />
-            <Button variant="outline" className="h-11 px-5 text-base" loading={importing}
-              onClick={() => importInputRef.current?.click()}>
+            <Button variant="outline" className="h-11 px-5 text-base" onClick={() => setImportOpen(true)}>
               <UploadIcon className="h-5 w-5" /> 导入书籍
             </Button>
             <ButtonLink href="/books/create" className="h-11 px-5 text-base">
@@ -218,8 +189,176 @@ export default function MyBooks() {
 
       <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
 
+      {importOpen && <BookImportDialog onClose={() => setImportOpen(false)} onImported={load} />}
+
     </Container>
   </>
+  )
+}
+
+type ImportKind = 'zip' | 'pdf' | 'web'
+type WebRenderMode = 'auto' | 'static' | 'browser'
+type ImportResult = { book: Book; message?: string; imported_doc?: number; render_mode?: string }
+
+function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImported: () => Promise<void> }) {
+  const [kind, setKind] = useState<ImportKind>('pdf')
+  const [file, setFile] = useState<File | null>(null)
+  const [title, setTitle] = useState('')
+  const [url, setURL] = useState('')
+  const [renderMode, setRenderMode] = useState<WebRenderMode>('auto')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<ImportResult | null>(null)
+
+  function switchKind(next: ImportKind) {
+    if (submitting) return
+    setKind(next)
+    setFile(null)
+    setError('')
+    setResult(null)
+  }
+
+  async function uploadFile(endpoint: string, selectedFile: File): Promise<ImportResult> {
+    const form = new FormData()
+    form.append('file', selectedFile)
+    if (title.trim()) form.append('title', title.trim())
+    const token = getToken()
+    const response = await fetch(`${API_BASE}/api/v1${endpoint}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: form,
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok || payload.success === false) throw new Error(payload.message || `导入失败 (${response.status})`)
+    return payload.data as ImportResult
+  }
+
+  async function submit() {
+    if (kind !== 'web' && !file) {
+      setError(`请选择要导入的 ${kind === 'pdf' ? 'PDF' : 'ZIP'} 文件`)
+      return
+    }
+    if (kind === 'web' && !url.trim()) {
+      setError('请输入要导入的网页地址')
+      return
+    }
+    setSubmitting(true)
+    setError('')
+    try {
+      const imported = kind === 'web'
+        ? await api<ImportResult>('/import/web', { method: 'POST', body: { url: url.trim(), title: title.trim(), render_mode: renderMode } })
+        : await uploadFile(kind === 'pdf' ? '/import/pdf' : '/import', file as File)
+      setResult(imported)
+      await onImported()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const loadingLabel = kind === 'pdf'
+    ? '正在解析 PDF 并构建章节…'
+    : kind === 'web'
+      ? renderMode === 'static' ? '正在抓取并解析网页…' : '正在抓取网页，必要时会启动浏览器渲染…'
+      : '正在导入书籍压缩包…'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/30 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
+      role="dialog" aria-modal="true" aria-label="导入书籍" onMouseDown={(event) => { if (!submitting && event.target === event.currentTarget) onClose() }}>
+      <div className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+        <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5 sm:px-7">
+          <div>
+            <h2 className="text-xl font-bold text-ink">导入并构建书籍</h2>
+            <p className="mt-1 text-sm text-slate-500">导入结果会保存为仅自己可见的草稿，确认内容后再发布。</p>
+          </div>
+          <button type="button" aria-label="关闭" disabled={submitting} onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50">
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="px-6 py-6 sm:px-7">
+          <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-100 p-1.5">
+            {([
+              ['pdf', 'PDF 文档', FileTextIcon],
+              ['web', '网页内容', GlobeIcon],
+              ['zip', '书籍压缩包', UploadIcon],
+            ] as const).map(([key, label, Icon]) => (
+              <button key={key} type="button" onClick={() => switchKind(key)}
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-sm font-medium transition-all ${kind === key ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+                <Icon className="h-4 w-4" /> <span>{label}</span>
+              </button>
+            ))}
+          </div>
+
+          {result ? (
+            <div className="py-10 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <CheckIcon className="h-6 w-6" />
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-slate-900">书籍已构建完成</h3>
+              <p className="mt-2 text-sm text-slate-500">{result.message || `《${result.book.title}》已保存为草稿`}</p>
+              <div className="mt-6 flex justify-center gap-3">
+                <Button variant="outline" onClick={onClose}>完成</Button>
+                <ButtonLink href={`/book/writer/${encodeURIComponent(result.book.slug)}`}>进入编辑</ButtonLink>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-5">
+              {kind === 'web' ? (
+                <>
+                  <Field label="网页地址">
+                    <Input className="h-11" type="url" value={url} onChange={(event) => setURL(event.target.value)} placeholder="https://example.com/article"
+                      leading={<GlobeIcon className="h-4 w-4" />} />
+                  </Field>
+                  <fieldset>
+                    <legend className="text-sm font-medium text-slate-700">解析方式</legend>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                      {([
+                        ['auto', '自动识别', '优先快速抓取，检测到单页应用后自动渲染'],
+                        ['static', '静态抓取', '适合服务端直接输出正文的网页'],
+                        ['browser', '浏览器渲染', '适合必须运行 JavaScript 才显示正文的网页'],
+                      ] as const).map(([value, label, help]) => (
+                        <label key={value} className={`cursor-pointer rounded-xl border p-3 transition-colors ${renderMode === value ? 'border-primary-400 bg-primary-50/60' : 'border-slate-200 hover:border-slate-300'}`}>
+                          <input className="sr-only" type="radio" name="render-mode" value={value} checked={renderMode === value} onChange={() => setRenderMode(value)} />
+                          <span className="block text-sm font-medium text-slate-800">{label}</span>
+                          <span className="mt-1 block text-xs leading-5 text-slate-500">{help}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {renderMode !== 'static' && <p className="mt-2 text-xs leading-5 text-slate-400">服务器首次处理动态网页时可能需要准备 Chromium 运行环境，耗时会比后续导入更长。</p>}
+                  </fieldset>
+                </>
+              ) : (
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">选择文件</span>
+                  <span className="mt-2 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-6 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/40">
+                    <UploadIcon className="h-7 w-7 text-primary-500" />
+                    <span className="mt-3 text-sm font-medium text-slate-700">{file ? file.name : `点击选择 ${kind === 'pdf' ? 'PDF 文档' : 'ZIP 压缩包'}`}</span>
+                    <span className="mt-1 text-xs text-slate-400">{kind === 'pdf' ? '最大 64MB；扫描版 PDF 需要预先完成 OCR' : '用于恢复从 InfoSphere 导出的完整书籍'}</span>
+                    <input type="file" accept={kind === 'pdf' ? '.pdf,application/pdf' : '.zip,application/zip'} className="sr-only"
+                      onChange={(event) => { setFile(event.target.files?.[0] || null); setError('') }} />
+                  </span>
+                </label>
+              )}
+
+              <Field label={<>书籍名称 <span className="font-normal text-slate-400">（可选）</span></>}>
+                <Input className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === 'web' ? '留空则使用网页标题' : '留空则使用文件名称'} />
+              </Field>
+
+              {error && <div role="alert" className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
+              {submitting && <div className="rounded-xl border border-primary-100 bg-primary-50/50 px-4 py-4"><Loading className="py-1" label={loadingLabel} /></div>}
+
+              <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
+                <Button variant="outline" disabled={submitting} onClick={onClose}>取消</Button>
+                <Button loading={submitting} onClick={submit}>开始导入</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -385,6 +524,14 @@ function PlusIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={className}>
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="m5 12 4 4L19 6" />
     </svg>
   )
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os/signal"
 	"syscall"
 	"time"
@@ -27,7 +28,11 @@ type App struct {
 	Notifications *notificationHub
 	// MailSender 邮件发送器；为空时按站点配置解析（测试可注入替代实现）
 	MailSender mail.Sender
-	web        *webRuntime
+	// 导入解析器允许测试注入；生产为空时使用内置 PDF/网页实现。
+	PDFExtractor func(path string) (pdfExtractResult, error)
+	WebFetcher   func(context.Context, *url.URL) (webPage, error)
+	WebRenderer  func(context.Context, *url.URL) (webPage, error)
+	web          *webRuntime
 }
 
 // New 创建应用实例；已安装时建立数据库连接

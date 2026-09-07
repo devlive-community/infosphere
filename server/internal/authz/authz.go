@@ -16,7 +16,7 @@ const (
 	BookUpdate Permission = "book:update" // 更新书籍（仅限本人或管理员）
 	BookDelete Permission = "book:delete" // 删除书籍（仅限本人或管理员）
 	BookExport Permission = "book:export" // 导出书籍为 markdown zip（owner/admin/editor 协作者）
-	BookImport Permission = "book:import" // 从 zip 导入书籍（登录用户，成为其个人书籍）
+	BookImport Permission = "book:import" // 从 zip、PDF 或网页导入书籍（登录用户，成为其个人书籍）
 
 	// 文档（章节）
 	DocumentRead   Permission = "document:read"   // 浏览文档树与正文（含公开匿名访问）

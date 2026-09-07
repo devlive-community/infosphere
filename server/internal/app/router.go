@@ -141,8 +141,10 @@ func (a *App) Router() *gin.Engine {
 		// ── 全文搜索（search:read，匿名可搜公开内容） ──
 		api.GET("/search", a.OptionalAuth(), a.GlobalSearch)
 
-		// ── 导入书籍（book:import，zip 成为本人的书籍） ──
+		// ── 导入书籍（book:import，ZIP / PDF / 网页成为本人的书籍） ──
 		api.POST("/import", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportBook)
+		api.POST("/import/pdf", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportPDFBook)
+		api.POST("/import/web", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportWebBook)
 
 		// ── 站内通知（notification:*；SSE 端点自行鉴权，EventSource 无法带请求头） ──
 		notif := api.Group("/notifications", a.RequireAuth())

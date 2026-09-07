@@ -350,6 +350,9 @@ func (a *App) ImportBook(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "book.md 缺少 title")
 		return
 	}
+	if customTitle := strings.TrimSpace(c.PostForm("title")); customTitle != "" {
+		title = truncateText(customTitle, 255)
+	}
 
 	// ── 建书（slug 冲突自动重生成）──
 	status := bookFields.get("status")
@@ -451,6 +454,11 @@ func (a *App) ImportBook(c *gin.Context) {
 		}
 		if err := a.DB.Create(&pendings[i].doc).Error; err != nil {
 			fail(c, http.StatusInternalServerError, "创建章节失败: "+err.Error())
+			return
+		}
+		revision := newDocumentRevision(&pendings[i].doc, u.ID, "create")
+		if err := a.DB.Create(&revision).Error; err != nil {
+			fail(c, http.StatusInternalServerError, "创建章节初始版本失败: "+err.Error())
 			return
 		}
 		created[pendings[i].doc.Slug] = pendings[i].doc.ID
