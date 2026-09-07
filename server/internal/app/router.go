@@ -107,6 +107,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/tags", a.ListTags)
 			public.GET("/tags/:slug/books", a.BooksByTag)
 			public.POST("/books/:id/view", a.IncrementBookView)
+			public.POST("/documents/:id/view", a.IncrementDocumentView)
 		}
 
 		// ── 书籍管理（book:*，归属校验在 handler 内） ──

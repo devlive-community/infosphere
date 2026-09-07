@@ -131,16 +131,6 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
     }
   }, [username, book])
 
-  // 浏览量：进入公开详情计一次，服务端累加后回显真实值
-  const [views, setViews] = useState(0)
-  useEffect(() => {
-    if (!book) return
-    setViews(book.view_count)
-    api<{ view_count: number }>(`/books/${book.id}/view`, { method: 'POST' })
-      .then((r) => setViews(r.view_count))
-      .catch(() => { /* 计数失败不影响浏览 */ })
-  }, [book?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // 阅读进度：登录用户读过的章节 ID 集合，用于目录标记与整体进度
   const [readSet, setReadSet] = useState<Set<number>>(new Set())
   useEffect(() => {
@@ -268,7 +258,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
             <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
               <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {chapters} 个章节</span>
               <span className="flex items-center gap-1.5"><ClockIcon className="h-4 w-4" /> 约 {readingMin} 分钟</span>
-              <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {formatNumber(views)} 次阅读</span>
+              <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {formatNumber(book.view_count)} 次阅读</span>
               <span className="flex items-center gap-1.5"><CalendarIcon className="h-4 w-4" /> 更新于 {fmtDate(book.updated_at)}</span>
             </div>
 

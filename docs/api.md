@@ -194,8 +194,9 @@ Authorization: Bearer <token>
 | GET | `/documents/:id` | 文档详情（含正文） | `document:read` |
 | PUT | `/documents/:id` | 更新（title/content/parent_id/sort_order/status/slug；防环校验） | `document:update` |
 | DELETE | `/documents/:id` | 删除文档及其子树 | `document:delete` |
+| POST | `/documents/:id/view` | 章节浏览计数 +1，并同步累加所属书籍的 `view_count`（书籍总浏览=各章节浏览之和）；不可见返回 404 | `document:read` |
 
-文档字段：`id, book_id, parent_id, title, slug, content( markdown), user_id, sort_order, status, allow_comments(公开后允许评论，默认 true), created_at, updated_at, children`；创建/更新请求体同样接受 `allow_comments`
+文档字段：`id, book_id, parent_id, title, slug, content( markdown), user_id, sort_order, view_count, status, allow_comments(公开后允许评论，默认 true), created_at, updated_at, children`；创建/更新请求体同样接受 `allow_comments`
 
 > **协作（M14）**：书籍协作者（editor）拥有章节内容的增删改权限，与所有者相同；书籍设置与删除仍限所有者/管理员。viewer 可访问私有协作书籍及其已发布章节。协作者查看章节/文档端点直接复用上表权限。
 

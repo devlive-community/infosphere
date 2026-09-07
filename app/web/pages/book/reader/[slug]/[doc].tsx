@@ -3,7 +3,7 @@ import Link from 'next/link'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
 import { renderMarkdown, extractHeadings, bindMarkdownInteractivity } from '@/lib/markdown'
-import { API_BASE, formatDate } from '@/lib/api'
+import { API_BASE, formatDate, formatNumber, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
@@ -126,6 +126,16 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
       saveReadingProgress(user.username, book.id, { docId: doc.id, docSlug: doc.slug, docTitle: doc.title, chapterPrefix: book.chapter_prefix || '' } as any)
     }
   }, [user, book, doc])
+
+  // 本章浏览量：打开即 +1，服务端同步累加到书籍总浏览数
+  const [docViews, setDocViews] = useState(0)
+  useEffect(() => {
+    if (!doc) return
+    setDocViews(doc.view_count ?? 0)
+    api<{ view_count: number }>(`/documents/${doc.id}/view`, { method: 'POST' })
+      .then((r) => setDocViews(r.view_count))
+      .catch(() => { /* 计数失败不影响阅读 */ })
+  }, [doc?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 本章目录：滚动高亮
   useEffect(() => {
@@ -259,6 +269,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                     <span className="text-slate-600">{author?.username || '佚名'}</span>
                     <span>· 更新于 {formatDate(doc.updated_at).slice(0, 10)}</span>
                     <span>· 阅读 {readingMin} 分钟</span>
+                    <span>· {formatNumber(docViews)} 次阅读</span>
                     {canEdit && (
                       <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${encodeURIComponent(doc.slug)}`}
                         className="flex items-center gap-1 text-primary-600 transition-colors hover:text-primary-700">

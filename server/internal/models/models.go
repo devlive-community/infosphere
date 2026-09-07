@@ -176,6 +176,7 @@ type Document struct {
 	Content   string `gorm:"type:text" json:"content"`
 	UserID    uint   `gorm:"index;not null" json:"user_id"`
 	SortOrder int    `gorm:"default:0" json:"sort_order"`
+	ViewCount int    `gorm:"default:0" json:"view_count"`
 	Status    string `gorm:"size:20;default:draft;index" json:"status"`
 	// 公开后允许评论；指针型保证显式 false 能写入（列默认 true）
 	AllowComments *bool       `gorm:"default:true" json:"allow_comments"`

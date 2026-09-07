@@ -62,6 +62,7 @@ export interface Document {
   content: string
   user_id: number
   sort_order: number
+  view_count?: number
   status: BookStatus
   allow_comments?: boolean | null
   created_at: string

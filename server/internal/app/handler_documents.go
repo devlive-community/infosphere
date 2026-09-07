@@ -229,6 +229,22 @@ func (a *App) GetDocument(c *gin.Context) {
 	ok(c, doc)
 }
 
+// IncrementDocumentView POST /documents/:id/view 章节浏览 +1，并同步累加所属书籍的总浏览数
+func (a *App) IncrementDocumentView(c *gin.Context) {
+	doc, book, status := a.findDocument(c)
+	if doc == nil {
+		fail(c, status, "文档不存在")
+		return
+	}
+	if !a.canReadDocument(currentUser(c), doc, book) {
+		fail(c, http.StatusNotFound, "文档不存在")
+		return
+	}
+	a.DB.Model(doc).UpdateColumn("view_count", doc.ViewCount+1)
+	a.DB.Model(book).UpdateColumn("view_count", book.ViewCount+1)
+	ok(c, gin.H{"view_count": doc.ViewCount + 1})
+}
+
 // GetDocumentBySlug GET /books/:id/documents/slug/:slug
 func (a *App) GetDocumentBySlug(c *gin.Context) {
 	book, status := a.findBook(c)
