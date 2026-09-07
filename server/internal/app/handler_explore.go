@@ -134,7 +134,7 @@ func (a *App) GetUserBooks(c *gin.Context) {
 	var total int64
 	query.Count(&total)
 	books := []models.Book{}
-	if err := preloadBookUser(query).Order("created_at DESC").
+	if err := preloadBookUser(query).Order(bookOrder(c.Query("sort"))).
 		Limit(pageSize).Offset((page - 1) * pageSize).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return

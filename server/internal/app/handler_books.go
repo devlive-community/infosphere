@@ -16,6 +16,22 @@ var bookStatuses = map[string]bool{"draft": true, "published": true, "archived":
 
 var allowedOrderCols = map[string]bool{"created_at": true, "updated_at": true, "title": true, "view_count": true}
 
+// bookSortOrders 列表排序白名单：前端 sort 值 → ORDER BY 子句（限定 books 表列，兼容联表查询）
+var bookSortOrders = map[string]string{
+	"updated": "books.updated_at DESC",
+	"created": "books.created_at DESC",
+	"views":   "books.view_count DESC",
+	"title":   "books.title ASC",
+}
+
+// bookOrder 返回排序子句，未知或为空时按更新时间倒序
+func bookOrder(sort string) string {
+	if clause, ok := bookSortOrders[sort]; ok {
+		return clause
+	}
+	return "books.updated_at DESC"
+}
+
 // canManageBook 判断用户能否管理书籍（设置与删除：owner/admin）
 func (a *App) canManageBook(u *models.User, b *models.Book) bool {
 	return IsAdmin(u) || (u != nil && u.ID == b.UserID)
@@ -134,7 +150,7 @@ func (a *App) ListBooks(c *gin.Context) {
 	}
 	books := []models.Book{}
 	if err := preloadBookUser(query).
-		Order("books.created_at DESC").
+		Order(bookOrder(c.Query("sort"))).
 		Limit(pageSize).Offset((page - 1) * pageSize).
 		Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
