@@ -281,3 +281,21 @@ func TestSplitPDFChaptersChunksLongUnstructuredText(t *testing.T) {
 		}
 	}
 }
+
+func TestWebImportErrorHidesBrowserDiagnostics(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	failWebImport(ctx, errors.New("无法启动 Chromium: [launcher] Failed to get the debug url:\nchrome_crashpad_handler: --database is required\ninternal stack trace"))
+	payload := decodeImportResponse(t, recorder)
+	message, _ := payload["message"].(string)
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("浏览器启动失败状态码错误: %d", recorder.Code)
+	}
+	if strings.Contains(message, "crashpad") || strings.Contains(message, "stack trace") || len([]rune(message)) > 160 {
+		t.Fatalf("浏览器内部诊断不应返回前端: %q", message)
+	}
+	if !strings.Contains(message, "浏览器启动失败") {
+		t.Fatalf("应返回可理解的浏览器错误提示: %q", message)
+	}
+}

@@ -791,8 +791,8 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4 backdrop-blur-[2px]"
       role="dialog" aria-modal="true" aria-label="从网页采集章节"
       onMouseDown={(event) => { if (!loading && event.target === event.currentTarget) onClose() }}>
-      <section className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <header className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+      <section className="flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <header className="flex shrink-0 items-start justify-between border-b border-slate-100 px-6 py-5">
           <div className="flex gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
               <GlobeIcon className="h-5 w-5" />
@@ -810,7 +810,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
           </button>
         </header>
 
-        <div className="space-y-5 px-6 py-6">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6">
           <Field label="网页地址" hint="自动提取正文，导航、页头、页脚、侧栏、广告、评论与相关推荐不会写入章节。">
             <Input className="h-11" type="url" value={url} onChange={(event) => setURL(event.target.value)}
               placeholder="https://example.com/article" leading={<GlobeIcon className="h-4 w-4" />} />
@@ -819,14 +819,14 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
             <Input className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="使用网页标题" />
           </Field>
           <Field label="解析方式">
-            <Select value={renderMode} onChange={(value) => setRenderMode(value as WebRenderMode)} options={[
+            <Select menuPlacement="top" value={renderMode} onChange={(value) => setRenderMode(value as WebRenderMode)} options={[
               { value: 'auto', label: '自动识别（推荐）' },
               { value: 'static', label: '仅静态抓取' },
               { value: 'browser', label: '使用浏览器运行 JavaScript' },
             ]} />
           </Field>
 
-          {error && <div role="alert" className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
+          {error && <div role="alert" className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-600 [overflow-wrap:anywhere]">{error}</div>}
           {loading && <div className="rounded-xl border border-primary-100 bg-primary-50/50 px-4 py-4"><Loading className="py-1" label="正在提取网页正文并构建章节…" /></div>}
 
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">

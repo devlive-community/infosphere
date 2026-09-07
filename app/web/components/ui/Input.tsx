@@ -51,10 +51,11 @@ interface SelectProps {
   placeholder?: string
   disabled?: boolean
   leading?: ReactNode
+  menuPlacement?: 'top' | 'bottom'
 }
 
 // Select 自绘下拉选择：触发按钮 + 浮层选项列表（不使用原生 select）
-export function Select({ options, value, onChange, className, placeholder, disabled, leading }: SelectProps) {
+export function Select({ options, value, onChange, className, placeholder, disabled, leading, menuPlacement = 'bottom' }: SelectProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const selected = options.find((o) => o.value === value)
@@ -93,7 +94,7 @@ export function Select({ options, value, onChange, className, placeholder, disab
         </svg>
       </button>
       {open && (
-        <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 space-y-0.5 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+        <ul className={`absolute left-0 right-0 z-30 max-h-60 space-y-0.5 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg ${menuPlacement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
           {options.map((o) => {
             const active = o.value === value
             return (

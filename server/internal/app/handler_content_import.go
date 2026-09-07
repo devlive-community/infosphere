@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"net"
 	"net/http"
@@ -296,14 +297,35 @@ func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webA
 }
 
 func failWebImport(c *gin.Context, err error) {
+	rawMessage := err.Error()
 	status := http.StatusUnprocessableEntity
-	if strings.Contains(err.Error(), "render_mode") || strings.Contains(err.Error(), "网页地址") || strings.Contains(err.Error(), "不允许访问") {
+	if strings.Contains(rawMessage, "render_mode") || strings.Contains(rawMessage, "网页地址") || strings.Contains(rawMessage, "不允许访问") {
 		status = http.StatusBadRequest
 	}
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		status = http.StatusGatewayTimeout
 	}
-	fail(c, status, "网页获取失败: "+err.Error())
+	log.Printf("web content import failed: %v", err)
+	fail(c, status, "网页获取失败: "+publicWebImportError(err))
+}
+
+func publicWebImportError(err error) string {
+	message := err.Error()
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return "处理超时，请稍后重试或改用静态抓取"
+	}
+	if strings.Contains(message, "Chromium") || strings.Contains(message, "debug url") || strings.Contains(message, "crashpad") {
+		return "服务器浏览器启动失败，请联系管理员检查 Chromium 运行环境，或尝试静态抓取"
+	}
+	for _, safeMessage := range []string{
+		"render_mode", "网页地址", "不允许访问", "无法解析网页地址", "网页返回状态码",
+		"目标地址返回的不是 HTML", "网页内容超过", "网页正文", "重定向次数过多",
+	} {
+		if strings.Contains(message, safeMessage) {
+			return truncateText(strings.Join(strings.Fields(message), " "), 300)
+		}
+	}
+	return "无法获取或解析网页正文，请检查地址后重试"
 }
 
 func (a *App) createImportedWebDocument(book *models.Book, u *models.User, title, content string, parentID *uint, sortOrder *int) (models.Document, error) {
@@ -660,19 +682,30 @@ func fetchStaticWebPage(ctx context.Context, target *url.URL) (webPage, error) {
 func renderDynamicWebPage(ctx context.Context, target *url.URL) (webPage, error) {
 	browserPath, found := launcher.LookPath()
 	if !found {
-		downloader := launcher.NewBrowser()
-		downloader.Context = ctx
-		downloader.RootDir = filepath.Join(config.DataDir(), "browser")
 		var err error
-		browserPath, err = downloader.Get()
+		browserPath, err = downloadManagedBrowser(ctx)
 		if err != nil {
 			return webPage{}, fmt.Errorf("无法准备 Chromium: %w", err)
 		}
 	}
-	controlURL, err := launcher.New().Context(ctx).Bin(browserPath).Headless(true).NoSandbox(true).Leakless(false).Launch()
+	profileRoot := filepath.Join(config.DataDir(), "browser-profiles")
+	if err := os.MkdirAll(profileRoot, 0o700); err != nil {
+		return webPage{}, fmt.Errorf("无法准备 Chromium 配置目录: %w", err)
+	}
+	controlURL, profileDir, err := launchImportBrowser(ctx, browserPath, profileRoot)
+	if err != nil && found {
+		systemBrowserErr := err
+		managedPath, downloadErr := downloadManagedBrowser(ctx)
+		if downloadErr == nil && managedPath != browserPath {
+			controlURL, profileDir, err = launchImportBrowser(ctx, managedPath, profileRoot)
+		} else if downloadErr != nil {
+			err = fmt.Errorf("系统 Chromium 启动失败（%v），备用浏览器准备失败: %w", systemBrowserErr, downloadErr)
+		}
+	}
 	if err != nil {
 		return webPage{}, fmt.Errorf("无法启动 Chromium: %w", err)
 	}
+	defer os.RemoveAll(profileDir)
 	browser := rod.New().Context(ctx).ControlURL(controlURL)
 	if err := browser.Connect(); err != nil {
 		return webPage{}, err
@@ -742,6 +775,38 @@ func renderDynamicWebPage(ctx context.Context, target *url.URL) (webPage, error)
 		return webPage{}, err
 	}
 	return webPage{HTML: markup, FinalURL: finalURL}, nil
+}
+
+func downloadManagedBrowser(ctx context.Context) (string, error) {
+	downloader := launcher.NewBrowser()
+	downloader.Context = ctx
+	downloader.RootDir = filepath.Join(config.DataDir(), "browser")
+	return downloader.Get()
+}
+
+func launchImportBrowser(ctx context.Context, browserPath, profileRoot string) (string, string, error) {
+	profileDir, err := os.MkdirTemp(profileRoot, "session-")
+	if err != nil {
+		return "", "", fmt.Errorf("无法准备 Chromium 配置目录: %w", err)
+	}
+	controlURL, err := launcher.New().
+		Context(ctx).
+		Bin(browserPath).
+		UserDataDir(profileDir).
+		Headless(true).
+		NoSandbox(true).
+		Leakless(false).
+		Set("disable-crash-reporter").
+		Set("disable-breakpad").
+		Set("disable-features", "Crashpad").
+		Set("no-first-run").
+		Set("no-default-browser-check").
+		Launch()
+	if err != nil {
+		_ = os.RemoveAll(profileDir)
+		return "", "", err
+	}
+	return controlURL, profileDir, nil
 }
 
 func shouldRenderSPA(markup, markdown string) bool {

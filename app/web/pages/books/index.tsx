@@ -347,7 +347,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
                 <Input className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === 'web' ? '留空则使用网页标题' : '留空则使用文件名称'} />
               </Field>
 
-              {error && <div role="alert" className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
+              {error && <div role="alert" className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-600 [overflow-wrap:anywhere]">{error}</div>}
               {submitting && <div className="rounded-xl border border-primary-100 bg-primary-50/50 px-4 py-4"><Loading className="py-1" label={loadingLabel} /></div>}
 
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
