@@ -18,6 +18,7 @@ export default function AdminUsers() {
   const [q, setQ] = useState('')
   const [role, setRole] = useState('')
   const [status, setStatus] = useState('')
+  const [sort, setSort] = useState('created_at_desc')
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -26,7 +27,7 @@ export default function AdminUsers() {
     setLoading(true)
     try {
       const res = await api<PageResult<User>>('/admin/users', {
-        params: { page, page_size: PAGE_SIZE, q, role, status },
+        params: { page, page_size: PAGE_SIZE, q, role, status, sort },
       })
       setItems(res.items)
       setTotal(res.total)
@@ -35,7 +36,7 @@ export default function AdminUsers() {
     } finally {
       setLoading(false)
     }
-  }, [page, q, role, status])
+  }, [page, q, role, status, sort])
 
   useEffect(() => {
     if (!isAdmin) return
@@ -105,6 +106,14 @@ export default function AdminUsers() {
         <Select className="w-32" value={status} placeholder="全部状态"
           options={[{ value: '', label: '全部状态' }, { value: 'active', label: '已启用' }, { value: 'inactive', label: '已停用' }]}
           onChange={(v) => { setStatus(v); setPage(1) }} />
+        <Select className="w-44" value={sort}
+          options={[
+            { value: 'created_at_desc', label: '最新注册' },
+            { value: 'created_at_asc', label: '最早注册' },
+            { value: 'last_login_at_desc', label: '最近登录' },
+            { value: 'last_login_at_asc', label: '最久未登录' },
+          ]}
+          onChange={(v) => { setSort(v); setPage(1) }} />
         <span className="ml-auto text-sm text-slate-400">共 {total} 位用户</span>
       </div>
 
