@@ -69,6 +69,7 @@ Authorization: Bearer <token>
 | `upload:create` | 上传图片 | ✅ | ✅ |
 | `system:read` | 查看系统版本信息 | ❌ | ✅ |
 | `system:upgrade` | 触发在线升级 | ❌ | ✅ |
+| `plugin:manage` | 管理后台插件安装/卸载 | ❌ | ✅ |
 
 补充规则：
 
@@ -126,6 +127,7 @@ Authorization: Bearer <token>
 | GET | `/auth/me` | 当前用户信息 | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |
+| GET/PUT | `/auth/export-settings` | 当前用户 PDF 导出样式偏好：`page_size`(A4\|Letter)、`include_cover`、`include_toc`、`font_size`(12–20)、`code_theme`(light\|dark)、`margin`(narrow\|normal\|wide) | `user:read` / `user:update` |
 | PUT | `/auth/password` | 修改密码（old_password/new_password；OAuth 用户未设密码时免验原密码，用于首次设置） | `user:update` |
 | POST | `/auth/password/forgot` | 匿名申请找回：`{email}`；响应不泄露邮箱是否存在，令牌邮件 60 分钟有效、一次性、只保留最新一条；`mail_driver=log` 时链接输出到后端日志 | `auth:password-reset`（匿名语义） |
 | POST | `/auth/password/reset` | 匿名重置：`{token, password}`（≥6 位）；成功后旧密码立即失效，该用户其余令牌作废 | `auth:password-reset`（匿名语义） |
@@ -270,6 +272,7 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/books/:id/export?format=markdown` | 导出书籍为 zip：`book.md`（front-matter：标题/简介/slug/状态/公开/排序/章节前缀/封面/标签）+ `chapters/<序号>-<slug>.md`（front-matter：标题/slug/排序/状态/父章节/评论开关 + 正文）+ `images/`（本站 `/uploads` 图片随包携带并改写为相对引用，外链保持原样） | `book:export` |
+| GET | `/books/:id/export/pdf?style=author\|mine` | 通过 pdf-export 插件（无头 Chrome）导出 PDF。鉴权：作者/协作者/管理员始终可导；否则要求书籍公开、已发布且 `export_enabled`。`style=author`（仅当作者 `export_style_shared`）用作者导出样式，否则用请求者样式；水印始终取自作者设置。未安装插件返回 400 | `book:read`（匿名可导开放的公开书） |
 | POST | `/import` | multipart 上传 `file`（zip），可选 `title`；解析同一结构还原为新书：元数据/标签/章节树（按 parent slug 重建）/图片写回上传目录；slug 冲突自动追加 `-imported-N`；安全限制：≤500 文件、解压总量 ≤64MB、拒绝 `..` 路径 | `book:import` |
 | POST | `/import/pdf` | multipart 上传 `file`（PDF，≤64MB），可选 `title`；根据文本坐标、字号和字体样式重建 Markdown 标题、段落、列表及代码块，移除重复页眉页脚，并修正双栏阅读顺序；优先按一、二级 Markdown 标题或“第 N 章/篇/部/卷”、`Chapter N` 拆章，无明确结构时按长度分段；扫描版 PDF 需预先 OCR；结果固定为私有草稿 | `book:import` |
 | POST | `/books/:id/import/pdf` | multipart 上传 `file`（PDF，≤64MB）及 `mode=append\|replace`，仅书籍 owner/admin 可用。`append` 将新解析的 Markdown 章节以草稿追加到目录末尾，不改变原内容与发布状态；`replace` 在同一事务内清理旧章节、章节版本、评论和阅读进度后写入新草稿章节，并将书籍转为私有草稿。新 PDF 解析失败时不会改动旧数据 | `book:import` |
@@ -304,6 +307,9 @@ Authorization: Bearer <token>
 | GET | `/admin/documents?page=&page_size=&q=&book_id=&status=&sort=` | 分页查询全站章节元数据（不返回正文）；`q` 匹配章节标题/slug/书名/作者，支持按书籍、状态及创建/更新/浏览量排序 | `document:read` + 管理员 |
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |
+| GET | `/admin/plugins` | 列出后台插件及安装状态（installed/version/status/error） | `plugin:manage` |
+| POST | `/admin/plugins/:key/install` | 后台异步安装插件（pdf-export 下载 chrome-headless-shell 到数据目录），轮询 `/admin/plugins` 看状态 | `plugin:manage` |
+| POST | `/admin/plugins/:key/uninstall` | 卸载插件并清理下载文件 | `plugin:manage` |
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |
