@@ -197,9 +197,11 @@ type bookPayload struct {
 	OrderCol         *string  `json:"order_col"`
 	OrderDir         *string  `json:"order_dir"`
 	ChapterPrefix    *string  `json:"chapter_prefix"`
-	WatermarkEnabled *bool    `json:"watermark_enabled"`
-	WatermarkText    *string  `json:"watermark_text"`
-	Tags             []string `json:"tags"`
+	WatermarkEnabled  *bool    `json:"watermark_enabled"`
+	WatermarkText     *string  `json:"watermark_text"`
+	ExportEnabled     *bool    `json:"export_enabled"`
+	ExportStyleShared *bool    `json:"export_style_shared"`
+	Tags              []string `json:"tags"`
 }
 
 const maxWatermarkLength = 80
@@ -300,6 +302,12 @@ func (a *App) CreateBook(c *gin.Context) {
 	if book.WatermarkEnabled && book.WatermarkText == "" {
 		fail(c, http.StatusBadRequest, "开启水印后请填写水印内容")
 		return
+	}
+	if req.ExportEnabled != nil {
+		book.ExportEnabled = *req.ExportEnabled
+	}
+	if req.ExportStyleShared != nil {
+		book.ExportStyleShared = *req.ExportStyleShared
 	}
 
 	for i := 0; i < 50; i++ {
@@ -420,6 +428,12 @@ func (a *App) UpdateBook(c *gin.Context) {
 	if book.WatermarkEnabled && book.WatermarkText == "" {
 		fail(c, http.StatusBadRequest, "开启水印后请填写水印内容")
 		return
+	}
+	if req.ExportEnabled != nil {
+		book.ExportEnabled = *req.ExportEnabled
+	}
+	if req.ExportStyleShared != nil {
+		book.ExportStyleShared = *req.ExportStyleShared
 	}
 	if req.Slug != nil && *req.Slug != book.Slug {
 		if !validSlug(*req.Slug) {

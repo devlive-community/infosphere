@@ -84,6 +84,9 @@ func (a *App) Router() *gin.Engine {
 				authed.GET("/permissions", a.CurrentPermissions) // 当前用户权限列表
 				authed.PUT("/profile", a.RequirePermission(authz.UserUpdate), a.UpdateProfile)
 				authed.PUT("/password", a.RequirePermission(authz.UserUpdate), a.ChangePassword)
+				// 导出样式偏好（PDF 导出用）
+				authed.GET("/export-settings", a.RequirePermission(authz.UserRead), a.GetExportSettings)
+				authed.PUT("/export-settings", a.RequirePermission(authz.UserUpdate), a.UpdateExportSettings)
 			}
 		}
 
@@ -215,6 +218,11 @@ func (a *App) Router() *gin.Engine {
 			admin.GET("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminListConfigs)
 			admin.PUT("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminUpsertConfig)
 			admin.DELETE("/admin/configs/:key", a.RequirePermission(authz.ConfigManage), a.AdminDeleteConfig)
+
+			// 插件管理（plugin:manage，仅管理员）：安装/卸载 PDF 导出等后台插件
+			admin.GET("/admin/plugins", a.RequirePermission(authz.PluginManage), a.AdminListPlugins)
+			admin.POST("/admin/plugins/:key/install", a.RequirePermission(authz.PluginManage), a.AdminInstallPlugin)
+			admin.POST("/admin/plugins/:key/uninstall", a.RequirePermission(authz.PluginManage), a.AdminUninstallPlugin)
 		}
 	}
 

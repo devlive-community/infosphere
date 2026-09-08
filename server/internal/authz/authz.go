@@ -87,6 +87,9 @@ const (
 	// 系统管理
 	SystemRead    Permission = "system:read"    // 查看系统版本信息（仅管理员）
 	SystemUpgrade Permission = "system:upgrade" // 触发在线升级（仅管理员）
+
+	// 插件
+	PluginManage Permission = "plugin:manage" // 管理后台插件安装/卸载（仅管理员）
 )
 
 // All 全部权限，admin 角色默认拥有
@@ -107,6 +110,7 @@ var All = []Permission{
 	StatsRead,
 	UploadCreate,
 	SystemRead, SystemUpgrade,
+	PluginManage,
 }
 
 // userPermissions 普通用户（user 角色）拥有的权限

@@ -97,6 +97,10 @@ type Book struct {
 	ChapterPrefix    string    `gorm:"size:20;default:''" json:"chapter_prefix"`
 	WatermarkEnabled bool      `gorm:"default:false" json:"watermark_enabled"`
 	WatermarkText    string    `gorm:"size:255;default:''" json:"watermark_text"`
+	// ExportEnabled 作者是否允许他人导出本书（公开书籍生效；作者/协作者不受限）
+	ExportEnabled bool `gorm:"default:true" json:"export_enabled"`
+	// ExportStyleShared 作者是否共享自己的导出样式：开启后他人导出本书可选用作者样式，否则只能用自己的
+	ExportStyleShared bool `gorm:"default:false" json:"export_style_shared"`
 	User             *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Tags             []Tag     `gorm:"many2many:book_tags" json:"tags,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
@@ -159,6 +163,31 @@ type ReadChapter struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Plugin 后台可安装插件（如 PDF 导出依赖的无头 Chrome）；未安装则相关功能不可用
+type Plugin struct {
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	Key         string     `gorm:"size:50;uniqueIndex;not null" json:"key"` // 如 pdf-export
+	Installed   bool       `gorm:"default:false" json:"installed"`
+	Version     string     `gorm:"size:50" json:"version"`
+	Meta        string     `gorm:"type:text" json:"meta"` // JSON：如 {"chrome_path":"...","status":"downloading"}
+	InstalledAt *time.Time `json:"installed_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+// UserExportSetting 用户导出（PDF）样式偏好，每用户一条
+type UserExportSetting struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	UserID       uint      `gorm:"uniqueIndex;not null" json:"user_id"`
+	PageSize     string    `gorm:"size:10;default:A4" json:"page_size"` // A4 | Letter
+	IncludeCover bool      `gorm:"default:true" json:"include_cover"`
+	IncludeToc   bool      `gorm:"default:true" json:"include_toc"`
+	FontSize     int       `gorm:"default:15" json:"font_size"`               // 正文字号 px
+	CodeTheme    string    `gorm:"size:20;default:light" json:"code_theme"`   // light | dark
+	Margin       string    `gorm:"size:10;default:normal" json:"margin"`      // narrow | normal | wide
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 // BookTag 书籍-标签联接表
 type BookTag struct {
 	BookID    uint      `gorm:"primaryKey" json:"book_id"`
@@ -212,6 +241,8 @@ func All(db *gorm.DB) error {
 		&BookTag{},
 		&ReadingProgress{},
 		&ReadChapter{},
+		&Plugin{},
+		&UserExportSetting{},
 		&Comment{},
 		&Reaction{},
 		&Notification{},
