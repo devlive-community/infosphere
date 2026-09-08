@@ -203,6 +203,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/admin/users/:id/role", a.RequirePermission(authz.UserManage), a.AdminUpdateUserRole)
 			admin.PUT("/admin/users/:id/status", a.RequirePermission(authz.UserManage), a.AdminUpdateUserStatus)
 			admin.DELETE("/admin/users/:id", a.RequirePermission(authz.UserManage), a.AdminDeleteUser)
+			// 书籍管理：列出全站所有可见性与状态的书籍；更新与删除复用 book:* 对象权限端点
+			admin.GET("/admin/books", a.RequirePermission(authz.BookRead), a.AdminListBooks)
 			// 控制台首页时间线（user:manage，仅管理员）：最近注册用户 + 最近建书（不限可见性）
 			admin.GET("/admin/activity", a.RequirePermission(authz.UserManage), a.AdminActivity)
 			admin.GET("/admin/stats", a.RequirePermission(authz.StatsRead), a.AdminStats)
