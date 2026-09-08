@@ -95,9 +95,9 @@ export default function MyBooks() {
 
   async function remove(book: Book) {
     if (!await confirmAction({
-      title: '删除书籍',
-      message: `确定删除「${book.title}」及其全部章节吗？此操作不可恢复。`,
-      confirmLabel: '删除书籍',
+      title: '移入回收站',
+      message: `确定将「${book.title}」及其全部章节移入回收站吗？可在 30 天内恢复。`,
+      confirmLabel: '移入回收站',
       danger: true,
     })) return
     try {
@@ -136,6 +136,9 @@ export default function MyBooks() {
             <p className="mt-2 text-[15px] text-slate-500">在这里继续写作、整理章节，或者发布你的下一本知识作品。</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <ButtonLink href="/user/trash" variant="ghost" className="h-11 px-4 text-base">
+              <i className="fa-regular fa-trash-can" aria-hidden="true" /> 回收站
+            </ButtonLink>
             <Button variant="outline" className="h-11 px-5 text-base" onClick={() => setImportOpen(true)}>
               <UploadIcon className="h-5 w-5" /> 导入书籍
             </Button>
@@ -419,7 +422,7 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onImportPDF, 
       <div className="my-1 border-t border-slate-100" />
       <button role="menuitem" onClick={() => { setMenuOpen(false); onDelete() }}
         className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50">
-        <TrashIcon className="h-4 w-4" /> 删除书籍
+        <TrashIcon className="h-4 w-4" /> 移入回收站
       </button>
     </DropdownMenu>
   )

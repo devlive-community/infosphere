@@ -170,7 +170,7 @@ func (a *App) CreateDocument(c *gin.Context) {
 			candidate = slug + "-" + strconv.Itoa(i+1)
 		}
 		var count int64
-		a.DB.Model(&models.Document{}).Where("book_id = ? AND slug = ?", book.ID, candidate).Count(&count)
+		a.DB.Unscoped().Model(&models.Document{}).Where("book_id = ? AND slug = ?", book.ID, candidate).Count(&count)
 		if count == 0 {
 			doc.Slug = candidate
 			break
@@ -327,7 +327,7 @@ func (a *App) UpdateDocument(c *gin.Context) {
 			return
 		}
 		var count int64
-		a.DB.Model(&models.Document{}).Where("book_id = ? AND slug = ? AND id != ?", book.ID, *req.Slug, doc.ID).Count(&count)
+		a.DB.Unscoped().Model(&models.Document{}).Where("book_id = ? AND slug = ? AND id != ?", book.ID, *req.Slug, doc.ID).Count(&count)
 		if count > 0 {
 			fail(c, http.StatusConflict, "slug 已被占用")
 			return
@@ -401,7 +401,7 @@ func isDescendant(db *gorm.DB, rootID, candidateID uint) bool {
 	return false
 }
 
-// DeleteDocument DELETE /documents/:id 递归删除子文档
+// DeleteDocument DELETE /documents/:id 将章节子树作为同一批次移入回收站。
 func (a *App) DeleteDocument(c *gin.Context) {
 	doc, book, status := a.findDocument(c)
 	if doc == nil {
@@ -425,14 +425,13 @@ func (a *App) DeleteDocument(c *gin.Context) {
 		}
 		frontier = next
 	}
-	if err := a.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("document_id IN ?", ids).Delete(&models.DocumentRevision{}).Error; err != nil {
-			return err
-		}
-		return tx.Where("id IN ?", ids).Delete(&models.Document{}).Error
-	}); err != nil {
+	now := currentTime()
+	group := randomSlug("trash")
+	if err := a.DB.Model(&models.Document{}).Where("id IN ?", ids).Updates(map[string]any{
+		"deleted_at": now, "deleted_by": currentUser(c).ID, "trash_group": group,
+	}).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "删除失败: "+err.Error())
 		return
 	}
-	ok(c, gin.H{"message": "已删除", "count": len(ids)})
+	ok(c, gin.H{"message": "已移入回收站", "count": len(ids), "expires_at": now.Add(trashRetention)})
 }

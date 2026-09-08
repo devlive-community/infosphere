@@ -137,7 +137,7 @@ func (a *App) AdminDeleteUser(c *gin.Context) {
 		return
 	}
 	var bookCount int64
-	a.DB.Model(&models.Book{}).Where("user_id = ?", u.ID).Count(&bookCount)
+	a.DB.Unscoped().Model(&models.Book{}).Where("user_id = ?", u.ID).Count(&bookCount)
 	if bookCount > 0 {
 		fail(c, http.StatusBadRequest, "该用户仍拥有书籍，请先删除其书籍或改为停用账户")
 		return

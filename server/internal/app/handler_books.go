@@ -328,7 +328,7 @@ func (a *App) CreateBook(c *gin.Context) {
 			candidate = slug + "-" + strconv.Itoa(i+1)
 		}
 		var count int64
-		a.DB.Model(&models.Book{}).Where("slug = ?", candidate).Count(&count)
+		a.DB.Unscoped().Model(&models.Book{}).Where("slug = ?", candidate).Count(&count)
 		if count == 0 {
 			book.Slug = candidate
 			break
@@ -455,7 +455,7 @@ func (a *App) UpdateBook(c *gin.Context) {
 			return
 		}
 		var count int64
-		a.DB.Model(&models.Book{}).Where("slug = ? AND id != ?", *req.Slug, book.ID).Count(&count)
+		a.DB.Unscoped().Model(&models.Book{}).Where("slug = ? AND id != ?", *req.Slug, book.ID).Count(&count)
 		if count > 0 {
 			fail(c, http.StatusConflict, "slug 已被占用")
 			return
@@ -476,7 +476,7 @@ func (a *App) UpdateBook(c *gin.Context) {
 	ok(c, book)
 }
 
-// DeleteBook DELETE /books/:id
+// DeleteBook DELETE /books/:id 将书籍及当前可见章节移入回收站。
 func (a *App) DeleteBook(c *gin.Context) {
 	book, status := a.findBook(c)
 	if book == nil {
@@ -487,15 +487,23 @@ func (a *App) DeleteBook(c *gin.Context) {
 		fail(c, http.StatusForbidden, "无权操作该书籍")
 		return
 	}
-	if err := a.DB.Where("book_id = ?", book.ID).Delete(&models.Document{}).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "删除文档失败: "+err.Error())
-		return
-	}
-	if err := a.DB.Delete(book).Error; err != nil {
+	now := currentTime()
+	group := randomSlug("trash")
+	u := currentUser(c)
+	if err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Document{}).Where("book_id = ?", book.ID).Updates(map[string]any{
+			"deleted_at": now, "deleted_by": u.ID, "trash_group": group,
+		}).Error; err != nil {
+			return err
+		}
+		return tx.Model(book).Updates(map[string]any{
+			"deleted_at": now, "deleted_by": u.ID, "trash_group": group,
+		}).Error
+	}); err != nil {
 		fail(c, http.StatusInternalServerError, "删除失败: "+err.Error())
 		return
 	}
-	ok(c, gin.H{"message": "已删除"})
+	ok(c, gin.H{"message": "已移入回收站", "expires_at": now.Add(trashRetention)})
 }
 
 // IncrementBookView POST /books/:id/view

@@ -115,6 +115,20 @@ export interface PageResult<T> {
   page_size: number
 }
 
+export interface TrashItem {
+  type: 'book' | 'document'
+  id: number
+  title: string
+  slug: string
+  book_id?: number
+  book_title?: string
+  book_slug?: string
+  owner_username?: string
+  descendant_count: number
+  deleted_at: string
+  expires_at: string
+}
+
 export interface SiteStats {
   user_count: number
   book_count: number

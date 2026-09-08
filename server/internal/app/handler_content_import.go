@@ -159,7 +159,7 @@ func (a *App) ReimportPDFBook(c *gin.Context) {
 				if err := tx.Where("doc_id IN ?", ids).Delete(&models.ReadChapter{}).Error; err != nil {
 					return err
 				}
-				if err := tx.Where("id IN ?", ids).Delete(&models.Document{}).Error; err != nil {
+				if err := tx.Unscoped().Where("id IN ?", ids).Delete(&models.Document{}).Error; err != nil {
 					return err
 				}
 			}
@@ -172,7 +172,7 @@ func (a *App) ReimportPDFBook(c *gin.Context) {
 			}
 		} else {
 			var slugs []string
-			if err := tx.Model(&models.Document{}).Where("book_id = ?", book.ID).Pluck("slug", &slugs).Error; err != nil {
+			if err := tx.Unscoped().Model(&models.Document{}).Where("book_id = ?", book.ID).Pluck("slug", &slugs).Error; err != nil {
 				return err
 			}
 			for _, slug := range slugs {

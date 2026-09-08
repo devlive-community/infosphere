@@ -30,13 +30,16 @@ Authorization: Bearer <token>
 | `book:read` | 浏览书籍列表与详情 | ✅ | ✅ |
 | `book:create` | 创建书籍 | ✅ | ✅ |
 | `book:update` | 更新书籍（仅本人） | ✅ | ✅ |
-| `book:delete` | 删除书籍（仅本人） | ✅ | ✅ |
+| `book:delete` | 将书籍移入回收站（仅本人） | ✅ | ✅ |
 | `document:read` | 浏览文档树与正文 | ✅ | ✅ |
 | `document:create` | 创建文档（仅本人书籍） | ✅ | ✅ |
 | `document:update` | 更新文档（仅本人书籍） | ✅ | ✅ |
-| `document:delete` | 删除文档（仅本人书籍） | ✅ | ✅ |
+| `document:delete` | 将文档子树移入回收站（owner/admin/editor） | ✅ | ✅ |
 | `document-revision:read` | 查看章节版本历史（所有者/admin/editor） | ✅ | ✅ |
 | `document-revision:restore` | 恢复章节历史版本（所有者/admin/editor） | ✅ | ✅ |
+| `trash:read` | 查看回收站（普通用户仅自己的内容，管理员可查看全站） | ✅ | ✅ |
+| `trash:restore` | 恢复回收站内容（书籍 owner/admin；章节 owner/admin/editor） | ✅ | ✅ |
+| `trash:delete` | 永久删除回收站内容（仅资源 owner/admin） | ✅ | ✅ |
 | `user:read` | 查看用户公开主页 | ✅ | ✅ |
 | `user:update` | 更新个人资料与密码 | ✅ | ✅ |
 | `user:manage` | 管理后台管理用户：列表/角色/启停/删除 | ❌ | ✅ |
@@ -180,7 +183,7 @@ Authorization: Bearer <token>
 | GET | `/books/slug/:slug` | 按 slug 查书籍 | `book:read` |
 | GET | `/books/slug/:slug/access` | 服务端计算当前用户的对象级能力：`can_read/can_manage/can_edit_content/can_export/collaborator_role` | `book:read` + 登录 |
 | PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀/阅读水印） | `book:update` |
-| DELETE | `/books/:id` | 删除书籍及其全部文档 | `book:delete` |
+| DELETE | `/books/:id` | 将书籍及当前章节移入 30 天回收站 | `book:delete` |
 | GET | `/books/status-counts` | 当前用户书籍统计（按状态汇总） | `book:read` |
 | POST | `/books/:id/view` | 可见书籍浏览计数 +1；不可见资源统一返回 404 | `book:read` |
 
@@ -199,7 +202,7 @@ Authorization: Bearer <token>
 | GET | `/books/:id/documents/slug/:slug` | 按 slug 查文档（含正文） | `document:read` |
 | GET | `/documents/:id` | 文档详情（含正文） | `document:read` |
 | PUT | `/documents/:id` | 更新（title/content/parent_id/sort_order/status/slug；防环校验）；手动保存传 `create_revision: true` 与 `revision_reason: save|publish` 生成不可变版本 | `document:update` |
-| DELETE | `/documents/:id` | 删除文档及其子树 | `document:delete` |
+| DELETE | `/documents/:id` | 将文档及其子树作为同一批次移入 30 天回收站 | `document:delete` |
 | POST | `/documents/:id/view` | 章节浏览计数 +1，并同步累加所属书籍的 `view_count`（书籍总浏览=各章节浏览之和）；不可见返回 404 | `document:read` |
 | GET | `/documents/:id/revisions` | 章节版本列表（分页，不含正文）；未授权统一 404 | `document-revision:read` |
 | GET | `/documents/:id/revisions/:revisionId` | 版本详情（含正文）；未授权或版本不属于章节时统一 404 | `document-revision:read` |
@@ -210,6 +213,18 @@ Authorization: Bearer <token>
 版本列表字段：`id, document_id, book_id, title, content_length, status, allow_comments, reason(create|save|publish|pre_restore|restore), author(仅公开字段), created_at`；详情额外返回 `content`。版本记录只新增、不提供修改接口，目录排序等结构调整不会生成版本。
 
 > **协作（M14）**：书籍协作者（editor）拥有章节内容的增删改权限，与所有者相同；书籍设置与删除仍限所有者/管理员。viewer 可访问私有协作书籍及其已发布章节。协作者查看章节/文档端点直接复用上表权限。
+
+## 回收站（M36）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/trash?type=book\|document&page=&page_size=` | 分页查看回收站；章节只列每个删除批次的根节点并返回子章节数 | `trash:read` |
+| POST | `/trash/books/:id/restore` | 恢复书籍及该次随书删除的全部章节 | `trash:restore` + owner/admin |
+| DELETE | `/trash/books/:id` | 永久删除书籍、章节、版本、评论、协作、互动和阅读数据 | `trash:delete` + owner/admin |
+| POST | `/trash/documents/:id/restore` | 恢复同一删除批次的章节子树并保持父子关系；父章节在其他批次回收站时需先恢复父章节 | `trash:restore` + owner/admin/editor |
+| DELETE | `/trash/documents/:id` | 永久删除同一批次的章节子树及其版本、评论和阅读数据 | `trash:delete` + owner/admin |
+
+回收站条目字段：`type, id, title, slug, book_id, book_title, book_slug, owner_username, descendant_count, deleted_at, expires_at`。普通查询、公开页面、搜索、统计和管理列表均默认排除软删除内容。内容保留 30 天；访问回收站时会清理当前可见范围内已过期的条目。未授权读取、恢复或永久删除统一返回 404，避免泄露资源存在性。
 
 ## 协作者（M14）
 

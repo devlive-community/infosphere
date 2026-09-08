@@ -14,7 +14,7 @@ const (
 	BookRead   Permission = "book:read"   // 浏览书籍列表与详情（含公开匿名访问）
 	BookCreate Permission = "book:create" // 创建书籍
 	BookUpdate Permission = "book:update" // 更新书籍（仅限本人或管理员）
-	BookDelete Permission = "book:delete" // 删除书籍（仅限本人或管理员）
+	BookDelete Permission = "book:delete" // 将书籍移入回收站（仅限本人或管理员）
 	BookExport Permission = "book:export" // 导出书籍为 markdown zip（owner/admin/editor 协作者）
 	BookImport Permission = "book:import" // 新建导入书籍，或由 owner/admin 向已有书籍重新导入 PDF
 
@@ -22,11 +22,16 @@ const (
 	DocumentRead   Permission = "document:read"   // 浏览文档树与正文（含公开匿名访问）
 	DocumentCreate Permission = "document:create" // 创建文档（仅限本人书籍）
 	DocumentUpdate Permission = "document:update" // 更新文档（仅限本人书籍）
-	DocumentDelete Permission = "document:delete" // 删除文档（仅限本人书籍）
+	DocumentDelete Permission = "document:delete" // 将文档子树移入回收站（owner/admin/editor）
 
 	// 章节版本历史
 	DocumentRevisionRead    Permission = "document-revision:read"    // 查看章节历史（所有者/admin/editor）
 	DocumentRevisionRestore Permission = "document-revision:restore" // 恢复章节历史（所有者/admin/editor）
+
+	// 回收站
+	TrashRead    Permission = "trash:read"    // 查看自己的书籍与章节回收站
+	TrashRestore Permission = "trash:restore" // 恢复本人书籍或可编辑章节
+	TrashDelete  Permission = "trash:delete"  // 永久删除（仅资源所有者或管理员）
 
 	// 标签
 	TagRead   Permission = "tag:read"   // 浏览标签与按标签检索（含匿名访问）
@@ -97,6 +102,7 @@ var All = []Permission{
 	BookRead, BookCreate, BookUpdate, BookDelete, BookExport, BookImport,
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	DocumentRevisionRead, DocumentRevisionRestore,
+	TrashRead, TrashRestore, TrashDelete,
 	TagRead, TagCreate, TagDelete,
 	SearchRead,
 	AuthOauth, AuthPasswordReset,
@@ -118,6 +124,7 @@ var userPermissions = []Permission{
 	BookRead, BookCreate, BookUpdate, BookDelete, BookExport, BookImport,
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	DocumentRevisionRead, DocumentRevisionRestore,
+	TrashRead, TrashRestore, TrashDelete,
 	TagRead, TagCreate,
 	SearchRead,
 	AuthOauth, AuthPasswordReset,

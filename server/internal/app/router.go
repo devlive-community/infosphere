@@ -133,6 +133,16 @@ func (a *App) Router() *gin.Engine {
 			books.DELETE("/:id/collaborators/:userId", a.RequirePermission(authz.CollaboratorDelete), a.RemoveCollaborator)
 		}
 
+		// ── 回收站（trash:*；恢复与永久删除继续执行对象级归属校验） ──
+		trash := api.Group("/trash", a.RequireAuth())
+		{
+			trash.GET("", a.RequirePermission(authz.TrashRead), a.ListTrash)
+			trash.POST("/books/:id/restore", a.RequirePermission(authz.TrashRestore), a.RestoreTrashedBook)
+			trash.DELETE("/books/:id", a.RequirePermission(authz.TrashDelete), a.PermanentlyDeleteBook)
+			trash.POST("/documents/:id/restore", a.RequirePermission(authz.TrashRestore), a.RestoreTrashedDocument)
+			trash.DELETE("/documents/:id", a.RequirePermission(authz.TrashDelete), a.PermanentlyDeleteDocument)
+		}
+
 		// ── 文档管理（document:*，归属校验在 handler 内） ──
 		docs := api.Group("", a.RequireAuth())
 		{

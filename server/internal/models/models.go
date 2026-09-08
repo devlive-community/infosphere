@@ -83,28 +83,31 @@ type PasswordResetToken struct {
 
 // Book 书籍
 type Book struct {
-	ID               uint      `gorm:"primaryKey" json:"id"`
-	Title            string    `gorm:"size:255;not null" json:"title"`
-	Description      string    `gorm:"type:text" json:"description"`
-	CoverImage       string    `gorm:"size:500" json:"cover_image"`
-	Slug             string    `gorm:"size:255;uniqueIndex;not null" json:"slug"`
-	UserID           uint      `gorm:"index;not null" json:"user_id"`
-	Status           string    `gorm:"size:20;default:draft;index" json:"status"` // draft | in_progress | published | completed | archived
-	IsPublic         bool      `gorm:"default:false;index" json:"is_public"`
-	ViewCount        int       `gorm:"default:0" json:"view_count"`
-	OrderCol         string    `gorm:"size:50;default:created_at" json:"order_col"`
-	OrderDir         string    `gorm:"size:10;default:desc" json:"order_dir"`
-	ChapterPrefix    string    `gorm:"size:20;default:''" json:"chapter_prefix"`
-	WatermarkEnabled bool      `gorm:"default:false" json:"watermark_enabled"`
-	WatermarkText    string    `gorm:"size:255;default:''" json:"watermark_text"`
+	ID               uint   `gorm:"primaryKey" json:"id"`
+	Title            string `gorm:"size:255;not null" json:"title"`
+	Description      string `gorm:"type:text" json:"description"`
+	CoverImage       string `gorm:"size:500" json:"cover_image"`
+	Slug             string `gorm:"size:255;uniqueIndex;not null" json:"slug"`
+	UserID           uint   `gorm:"index;not null" json:"user_id"`
+	Status           string `gorm:"size:20;default:draft;index" json:"status"` // draft | in_progress | published | completed | archived
+	IsPublic         bool   `gorm:"default:false;index" json:"is_public"`
+	ViewCount        int    `gorm:"default:0" json:"view_count"`
+	OrderCol         string `gorm:"size:50;default:created_at" json:"order_col"`
+	OrderDir         string `gorm:"size:10;default:desc" json:"order_dir"`
+	ChapterPrefix    string `gorm:"size:20;default:''" json:"chapter_prefix"`
+	WatermarkEnabled bool   `gorm:"default:false" json:"watermark_enabled"`
+	WatermarkText    string `gorm:"size:255;default:''" json:"watermark_text"`
 	// ExportEnabled 作者是否允许他人导出本书（公开书籍生效；作者/协作者不受限）
 	ExportEnabled bool `gorm:"default:true" json:"export_enabled"`
 	// ExportStyleShared 作者是否共享自己的导出样式：开启后他人导出本书可选用作者样式，否则只能用自己的
-	ExportStyleShared bool `gorm:"default:false" json:"export_style_shared"`
-	User             *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Tags             []Tag     `gorm:"many2many:book_tags" json:"tags,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ExportStyleShared bool           `gorm:"default:false" json:"export_style_shared"`
+	User              *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Tags              []Tag          `gorm:"many2many:book_tags" json:"tags,omitempty"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy         uint           `gorm:"index;default:0" json:"-"`
+	TrashGroup        string         `gorm:"size:64;index" json:"-"`
 	// ChapterCount 非持久化：列表接口按需回填的章节（文档）数量
 	ChapterCount int `gorm:"-" json:"chapter_count"`
 }
@@ -181,9 +184,9 @@ type UserExportSetting struct {
 	PageSize     string    `gorm:"size:10;default:A4" json:"page_size"` // A4 | Letter
 	IncludeCover bool      `gorm:"default:true" json:"include_cover"`
 	IncludeToc   bool      `gorm:"default:true" json:"include_toc"`
-	FontSize     int       `gorm:"default:15" json:"font_size"`               // 正文字号 px
-	CodeTheme    string    `gorm:"size:20;default:light" json:"code_theme"`   // light | dark
-	Margin       string    `gorm:"size:10;default:normal" json:"margin"`      // narrow | normal | wide
+	FontSize     int       `gorm:"default:15" json:"font_size"`             // 正文字号 px
+	CodeTheme    string    `gorm:"size:20;default:light" json:"code_theme"` // light | dark
+	Margin       string    `gorm:"size:10;default:normal" json:"margin"`    // narrow | normal | wide
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -208,10 +211,13 @@ type Document struct {
 	ViewCount int    `gorm:"default:0" json:"view_count"`
 	Status    string `gorm:"size:20;default:draft;index" json:"status"`
 	// 公开后允许评论；指针型保证显式 false 能写入（列默认 true）
-	AllowComments *bool       `gorm:"default:true" json:"allow_comments"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	Children      []*Document `gorm:"-" json:"children,omitempty"`
+	AllowComments *bool          `gorm:"default:true" json:"allow_comments"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy     uint           `gorm:"index;default:0" json:"-"`
+	TrashGroup    string         `gorm:"size:64;index" json:"-"`
+	Children      []*Document    `gorm:"-" json:"children,omitempty"`
 }
 
 // DocumentRevision 章节不可变历史版本。只允许新增与读取，不提供更新接口。

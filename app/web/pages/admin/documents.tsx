@@ -121,9 +121,9 @@ export default function AdminDocuments() {
 
   async function removeDocument(item: AdminDocumentItem) {
     if (!await confirmAction({
-      title: '删除章节',
-      message: `确定删除章节《${item.title}》及其全部子章节吗？此操作不可恢复。`,
-      confirmLabel: '删除章节',
+      title: '移入回收站',
+      message: `确定将章节《${item.title}》及其全部子章节移入回收站吗？可在 30 天内恢复。`,
+      confirmLabel: '移入回收站',
       danger: true,
     })) return
 
@@ -251,7 +251,7 @@ export default function AdminDocuments() {
                           <div className="my-1 border-t border-slate-100" />
                           <button role="menuitem" disabled={busyId === item.id} onClick={() => removeDocument(item)}
                             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50 disabled:opacity-50">
-                            <TrashIcon className="h-4 w-4" /> 删除章节
+                            <TrashIcon className="h-4 w-4" /> 移入回收站
                           </button>
                         </DropdownMenu>
                       </td>

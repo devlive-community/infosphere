@@ -141,7 +141,7 @@ func RunMigration(target *gorm.DB, legacy *sql.DB, dryRun bool) (*Summary, error
 			continue
 		}
 		var count int64
-		target.Model(&models.Book{}).Where("slug = ?", slug).Count(&count)
+		target.Unscoped().Model(&models.Book{}).Where("slug = ?", slug).Count(&count)
 		if count > 0 {
 			summary.BooksSkipped++
 			continue

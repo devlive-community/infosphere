@@ -32,7 +32,7 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
   useEffect(() => { load() }, [load])
 
   async function remove(doc: Document) {
-    if (!(await confirmAction({ title: '删除章节', message: `确定删除章节「${doc.title}」及其子章节吗？此操作不可恢复。`, confirmLabel: '删除章节', danger: true }))) return
+    if (!(await confirmAction({ title: '移入回收站', message: `确定将章节「${doc.title}」及其子章节移入回收站吗？可在 30 天内恢复。`, confirmLabel: '移入回收站', danger: true }))) return
     setBusy(doc.id)
     try {
       await api(`/documents/${doc.id}`, { method: 'DELETE' })

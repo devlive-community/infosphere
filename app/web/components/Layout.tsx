@@ -33,6 +33,7 @@ function UserMenu() {
   }
   const items = [
     { label: '我的书籍', href: '/books' },
+    { label: '回收站', href: '/user/trash' },
     { label: '个人资料', href: '/user/profile' },
     { label: '账户安全', href: '/user/security' },
     // 控制台仅对管理员开放
