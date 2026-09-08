@@ -22,13 +22,14 @@ import (
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/models"
 
-	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
 	"github.com/gin-gonic/gin"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
-	pdfreader "github.com/ledongthuc/pdf"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
 	"gorm.io/gorm"
@@ -47,8 +48,8 @@ type importedChapter struct {
 }
 
 type pdfExtractResult struct {
-	Text  string
-	Pages int
+	Markdown string
+	Pages    int
 }
 
 type webPage struct {
@@ -132,7 +133,7 @@ func (a *App) ImportPDFBook(c *gin.Context) {
 		fail(c, http.StatusUnprocessableEntity, "PDF 解析失败: "+err.Error())
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(extracted.Text)) < 20 {
+	if utf8.RuneCountInString(strings.TrimSpace(extracted.Markdown)) < 20 {
 		fail(c, http.StatusUnprocessableEntity, "PDF 中未识别到可导入文字；扫描版 PDF 需要先完成 OCR")
 		return
 	}
@@ -142,7 +143,7 @@ func (a *App) ImportPDFBook(c *gin.Context) {
 		bookTitle = custom
 	}
 	bookTitle = truncateText(bookTitle, 255)
-	chapters := splitPDFChapters(extracted.Text, bookTitle)
+	chapters := splitPDFChapters(extracted.Markdown, bookTitle)
 	book, err := a.createContentImportBook(u, bookTitle,
 		fmt.Sprintf("从 PDF 导入，共 %d 页。", extracted.Pages), chapters)
 	if err != nil {
@@ -373,26 +374,6 @@ func (a *App) createImportedWebDocument(book *models.Book, u *models.User, title
 	return doc, err
 }
 
-func extractPDFText(path string) (pdfExtractResult, error) {
-	file, reader, err := pdfreader.Open(path)
-	if err != nil {
-		return pdfExtractResult{}, err
-	}
-	defer file.Close()
-	plain, err := reader.GetPlainText()
-	if err != nil {
-		return pdfExtractResult{}, err
-	}
-	data, err := io.ReadAll(io.LimitReader(plain, contentImportMaxBytes+1))
-	if err != nil {
-		return pdfExtractResult{}, err
-	}
-	if len(data) > contentImportMaxBytes {
-		return pdfExtractResult{}, errors.New("PDF 提取后的文字超过 64MB")
-	}
-	return pdfExtractResult{Text: string(data), Pages: reader.NumPage()}, nil
-}
-
 func splitPDFChapters(text, bookTitle string) []importedChapter {
 	text = normalizeExtractedText(text)
 	lines := strings.Split(text, "\n")
@@ -411,17 +392,22 @@ func splitPDFChapters(text, bookTitle string) []importedChapter {
 		chapters = append(chapters, importedChapter{Title: truncateText(title, 255), Content: body})
 		currentLines = currentLines[:0]
 	}
+	foundHeading := false
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if trimmed != "" && utf8.RuneCountInString(trimmed) <= 100 && pdfChapterHeading.MatchString(trimmed) {
+		headingText := strings.TrimSpace(strings.TrimLeft(trimmed, "#"))
+		headingLevel := len(trimmed) - len(strings.TrimLeft(trimmed, "#"))
+		markdownChapter := headingLevel > 0 && headingLevel <= 2 && strings.HasPrefix(trimmed[headingLevel:], " ")
+		if headingText != "" && utf8.RuneCountInString(headingText) <= 100 && (pdfChapterHeading.MatchString(headingText) || markdownChapter) {
 			flush()
-			currentTitle = trimmed
+			currentTitle = headingText
+			foundHeading = true
 			continue
 		}
 		currentLines = append(currentLines, line)
 	}
 	flush()
-	if len(chapters) >= 2 && len(chapters) <= maxImportedChapters {
+	if foundHeading && len(chapters) > 0 && len(chapters) <= maxImportedChapters {
 		return chapters
 	}
 	return chunkImportedText(text, bookTitle)
@@ -846,7 +832,12 @@ func extractWebArticle(page webPage) (webArticle, error) {
 	if err := html.Render(&markup, contentNode); err != nil {
 		return webArticle{}, err
 	}
-	markdown, err := htmltomarkdown.ConvertString(markup.String(), converter.WithDomain(page.FinalURL.String()))
+	markdownConverter := converter.NewConverter(converter.WithPlugins(
+		base.NewBasePlugin(),
+		commonmark.NewCommonmarkPlugin(),
+		table.NewTablePlugin(table.WithHeaderPromotion(true)),
+	))
+	markdown, err := markdownConverter.ConvertString(markup.String(), converter.WithDomain(page.FinalURL.String()))
 	if err != nil {
 		return webArticle{}, err
 	}

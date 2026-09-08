@@ -72,8 +72,8 @@ func TestImportPDFBookCreatesPrivateDraftAndRevisions(t *testing.T) {
 	app, owner, db := newContentImportTestApp(t)
 	app.PDFExtractor = func(path string) (pdfExtractResult, error) {
 		return pdfExtractResult{
-			Text:  "这是导入文件的前言，包含足够多的文字用于解析。\n\n第一段介绍。\n\n第一章 起步\n这是第一章的正文内容。\n\n第二章 深入\n这是第二章的正文内容。",
-			Pages: 12,
+			Markdown: "这是导入文件的前言，包含足够多的文字用于解析。\n\n第一段介绍。\n\n## 第一章 起步\n\n这是第一章的正文内容。\n\n## 第二章 深入\n\n这是第二章的正文内容。",
+			Pages:    12,
 		}, nil
 	}
 	router := contentImportRouter(app, owner)
@@ -163,8 +163,71 @@ func TestImportWebAutoFallsBackToBrowser(t *testing.T) {
 	if err := db.Where("book_id = ?", book.ID).First(&doc).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(doc.Content, "https://8.8.8.8/guide") || strings.Contains(doc.Content, "导航") {
+	if !strings.Contains(doc.Content, "# 动态文章") || !strings.Contains(doc.Content, "[继续阅读指南](https://8.8.8.8/guide)") || strings.Contains(doc.Content, "导航") {
 		t.Fatalf("正文提取或相对链接转换错误: %s", doc.Content)
+	}
+}
+
+func TestExtractWebArticlePreservesMarkdownStructure(t *testing.T) {
+	pageURL, _ := url.Parse("https://8.8.8.8/articles/markdown")
+	article, err := extractWebArticle(webPage{
+		FinalURL: pageURL,
+		HTML: `<html><head><title>结构化文章</title></head><body><main><article>
+			<h1>结构化文章</h1><h2>安装步骤</h2><p>请先阅读 <strong>注意事项</strong>。</p>
+			<ul><li>准备环境</li><li>安装依赖</li></ul>
+			<pre><code class="language-go">fmt.Println("ok")</code></pre>
+			<table><tr><th>名称</th><th>状态</th></tr><tr><td>导入</td><td>正常</td></tr></table>
+		</article></main></body></html>`,
+	})
+	if err != nil {
+		t.Fatalf("网页 Markdown 转换失败: %v", err)
+	}
+	for _, expected := range []string{"# 结构化文章", "## 安装步骤", "**注意事项**", "- 准备环境", "```go", "| 名称", "|----"} {
+		if !strings.Contains(article.Markdown, expected) {
+			t.Fatalf("网页结构未转换为 Markdown，缺少 %q:\n%s", expected, article.Markdown)
+		}
+	}
+}
+
+func TestRenderPDFMarkdownPreservesDocumentStructure(t *testing.T) {
+	lines := []pdfLayoutLine{
+		{Text: "工程实践指南", FontSize: 24, Bold: true, Page: 1, X: 60, Y: 780, GapAfter: 30},
+		{Text: "第一章 起步", FontSize: 18, Bold: true, Page: 1, X: 60, Y: 730, GapAfter: 24},
+		{Text: "这是跨行的第一部分，", FontSize: 12, Page: 1, X: 60, Y: 690, GapAfter: 14},
+		{Text: "应该合并为一个段落。", FontSize: 12, Page: 1, X: 60, Y: 676, GapAfter: 30},
+		{Text: "• 准备环境", FontSize: 12, Page: 1, X: 60, Y: 630, GapAfter: 18},
+		{Text: `fmt.Println("ok")`, Font: "Courier", FontSize: 11, Monospace: true, Page: 1, X: 60, Y: 600},
+	}
+	markdown := renderPDFMarkdown(lines)
+	for _, expected := range []string{"# 工程实践指南", "## 第一章 起步", "这是跨行的第一部分，应该合并为一个段落。", "- 准备环境", "~~~\nfmt.Println"} {
+		if !strings.Contains(markdown, expected) {
+			t.Fatalf("PDF 结构未转换为 Markdown，缺少 %q:\n%s", expected, markdown)
+		}
+	}
+}
+
+func TestOrderPDFPageLinesReadsColumnsTopToBottom(t *testing.T) {
+	lines := []pdfLayoutLine{
+		{Text: "页面标题", X: 40, EndX: 560, Y: 780, Page: 1},
+		{Text: "左一", X: 40, EndX: 220, Y: 720, Page: 1}, {Text: "右一", X: 340, EndX: 520, Y: 720, Page: 1},
+		{Text: "左二", X: 40, EndX: 220, Y: 680, Page: 1}, {Text: "右二", X: 340, EndX: 520, Y: 680, Page: 1},
+		{Text: "左三", X: 40, EndX: 220, Y: 640, Page: 1}, {Text: "右三", X: 340, EndX: 520, Y: 640, Page: 1},
+	}
+	ordered := orderPDFPageLines(lines)
+	got := make([]string, 0, len(ordered))
+	for _, line := range ordered {
+		got = append(got, line.Text)
+	}
+	want := []string{"页面标题", "左一", "左二", "左三", "右一", "右二", "右三"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("双栏阅读顺序错误: got=%v want=%v", got, want)
+	}
+}
+
+func TestSplitPDFChaptersUsesMarkdownHeadings(t *testing.T) {
+	chapters := splitPDFChapters("# 使用手册\n\n手册前言内容。\n\n## 安装\n\n安装章节内容。\n\n## 配置\n\n配置章节内容。", "使用手册")
+	if len(chapters) != 3 || chapters[0].Title != "使用手册" || chapters[1].Title != "安装" || chapters[2].Title != "配置" {
+		t.Fatalf("Markdown 标题拆章错误: %+v", chapters)
 	}
 }
 

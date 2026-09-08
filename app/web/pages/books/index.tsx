@@ -336,7 +336,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
                   <span className="mt-2 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-6 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/40">
                     <UploadIcon className="h-7 w-7 text-primary-500" />
                     <span className="mt-3 text-sm font-medium text-slate-700">{file ? file.name : `点击选择 ${kind === 'pdf' ? 'PDF 文档' : 'ZIP 压缩包'}`}</span>
-                    <span className="mt-1 text-xs text-slate-400">{kind === 'pdf' ? '最大 64MB；扫描版 PDF 需要预先完成 OCR' : '用于恢复从 InfoSphere 导出的完整书籍'}</span>
+                    <span className="mt-1 text-xs text-slate-400">{kind === 'pdf' ? '最大 64MB；自动重建标题、段落与列表，扫描版需预先 OCR' : '用于恢复从 InfoSphere 导出的完整书籍'}</span>
                     <input type="file" accept={kind === 'pdf' ? '.pdf,application/pdf' : '.zip,application/zip'} className="sr-only"
                       onChange={(event) => { setFile(event.target.files?.[0] || null); setError('') }} />
                   </span>
