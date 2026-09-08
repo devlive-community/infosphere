@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import { API_BASE, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Button, Input, Textarea, Select, Switch } from '@/components/ui'
-import { BookIcon, CheckCircleIcon, ImageIcon, LinkIcon, UploadIcon } from '@/components/icons'
+import { BookIcon, CheckCircleIcon, ImageIcon, LinkIcon, UploadIcon, EyeIcon } from '@/components/icons'
 import type { Book, BookStatus } from '@/lib/types'
 
 const MAX_TITLE = 60
@@ -57,6 +57,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [host, setHost] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setHost(window.location.host) }, [])
@@ -123,39 +124,23 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
 
   return (
     <div>
-      {/* 页头 */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        {showHeader ? (
-          <div>
-            <nav className="mb-1 flex items-center gap-1.5 text-sm text-slate-400">
-              <button onClick={() => router.push('/books')} className="hover:text-primary-600">我的书籍</button>
-              <span>/</span>
-              <span className="text-slate-500">{breadcrumb}</span>
-            </nav>
-            <h1 className="text-2xl font-bold text-slate-900">{heading}</h1>
-            <p className="mt-1 text-sm text-slate-500">{subheading}</p>
-          </div>
-        ) : (
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">{heading}</h2>
-            <p className="mt-1 text-sm text-slate-500">{subheading}</p>
-          </div>
-        )}
-        <div className="flex items-center gap-3">
-          {showSaveDraft && (
-            <button onClick={() => submit('draft')} disabled={saving}
-              className="text-sm font-medium text-primary-600 hover:text-primary-700 disabled:opacity-50">
-              保存为草稿
-            </button>
-          )}
-          <Button onClick={() => submit()} loading={saving}>{submitLabel}</Button>
+      {/* 页头：仅创建页显示；设置页标题由外层布局提供 */}
+      {showHeader && (
+        <div className="mb-6">
+          <nav className="mb-1 flex items-center gap-1.5 text-sm text-slate-400">
+            <button onClick={() => router.push('/books')} className="hover:text-primary-600">我的书籍</button>
+            <span>/</span>
+            <span className="text-slate-500">{breadcrumb}</span>
+          </nav>
+          <h1 className="text-2xl font-bold text-slate-900">{heading}</h1>
+          <p className="mt-1 text-sm text-slate-500">{subheading}</p>
         </div>
-      </div>
+      )}
 
       {error && <div className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        {/* 左：分区表单 */}
+      {/* 分区表单（整宽；实时预览改为可关闭的悬浮面板） */}
+      <div>
         <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm">
           {/* 基本信息 */}
           <Section icon={<BookIcon className="h-4 w-4" />} title="基本信息">
@@ -287,40 +272,44 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
           </Section>
         </div>
 
-        {/* 右：实时预览 */}
-        <aside className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 font-bold text-slate-900">实时预览</h2>
-            <div className="overflow-hidden rounded-xl border border-slate-200">
-              <div className="aspect-[4/3] w-full bg-gradient-to-br from-primary-200 to-[#8B8DFF]">
-                {coverSrc && <img src={coverSrc} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
+      </div>
+
+      {/* 悬浮实时预览：默认隐藏，可随时开关关闭，不再固定占用版面 */}
+      {showPreview && (
+        <div className="fixed bottom-6 right-6 z-40 max-h-[calc(100vh-7rem)] w-[340px] space-y-4 overflow-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-slate-900">实时预览</h2>
+            <button type="button" onClick={() => setShowPreview(false)} aria-label="关闭预览"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">✕</button>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <div className="aspect-[4/3] w-full bg-gradient-to-br from-primary-200 to-[#8B8DFF]">
+              {coverSrc && <img src={coverSrc} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
+            </div>
+            <div className="space-y-2 p-4">
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((t) => (
+                    <span key={t} className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t}</span>
+                  ))}
+                </div>
+              )}
+              <h3 className="line-clamp-2 text-lg font-bold text-slate-900">{title || '书名将显示在这里'}</h3>
+              <p className="line-clamp-3 text-sm text-slate-500">{description || '一句话简介会显示在这里。'}</p>
+              <div className="flex items-center gap-2 pt-1">
+                {authorAvatar
+                  ? <img src={authorAvatar} alt="" className="h-6 w-6 rounded-full object-cover" />
+                  : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500">{authorName.slice(0, 1)}</span>}
+                <span className="text-sm text-slate-600">{authorName}</span>
               </div>
-              <div className="space-y-2 p-4">
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {tags.map((t) => (
-                      <span key={t} className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t}</span>
-                    ))}
-                  </div>
-                )}
-                <h3 className="line-clamp-2 text-lg font-bold text-slate-900">{title || '书名将显示在这里'}</h3>
-                <p className="line-clamp-3 text-sm text-slate-500">{description || '一句话简介会显示在这里。'}</p>
-                <div className="flex items-center gap-2 pt-1">
-                  {authorAvatar
-                    ? <img src={authorAvatar} alt="" className="h-6 w-6 rounded-full object-cover" />
-                    : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500">{authorName.slice(0, 1)}</span>}
-                  <span className="text-sm text-slate-600">{authorName}</span>
-                </div>
-                <div className="flex items-center gap-1.5 pt-1 text-xs text-slate-400">
-                  <LockIcon className="h-3.5 w-3.5" />
-                  {isPublic ? '公开访问' : '仅自己可见'} · {statusNames[status]}
-                </div>
+              <div className="flex items-center gap-1.5 pt-1 text-xs text-slate-400">
+                <LockIcon className="h-3.5 w-3.5" />
+                {isPublic ? '公开访问' : '仅自己可见'} · {statusNames[status]}
               </div>
             </div>
           </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 font-bold text-slate-900">{isEdit ? '你可以' : '创建后你可以'}</h2>
+          <div className="rounded-xl border border-slate-200 p-4">
+            <h3 className="mb-3 font-bold text-slate-900">{isEdit ? '你可以' : '创建后你可以'}</h3>
             <ul className="space-y-3 text-sm text-slate-600">
               {['添加并组织章节', '使用 Markdown 写作', '预览并发布内容'].map((t) => (
                 <li key={t} className="flex items-center gap-2.5">
@@ -329,13 +318,19 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
               ))}
             </ul>
           </div>
-        </aside>
-      </div>
+        </div>
+      )}
 
       {/* 底部操作条 */}
-      <div className="mt-6 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-        <span className="text-sm text-slate-400">所有内容都可以稍后修改</span>
+      <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+        <button type="button" onClick={() => setShowPreview((v) => !v)}
+          className="flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-primary-600">
+          <EyeIcon className="h-4 w-4" /> {showPreview ? '关闭预览' : '实时预览'}
+        </button>
         <div className="flex items-center gap-3">
+          {showSaveDraft && (
+            <Button variant="outline" type="button" onClick={() => submit('draft')} disabled={saving}>保存为草稿</Button>
+          )}
           <Button variant="outline" type="button" onClick={() => router.back()}>取消</Button>
           <Button onClick={() => submit()} loading={saving}>{submitLabel}</Button>
         </div>
