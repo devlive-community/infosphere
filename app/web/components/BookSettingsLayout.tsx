@@ -3,21 +3,23 @@ import { ReactNode } from 'react'
 import Container from '@/components/Container'
 import Seo from '@/components/Seo'
 import { resolveMediaUrl } from '@/lib/media'
-import { GearIcon, UsersIcon, DownloadIcon, ExternalLinkIcon, PencilIcon } from '@/components/icons'
+import { GearIcon, UsersIcon, DownloadIcon, ExternalLinkIcon, PencilIcon, ListIcon, TrashIcon } from '@/components/icons'
 import type { Book } from '@/lib/types'
 
-type SettingsTab = 'basic' | 'collaborators' | 'data'
+export type BookSettingsTab = 'basic' | 'chapters' | 'collaborators' | 'data' | 'danger'
 
 interface BookSettingsLayoutProps {
   book: Book
-  active: SettingsTab
+  active: BookSettingsTab
   children: ReactNode
 }
 
-const NAV: { key: SettingsTab; label: string; icon: (p: { className?: string }) => JSX.Element; sub: string }[] = [
+const NAV: { key: BookSettingsTab; label: string; icon: (p: { className?: string }) => JSX.Element; sub: string; danger?: boolean }[] = [
   { key: 'basic', label: '基本信息', icon: GearIcon, sub: '' },
+  { key: 'chapters', label: '章节管理', icon: ListIcon, sub: 'chapters' },
   { key: 'collaborators', label: '协作者', icon: UsersIcon, sub: 'collaborators' },
   { key: 'data', label: '导入导出', icon: DownloadIcon, sub: 'data' },
+  { key: 'danger', label: '危险区', icon: TrashIcon, sub: 'danger', danger: true },
 ]
 
 function statusLabel(status: string): string {
@@ -28,16 +30,17 @@ function statusLabel(status: string): string {
 export default function BookSettingsLayout({ book, active, children }: BookSettingsLayoutProps) {
   const cover = resolveMediaUrl(book.cover_image)
   const base = `/book/settings/${encodeURIComponent(book.slug)}`
+  const activeLabel = NAV.find((n) => n.key === active)?.label || '设置'
   return (
     <>
-      <Seo title={`${book.title} - 书籍设置`} noindex />
+      <Seo title={`${book.title} - ${activeLabel}`} noindex />
       <Container>
         <nav className="flex items-center gap-1.5 py-4 text-sm text-slate-500">
           <Link href="/books" className="hover:text-primary-600">我的书籍</Link>
           <span className="text-slate-300">/</span>
           <Link href={`/book/detail/${encodeURIComponent(book.slug)}`} className="max-w-[240px] truncate hover:text-primary-600">{book.title}</Link>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-900">设置</span>
+          <span className="text-slate-900">{activeLabel}</span>
         </nav>
 
         <div className="grid gap-6 pb-10 lg:grid-cols-[280px_1fr]">
@@ -59,11 +62,13 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
               {NAV.map((item) => {
                 const isActive = active === item.key
                 const Icon = item.icon
+                const activeCls = item.danger
+                  ? 'bg-rose-50 font-medium text-rose-700 ring-1 ring-inset ring-rose-100'
+                  : 'bg-primary-50 font-medium text-primary-700 ring-1 ring-inset ring-primary-100'
+                const idleCls = item.danger ? 'text-rose-600 hover:bg-rose-50' : 'text-slate-600 hover:bg-slate-50'
                 return (
                   <Link key={item.key} href={item.sub ? `${base}/${item.sub}` : base}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                      isActive ? 'bg-primary-50 font-medium text-primary-700 ring-1 ring-inset ring-primary-100' : 'text-slate-600 hover:bg-slate-50'
-                    }`}>
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${isActive ? activeCls : idleCls}`}>
                     <Icon className="h-4 w-4" /> {item.label}
                   </Link>
                 )
