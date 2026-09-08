@@ -220,7 +220,7 @@ func (a *App) canReadDocument(u *models.User, doc *models.Document, book *models
 	if role, ok := a.collaboratorRole(u, book.ID); ok && role == "viewer" {
 		return doc.Status == "published"
 	}
-	return book.IsPublic && book.Status == "published" && doc.Status == "published"
+	return book.IsPublic && isPubliclyReadableBookStatus(book.Status) && doc.Status == "published"
 }
 
 // GetDocument GET /documents/:id

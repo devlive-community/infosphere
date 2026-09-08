@@ -153,7 +153,7 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/site` | 站点公开配置（site_name/site_description/version） | `site:read` |
 | PUT | `/site` | 更新站点配置 | `site:update` |
-| GET | `/stats` | 公开站点统计；书籍、章节、标签和浏览量仅统计公开且已发布内容 | `stats:read` |
+| GET | `/stats` | 公开站点统计；书籍、章节、标签和浏览量仅统计公开且处于可阅读状态（进行中/已发布/已完成）的内容 | `stats:read` |
 
 ## 发现（公开）
 
@@ -161,7 +161,7 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/explore/hot` | 浏览量最高的 6 本公开书籍 | `book:read` |
 | GET | `/explore/latest` | 最新发布的 6 本公开书籍 | `book:read` |
-| GET | `/search?q=` | 全局搜索：匿名仅查公开且已发布的书籍与章节；owner/admin/editor 可搜索草稿，viewer 仅可搜索已发布章节 | `search:read` |
+| GET | `/search?q=` | 全局搜索：匿名仅查公开且处于可阅读状态的书籍及其中已发布章节；owner/admin/editor 可搜索草稿，viewer 仅可搜索已发布章节 | `search:read` |
 
 ## 用户（公开主页）
 
@@ -184,7 +184,9 @@ Authorization: Bearer <token>
 | GET | `/books/status-counts` | 当前用户书籍统计（按状态汇总） | `book:read` |
 | POST | `/books/:id/view` | 可见书籍浏览计数 +1；不可见资源统一返回 404 | `book:read` |
 
-书籍字段：`id, title, description, cover_image, slug, status(draft|published|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, watermark_enabled, watermark_text, user, tags, created_at, updated_at`
+书籍字段：`id, title, description, cover_image, slug, status(draft|in_progress|published|completed|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, watermark_enabled, watermark_text, user, tags, created_at, updated_at`
+
+> **书籍状态语义**：`draft` 草稿（不对外阅读）、`in_progress` 进行中、`published` 已发布（兼容既有数据）、`completed` 已完成、`archived` 已归档（从公开区域下线）。当 `is_public=true` 时，`in_progress / published / completed` 均属于可公开阅读状态；章节仍只使用 `draft / published / archived`。
 
 - 阅读水印默认关闭。创建或更新书籍时传 `watermark_enabled: true` 与自定义 `watermark_text`（去除首尾空白后最多 80 个字符）；开启时水印内容不能为空。关闭水印不会清除已经保存的自定义内容。
 
@@ -272,7 +274,7 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/books/:id/export?format=markdown` | 导出书籍为 zip：`book.md`（front-matter：标题/简介/slug/状态/公开/排序/章节前缀/封面/标签）+ `chapters/<序号>-<slug>.md`（front-matter：标题/slug/排序/状态/父章节/评论开关 + 正文）+ `images/`（本站 `/uploads` 图片随包携带并改写为相对引用，外链保持原样） | `book:export` |
-| GET | `/books/:id/export/pdf?style=author\|mine` | 通过 pdf-export 插件（无头 Chrome）导出 PDF。鉴权：作者/协作者/管理员始终可导；否则要求书籍公开、已发布且 `export_enabled`。`style=author`（仅当作者 `export_style_shared`）用作者导出样式，否则用请求者样式；水印始终取自作者设置。未安装插件返回 400 | `book:read`（匿名可导开放的公开书） |
+| GET | `/books/:id/export/pdf?style=author\|mine` | 通过 pdf-export 插件（无头 Chrome）导出 PDF。鉴权：作者/协作者/管理员始终可导；否则要求书籍公开、处于可阅读状态且 `export_enabled`。`style=author`（仅当作者 `export_style_shared`）用作者导出样式，否则用请求者样式；水印始终取自作者设置。未安装插件返回 400 | `book:read`（匿名可导开放的公开书） |
 | POST | `/import` | multipart 上传 `file`（zip），可选 `title`；解析同一结构还原为新书：元数据/标签/章节树（按 parent slug 重建）/图片写回上传目录；slug 冲突自动追加 `-imported-N`；安全限制：≤500 文件、解压总量 ≤64MB、拒绝 `..` 路径 | `book:import` |
 | POST | `/import/pdf` | multipart 上传 `file`（PDF，≤64MB），可选 `title`；根据文本坐标、字号和字体样式重建 Markdown 标题、段落、列表及代码块，移除重复页眉页脚，并修正双栏阅读顺序；优先按一、二级 Markdown 标题或“第 N 章/篇/部/卷”、`Chapter N` 拆章，无明确结构时按长度分段；扫描版 PDF 需预先 OCR；结果固定为私有草稿 | `book:import` |
 | POST | `/books/:id/import/pdf` | multipart 上传 `file`（PDF，≤64MB）及 `mode=append\|replace`，仅书籍 owner/admin 可用。`append` 将新解析的 Markdown 章节以草稿追加到目录末尾，不改变原内容与发布状态；`replace` 在同一事务内清理旧章节、章节版本、评论和阅读进度后写入新草稿章节，并将书籍转为私有草稿。新 PDF 解析失败时不会改动旧数据 | `book:import` |
@@ -303,7 +305,7 @@ Authorization: Bearer <token>
 | PUT | `/admin/users/:id/role` | 变更角色 `{role: admin\|user}`；禁止操作自身，保留至少一位启用管理员 | `user:manage` |
 | PUT | `/admin/users/:id/status` | 启停账户 `{is_active}`；禁止停用自身，保留至少一位启用管理员 | `user:manage` |
 | DELETE | `/admin/users/:id` | 删除用户；禁止删除自身，拥有书籍者需先清理书籍 | `user:manage` |
-| GET | `/admin/books?page=&page_size=&q=&status=&visibility=&sort=` | 分页查询全站书籍（含私有、草稿和归档）；`q` 匹配标题/slug/作者，支持状态、公开性与创建/更新/浏览量排序 | `book:read` + 管理员 |
+| GET | `/admin/books?page=&page_size=&q=&status=&visibility=&sort=` | 分页查询全站书籍（含草稿、进行中、已发布、已完成、归档及私有内容）；`q` 匹配标题/slug/作者，支持状态、公开性与创建/更新/浏览量排序 | `book:read` + 管理员 |
 | GET | `/admin/documents?page=&page_size=&q=&book_id=&status=&sort=` | 分页查询全站章节元数据（不返回正文）；`q` 匹配章节标题/slug/书名/作者，支持按书籍、状态及创建/更新/浏览量排序 | `document:read` + 管理员 |
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |

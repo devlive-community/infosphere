@@ -9,14 +9,14 @@ import (
 	"gorm.io/gorm"
 )
 
-func (a *App) publicPublishedBooks() *gorm.DB {
-	return a.DB.Where("is_public = ? AND status = ?", true, "published")
+func (a *App) publicReadableBooks() *gorm.DB {
+	return a.DB.Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
 }
 
 // ExploreHot GET /explore/hot 浏览量最高的 6 本公开书籍
 func (a *App) ExploreHot(c *gin.Context) {
 	books := []models.Book{}
-	if err := preloadBookUser(a.publicPublishedBooks()).
+	if err := preloadBookUser(a.publicReadableBooks()).
 		Order("view_count DESC").Limit(6).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
@@ -28,7 +28,7 @@ func (a *App) ExploreHot(c *gin.Context) {
 // ExploreLatest GET /explore/latest 最新发布的 6 本公开书籍
 func (a *App) ExploreLatest(c *gin.Context) {
 	books := []models.Book{}
-	if err := preloadBookUser(a.publicPublishedBooks()).
+	if err := preloadBookUser(a.publicReadableBooks()).
 		Order("created_at DESC").Limit(6).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
@@ -42,16 +42,16 @@ func (a *App) SiteStats(c *gin.Context) {
 	var userCount, bookCount, docCount, tagCount int64
 	var views int64
 	a.DB.Model(&models.User{}).Count(&userCount)
-	publicBooks := a.DB.Model(&models.Book{}).Where("is_public = ? AND status = ?", true, "published")
+	publicBooks := a.DB.Model(&models.Book{}).Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
 	publicBooks.Count(&bookCount)
 	a.DB.Model(&models.Document{}).
 		Joins("JOIN books b ON b.id = documents.book_id").
-		Where("b.is_public = ? AND b.status = ? AND documents.status = ?", true, "published", "published").
+		Where("b.is_public = ? AND b.status IN ? AND documents.status = ?", true, publiclyReadableBookStatuses, "published").
 		Count(&docCount)
 	a.DB.Model(&models.Tag{}).
 		Joins("JOIN book_tags bt ON bt.tag_id = tags.id").
 		Joins("JOIN books b ON b.id = bt.book_id").
-		Where("b.is_public = ? AND b.status = ?", true, "published").
+		Where("b.is_public = ? AND b.status IN ?", true, publiclyReadableBookStatuses).
 		Distinct("tags.id").Count(&tagCount)
 	publicBooks.Select("COALESCE(SUM(view_count), 0)").Scan(&views)
 	ok(c, gin.H{
@@ -116,7 +116,7 @@ func (a *App) GetUserProfile(c *gin.Context) {
 		return
 	}
 	var bookCount int64
-	a.DB.Model(&models.Book{}).Where("user_id = ? AND is_public = ? AND status = ?", u.ID, true, "published").Count(&bookCount)
+	a.DB.Model(&models.Book{}).Where("user_id = ? AND is_public = ? AND status IN ?", u.ID, true, publiclyReadableBookStatuses).Count(&bookCount)
 	ok(c, gin.H{
 		"id": u.ID, "username": u.Username, "avatar": u.Avatar, "bio": u.Bio,
 		"github_url": u.GithubURL, "role": u.Role, "created_at": u.CreatedAt,
@@ -132,7 +132,7 @@ func (a *App) GetUserBooks(c *gin.Context) {
 		fail(c, http.StatusNotFound, "用户不存在")
 		return
 	}
-	query := a.DB.Model(&models.Book{}).Where("user_id = ? AND is_public = ? AND status = ?", u.ID, true, "published")
+	query := a.DB.Model(&models.Book{}).Where("user_id = ? AND is_public = ? AND status IN ?", u.ID, true, publiclyReadableBookStatuses)
 	var total int64
 	query.Count(&total)
 	books := []models.Book{}

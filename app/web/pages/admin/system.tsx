@@ -19,6 +19,13 @@ import { formatDate } from '@/lib/api'
 interface Service { key: string; label: string; icon: (p: { className?: string }) => JSX.Element; ok: boolean; latency: number }
 
 const DB_LABEL: Record<string, string> = { sqlite: 'SQLite', mysql: 'MySQL', postgres: 'PostgreSQL' }
+const BOOK_STATUS: Record<string, { label: string; tone: 'slate' | 'primary' | 'emerald' | 'violet' | 'amber' }> = {
+  draft: { label: '草稿', tone: 'slate' },
+  in_progress: { label: '进行中', tone: 'primary' },
+  published: { label: '已发布', tone: 'emerald' },
+  completed: { label: '已完成', tone: 'violet' },
+  archived: { label: '已归档', tone: 'amber' },
+}
 
 // 管理控制台首页：服务状态总览与配置入口（仅管理员）
 export default function AdminSystem() {
@@ -195,8 +202,8 @@ export default function AdminSystem() {
             href: `/book/detail/${b.slug}`,
             meta: (
               <>
-                <Badge tone={b.status === 'published' ? 'emerald' : 'amber'}>
-                  {b.status === 'published' ? '已发布' : b.status === 'archived' ? '已归档' : '草稿'}
+                <Badge tone={BOOK_STATUS[b.status]?.tone || 'slate'}>
+                  {BOOK_STATUS[b.status]?.label || b.status}
                 </Badge>
                 {b.is_public ? <Badge tone="sky">公开</Badge> : <Badge tone="slate">私有</Badge>}
               </>

@@ -118,6 +118,32 @@ func TestAuthorizationBoundaries(t *testing.T) {
 	publicDoc := createDoc(publicBookID, "公开章节", "公开正文", "published", true)
 	publicDocID := int(publicDoc["id"].(float64))
 
+	// 进行中与已完成是书籍级创作状态，两者在公开开关开启后都应可被发现和阅读。
+	for _, bookStatus := range []string{"in_progress", "completed"} {
+		title := "状态可见 " + bookStatus
+		bookID, _ := createBook(title, "visible-"+strings.ReplaceAll(bookStatus, "_", "-"), bookStatus, true)
+		createDoc(bookID, "状态章节", "状态正文 "+bookStatus, "published", true)
+		status, visibleBook, _ := request(http.MethodGet, fmt.Sprintf("/api/v1/books/%d", bookID), nil, "")
+		if status != http.StatusOK || visibleBook["data"].(map[string]any)["status"] != bookStatus {
+			t.Fatalf("公开 %s 书籍应可访问: %d %v", bookStatus, status, visibleBook)
+		}
+		status, list, _ := request(http.MethodGet, "/api/v1/books?title="+url.QueryEscape(title), nil, "")
+		items := list["data"].(map[string]any)["items"].([]any)
+		if status != http.StatusOK || len(items) != 1 {
+			t.Fatalf("公开列表应包含 %s 书籍: %d %v", bookStatus, status, list)
+		}
+		status, docs, _ := request(http.MethodGet, fmt.Sprintf("/api/v1/books/%d/documents", bookID), nil, "")
+		if status != http.StatusOK || len(docs["data"].([]any)) != 1 {
+			t.Fatalf("公开 %s 书籍的已发布章节应可阅读: %d %v", bookStatus, status, docs)
+		}
+	}
+	status, _, _ = request(http.MethodPost, "/api/v1/books", map[string]any{
+		"title": "非法状态", "status": "paused",
+	}, aliceToken)
+	if status != http.StatusBadRequest {
+		t.Fatalf("未定义的书籍状态应拒绝: %d", status)
+	}
+
 	// 公共书籍嵌套作者资料不得包含真实邮箱。
 	status, publicBook, _ := request(http.MethodGet, fmt.Sprintf("/api/v1/books/%d", publicBookID), nil, "")
 	author := publicBook["data"].(map[string]any)["user"].(map[string]any)

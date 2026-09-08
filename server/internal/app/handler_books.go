@@ -12,7 +12,17 @@ import (
 	"gorm.io/gorm"
 )
 
-var bookStatuses = map[string]bool{"draft": true, "published": true, "archived": true}
+var bookStatuses = map[string]bool{
+	"draft": true, "in_progress": true, "published": true, "completed": true, "archived": true,
+}
+
+// publiclyReadableBookStatuses 是可对外提供阅读的书籍状态。
+// 草稿尚未发布，归档已从公开区域下线；进行中、已发布、已完成均可公开访问。
+var publiclyReadableBookStatuses = []string{"in_progress", "published", "completed"}
+
+func isPubliclyReadableBookStatus(status string) bool {
+	return status == "in_progress" || status == "published" || status == "completed"
+}
 
 var allowedOrderCols = map[string]bool{"created_at": true, "updated_at": true, "title": true, "view_count": true}
 
@@ -88,7 +98,7 @@ func (a *App) canEditBookContent(u *models.User, b *models.Book) bool {
 
 // canReadBook 判断书籍是否对当前用户可见
 func (a *App) canReadBook(u *models.User, b *models.Book) bool {
-	if b.IsPublic && b.Status == "published" {
+	if b.IsPublic && isPubliclyReadableBookStatus(b.Status) {
 		return true
 	}
 	if a.canManageBook(u, b) {
@@ -157,7 +167,7 @@ func (a *App) ListBooks(c *gin.Context) {
 			query = query.Where("status = ?", s)
 		}
 	} else {
-		query = query.Where("is_public = ? AND status = ?", true, "published")
+		query = query.Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
 	}
 	if title := c.Query("title"); title != "" {
 		query = query.Where("title LIKE ?", "%"+title+"%")
@@ -188,15 +198,15 @@ func (a *App) ListBooks(c *gin.Context) {
 }
 
 type bookPayload struct {
-	Title            *string  `json:"title"`
-	Description      *string  `json:"description"`
-	CoverImage       *string  `json:"cover_image"`
-	Slug             *string  `json:"slug"`
-	Status           *string  `json:"status"`
-	IsPublic         *bool    `json:"is_public"`
-	OrderCol         *string  `json:"order_col"`
-	OrderDir         *string  `json:"order_dir"`
-	ChapterPrefix    *string  `json:"chapter_prefix"`
+	Title             *string  `json:"title"`
+	Description       *string  `json:"description"`
+	CoverImage        *string  `json:"cover_image"`
+	Slug              *string  `json:"slug"`
+	Status            *string  `json:"status"`
+	IsPublic          *bool    `json:"is_public"`
+	OrderCol          *string  `json:"order_col"`
+	OrderDir          *string  `json:"order_dir"`
+	ChapterPrefix     *string  `json:"chapter_prefix"`
 	WatermarkEnabled  *bool    `json:"watermark_enabled"`
 	WatermarkText     *string  `json:"watermark_text"`
 	ExportEnabled     *bool    `json:"export_enabled"`
@@ -224,7 +234,7 @@ func (a *App) MyBookCounts(c *gin.Context) {
 		Where("user_id = ?", u.ID).
 		Group("status").Scan(&rows)
 
-	counts := gin.H{"": 0, "published": 0, "draft": 0, "archived": 0}
+	counts := gin.H{"": 0, "draft": 0, "in_progress": 0, "published": 0, "completed": 0, "archived": 0}
 	total := int64(0)
 	for _, r := range rows {
 		counts[r.Status] = r.Count
@@ -390,6 +400,10 @@ func (a *App) UpdateBook(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	if req.Status != nil && !bookStatuses[*req.Status] {
+		fail(c, http.StatusBadRequest, "无效的状态")
+		return
+	}
 	if req.Title != nil && *req.Title != "" {
 		book.Title = *req.Title
 	}
@@ -399,7 +413,7 @@ func (a *App) UpdateBook(c *gin.Context) {
 	if req.CoverImage != nil {
 		book.CoverImage = *req.CoverImage
 	}
-	if req.Status != nil && bookStatuses[*req.Status] {
+	if req.Status != nil {
 		book.Status = *req.Status
 	}
 	if req.IsPublic != nil {

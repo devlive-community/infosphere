@@ -11,7 +11,7 @@ import {
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
   ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
 } from '@/components/icons'
-import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, PageResult } from '@/lib/types'
+import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, DocumentStatus, PageResult } from '@/lib/types'
 
 type SaveState = 'saved' | 'dirty' | 'saving'
 type TabKey = 'toc' | 'settings'
@@ -25,11 +25,12 @@ interface BookFormState {
   chapterPrefix: string
 }
 
-// 状态视觉：草稿=绿（对齐原型），已发布=品牌蓝，已归档=灰
-const STATUS_META: Record<BookStatus, { label: string; tone: 'emerald' | 'primary' | 'slate'; dot: string }> = {
-  draft: { label: '草稿', tone: 'emerald', dot: 'bg-emerald-500' },
-  published: { label: '已发布', tone: 'primary', dot: 'bg-primary-500' },
-  archived: { label: '已归档', tone: 'slate', dot: 'bg-slate-400' },
+const STATUS_META: Record<BookStatus, { label: string; tone: 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'; dot: string }> = {
+  draft: { label: '草稿', tone: 'slate', dot: 'bg-slate-400' },
+  in_progress: { label: '进行中', tone: 'primary', dot: 'bg-primary-500' },
+  published: { label: '已发布', tone: 'emerald', dot: 'bg-emerald-500' },
+  completed: { label: '已完成', tone: 'violet', dot: 'bg-violet-500' },
+  archived: { label: '已归档', tone: 'amber', dot: 'bg-amber-500' },
 }
 
 // 临时关闭章节自动保存；恢复时只需改为 true，手动保存与发布流程不受影响。
@@ -70,7 +71,7 @@ export default function Writer({ user }: WriterProps) {
   // 章节表单
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [status, setStatus] = useState<BookStatus>('draft')
+  const [status, setStatus] = useState<DocumentStatus>('draft')
   const [parentId, setParentId] = useState('')
   const [sortOrder, setSortOrder] = useState(0)
   const [allowComments, setAllowComments] = useState(true)
@@ -82,7 +83,7 @@ export default function Writer({ user }: WriterProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const snapshot = useRef('') // 已保存/已加载表单的快照，用于脏状态判断
   const loadedDocId = useRef<number | null>(null) // 当前表单对应的文档，防止切换章节时误触发自动保存
-  const saveRef = useRef<(opts?: { status?: BookStatus }) => Promise<void>>(async () => {})
+  const saveRef = useRef<(opts?: { status?: DocumentStatus }) => Promise<void>>(async () => {})
   const didInitExpand = useRef(false)
 
   const flatDocs = useMemo(() => flatten(tree), [tree])
@@ -182,7 +183,7 @@ export default function Writer({ user }: WriterProps) {
   }, [docSlug, flatDocs]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 保存：opts.status 允许“发布”一次性覆盖状态
-  const save = useCallback(async (opts?: { status?: BookStatus }) => {
+  const save = useCallback(async (opts?: { status?: DocumentStatus }) => {
     if (!book) return
     if (!title.trim()) { setMessage('请填写章节标题'); return }
     const effectiveStatus = opts?.status ?? status
@@ -577,7 +578,11 @@ export default function Writer({ user }: WriterProps) {
               <Field label="简介"><Textarea className="min-h-[72px]" value={bookForm.description} onChange={(e) => setBookForm({ ...bookForm, description: e.target.value })} /></Field>
               <Field label="状态">
                 <Select value={bookForm.status} onChange={(v) => setBookForm({ ...bookForm, status: v as BookStatus })}
-                  options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }, { value: 'archived', label: '已归档' }]} />
+                  options={[
+                    { value: 'draft', label: '草稿' }, { value: 'in_progress', label: '进行中' },
+                    { value: 'published', label: '已发布' }, { value: 'completed', label: '已完成' },
+                    { value: 'archived', label: '已归档' },
+                  ]} />
               </Field>
               <Field label="可见性">
                 <div className="grid grid-cols-2 gap-2">
@@ -672,7 +677,7 @@ export default function Writer({ user }: WriterProps) {
           <h2 className="mb-4 font-bold text-slate-900">章节设置</h2>
           <div className="space-y-4">
             <Field label="发布状态">
-              <Select value={status} onChange={(v) => setStatus(v as BookStatus)}
+              <Select value={status} onChange={(v) => setStatus(v as DocumentStatus)}
                 leading={<span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_META[status].dot}`} />}
                 options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }, { value: 'archived', label: '已归档' }]} />
             </Field>

@@ -1,5 +1,6 @@
 // 与 Go 服务端对应的 API 数据类型
-export type BookStatus = 'draft' | 'published' | 'archived'
+export type BookStatus = 'draft' | 'in_progress' | 'published' | 'completed' | 'archived'
+export type DocumentStatus = 'draft' | 'published' | 'archived'
 export type UserRole = 'admin' | 'user'
 
 export interface User {
@@ -65,7 +66,7 @@ export interface Document {
   user_id: number
   sort_order: number
   view_count?: number
-  status: BookStatus
+  status: DocumentStatus
   allow_comments?: boolean | null
   created_at: string
   updated_at: string
@@ -80,7 +81,7 @@ export interface DocumentRevisionSummary {
   book_id: number
   title: string
   content_length: number
-  status: BookStatus
+  status: DocumentStatus
   allow_comments: boolean
   reason: DocumentRevisionReason
   author?: Pick<User, 'id' | 'username' | 'avatar'>

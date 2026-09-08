@@ -23,7 +23,9 @@ const NAV: { key: BookSettingsTab; label: string; icon: (p: { className?: string
 ]
 
 function statusLabel(status: string): string {
-  return status === 'published' ? '已发布' : status === 'archived' ? '已归档' : '草稿'
+  return ({
+    draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
+  } as Record<string, string>)[status] || status
 }
 
 // BookSettingsLayout 书籍设置：左侧书籍卡与导航 + 右侧内容区（对齐账户设置的双栏布局）

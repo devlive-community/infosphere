@@ -18,7 +18,7 @@ var adminBookSorts = map[string]string{
 	"view_count_asc":  "books.view_count ASC",
 }
 
-// AdminListBooks GET /admin/books 管理员分页查询全站书籍，包含私有、草稿与归档内容。
+// AdminListBooks GET /admin/books 管理员分页查询全站书籍，包含全部状态与私有内容。
 func (a *App) AdminListBooks(c *gin.Context) {
 	page, pageSize := paginate(c)
 	query := a.DB.Model(&models.Book{}).

@@ -523,7 +523,9 @@ function InfoRow({ icon, label, value, mono }: { icon: React.ReactNode; label: s
 }
 
 function statusName(status: string): string {
-  return status === 'published' ? '已发布' : status === 'archived' ? '已归档' : '草稿'
+  return ({
+    draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
+  } as Record<string, string>)[status] || status
 }
 
 function fmtDate(input: string | null | undefined): string {

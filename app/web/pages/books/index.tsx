@@ -15,7 +15,9 @@ import type { Book, Document, PageResult } from '@/lib/types'
 
 const statusTabs = [
   { key: '', label: '全部' },
+  { key: 'in_progress', label: '进行中' },
   { key: 'published', label: '已发布' },
+  { key: 'completed', label: '已完成' },
   { key: 'draft', label: '草稿' },
   { key: 'archived', label: '已归档' },
 ]
@@ -60,7 +62,9 @@ export default function MyBooks() {
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [menuFor, setMenuFor] = useState<number | null>(null)
   const [data, setData] = useState<PageResult<Book>>({ items: [], total: 0, page: 1, page_size: 10 })
-  const [counts, setCounts] = useState<Record<string, number>>({ '': 0, published: 0, draft: 0, archived: 0 })
+  const [counts, setCounts] = useState<Record<string, number>>({
+    '': 0, draft: 0, in_progress: 0, published: 0, completed: 0, archived: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [importOpen, setImportOpen] = useState(false)
   const [pdfImportBook, setPDFImportBook] = useState<Book | null>(null)

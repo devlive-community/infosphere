@@ -178,7 +178,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
 
           <p className="mt-4 flex items-start gap-1.5 px-2 text-xs leading-5 text-slate-400">
             <GlobeIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            这里只展示公开且已发布的内容
+            这里只展示公开且处于进行中、已发布或已完成状态的内容
           </p>
         </aside>
 

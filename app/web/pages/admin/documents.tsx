@@ -6,7 +6,7 @@ import { api, formatDate, formatNumber } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Badge, Button, DropdownMenu, EmptyState, Input, Loading, Pagination, Select, useFeedback } from '@/components/ui'
 import { EyeIcon, PencilIcon, SearchIcon, TrashIcon } from '@/components/icons'
-import type { BookStatus, Document, PageResult } from '@/lib/types'
+import type { DocumentStatus, Document, PageResult } from '@/lib/types'
 
 const PAGE_SIZE = 15
 
@@ -16,7 +16,7 @@ interface AdminDocumentItem {
   parent_id: number | null
   title: string
   slug: string
-  status: BookStatus
+  status: DocumentStatus
   allow_comments: boolean | null
   sort_order: number
   view_count: number
@@ -50,11 +50,11 @@ const sortOptions = [
   { value: 'view_count_asc', label: '浏览量从低到高' },
 ]
 
-function statusTone(status: BookStatus): 'emerald' | 'slate' | 'amber' {
+function statusTone(status: DocumentStatus): 'emerald' | 'slate' | 'amber' {
   return status === 'published' ? 'emerald' : status === 'archived' ? 'slate' : 'amber'
 }
 
-function statusLabel(status: BookStatus): string {
+function statusLabel(status: DocumentStatus): string {
   return status === 'published' ? '已发布' : status === 'archived' ? '已归档' : '草稿'
 }
 
@@ -225,7 +225,7 @@ export default function AdminDocuments() {
                           <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
                           <Select className="w-28" value={item.status} disabled={busyId === item.id}
                             options={rowStatusOptions}
-                            onChange={(value) => updateDocument(item, { status: value as BookStatus })} />
+                            onChange={(value) => updateDocument(item, { status: value as DocumentStatus })} />
                         </div>
                       </td>
                       <td className="px-5 py-3">

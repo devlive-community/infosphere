@@ -89,7 +89,7 @@ type Book struct {
 	CoverImage       string    `gorm:"size:500" json:"cover_image"`
 	Slug             string    `gorm:"size:255;uniqueIndex;not null" json:"slug"`
 	UserID           uint      `gorm:"index;not null" json:"user_id"`
-	Status           string    `gorm:"size:20;default:draft;index" json:"status"` // draft | published | archived
+	Status           string    `gorm:"size:20;default:draft;index" json:"status"` // draft | in_progress | published | completed | archived
 	IsPublic         bool      `gorm:"default:false;index" json:"is_public"`
 	ViewCount        int       `gorm:"default:0" json:"view_count"`
 	OrderCol         string    `gorm:"size:50;default:created_at" json:"order_col"`

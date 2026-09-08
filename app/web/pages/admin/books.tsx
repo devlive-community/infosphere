@@ -14,7 +14,9 @@ const PAGE_SIZE = 15
 const statusOptions = [
   { value: '', label: '全部状态' },
   { value: 'draft', label: '草稿' },
+  { value: 'in_progress', label: '进行中' },
   { value: 'published', label: '已发布' },
+  { value: 'completed', label: '已完成' },
   { value: 'archived', label: '已归档' },
 ]
 
@@ -37,11 +39,17 @@ const rowStatusOptions = statusOptions.filter((option) => option.value)
 const rowVisibilityOptions = visibilityOptions.filter((option) => option.value)
 
 function statusLabel(status: BookStatus): string {
-  return status === 'published' ? '已发布' : status === 'archived' ? '已归档' : '草稿'
+  const labels: Record<BookStatus, string> = {
+    draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
+  }
+  return labels[status]
 }
 
-function statusTone(status: BookStatus): 'emerald' | 'slate' | 'amber' {
-  return status === 'published' ? 'emerald' : status === 'archived' ? 'slate' : 'amber'
+function statusTone(status: BookStatus): 'slate' | 'primary' | 'emerald' | 'violet' | 'amber' {
+  const tones: Record<BookStatus, 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'> = {
+    draft: 'slate', in_progress: 'primary', published: 'emerald', completed: 'violet', archived: 'amber',
+  }
+  return tones[status]
 }
 
 // 书籍管理：管理员检索全站书籍并调整状态、可见性或删除书籍。

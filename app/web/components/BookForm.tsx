@@ -14,7 +14,9 @@ const validSlug = (s: string) => /^[a-z0-9-]+$/.test(s)
 
 const statusOptions = [
   { value: 'draft', label: '草稿' },
+  { value: 'in_progress', label: '进行中' },
   { value: 'published', label: '已发布' },
+  { value: 'completed', label: '已完成' },
   { value: 'archived', label: '已归档' },
 ]
 const prefixOptions = [
@@ -22,7 +24,9 @@ const prefixOptions = [
   { value: '第', label: '第（第一章、第二章…）' },
   { value: 'Chapter ', label: 'Chapter （Chapter 1…）' },
 ]
-const statusNames: Record<string, string> = { draft: '草稿', published: '已发布', archived: '已归档' }
+const statusNames: Record<string, string> = {
+  draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
+}
 
 export interface BookFormProps {
   initial?: Book

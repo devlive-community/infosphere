@@ -34,25 +34,25 @@ func (a *App) GlobalSearch(c *gin.Context) {
 	}
 	like := "%" + q + "%"
 
-	// 书籍：公开且已发布，或本人/管理员/协作者可见。
+	// 书籍：公开且处于可阅读状态，或本人/管理员/协作者可见。
 	books := []models.Book{}
 	bookQuery := a.DB.Where("(title LIKE ? OR description LIKE ?)", like, like)
 	if u := currentUser(c); u != nil {
 		if !IsAdmin(u) {
 			bookQuery = bookQuery.Where(
-				"(is_public = ? AND status = ?) OR user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = books.id AND bc.user_id = ?)",
-				true, "published", u.ID, u.ID,
+				"(is_public = ? AND status IN ?) OR user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = books.id AND bc.user_id = ?)",
+				true, publiclyReadableBookStatuses, u.ID, u.ID,
 			)
 		}
 	} else {
-		bookQuery = bookQuery.Where("is_public = ? AND status = ?", true, "published")
+		bookQuery = bookQuery.Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
 	}
 	if err := bookQuery.Limit(10).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "搜索失败")
 		return
 	}
 
-	// 章节：公开书与章节均已发布，或 owner/admin/editor 可看草稿；viewer 仅看已发布章节。
+	// 章节：书籍可公开阅读且章节已发布，或 owner/admin/editor 可看草稿；viewer 仅看已发布章节。
 	docs := []models.Document{}
 	docQuery := a.DB.Model(&models.Document{}).
 		Joins("JOIN books b ON b.id = documents.book_id").
@@ -60,15 +60,15 @@ func (a *App) GlobalSearch(c *gin.Context) {
 	if u := currentUser(c); u != nil {
 		if !IsAdmin(u) {
 			docQuery = docQuery.Where(`
-				(b.is_public = ? AND b.status = ? AND documents.status = ?)
+				(b.is_public = ? AND b.status IN ? AND documents.status = ?)
 				OR b.user_id = ?
 				OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ? AND bc.role = 'editor')
 				OR (documents.status = ? AND EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ? AND bc.role = 'viewer'))`,
-				true, "published", "published", u.ID, u.ID, "published", u.ID,
+				true, publiclyReadableBookStatuses, "published", u.ID, u.ID, "published", u.ID,
 			)
 		}
 	} else {
-		docQuery = docQuery.Where("b.is_public = ? AND b.status = ? AND documents.status = ?", true, "published", "published")
+		docQuery = docQuery.Where("b.is_public = ? AND b.status IN ? AND documents.status = ?", true, publiclyReadableBookStatuses, "published")
 	}
 	if err := docQuery.Select("documents.*").Limit(10).Find(&docs).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "搜索失败")

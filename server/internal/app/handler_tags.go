@@ -21,7 +21,8 @@ func (a *App) ListTags(c *gin.Context) {
 	query := a.DB.Model(&models.Tag{}).
 		Select("tags.id, tags.name, tags.slug, COUNT(book_tags.book_id) AS book_count").
 		Joins("JOIN book_tags ON book_tags.tag_id = tags.id").
-		Joins("JOIN books ON books.id = book_tags.book_id AND books.is_public = 1 AND books.status = 'published'").
+		Joins("JOIN books ON books.id = book_tags.book_id").
+		Where("books.is_public = ? AND books.status IN ?", true, publiclyReadableBookStatuses).
 		Group("tags.id")
 	if q != "" {
 		query = query.Where("tags.name LIKE ?", "%"+q+"%")
@@ -94,7 +95,7 @@ func (a *App) BooksByTag(c *gin.Context) {
 	base := a.DB.Model(&models.Book{}).
 		Joins("JOIN book_tags ON book_tags.book_id = books.id").
 		Joins("JOIN tags ON tags.id = book_tags.tag_id AND tags.slug = ?", slug).
-		Where("books.is_public = ? AND books.status = ?", true, "published")
+		Where("books.is_public = ? AND books.status IN ?", true, publiclyReadableBookStatuses)
 
 	var total int64
 	if err := base.Count(&total).Error; err != nil {

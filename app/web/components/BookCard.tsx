@@ -13,9 +13,11 @@ import type { Book } from '@/lib/types'
 // 通过开关组合表达各页差异，避免各页自定义卡片导致视觉不一致。
 // 根节点恒为 div（内部含多个 Link），避免嵌套 <a> 破坏水合。
 
-const statusNames: Record<string, string> = { draft: '草稿', published: '已发布', archived: '已归档' }
-const statusTones: Record<string, 'slate' | 'emerald' | 'amber'> = {
-  draft: 'slate', published: 'emerald', archived: 'amber',
+const statusNames: Record<string, string> = {
+  draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
+}
+const statusTones: Record<string, 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'> = {
+  draft: 'slate', in_progress: 'primary', published: 'emerald', completed: 'violet', archived: 'amber',
 }
 
 export function StatusBadge({ status }: { status: string }) {
@@ -30,7 +32,7 @@ export interface BookCardProps {
   showAuthor?: boolean
   /** 作者头像/用户名是否可点（链接到用户主页）。默认 true */
   authorLink?: boolean
-  /** 显示状态徽标（草稿/已发布/已归档）。默认 false */
+  /** 显示状态徽标（草稿/进行中/已发布/已完成/已归档）。默认 false */
   showStatus?: boolean
   /** 显示可见性徽标（公开/仅自己可见）。默认 false */
   showVisibility?: boolean

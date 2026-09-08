@@ -98,8 +98,8 @@ func (a *App) MyReactions(c *gin.Context) {
 		Where("reactions.user_id = ? AND reactions.type = ?", u.ID, rType)
 	if !IsAdmin(u) {
 		q = q.Where(
-			"(b.is_public = ? AND b.status = ?) OR b.user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ?)",
-			true, "published", u.ID, u.ID,
+			"(b.is_public = ? AND b.status IN ?) OR b.user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ?)",
+			true, publiclyReadableBookStatuses, u.ID, u.ID,
 		)
 	}
 	q = q.Select("reactions.*").Order("reactions.created_at DESC")
