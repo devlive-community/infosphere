@@ -4,12 +4,12 @@ import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
-import { Button, ButtonLink, Badge, EmptyState, Field, Input, Pagination, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
+import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import PDFReimportPanel from '@/components/PDFReimportPanel'
 import {
   CalendarIcon, CloseIcon, EyeIcon, FileTextIcon, GearIcon, GlobeIcon, GridIcon,
-  ListIcon, MoreIcon, PencilIcon, SearchIcon, UploadIcon,
+  ListIcon, PencilIcon, SearchIcon, UploadIcon,
 } from '@/components/icons'
 import type { Book, Document, PageResult } from '@/lib/types'
 
@@ -395,40 +395,29 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onImportPDF, 
   )
 
   const menu = (
-    <div className="relative">
-      <button aria-label="更多操作" onClick={() => setMenuOpen(!menuOpen)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
-        <MoreIcon className="h-4 w-4" />
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <Link role="menuitem" href={detailUrl} onClick={() => setMenuOpen(false)}
+        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+        <EyeIcon className="h-4 w-4 text-slate-400" /> 查看详情
+      </Link>
+      <Link role="menuitem" href={`/book/settings/${encodeURIComponent(book.slug)}`} onClick={() => setMenuOpen(false)}
+        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+        <GearIcon className="h-4 w-4 text-slate-400" /> 书籍设置
+      </Link>
+      <button role="menuitem" onClick={() => { setMenuOpen(false); onImportPDF() }}
+        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+        <i className="fa-solid fa-file-pdf w-4 text-center text-slate-400" aria-hidden="true" /> 导入 PDF
       </button>
-      {menuOpen && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-          <div className="absolute right-0 top-10 z-40 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-            <Link href={detailUrl} onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-              <EyeIcon className="h-4 w-4 text-slate-400" /> 查看详情
-            </Link>
-            <Link href={`/book/settings/${encodeURIComponent(book.slug)}`} onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-              <GearIcon className="h-4 w-4 text-slate-400" /> 书籍设置
-            </Link>
-            <button onClick={() => { setMenuOpen(false); onImportPDF() }}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-              <i className="fa-solid fa-file-pdf w-4 text-center text-slate-400" aria-hidden="true" /> 导入 PDF
-            </button>
-            <button onClick={onCopy}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-              <LinkIcon2 className="h-4 w-4 text-slate-400" /> 复制访问链接
-            </button>
-            <div className="my-1 border-t border-slate-100" />
-            <button onClick={() => { setMenuOpen(false); onDelete() }}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50">
-              <TrashIcon className="h-4 w-4" /> 删除书籍
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+      <button role="menuitem" onClick={onCopy}
+        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+        <LinkIcon2 className="h-4 w-4 text-slate-400" /> 复制访问链接
+      </button>
+      <div className="my-1 border-t border-slate-100" />
+      <button role="menuitem" onClick={() => { setMenuOpen(false); onDelete() }}
+        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50">
+        <TrashIcon className="h-4 w-4" /> 删除书籍
+      </button>
+    </DropdownMenu>
   )
 
   // 写作操作行：继续/开始写作 + 章节列表 + 书籍设置。

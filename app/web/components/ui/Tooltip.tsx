@@ -6,6 +6,7 @@ interface TooltipProps {
   placement?: 'top' | 'bottom'
   children: ReactNode
   className?: string
+  disabled?: boolean
 }
 
 interface TooltipPosition {
@@ -19,7 +20,7 @@ const VIEWPORT_GAP = 8
 const TRIGGER_GAP = 8
 
 // Tooltip 通用气泡提示：通过 Portal 渲染到 body，避免被卡片 overflow 或层叠上下文裁切。
-export default function Tooltip({ content, placement = 'top', children, className }: TooltipProps) {
+export default function Tooltip({ content, placement = 'top', children, className, disabled = false }: TooltipProps) {
   const [visible, setVisible] = useState(false)
   const [position, setPosition] = useState<TooltipPosition | null>(null)
   const triggerRef = useRef<HTMLSpanElement>(null)
@@ -61,6 +62,10 @@ export default function Tooltip({ content, placement = 'top', children, classNam
   }, [placement])
 
   useEffect(() => {
+    if (disabled && visible) {
+      setVisible(false)
+      return
+    }
     if (!visible) {
       setPosition(null)
       return
@@ -73,7 +78,7 @@ export default function Tooltip({ content, placement = 'top', children, classNam
       window.removeEventListener('resize', updatePosition)
       window.removeEventListener('scroll', updatePosition, true)
     }
-  }, [visible, updatePosition])
+  }, [disabled, visible, updatePosition])
 
   const layer = visible && typeof document !== 'undefined' && createPortal(
     <span
@@ -100,9 +105,9 @@ export default function Tooltip({ content, placement = 'top', children, classNam
 
   return (
     <span ref={triggerRef} className={`relative inline-flex ${className || ''}`.trim()}
-      onMouseEnter={() => setVisible(true)}
+      onMouseEnter={() => { if (!disabled) setVisible(true) }}
       onMouseLeave={() => setVisible(false)}
-      onFocusCapture={() => setVisible(true)}
+      onFocusCapture={() => { if (!disabled) setVisible(true) }}
       onBlurCapture={() => setVisible(false)}>
       {children}
       {layer}

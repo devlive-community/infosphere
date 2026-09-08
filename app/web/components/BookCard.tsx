@@ -219,7 +219,7 @@ export default function BookCard({
       <div className="flex flex-1 flex-col gap-1.5 p-4">
         <div className="flex items-center justify-between gap-2">
           {tagBlock}
-          {topActions || authorBlock}
+          {(topActions || authorBlock) && <div className="ml-auto shrink-0">{topActions || authorBlock}</div>}
         </div>
         {titleBlock}
         {badgeBlock}
