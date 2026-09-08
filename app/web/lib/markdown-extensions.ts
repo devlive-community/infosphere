@@ -458,8 +458,7 @@ const imageExtension: TokenizerAndRendererExtension = {
     if (t.width) styles.push(`width:${t.width}px`)
     if (t.height) styles.push(`height:${t.height}px`)
     const styleAttr = styles.length > 0 ? ` style="${styles.join(';')}"` : ''
-    const titleAttr = t.title ? ` title="${escapeHtml(t.title)}"` : ''
-    return `<img src="${escapeHtml(t.href)}" alt="${escapeHtml(t.alt)}"${titleAttr}${styleAttr} class="${classes.join(' ')}" loading="lazy" />`
+    return `<img src="${escapeHtml(t.href)}" alt="${escapeHtml(t.alt)}"${styleAttr} class="${classes.join(' ')}" loading="lazy" />`
   },
 }
 

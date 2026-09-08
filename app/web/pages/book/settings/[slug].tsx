@@ -4,7 +4,7 @@ import Container from '@/components/Container'
 import { useRouter } from 'next/router'
 import { api, API_BASE, getToken } from '@/lib/api'
 import { authHeaderFrom, getSSRUser, isInstalled, serverApi } from '@/lib/server-api'
-import { Button } from '@/components/ui'
+import { Button, useFeedback } from '@/components/ui'
 import { DownloadIcon } from '@/components/icons'
 import BookForm from '@/components/BookForm'
 import CollaboratorManager from '@/components/CollaboratorManager'
@@ -42,6 +42,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, param
 }
 
 export default function EditBook({ initialBook }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { showToast } = useFeedback()
   const router = useRouter()
   const book = initialBook
   const [exporting, setExporting] = useState(false)
@@ -64,7 +65,7 @@ export default function EditBook({ initialBook }: InferGetServerSidePropsType<ty
       link.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      alert((e as Error).message)
+      showToast({ title: '导出失败', message: (e as Error).message, tone: 'error' })
     } finally {
       setExporting(false)
     }

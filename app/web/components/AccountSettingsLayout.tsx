@@ -4,6 +4,7 @@ import UserAvatar from '@/components/UserAvatar'
 import { getToken } from '@/lib/api'
 import type { User } from '@/lib/types'
 import { ShieldIcon, UserCircleIcon } from '@/components/icons'
+import { useFeedback } from '@/components/ui'
 
 interface AccountSettingsLayoutProps {
   user: User
@@ -15,6 +16,7 @@ interface AccountSettingsLayoutProps {
 
 // AccountSettingsLayout 账户设置：左侧身份卡与导航 + 右侧内容区（原型双栏布局）
 export default function AccountSettingsLayout({ user, active, onAvatarChange, children }: AccountSettingsLayoutProps) {
+  const { showToast } = useFeedback()
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -33,7 +35,7 @@ export default function AccountSettingsLayout({ user, active, onAvatarChange, ch
       if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
       onAvatarChange(payload.data.url)
     } catch (e) {
-      alert((e as Error).message)
+      showToast({ title: '头像上传失败', message: (e as Error).message, tone: 'error' })
     } finally {
       setUploading(false)
     }

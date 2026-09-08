@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { api, storeSession } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { Button, Input, Field, Loading } from '@/components/ui'
+import { Button, Input, Field, Loading, useFeedback } from '@/components/ui'
 import { CheckCircleIcon } from '@/components/icons'
 import type { DatabasePayload, SetupStatus, User } from '@/lib/types'
 
@@ -17,6 +17,7 @@ interface InstallResponse {
 }
 
 export default function Install() {
+  const { showToast } = useFeedback()
   const { installed } = useApp()
   const [step, setStep] = useState<1 | 2>(1)
   const [error, setError] = useState('')
@@ -76,7 +77,7 @@ export default function Install() {
     setTesting(true)
     try {
       await api('/setup/test-connection', { method: 'POST', body: dbPayload() })
-      alert('数据库连接成功')
+      showToast({ message: '数据库连接成功', tone: 'success' })
     } catch (e) {
       setError((e as Error).message)
     } finally {

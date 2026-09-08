@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, API_BASE, formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
-import { Badge, Button, Input, Select, Pagination, Loading } from '@/components/ui'
+import { Badge, Button, Input, Select, Pagination, Loading, useFeedback } from '@/components/ui'
 import { SearchIcon } from '@/components/icons'
 import type { PageResult, User } from '@/lib/types'
 
@@ -10,6 +10,7 @@ const PAGE_SIZE = 15
 
 // 用户管理：分页检索用户并管理角色、启停与删除（仅管理员）
 export default function AdminUsers() {
+  const { confirmAction } = useFeedback()
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
   const [items, setItems] = useState<User[]>([])
@@ -73,7 +74,12 @@ export default function AdminUsers() {
   }
 
   async function remove(u: User) {
-    if (!confirm(`确定删除用户「${u.username}」？该操作不可撤销。`)) return
+    if (!await confirmAction({
+      title: '删除用户',
+      message: `确定删除用户「${u.username}」？该操作不可撤销。`,
+      confirmLabel: '删除用户',
+      danger: true,
+    })) return
     setBusyId(u.id)
     setMessage('')
     try {

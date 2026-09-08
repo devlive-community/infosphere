@@ -4,7 +4,7 @@ import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
-import { Button, ButtonLink, Badge, EmptyState, Field, Input, Pagination, Select, Loading , Tooltip} from '@/components/ui'
+import { Button, ButtonLink, Badge, EmptyState, Field, Input, Pagination, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import {
   CalendarIcon, CloseIcon, EyeIcon, FileTextIcon, GearIcon, GlobeIcon, GridIcon,
@@ -48,6 +48,7 @@ function chapterCount(book: Book): number {
 }
 
 export default function MyBooks() {
+  const { confirmAction, requestInput, showToast } = useFeedback()
   const user = useRequireAuth()
   const { site } = useApp()
   const siteName = site.site_name || 'InfoSphere'
@@ -70,7 +71,7 @@ export default function MyBooks() {
       const summary = await api<Record<string, number>>('/books/status-counts').catch(() => null)
       if (summary) setCounts(summary)
     } catch (e) {
-      alert((e as Error).message)
+      showToast({ title: '书籍加载失败', message: (e as Error).message, tone: 'error' })
     } finally {
       setLoading(false)
     }
@@ -87,12 +88,17 @@ export default function MyBooks() {
   })
 
   async function remove(book: Book) {
-    if (!confirm(`确定删除「${book.title}」及其全部章节吗？此操作不可恢复。`)) return
+    if (!await confirmAction({
+      title: '删除书籍',
+      message: `确定删除「${book.title}」及其全部章节吗？此操作不可恢复。`,
+      confirmLabel: '删除书籍',
+      danger: true,
+    })) return
     try {
       await api(`/books/${book.id}`, { method: 'DELETE' })
       load()
     } catch (e) {
-      alert((e as Error).message)
+      showToast({ title: '删除失败', message: (e as Error).message, tone: 'error' })
     }
   }
 
@@ -100,9 +106,9 @@ export default function MyBooks() {
     const url = `${window.location.origin}/book/detail/${encodeURIComponent(book.slug)}`
     try {
       await navigator.clipboard.writeText(url)
-      alert('访问链接已复制')
+      showToast({ message: '访问链接已复制', tone: 'success' })
     } catch {
-      window.prompt('复制访问链接', url)
+      await requestInput({ title: '复制访问链接', label: '访问链接', defaultValue: url, confirmLabel: '关闭' })
     }
     setMenuFor(null)
   }

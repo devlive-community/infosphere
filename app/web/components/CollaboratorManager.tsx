@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, FormEvent } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { Button, Input, Select, Badge, EmptyState, Loading } from '@/components/ui'
+import { Button, Input, Select, Badge, EmptyState, Loading, useFeedback } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
 import type { Book, User } from '@/lib/types'
 
@@ -17,6 +17,7 @@ const ROLE_LABELS: Record<string, string> = { editor: '编辑者', viewer: '访�
 
 // CollaboratorManager 书籍设置页的协作者管理：所有者可增删，协作者可查看与自己退出
 export default function CollaboratorManager({ book }: { book: Book }) {
+  const { confirmAction } = useFeedback()
   const { user } = useApp()
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -58,7 +59,12 @@ export default function CollaboratorManager({ book }: { book: Book }) {
 
   async function remove(userId: number, name: string) {
     const self = user?.id === userId
-    if (!confirm(self ? `确定退出《${book.title}》的协作吗？` : `确定移除协作者「${name}」吗？`)) return
+    if (!await confirmAction({
+      title: self ? '退出书籍协作' : '移除协作者',
+      message: self ? `确定退出《${book.title}》的协作吗？` : `确定移除协作者「${name}」吗？`,
+      confirmLabel: self ? '确认退出' : '确认移除',
+      danger: true,
+    })) return
     setWorking(true)
     setMessage('')
     setError('')

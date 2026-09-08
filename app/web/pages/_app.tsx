@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { AppProvider, useApp } from '@/lib/auth'
 import Layout from '@/components/Layout'
 import Seo from '@/components/Seo'
-import { Loading } from '@/components/ui'
+import { FeedbackProvider, Loading } from '@/components/ui'
 import type { ReactNode } from 'react'
 import type { SiteConfig } from '@/lib/types'
 
@@ -76,10 +76,12 @@ export default function App({ Component, pageProps }: AppProps) {
   // SSR 页面通过 getServerSideProps 注入安装状态、站点配置与公开数据
   return (
     <AppProvider initialSite={pageProps.site ?? null} initialInstalled={pageProps.installed ?? null} initialUser={pageProps.user ?? null}>
-      <RouteLoading />
-      <Shell>
-        <Component {...pageProps} />
-      </Shell>
+      <FeedbackProvider>
+        <RouteLoading />
+        <Shell>
+          <Component {...pageProps} />
+        </Shell>
+      </FeedbackProvider>
     </AppProvider>
   )
 }

@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
-import { Button, Badge, Loading } from '@/components/ui'
+import { Button, Badge, Loading, useFeedback } from '@/components/ui'
 import { SystemVersion } from '@/lib/admin'
 
 // 版本更新：版本信息与在线升级（仅管理员）
 export default function AdminUpgrade() {
+  const { confirmAction } = useFeedback()
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
   const [info, setInfo] = useState<SystemVersion | null>(null)
@@ -23,7 +24,11 @@ export default function AdminUpgrade() {
   }, [isAdmin])
 
   async function upgrade() {
-    if (!confirm('将下载最新版本并自动重启服务，继续？')) return
+    if (!await confirmAction({
+      title: '确认在线升级',
+      message: '将下载最新版本并自动重启服务。升级前会自动备份当前版本，是否继续？',
+      confirmLabel: '立即升级',
+    })) return
     setUpgrading(true)
     setMessage('')
     try {

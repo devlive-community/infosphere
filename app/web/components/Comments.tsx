@@ -5,7 +5,7 @@ import UserAvatar from '@/components/UserAvatar'
 import { formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import type { User } from '@/lib/types'
-import { Loading } from '@/components/ui'
+import { Loading, useFeedback } from '@/components/ui'
 
 interface CommentItem {
   id: number
@@ -18,6 +18,7 @@ interface CommentItem {
 
 // Comments 章节评论区（两级）
 export default function Comments({ docId, allowComments = true }: { docId: number; allowComments?: boolean }) {
+  const { confirmAction, showToast } = useFeedback()
   const { user } = useApp()
   const [comments, setComments] = useState<CommentItem[] | null>(null)
   const [content, setContent] = useState('')
@@ -55,12 +56,12 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
   }
 
   async function remove(id: number) {
-    if (!confirm('确定删除该评论吗？')) return
+    if (!await confirmAction({ title: '删除评论', message: '确定删除该评论吗？此操作不可撤销。', confirmLabel: '删除评论', danger: true })) return
     try {
       await api(`/comments/${id}`, { method: 'DELETE' })
       await load()
     } catch (e) {
-      alert((e as Error).message)
+      showToast({ title: '删除失败', message: (e as Error).message, tone: 'error' })
     }
   }
 

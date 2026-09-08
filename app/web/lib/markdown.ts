@@ -68,9 +68,9 @@ renderer.code = (code: string, infostring: string | undefined, _escaped: boolean
   return `<div class="md-code-block"><pre><code class="hljs">${highlighted}</code></pre></div>`
 }
 
-renderer.link = (href: string | null, title: string | null, text: string): string => {
+renderer.link = (href: string | null, _title: string | null, text: string): string => {
   const external = /^https?:\/\//.test(href || '')
-  return `<a href="${href ?? ''}"${title ? ` title="${title}"` : ''}${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${text}</a>`
+  return `<a href="${href ?? ''}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${text}</a>`
 }
 
 marked.use({ renderer, extensions: [alertExtension, ...markdownExtensions], breaks: true, gfm: true })

@@ -5,7 +5,7 @@ import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown, bindMarkdownInteractivity } from '@/lib/markdown'
 import Seo from '@/components/Seo'
-import { Button, Input, Textarea, Select, Field, Badge, EmptyState, Loading } from '@/components/ui'
+import { Button, Input, Textarea, Select, Field, Badge, EmptyState, Loading, Tooltip, useFeedback } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
@@ -41,6 +41,7 @@ interface WriterProps {
 
 // Writer：书籍与章节编辑器（三栏工作台布局）
 export default function Writer({ user }: WriterProps) {
+  const { confirmAction, requestInput, showToast } = useFeedback()
   useRequireAuth()
   const router = useRouter()
   const { site } = useApp()
@@ -124,8 +125,8 @@ export default function Writer({ user }: WriterProps) {
         await loadTree(b)
         setBook(b)
       })
-      .catch((e) => alert((e as Error).message))
-  }, [user, bookSlug, loadTree])
+      .catch((e) => showToast({ title: '书籍加载失败', message: (e as Error).message, tone: 'error' }))
+  }, [user, bookSlug, loadTree, showToast])
 
   function resetForm() {
     setCurrent(null)
@@ -136,14 +137,20 @@ export default function Writer({ user }: WriterProps) {
     setSaveState('saved')
   }
 
-  function confirmDiscard() {
-    return saveState !== 'dirty' || window.confirm('当前章节有未保存的更改，确定放弃并继续吗？')
+  async function confirmDiscard() {
+    if (saveState !== 'dirty') return true
+    return confirmAction({
+      title: '放弃未保存的更改',
+      message: '当前章节有未保存的更改，继续后这些修改将丢失。',
+      confirmLabel: '放弃并继续',
+      danger: true,
+    })
   }
 
   // 取消选中当前章节（点击目录空白处）
-  function deselect() {
+  async function deselect() {
     if (!current) return
-    if (!confirmDiscard()) return
+    if (!await confirmDiscard()) return
     resetForm()
     router.push(`/book/writer/${encodeURIComponent(bookSlug)}`, undefined, { shallow: true })
   }
@@ -166,7 +173,7 @@ export default function Writer({ user }: WriterProps) {
         snapshot.current = JSON.stringify([full.title, full.content || '', full.status, full.parent_id ? String(full.parent_id) : '', full.sort_order, full.allow_comments !== false])
         loadedDocId.current = full.id
         setSaveState('saved')
-      }).catch((e) => alert((e as Error).message))
+      }).catch((e) => showToast({ title: '章节加载失败', message: (e as Error).message, tone: 'error' }))
         .finally(() => setDocumentLoading(false))
     } else if (!docSlug) {
       setDocumentLoading(false)
@@ -239,19 +246,8 @@ export default function Writer({ user }: WriterProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // 浏览器关闭/刷新时保留原生离开提醒；站内切换由各入口主动确认。
-  useEffect(() => {
-    function onBeforeUnload(event: BeforeUnloadEvent) {
-      if (saveState !== 'dirty') return
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [saveState])
-
-  function selectDoc(slug: string, force = false) {
-    if (!force && slug !== current?.slug && !confirmDiscard()) return
+  async function selectDoc(slug: string, force = false) {
+    if (!force && slug !== current?.slug && !await confirmDiscard()) return
     // 切换章节：本页内更新地址与表单（shallow，不重载）
     router.replace(`/book/writer/${encodeURIComponent(bookSlug)}/${encodeURIComponent(slug)}`, undefined, { shallow: true })
   }
@@ -263,12 +259,17 @@ export default function Writer({ user }: WriterProps) {
 
   async function removeDoc(doc: Document) {
     if (!book) return
-    if (!confirm(`确定删除「${doc.title}」及其子章节吗？`)) return
+    if (!await confirmAction({
+      title: '删除章节',
+      message: `确定删除「${doc.title}」及其子章节吗？此操作不可撤销。`,
+      confirmLabel: '删除章节',
+      danger: true,
+    })) return
     try {
       await api(`/documents/${doc.id}`, { method: 'DELETE' })
       await loadTree(book)
       if (current?.id === doc.id) { resetForm(); router.push(`/book/writer/${encodeURIComponent(bookSlug)}`, undefined, { shallow: true }) }
-    } catch (e) { alert((e as Error).message) }
+    } catch (e) { showToast({ title: '删除失败', message: (e as Error).message, tone: 'error' }) }
   }
 
   async function move(doc: Document, delta: -1 | 1) {
@@ -331,8 +332,8 @@ export default function Writer({ user }: WriterProps) {
   }
 
   // 新建章节/子章节：有选中项时都建到该章节之下（子级）；无选中项时建到顶级
-  function createNew() {
-    if (!confirmDiscard()) return
+  async function createNew() {
+    if (!await confirmDiscard()) return
     let newParent = ''
     let newSort = 0
     if (current) {
@@ -352,8 +353,8 @@ export default function Writer({ user }: WriterProps) {
     setTimeout(() => textareaRef.current?.focus(), 0)
   }
 
-  function openWebImport() {
-    if (!confirmDiscard()) return
+  async function openWebImport() {
+    if (!await confirmDiscard()) return
     setNewMenuOpen(false)
     setWebImportOpen(true)
   }
@@ -418,6 +419,21 @@ export default function Writer({ user }: WriterProps) {
     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(s + prefix.length, s + prefix.length) })
   }
 
+  async function insertLink() {
+    const url = await requestInput({ title: '添加链接', label: '链接地址', defaultValue: 'https://', placeholder: 'https://example.com', confirmLabel: '插入链接' })
+    if (url) wrapSelection('[', `](${url})`)
+  }
+
+  async function insertImage() {
+    const url = await requestInput({ title: '添加图片', message: '请输入可公开访问的图片地址。', label: '图片地址', defaultValue: 'https://', placeholder: 'https://example.com/image.png', confirmLabel: '插入图片' })
+    if (url) wrapSelection('![', `](${url})`)
+  }
+
+  async function navigateAway(href: string) {
+    if (!await confirmDiscard()) return
+    await router.push(href)
+  }
+
   if (!user) return <Loading className="min-h-screen" label="正在验证编辑权限…" />
 
   const chapterPrefix = book?.chapter_prefix || ''
@@ -453,12 +469,12 @@ export default function Writer({ user }: WriterProps) {
       {/* 顶栏 */}
       <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <Link href="/" onClick={(event) => { if (!confirmDiscard()) event.preventDefault() }} className="flex shrink-0 items-center gap-2 font-bold text-slate-900">
+          <Link href="/" onClick={(event) => { event.preventDefault(); navigateAway('/') }} className="flex shrink-0 items-center gap-2 font-bold text-slate-900">
             <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
             {siteName}
           </Link>
           <span className="text-slate-300">/</span>
-          <Link href="/books" onClick={(event) => { if (!confirmDiscard()) event.preventDefault() }} className="shrink-0 text-slate-500 hover:text-primary-600">我的书籍</Link>
+          <Link href="/books" onClick={(event) => { event.preventDefault(); navigateAway('/books') }} className="shrink-0 text-slate-500 hover:text-primary-600">我的书籍</Link>
           <span className="text-slate-300">/</span>
           <span className="truncate font-medium text-slate-900">{book.title}</span>
         </div>
@@ -620,14 +636,14 @@ export default function Writer({ user }: WriterProps) {
                   <ToolbarButton title="加粗" onClick={() => wrapSelection('**')}><span className="font-bold">B</span></ToolbarButton>
                   <ToolbarButton title="斜体" onClick={() => wrapSelection('*')}><span className="italic">I</span></ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="链接" onClick={() => wrapSelection('[', `](${window.prompt('链接地址', 'https://') || ''})`)}><LinkIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="链接" onClick={insertLink}><LinkIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="引用" onClick={() => insertAtLineStart('> ')}><QuoteIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="行内代码" onClick={() => wrapSelection('`')}><CodeIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
                   <ToolbarButton title="无序列表" onClick={() => insertAtLineStart('- ')}><ListBulletIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="有序列表" onClick={() => insertAtLineStart('1. ')}><ListOrderedIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="图片" onClick={() => wrapSelection('![', `](${window.prompt('图片地址', 'https://') || ''})`)}><ImageIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="图片" onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
                 </div>
               )}
 
@@ -849,6 +865,7 @@ function RevisionDrawer({
   onClose: () => void
   onRestored: (document: Document) => Promise<void>
 }) {
+  const { confirmAction } = useFeedback()
   const [result, setResult] = useState<PageResult<DocumentRevisionSummary> | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<DocumentRevision | null>(null)
@@ -907,7 +924,11 @@ function RevisionDrawer({
       setError('当前编辑内容尚未保存。请关闭版本历史并先手动保存，再执行恢复。')
       return
     }
-    if (!detail || !window.confirm(`确定恢复到 ${formatDate(detail.created_at)} 的版本吗？当前内容会先自动备份。`)) return
+    if (!detail || !await confirmAction({
+      title: '恢复历史版本',
+      message: `确定恢复到 ${formatDate(detail.created_at)} 的版本吗？当前内容会先自动备份。`,
+      confirmLabel: '恢复版本',
+    })) return
     setRestoring(true)
     setError('')
     try {
@@ -1049,10 +1070,12 @@ function VisibilityCard({ active, onClick, title, desc }: { active: boolean; onC
 
 function ToolbarButton({ title, onClick, children }: { title: string; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" title={title} onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900">
-      {children}
-    </button>
+    <Tooltip content={title}>
+      <button type="button" aria-label={title} onClick={onClick}
+        className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900">
+        {children}
+      </button>
+    </Tooltip>
   )
 }
 
@@ -1165,7 +1188,11 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
           <span className={`whitespace-nowrap ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
         </button>
         <span className="mr-1 hidden shrink-0 items-center group-hover:flex">
-          <span className={`flex h-6 w-6 items-center justify-center rounded text-slate-400 ${dragEnabled ? 'cursor-grab hover:bg-slate-200 hover:text-slate-700' : 'cursor-default'}`} title={dragEnabled ? '拖拽调整顺序' : ''}><GripIcon className="h-4 w-4" /></span>
+          {dragEnabled ? (
+            <Tooltip content="拖拽调整顺序">
+              <span className="flex h-6 w-6 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700"><GripIcon className="h-4 w-4" /></span>
+            </Tooltip>
+          ) : <span className="flex h-6 w-6 cursor-default items-center justify-center rounded text-slate-400"><GripIcon className="h-4 w-4" /></span>}
           <button aria-label="章节操作" onClick={() => setMenuFor(menuFor === item.id ? null : item.id)}
             className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700">
             <MoreIcon className="h-4 w-4" />

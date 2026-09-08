@@ -1,6 +1,25 @@
 {
   "extends": "next/core-web-vitals",
   "rules": {
-    "@next/next/no-img-element": "off"
+    "@next/next/no-img-element": "off",
+    "no-restricted-globals": [
+      "error",
+      { "name": "alert", "message": "请使用项目 useFeedback().showToast 展示反馈。" },
+      { "name": "confirm", "message": "请使用项目 useFeedback().confirmAction 展示确认弹窗。" },
+      { "name": "prompt", "message": "请使用项目 useFeedback().requestInput 收集输入。" }
+    ],
+    "no-restricted-properties": [
+      "error",
+      { "object": "window", "property": "alert", "message": "请使用项目 useFeedback().showToast 展示反馈。" },
+      { "object": "window", "property": "confirm", "message": "请使用项目 useFeedback().confirmAction 展示确认弹窗。" },
+      { "object": "window", "property": "prompt", "message": "请使用项目 useFeedback().requestInput 收集输入。" }
+    ],
+    "no-restricted-syntax": [
+      "error",
+      { "selector": "JSXOpeningElement[name.name='dialog']", "message": "禁止使用原生 dialog，请使用项目自定义弹窗。" },
+      { "selector": "CallExpression[callee.property.name='showModal']", "message": "禁止调用原生 showModal，请使用项目自定义弹窗。" },
+      { "selector": "CallExpression[callee.object.name='window'][callee.property.name='addEventListener'][arguments.0.value='beforeunload']", "message": "禁止使用浏览器原生离开确认，请使用项目自定义确认流程。" },
+      { "selector": "JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='title']", "message": "原生元素禁止使用 title 展示 Tooltip，请使用项目 Tooltip。" }
+    ]
   }
 }

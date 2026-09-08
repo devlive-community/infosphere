@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
-import { Badge, Button, Input, Field, Loading } from '@/components/ui'
+import { Badge, Button, Input, Field, Loading, useFeedback } from '@/components/ui'
 import { TrashIcon, PencilIcon, SaveIcon } from '@/components/icons'
 import type { ConfigItem } from '@/lib/admin'
 
 // 系统设置 · 系统配置：以 key-value 形式自由增删改任意配置项（仅管理员）
 export default function SettingsConfig() {
+  const { confirmAction } = useFeedback()
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
   const [items, setItems] = useState<ConfigItem[]>([])
@@ -76,7 +77,12 @@ export default function SettingsConfig() {
   }
 
   async function remove(it: ConfigItem) {
-    if (!confirm(`确定删除配置「${it.key}」？`)) return
+    if (!await confirmAction({
+      title: '删除系统配置',
+      message: `确定删除配置「${it.key}」？删除后使用该配置的功能可能无法正常运行。`,
+      confirmLabel: '删除配置',
+      danger: true,
+    })) return
     setBusy(it.key)
     setMessage('')
     try {

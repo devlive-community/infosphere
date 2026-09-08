@@ -4,7 +4,7 @@ import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
-import { Pagination, Select, Loading , Tooltip} from '@/components/ui'
+import { Pagination, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import BookCard from '@/components/BookCard'
@@ -137,6 +137,7 @@ function KnowledgeNetwork() {
 }
 
 export default function UserHome({ site, siteUrl, profile, books, sort }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { requestInput, showToast } = useFeedback()
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const sortOptions = [
@@ -157,9 +158,9 @@ export default function UserHome({ site, siteUrl, profile, books, sort }: InferG
   async function share() {
     try {
       await navigator.clipboard.writeText(profileUrl)
-      alert('主页链接已复制到剪贴板')
+      showToast({ message: '主页链接已复制到剪贴板', tone: 'success' })
     } catch {
-      window.prompt('复制以下链接分享主页', profileUrl)
+      await requestInput({ title: '分享主页', label: '主页链接', defaultValue: profileUrl, confirmLabel: '关闭' })
     }
   }
 

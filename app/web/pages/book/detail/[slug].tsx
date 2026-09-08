@@ -9,7 +9,7 @@ import { api } from '@/lib/api'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { Button, ButtonLink, Tooltip, Loading } from '@/components/ui'
+import { Button, ButtonLink, Tooltip, Loading, useFeedback } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
@@ -97,6 +97,7 @@ function countChapters(docs: Document[]): { chapters: number; sections: number }
 }
 
 export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree, related, needsAuth, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { requestInput, showToast } = useFeedback()
   const { user, authReady } = useApp()
   const router = useRouter()
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
@@ -230,9 +231,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   async function share() {
     try {
       await navigator.clipboard.writeText(bookUrl)
-      alert('链接已复制到剪贴板')
+      showToast({ message: '链接已复制到剪贴板', tone: 'success' })
     } catch {
-      window.prompt('复制以下链接分享本书', bookUrl)
+      await requestInput({ title: '分享书籍', label: '书籍链接', defaultValue: bookUrl, confirmLabel: '关闭' })
     }
   }
 
@@ -514,7 +515,9 @@ function InfoRow({ icon, label, value, mono }: { icon: React.ReactNode; label: s
   return (
     <div className="flex items-center justify-between gap-3">
       <dt className="flex shrink-0 items-center gap-2 whitespace-nowrap text-slate-500"><span className="text-slate-400">{icon}</span>{label}</dt>
-      <dd className={`min-w-0 truncate text-right ${mono ? 'font-mono text-xs text-primary-600' : 'font-medium text-slate-900'}`} title={value}>{value}</dd>
+      <dd className={`min-w-0 text-right ${mono ? 'font-mono text-xs text-primary-600' : 'font-medium text-slate-900'}`}>
+        <Tooltip content={value} className="max-w-full"><span className="block truncate">{value}</span></Tooltip>
+      </dd>
     </div>
   )
 }

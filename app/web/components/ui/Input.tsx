@@ -21,15 +21,15 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 // Input 通用文本输入框
-export function Input({ className, leading, ...rest }: InputProps) {
-  if (!leading) return <input className={`h-10 ${controlClass} ${className || ''}`.trim()} {...rest} />
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, leading, ...rest }, ref) {
+  if (!leading) return <input ref={ref} className={`h-10 ${controlClass} ${className || ''}`.trim()} {...rest} />
   return (
     <div className={`relative ${className || ''}`.trim()}>
       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{leading}</span>
-      <input className={`h-10 pl-9 ${controlClass}`} {...rest} />
+      <input ref={ref} className={`h-10 pl-9 ${controlClass}`} {...rest} />
     </div>
   )
-}
+})
 
 // Textarea 通用多行文本域（forwardRef 供编辑器操作选区）
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { API_BASE, api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { Button, Badge, Loading } from '@/components/ui'
+import { Button, Badge, Loading, useFeedback } from '@/components/ui'
 import { GithubIcon } from '@/components/icons'
 import type { User } from '@/lib/types'
 
@@ -15,6 +15,7 @@ const PROVIDER_NAMES: Record<string, string> = { github: 'GitHub' }
 
 // OAuthBindings 资料页第三方账号绑定管理（当前支持 GitHub，后续 provider 在此扩展）
 export default function OAuthBindings() {
+  const { confirmAction } = useFeedback()
   const { user, refreshUser } = useApp()
   const [bindings, setBindings] = useState<Binding[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -42,7 +43,12 @@ export default function OAuthBindings() {
   }
 
   async function unbind(provider: string) {
-    if (!confirm(`确定解绑 ${PROVIDER_NAMES[provider] || provider} 账号吗？`)) return
+    if (!await confirmAction({
+      title: '解绑第三方账号',
+      message: `确定解绑 ${PROVIDER_NAMES[provider] || provider} 账号吗？解绑前请确认已设置登录密码。`,
+      confirmLabel: '确认解绑',
+      danger: true,
+    })) return
     setWorking(true)
     setMessage('')
     setError('')
