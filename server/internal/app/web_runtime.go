@@ -238,6 +238,14 @@ func (w *webRuntime) Status() (status, nodeVersion string) {
 	return "down", w.nodeVersion
 }
 
+// Port 返回内嵌 Web 的本地监听端口（PDF 导出需内部访问打印页）；未嵌入返回 0
+func (w *webRuntime) Port() int {
+	if w == nil || !w.running.Load() {
+		return 0
+	}
+	return w.port
+}
+
 func withEnvironment(base []string, values map[string]string) []string {
 	result := make([]string, 0, len(base)+len(values))
 	for _, item := range base {

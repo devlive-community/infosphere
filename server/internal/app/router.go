@@ -110,6 +110,8 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/tags", a.ListTags)
 			public.GET("/tags/:slug/books", a.BooksByTag)
 			public.POST("/books/:id/view", a.IncrementBookView)
+			// PDF 导出（依赖 pdf-export 插件；公开且开放导出的书籍匿名可导，鉴权在 handler 内）
+			public.GET("/books/:id/export/pdf", a.ExportBookPDF)
 			public.POST("/documents/:id/view", a.IncrementDocumentView)
 		}
 
