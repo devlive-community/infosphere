@@ -52,6 +52,11 @@ type pdfExtractResult struct {
 	Pages    int
 }
 
+type uploadedPDF struct {
+	Filename string
+	Result   pdfExtractResult
+}
+
 type webPage struct {
 	HTML     string
 	FinalURL *url.URL
@@ -76,76 +81,21 @@ var pdfChapterHeading = regexp.MustCompile(`(?i)^(?:第[零一二三四五六七
 // ImportPDFBook POST /import/pdf 上传 PDF 并建立草稿书籍。
 func (a *App) ImportPDFBook(c *gin.Context) {
 	u := currentUser(c)
-	header, err := c.FormFile("file")
+	upload, status, err := a.extractUploadedPDF(c)
 	if err != nil {
-		fail(c, http.StatusBadRequest, "请选择要导入的 PDF 文件")
-		return
-	}
-	if header.Size <= 0 || header.Size > contentImportMaxBytes {
-		fail(c, http.StatusBadRequest, "PDF 文件必须小于 64MB")
-		return
-	}
-	name := strings.TrimSpace(header.Filename)
-	if ext := strings.ToLower(filepath.Ext(name)); ext != ".pdf" {
-		fail(c, http.StatusBadRequest, "仅支持 PDF 文件")
+		fail(c, status, err.Error())
 		return
 	}
 
-	source, err := header.Open()
-	if err != nil {
-		fail(c, http.StatusBadRequest, "读取 PDF 文件失败")
-		return
-	}
-	defer source.Close()
-	magic := make([]byte, 5)
-	if _, err := io.ReadFull(source, magic); err != nil || string(magic) != "%PDF-" {
-		fail(c, http.StatusBadRequest, "文件内容不是有效的 PDF")
-		return
-	}
-	if _, err := source.Seek(0, io.SeekStart); err != nil {
-		fail(c, http.StatusBadRequest, "读取 PDF 文件失败")
-		return
-	}
-
-	temp, err := os.CreateTemp("", "infosphere-import-*.pdf")
-	if err != nil {
-		fail(c, http.StatusInternalServerError, "准备 PDF 解析失败")
-		return
-	}
-	tempPath := temp.Name()
-	defer os.Remove(tempPath)
-	if _, err := io.Copy(temp, io.LimitReader(source, contentImportMaxBytes+1)); err != nil {
-		temp.Close()
-		fail(c, http.StatusBadRequest, "读取 PDF 文件失败")
-		return
-	}
-	if err := temp.Close(); err != nil {
-		fail(c, http.StatusInternalServerError, "准备 PDF 解析失败")
-		return
-	}
-
-	extractor := a.PDFExtractor
-	if extractor == nil {
-		extractor = extractPDFText
-	}
-	extracted, err := extractor(tempPath)
-	if err != nil {
-		fail(c, http.StatusUnprocessableEntity, "PDF 解析失败: "+err.Error())
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(extracted.Markdown)) < 20 {
-		fail(c, http.StatusUnprocessableEntity, "PDF 中未识别到可导入文字；扫描版 PDF 需要先完成 OCR")
-		return
-	}
-
+	name := upload.Filename
 	bookTitle := strings.TrimSpace(strings.TrimSuffix(name, filepath.Ext(name)))
 	if custom := strings.TrimSpace(c.PostForm("title")); custom != "" {
 		bookTitle = custom
 	}
 	bookTitle = truncateText(bookTitle, 255)
-	chapters := splitPDFChapters(extracted.Markdown, bookTitle)
+	chapters := splitPDFChapters(upload.Result.Markdown, bookTitle)
 	book, err := a.createContentImportBook(u, bookTitle,
-		fmt.Sprintf("从 PDF 导入，共 %d 页。", extracted.Pages), chapters)
+		fmt.Sprintf("从 PDF 导入，共 %d 页。", upload.Result.Pages), chapters)
 	if err != nil {
 		fail(c, http.StatusInternalServerError, "创建 PDF 书籍失败: "+err.Error())
 		return
@@ -154,6 +104,155 @@ func (a *App) ImportPDFBook(c *gin.Context) {
 		"book": book, "imported_doc": len(chapters), "source": "pdf",
 		"message": fmt.Sprintf("导入完成：《%s》共 %d 个章节", book.Title, len(chapters)),
 	})
+}
+
+// ReimportPDFBook POST /books/:id/import/pdf 将 PDF 章节追加到已有书籍，或原子覆盖全部旧章节。
+func (a *App) ReimportPDFBook(c *gin.Context) {
+	book, status := a.findBook(c)
+	if book == nil {
+		fail(c, status, "书籍不存在")
+		return
+	}
+	u := currentUser(c)
+	// 重新导入会批量改写整本书，只允许书籍所有者或管理员操作。
+	if !a.canManageBook(u, book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	mode := strings.ToLower(strings.TrimSpace(c.PostForm("mode")))
+	if mode == "" {
+		mode = "append"
+	}
+	if mode != "append" && mode != "replace" {
+		fail(c, http.StatusBadRequest, "导入方式必须为 append 或 replace")
+		return
+	}
+
+	upload, uploadStatus, err := a.extractUploadedPDF(c)
+	if err != nil {
+		fail(c, uploadStatus, err.Error())
+		return
+	}
+	chapters := splitPDFChapters(upload.Result.Markdown, book.Title)
+	if len(chapters) == 0 || len(chapters) > maxImportedChapters {
+		fail(c, http.StatusUnprocessableEntity, "没有可导入的章节或章节数量过多")
+		return
+	}
+
+	removed := int64(0)
+	err = a.DB.Transaction(func(tx *gorm.DB) error {
+		startOrder := 0
+		usedSlugs := map[string]bool{}
+		if mode == "replace" {
+			var ids []uint
+			if err := tx.Model(&models.Document{}).Where("book_id = ?", book.ID).Pluck("id", &ids).Error; err != nil {
+				return err
+			}
+			removed = int64(len(ids))
+			if len(ids) > 0 {
+				if err := tx.Where("document_id IN ?", ids).Delete(&models.Comment{}).Error; err != nil {
+					return err
+				}
+				if err := tx.Where("document_id IN ?", ids).Delete(&models.DocumentRevision{}).Error; err != nil {
+					return err
+				}
+				if err := tx.Where("doc_id IN ?", ids).Delete(&models.ReadChapter{}).Error; err != nil {
+					return err
+				}
+				if err := tx.Where("id IN ?", ids).Delete(&models.Document{}).Error; err != nil {
+					return err
+				}
+			}
+			if err := tx.Where("book_id = ?", book.ID).Delete(&models.ReadingProgress{}).Error; err != nil {
+				return err
+			}
+			// 新内容必须重新审阅后发布，避免覆盖后直接暴露未校对内容。
+			if err := tx.Model(book).Updates(map[string]any{"status": "draft", "is_public": false}).Error; err != nil {
+				return err
+			}
+		} else {
+			var slugs []string
+			if err := tx.Model(&models.Document{}).Where("book_id = ?", book.ID).Pluck("slug", &slugs).Error; err != nil {
+				return err
+			}
+			for _, slug := range slugs {
+				usedSlugs[slug] = true
+			}
+			if err := tx.Model(&models.Document{}).Where("book_id = ?", book.ID).
+				Select("COALESCE(MAX(sort_order), -1)").Scan(&startOrder).Error; err != nil {
+				return err
+			}
+			startOrder++
+		}
+		return createImportedChapters(tx, book.ID, book.UserID, u.ID, chapters, startOrder, usedSlugs)
+	})
+	if err != nil {
+		fail(c, http.StatusInternalServerError, "重新导入 PDF 失败: "+err.Error())
+		return
+	}
+
+	message := fmt.Sprintf("已追加 %d 个草稿章节", len(chapters))
+	if mode == "replace" {
+		message = fmt.Sprintf("已覆盖 %d 个旧章节并导入 %d 个草稿章节，书籍已转为私有草稿", removed, len(chapters))
+	}
+	ok(c, gin.H{
+		"book_id": book.ID, "mode": mode, "removed_doc": removed,
+		"imported_doc": len(chapters), "pages": upload.Result.Pages, "message": message,
+	})
+}
+
+func (a *App) extractUploadedPDF(c *gin.Context) (uploadedPDF, int, error) {
+	header, err := c.FormFile("file")
+	if err != nil {
+		return uploadedPDF{}, http.StatusBadRequest, errors.New("请选择要导入的 PDF 文件")
+	}
+	if header.Size <= 0 || header.Size > contentImportMaxBytes {
+		return uploadedPDF{}, http.StatusBadRequest, errors.New("PDF 文件必须小于 64MB")
+	}
+	name := strings.TrimSpace(header.Filename)
+	if ext := strings.ToLower(filepath.Ext(name)); ext != ".pdf" {
+		return uploadedPDF{}, http.StatusBadRequest, errors.New("仅支持 PDF 文件")
+	}
+
+	source, err := header.Open()
+	if err != nil {
+		return uploadedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
+	}
+	defer source.Close()
+	magic := make([]byte, 5)
+	if _, err := io.ReadFull(source, magic); err != nil || string(magic) != "%PDF-" {
+		return uploadedPDF{}, http.StatusBadRequest, errors.New("文件内容不是有效的 PDF")
+	}
+	if _, err := source.Seek(0, io.SeekStart); err != nil {
+		return uploadedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
+	}
+
+	temp, err := os.CreateTemp("", "infosphere-import-*.pdf")
+	if err != nil {
+		return uploadedPDF{}, http.StatusInternalServerError, errors.New("准备 PDF 解析失败")
+	}
+	tempPath := temp.Name()
+	defer os.Remove(tempPath)
+	if _, err := io.Copy(temp, io.LimitReader(source, contentImportMaxBytes+1)); err != nil {
+		temp.Close()
+		return uploadedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
+	}
+	if err := temp.Close(); err != nil {
+		return uploadedPDF{}, http.StatusInternalServerError, errors.New("准备 PDF 解析失败")
+	}
+
+	extractor := a.PDFExtractor
+	if extractor == nil {
+		extractor = extractPDFText
+	}
+	extracted, err := extractor(tempPath)
+	if err != nil {
+		return uploadedPDF{}, http.StatusUnprocessableEntity, errors.New("PDF 解析失败: " + err.Error())
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(extracted.Markdown)) < 20 {
+		return uploadedPDF{}, http.StatusUnprocessableEntity, errors.New("PDF 中未识别到可导入文字；扫描版 PDF 需要先完成 OCR")
+	}
+	return uploadedPDF{Filename: name, Result: extracted}, http.StatusOK, nil
 }
 
 // ImportWebBook POST /import/web 抓取静态或 JavaScript 渲染后的网页并建立草稿书籍。
@@ -500,38 +599,47 @@ func (a *App) createContentImportBook(u *models.User, title, description string,
 		if err := tx.Create(&book).Error; err != nil {
 			return err
 		}
-		allowComments := true
-		usedSlugs := map[string]bool{}
-		for index, chapter := range chapters {
-			title := truncateText(strings.TrimSpace(chapter.Title), 255)
-			if title == "" {
-				title = fmt.Sprintf("第 %d 部分", index+1)
-			}
-			baseSlug := slugify(title)
-			if baseSlug == "" {
-				baseSlug = randomSlug("doc")
-			}
-			docSlug := baseSlug
-			for suffix := 2; usedSlugs[docSlug]; suffix++ {
-				docSlug = fmt.Sprintf("%s-%d", baseSlug, suffix)
-			}
-			usedSlugs[docSlug] = true
-			doc := models.Document{
-				BookID: book.ID, UserID: u.ID, Title: title,
-				Slug: docSlug, Content: strings.TrimSpace(chapter.Content),
-				SortOrder: index, Status: "draft", AllowComments: &allowComments,
-			}
-			if err := tx.Create(&doc).Error; err != nil {
-				return err
-			}
-			revision := newDocumentRevision(&doc, u.ID, "create")
-			if err := tx.Create(&revision).Error; err != nil {
-				return err
-			}
-		}
-		return nil
+		return createImportedChapters(tx, book.ID, u.ID, u.ID, chapters, 0, map[string]bool{})
 	})
 	return book, err
+}
+
+func createImportedChapters(
+	tx *gorm.DB,
+	bookID, documentUserID, revisionUserID uint,
+	chapters []importedChapter,
+	startOrder int,
+	usedSlugs map[string]bool,
+) error {
+	allowComments := true
+	for index, chapter := range chapters {
+		title := truncateText(strings.TrimSpace(chapter.Title), 255)
+		if title == "" {
+			title = fmt.Sprintf("第 %d 部分", index+1)
+		}
+		baseSlug := slugify(title)
+		if baseSlug == "" {
+			baseSlug = randomSlug("doc")
+		}
+		docSlug := baseSlug
+		for suffix := 2; usedSlugs[docSlug]; suffix++ {
+			docSlug = fmt.Sprintf("%s-%d", baseSlug, suffix)
+		}
+		usedSlugs[docSlug] = true
+		doc := models.Document{
+			BookID: bookID, UserID: documentUserID, Title: title,
+			Slug: docSlug, Content: strings.TrimSpace(chapter.Content),
+			SortOrder: startOrder + index, Status: "draft", AllowComments: &allowComments,
+		}
+		if err := tx.Create(&doc).Error; err != nil {
+			return err
+		}
+		revision := newDocumentRevision(&doc, revisionUserID, "create")
+		if err := tx.Create(&revision).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateImportURL(raw string) (*url.URL, error) {

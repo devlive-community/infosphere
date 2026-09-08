@@ -119,6 +119,7 @@ func (a *App) Router() *gin.Engine {
 			books.PUT("/:id", a.RequirePermission(authz.BookUpdate), a.UpdateBook)
 			books.DELETE("/:id", a.RequirePermission(authz.BookDelete), a.DeleteBook)
 			books.GET("/:id/export", a.RequirePermission(authz.BookExport), a.ExportBook)
+			books.POST("/:id/import/pdf", a.RequirePermission(authz.BookImport), a.ReimportPDFBook)
 			books.GET("/:id/read-chapters", a.RequirePermission(authz.UserRead), a.ReadChapters)
 
 			// ── 协作者管理（collaborator:*；归属校验在 handler 内） ──

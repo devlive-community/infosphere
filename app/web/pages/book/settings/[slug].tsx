@@ -8,6 +8,8 @@ import { Button } from '@/components/ui'
 import { DownloadIcon } from '@/components/icons'
 import BookForm from '@/components/BookForm'
 import CollaboratorManager from '@/components/CollaboratorManager'
+import PDFReimportPanel from '@/components/PDFReimportPanel'
+import Seo from '@/components/Seo'
 import type { Book, BookAccess, User } from '@/lib/types'
 
 interface Props {
@@ -41,7 +43,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, param
 
 export default function EditBook({ initialBook }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter()
-  const [book] = useState<Book>(initialBook)
+  const book = initialBook
   const [exporting, setExporting] = useState(false)
 
   // 导出书籍 zip：携带令牌下载（M16）
@@ -69,33 +71,37 @@ export default function EditBook({ initialBook }: InferGetServerSidePropsType<ty
   }
 
   return (
-    <Container>
-      <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
-          <div>
-            <h2 className="font-semibold text-slate-900">数据导出</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              打包为 markdown zip（front-matter + 章节正文 + 本站图片），可在其他 InfoSphere 站点导入。
-            </p>
+    <>
+      <Seo title={`${book.title} - 书籍设置`} noindex />
+      <Container>
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div>
+              <h2 className="font-semibold text-slate-900">数据导出</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                打包为 markdown zip（front-matter + 章节正文 + 本站图片），可在其他 InfoSphere 站点导入。
+              </p>
+            </div>
+            <Button variant="outline" loading={exporting} onClick={exportZip}>
+              <DownloadIcon className="h-4 w-4" /> 导出 zip
+            </Button>
           </div>
-          <Button variant="outline" loading={exporting} onClick={exportZip}>
-            <DownloadIcon className="h-4 w-4" /> 导出 zip
-          </Button>
+          <PDFReimportPanel bookId={book.id} onReplaced={() => router.replace(router.asPath)} />
+          <BookForm
+            initial={book}
+            heading="书籍设置"
+            subheading="调整书籍的基本信息、封面与发布方式。"
+            breadcrumb={book.title}
+            submitLabel="保存设置"
+            onSubmit={async (payload) => {
+              delete payload.slug
+              await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
+              router.push(`/book/detail/${encodeURIComponent(book.slug)}`)
+            }}
+          />
+          <CollaboratorManager book={book} />
         </div>
-        <BookForm
-          initial={book}
-          heading="书籍设置"
-          subheading="调整书籍的基本信息、封面与发布方式。"
-          breadcrumb={book.title}
-          submitLabel="保存设置"
-          onSubmit={async (payload) => {
-            delete payload.slug
-            await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
-            router.push(`/book/detail/${encodeURIComponent(book.slug)}`)
-          }}
-        />
-        <CollaboratorManager book={book} />
-      </div>
-    </Container>
+      </Container>
+    </>
   )
 }

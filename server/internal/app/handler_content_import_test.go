@@ -54,9 +54,30 @@ func contentImportRouter(app *App, user *models.User) *gin.Engine {
 		c.Next()
 	})
 	router.POST("/import/pdf", app.ImportPDFBook)
+	router.POST("/books/:id/import/pdf", app.ReimportPDFBook)
 	router.POST("/import/web", app.ImportWebBook)
 	router.POST("/books/:id/documents/import-web", app.ImportWebDocument)
 	return router
+}
+
+func pdfImportRequest(t *testing.T, method, target, mode string) *http.Request {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "修订版.pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = part.Write([]byte("%PDF-test-content"))
+	if mode != "" {
+		_ = writer.WriteField("mode", mode)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(method, target, &body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	return request
 }
 
 func decodeImportResponse(t *testing.T, recorder *httptest.ResponseRecorder) map[string]any {
@@ -116,6 +137,170 @@ func TestImportPDFBookCreatesPrivateDraftAndRevisions(t *testing.T) {
 	}
 	if revisionCount != int64(len(docs)) {
 		t.Fatalf("每个导入章节都应有初始版本: got=%d want=%d", revisionCount, len(docs))
+	}
+}
+
+func TestReimportPDFBookAppendsDraftChapters(t *testing.T) {
+	app, owner, db := newContentImportTestApp(t)
+	book := models.Book{Title: "现有书籍", Slug: "existing-book", UserID: owner.ID, Status: "published", IsPublic: true}
+	if err := db.Create(&book).Error; err != nil {
+		t.Fatal(err)
+	}
+	allowComments := true
+	existing := models.Document{
+		BookID: book.ID, UserID: owner.ID, Title: "原章节", Slug: "existing", Content: "原内容",
+		SortOrder: 7, Status: "published", AllowComments: &allowComments,
+	}
+	if err := db.Create(&existing).Error; err != nil {
+		t.Fatal(err)
+	}
+	app.PDFExtractor = func(string) (pdfExtractResult, error) {
+		return pdfExtractResult{Markdown: "## 第一章 修订\n\n这是重新导入后的第一章内容。\n\n## 第二章 新增\n\n这是重新导入后的第二章内容。", Pages: 6}, nil
+	}
+
+	recorder := httptest.NewRecorder()
+	contentImportRouter(app, owner).ServeHTTP(recorder,
+		pdfImportRequest(t, http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/import/pdf", "append"))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("追加导入失败: %d %v", recorder.Code, decodeImportResponse(t, recorder))
+	}
+	var docs []models.Document
+	if err := db.Where("book_id = ?", book.ID).Order("sort_order ASC").Find(&docs).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(docs) != 3 || docs[0].ID != existing.ID || docs[1].SortOrder != 8 || docs[2].SortOrder != 9 {
+		t.Fatalf("追加导入不应覆盖旧章节且应接续排序: %+v", docs)
+	}
+	if docs[1].Status != "draft" || docs[2].Status != "draft" {
+		t.Fatalf("追加章节必须保持草稿状态: %+v", docs)
+	}
+	if err := db.First(&book, book.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if book.Status != "published" || !book.IsPublic {
+		t.Fatalf("追加导入不应改变书籍发布状态: %+v", book)
+	}
+}
+
+func TestReimportPDFBookReplacesChaptersAndRelatedState(t *testing.T) {
+	app, owner, db := newContentImportTestApp(t)
+	book := models.Book{Title: "错误导入书籍", Slug: "broken-import", UserID: owner.ID, Status: "published", IsPublic: true}
+	if err := db.Create(&book).Error; err != nil {
+		t.Fatal(err)
+	}
+	allowComments := true
+	oldDoc := models.Document{BookID: book.ID, UserID: owner.ID, Title: "错误章节", Slug: "broken", Content: "错误内容", Status: "published", AllowComments: &allowComments}
+	if err := db.Create(&oldDoc).Error; err != nil {
+		t.Fatal(err)
+	}
+	oldRevision := newDocumentRevision(&oldDoc, owner.ID, "create")
+	for _, record := range []any{
+		&oldRevision,
+		&models.Comment{DocumentID: oldDoc.ID, UserID: owner.ID, Content: "旧评论", Status: "published"},
+		&models.ReadChapter{UserID: owner.ID, BookID: book.ID, DocID: oldDoc.ID},
+		&models.ReadingProgress{UserID: owner.ID, BookID: book.ID, DocID: oldDoc.ID, DocSlug: oldDoc.Slug, DocTitle: oldDoc.Title},
+	} {
+		if err := db.Create(record).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	app.PDFExtractor = func(string) (pdfExtractResult, error) {
+		return pdfExtractResult{Markdown: "## 第一章 正确内容\n\n这是覆盖后生成的正确 Markdown 正文。", Pages: 3}, nil
+	}
+
+	recorder := httptest.NewRecorder()
+	contentImportRouter(app, owner).ServeHTTP(recorder,
+		pdfImportRequest(t, http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/import/pdf", "replace"))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("覆盖导入失败: %d %v", recorder.Code, decodeImportResponse(t, recorder))
+	}
+	var docs []models.Document
+	if err := db.Where("book_id = ?", book.ID).Find(&docs).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(docs) != 1 || docs[0].ID == oldDoc.ID || docs[0].Title != "第一章 正确内容" || docs[0].Status != "draft" {
+		t.Fatalf("覆盖导入章节错误: %+v", docs)
+	}
+	checks := []struct {
+		name  string
+		model any
+		query string
+	}{
+		{name: "旧评论", model: &models.Comment{}, query: "document_id = ?"},
+		{name: "旧版本", model: &models.DocumentRevision{}, query: "document_id = ?"},
+		{name: "旧阅读记录", model: &models.ReadChapter{}, query: "doc_id = ?"},
+		{name: "旧阅读进度", model: &models.ReadingProgress{}, query: "doc_id = ?"},
+	}
+	for _, check := range checks {
+		var count int64
+		if err := db.Model(check.model).Where(check.query, oldDoc.ID).Count(&count).Error; err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Fatalf("%s 未随覆盖导入清理: %d", check.name, count)
+		}
+	}
+	if err := db.First(&book, book.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if book.Status != "draft" || book.IsPublic {
+		t.Fatalf("覆盖后书籍必须转为私有草稿: %+v", book)
+	}
+}
+
+func TestReimportPDFBookHidesBookFromUnauthorizedUser(t *testing.T) {
+	app, owner, db := newContentImportTestApp(t)
+	book := models.Book{Title: "私有书籍", Slug: "private-reimport", UserID: owner.ID, Status: "draft"}
+	if err := db.Create(&book).Error; err != nil {
+		t.Fatal(err)
+	}
+	viewer := &models.User{Username: "reimport-viewer", Email: "reimport-viewer@test.local", IsActive: true}
+	if err := db.Create(viewer).Error; err != nil {
+		t.Fatal(err)
+	}
+	extractorCalled := false
+	app.PDFExtractor = func(string) (pdfExtractResult, error) {
+		extractorCalled = true
+		return pdfExtractResult{}, nil
+	}
+	recorder := httptest.NewRecorder()
+	contentImportRouter(app, viewer).ServeHTTP(recorder,
+		pdfImportRequest(t, http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/import/pdf", "replace"))
+	if recorder.Code != http.StatusNotFound || extractorCalled {
+		t.Fatalf("无权用户应得到 404 且不得触发解析: status=%d called=%v", recorder.Code, extractorCalled)
+	}
+}
+
+func TestReimportPDFBookKeepsOldContentWhenParsingFails(t *testing.T) {
+	app, owner, db := newContentImportTestApp(t)
+	book := models.Book{Title: "待修复书籍", Slug: "failed-reimport", UserID: owner.ID, Status: "published", IsPublic: true}
+	if err := db.Create(&book).Error; err != nil {
+		t.Fatal(err)
+	}
+	allowComments := true
+	oldDoc := models.Document{BookID: book.ID, UserID: owner.ID, Title: "保留章节", Slug: "keep", Content: "必须保留的正文", Status: "published", AllowComments: &allowComments}
+	if err := db.Create(&oldDoc).Error; err != nil {
+		t.Fatal(err)
+	}
+	app.PDFExtractor = func(string) (pdfExtractResult, error) {
+		return pdfExtractResult{}, errors.New("malformed PDF")
+	}
+
+	recorder := httptest.NewRecorder()
+	contentImportRouter(app, owner).ServeHTTP(recorder,
+		pdfImportRequest(t, http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/import/pdf", "replace"))
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("解析失败状态码错误: %d %v", recorder.Code, decodeImportResponse(t, recorder))
+	}
+	var stored models.Document
+	if err := db.First(&stored, oldDoc.ID).Error; err != nil || stored.Content != oldDoc.Content {
+		t.Fatalf("解析失败不得改动旧章节: doc=%+v err=%v", stored, err)
+	}
+	if err := db.First(&book, book.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if book.Status != "published" || !book.IsPublic {
+		t.Fatalf("解析失败不得改变书籍状态: %+v", book)
 	}
 }
 
