@@ -87,7 +87,7 @@ export default function EditBook({ initialBook }: InferGetServerSidePropsType<ty
               <DownloadIcon className="h-4 w-4" /> 导出 zip
             </Button>
           </div>
-          <PDFReimportPanel bookId={book.id} onReplaced={() => router.replace(router.asPath)} />
+          <PDFReimportPanel bookId={book.id} onImported={() => router.replace(router.asPath)} />
           <BookForm
             initial={book}
             heading="书籍设置"

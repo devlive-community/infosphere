@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { ReactNode, useEffect, useRef, useState } from 'react'
 import { API_BASE, getToken } from '@/lib/api'
 import { Button, Card, Select } from '@/components/ui'
 
@@ -17,7 +17,14 @@ const modeOptions = [
   { value: 'replace', label: '覆盖全部现有章节' },
 ]
 
-export default function PDFReimportPanel({ bookId, onReplaced }: { bookId: number; onReplaced: () => Promise<unknown> }) {
+interface PDFReimportPanelProps {
+  bookId: number
+  onImported: () => Promise<unknown>
+  embedded?: boolean
+  onBusyChange?: (busy: boolean) => void
+}
+
+export default function PDFReimportPanel({ bookId, onImported, embedded = false, onBusyChange }: PDFReimportPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<ImportMode>('append')
   const [file, setFile] = useState<File | null>(null)
@@ -25,6 +32,8 @@ export default function PDFReimportPanel({ bookId, onReplaced }: { bookId: numbe
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<ReimportResult | null>(null)
+
+  useEffect(() => { onBusyChange?.(submitting) }, [submitting, onBusyChange])
 
   function changeMode(value: string) {
     setMode(value as ImportMode)
@@ -64,7 +73,7 @@ export default function PDFReimportPanel({ bookId, onReplaced }: { bookId: numbe
       setResult(imported)
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
-      if (mode === 'replace') await onReplaced()
+      await onImported()
     } catch (reason) {
       setError((reason as Error).message)
     } finally {
@@ -72,10 +81,10 @@ export default function PDFReimportPanel({ bookId, onReplaced }: { bookId: numbe
     }
   }
 
-  return (
-    <Card className="p-5 sm:p-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-xl">
+  const content: ReactNode = (
+    <>
+      <div className={`flex flex-col gap-5 ${embedded ? '' : 'lg:flex-row lg:items-start lg:justify-between'}`}>
+        {!embedded && <div className="max-w-xl">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
               <i className="fa-solid fa-file-pdf text-sm" aria-hidden="true" />
@@ -85,9 +94,9 @@ export default function PDFReimportPanel({ bookId, onReplaced }: { bookId: numbe
           <p className="mt-2 text-sm leading-6 text-slate-500">
             重新解析 PDF 并重建 Markdown 章节。追加不会影响现有内容；覆盖适合修正错误导入。
           </p>
-        </div>
+        </div>}
 
-        <div className="w-full space-y-3 lg:max-w-md">
+        <div className={`w-full space-y-3 ${embedded ? '' : 'lg:max-w-md'}`}>
           <Select value={mode} onChange={changeMode} options={modeOptions} disabled={submitting} />
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button type="button" variant="outline" disabled={submitting} onClick={() => inputRef.current?.click()} className="min-w-0 flex-1">
@@ -130,6 +139,9 @@ export default function PDFReimportPanel({ bookId, onReplaced }: { bookId: numbe
       {submitting && <p className="mt-4 text-sm text-primary-600" aria-live="polite">正在解析 PDF 并重建 Markdown 章节，请勿关闭页面…</p>}
       {error && <div className="mt-4 max-h-28 overflow-y-auto break-words rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600" role="alert">{error}</div>}
       {result && <div className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700" role="status">{result.message}</div>}
-    </Card>
+    </>
   )
+
+  if (embedded) return <div className="px-5 py-5 sm:px-6 sm:py-6">{content}</div>
+  return <Card className="p-5 sm:p-6">{content}</Card>
 }

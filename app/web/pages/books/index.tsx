@@ -6,6 +6,7 @@ import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
 import { Button, ButtonLink, Badge, EmptyState, Field, Input, Pagination, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
+import PDFReimportPanel from '@/components/PDFReimportPanel'
 import {
   CalendarIcon, CloseIcon, EyeIcon, FileTextIcon, GearIcon, GlobeIcon, GridIcon,
   ListIcon, MoreIcon, PencilIcon, SearchIcon, UploadIcon,
@@ -62,6 +63,7 @@ export default function MyBooks() {
   const [counts, setCounts] = useState<Record<string, number>>({ '': 0, published: 0, draft: 0, archived: 0 })
   const [loading, setLoading] = useState(true)
   const [importOpen, setImportOpen] = useState(false)
+  const [pdfImportBook, setPDFImportBook] = useState<Book | null>(null)
 
   async function load() {
     if (!user) return
@@ -184,7 +186,7 @@ export default function MyBooks() {
           {items.map((book) => (
             <BookCardMine key={book.id} book={book} view={view}
               menuOpen={menuFor === book.id} setMenuOpen={(open) => setMenuFor(open ? book.id : null)}
-              onCopy={() => copyLink(book)} onDelete={() => remove(book)} />
+              onCopy={() => copyLink(book)} onImportPDF={() => setPDFImportBook(book)} onDelete={() => remove(book)} />
           ))}
         </div>
       ) : (
@@ -196,6 +198,9 @@ export default function MyBooks() {
       <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
 
       {importOpen && <BookImportDialog onClose={() => setImportOpen(false)} onImported={load} />}
+      {pdfImportBook && (
+        <PDFImportDialog book={pdfImportBook} onClose={() => setPDFImportBook(null)} onImported={load} />
+      )}
 
     </Container>
   </>
@@ -370,12 +375,13 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
 
 /* ── 单本书卡片（网格 / 列表两种视图） ── */
 
-function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onDelete }: {
+function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onImportPDF, onDelete }: {
   book: Book
   view: 'grid' | 'list'
   menuOpen: boolean
   setMenuOpen: (open: boolean) => void
   onCopy: () => void
+  onImportPDF: () => void
   onDelete: () => void
 }) {
   const detailUrl = `/book/detail/${encodeURIComponent(book.slug)}`
@@ -397,7 +403,7 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onDelete }: {
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-          <div className="absolute right-0 top-10 z-40 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+          <div className="absolute right-0 top-10 z-40 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
             <Link href={detailUrl} onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
               <EyeIcon className="h-4 w-4 text-slate-400" /> 查看详情
@@ -406,6 +412,10 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onDelete }: {
               className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
               <GearIcon className="h-4 w-4 text-slate-400" /> 书籍设置
             </Link>
+            <button onClick={() => { setMenuOpen(false); onImportPDF() }}
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+              <i className="fa-solid fa-file-pdf w-4 text-center text-slate-400" aria-hidden="true" /> 导入 PDF
+            </button>
             <button onClick={onCopy}
               className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
               <LinkIcon2 className="h-4 w-4 text-slate-400" /> 复制访问链接
@@ -438,6 +448,43 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onDelete }: {
       topActions={view === 'grid' ? menu : undefined}
       actions={actions}
     />
+  )
+}
+
+function PDFImportDialog({ book, onClose, onImported }: { book: Book; onClose: () => void; onImported: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) { if (event.key === 'Escape' && !busy) onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [busy, onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/30 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
+      role="dialog" aria-modal="true" aria-labelledby="pdf-import-dialog-title"
+      onMouseDown={(event) => { if (!busy && event.target === event.currentTarget) onClose() }}>
+      <section className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+                <i className="fa-solid fa-file-pdf" aria-hidden="true" />
+              </span>
+              <h2 id="pdf-import-dialog-title" className="truncate text-xl font-bold text-ink">导入 PDF 到《{book.title}》</h2>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-500">解析 PDF 为 Markdown 章节，可追加到目录末尾或覆盖现有章节。</p>
+          </div>
+          <button type="button" aria-label="关闭 PDF 导入" disabled={busy} onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </header>
+        <div className="min-h-0 overflow-y-auto">
+          <PDFReimportPanel bookId={book.id} embedded onImported={onImported} onBusyChange={setBusy} />
+        </div>
+      </section>
+    </div>
   )
 }
 
