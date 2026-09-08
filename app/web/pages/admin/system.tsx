@@ -214,6 +214,8 @@ export default function AdminSystem() {
           status={userCount !== null ? `${userCount} 位用户 · ${fmtNum(bookCount)} 本书` : '查看与管理用户'} ok />
         <ConfigCard icon={BookIcon} tone="violet" title="书籍管理" href="/admin/books"
           status={bookCount !== null ? `${fmtNum(bookCount)} 本书籍` : '查看与管理全站书籍'} ok />
+        <ConfigCard icon={FileTextIcon} tone="sky" title="章节管理" href="/admin/documents"
+          status={docCount !== null ? `${fmtNum(docCount)} 个章节` : '查看与管理全站章节'} ok />
         <ConfigCard icon={ServerIcon} tone="sky" title="存储配置" href="/admin/settings/storage"
           status={storage ? (storage.driver === 'qiniu' ? '七牛云 · 已启用' : '本地磁盘 · 运行正常') : '加载中…'} ok />
         <ConfigCard icon={MailIcon} tone="amber" title="邮件服务" href="/admin/settings/mail"

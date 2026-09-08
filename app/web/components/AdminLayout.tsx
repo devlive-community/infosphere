@@ -11,12 +11,13 @@ import {
   SearchIcon, ArrowLeftIcon, ChevronDownIcon, ListBulletIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'settings' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'settings' | 'upgrade'
 
 const NAV: { key: AdminNavKey; label: string; href: string; icon: (p: { className?: string }) => JSX.Element }[] = [
   { key: 'system', label: '系统概览', href: '/admin/system', icon: GridIcon },
   { key: 'users', label: '用户管理', href: '/admin/users', icon: UsersIcon },
   { key: 'books', label: '书籍管理', href: '/admin/books', icon: BookIcon },
+  { key: 'documents', label: '章节管理', href: '/admin/documents', icon: ListBulletIcon },
   { key: 'settings', label: '系统设置', href: '/admin/settings/site', icon: GearIcon },
   { key: 'upgrade', label: '版本更新', href: '/admin/upgrade', icon: CloudIcon },
 ]

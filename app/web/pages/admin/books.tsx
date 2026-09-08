@@ -6,7 +6,7 @@ import { api, formatDate, formatNumber } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { resolveMediaUrl } from '@/lib/media'
 import { Badge, DropdownMenu, EmptyState, Input, Loading, Pagination, Select, useFeedback } from '@/components/ui'
-import { EyeIcon, GearIcon, SearchIcon, TrashIcon } from '@/components/icons'
+import { EyeIcon, FileTextIcon, GearIcon, SearchIcon, TrashIcon } from '@/components/icons'
 import type { Book, BookStatus, PageResult } from '@/lib/types'
 
 const PAGE_SIZE = 15
@@ -225,6 +225,11 @@ export default function AdminBooks() {
                             onClick={() => setMenuFor(null)}
                             className="flex items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
                             <GearIcon className="h-4 w-4 text-slate-400" /> 书籍设置
+                          </Link>
+                          <Link role="menuitem" href={`/admin/documents?book_id=${book.id}`}
+                            onClick={() => setMenuFor(null)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                            <FileTextIcon className="h-4 w-4 text-slate-400" /> 管理章节
                           </Link>
                           <div className="my-1 border-t border-slate-100" />
                           <button role="menuitem" disabled={busyId === book.id} onClick={() => removeBook(book)}
