@@ -8,7 +8,7 @@ import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import { ButtonLink } from '@/components/ui'
-import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
+import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress } from '@/lib/reading-progress'
 import Comments from '@/components/Comments'
 import type { Book, BookAccess, Document, User } from '@/lib/types'
@@ -23,6 +23,7 @@ interface ReaderProps {
   html: string
   tree: Document[]
   access: BookAccess | null
+  readDocIds: number[]
 }
 
 const FONT_SIZES = [15, 16, 18, 20, 22]
@@ -80,17 +81,23 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
         : Promise.resolve(null),
     ])
     if (!doc) return { notFound: true }
-    const access = user
-      ? await serverApi<BookAccess>(`/books/slug/${encodeURIComponent(slug)}/access`, { headers: auth }).catch(() => null)
-      : null
-    return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc, html: renderMarkdown(doc.content), tree, access } }
+    const [access, readChapters]: [BookAccess | null, { doc_ids: number[] }] = user
+      ? await Promise.all([
+          serverApi<BookAccess>(`/books/slug/${encodeURIComponent(slug)}/access`, { headers: auth }).catch(() => null),
+          serverApi<{ doc_ids: number[] }>(`/books/${book.id}/read-chapters`, { headers: auth }).catch(() => ({ doc_ids: [] })),
+        ])
+      : [null, { doc_ids: [] }]
+    return { props: {
+      installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc,
+      html: renderMarkdown(doc.content), tree, access, readDocIds: readChapters.doc_ids || [],
+    } }
   } catch (e) {
     // 404/403 一律按不存在处理：不向未授权访客泄露私有章节的存在
     return { notFound: true }
   }
 }
 
-export default function Reader({ site, siteUrl, user, book, doc, html, tree, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Reader({ site, siteUrl, user, book, doc, html, tree, access, readDocIds }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
@@ -98,6 +105,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const [focus, setFocus] = useState(false)
   const [activeHeading, setActiveHeading] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [readSet, setReadSet] = useState<Set<number>>(new Set(readDocIds))
   const didInit = useRef(false)
   const contentRef = useRef<HTMLDivElement>(null)
   // M17 扩展交互：tabs 切换 / mermaid 渲染 / lucide 图标（html 变化后重挂）
@@ -126,6 +134,12 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
       saveReadingProgress(user.username, book.id, { docId: doc.id, docSlug: doc.slug, docTitle: doc.title, chapterPrefix: book.chapter_prefix || '' } as any)
     }
   }, [user, book, doc])
+
+  useEffect(() => {
+    const next = new Set(readDocIds)
+    if (user && doc) next.add(doc.id)
+    setReadSet(next)
+  }, [readDocIds, user, doc])
 
   // 本章浏览量：打开即 +1，服务端同步累加到书籍总浏览数
   const [docViews, setDocViews] = useState(0)
@@ -246,7 +260,8 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="min-w-max pb-2 pl-4">
-                <ReaderTree items={tree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id} expanded={expanded} setExpanded={setExpanded} />
+                <ReaderTree items={tree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id}
+                  expanded={expanded} setExpanded={setExpanded} readSet={readSet} />
               </div>
             </div>
             <div className="shrink-0 border-t border-slate-100 px-4 py-2 text-center text-xs text-slate-400">
@@ -417,16 +432,18 @@ interface ReaderTreeProps {
   activeId?: number
   expanded: Set<number>
   setExpanded: (s: Set<number>) => void
+  readSet: Set<number>
   depth?: number
 }
 
-function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExpanded, depth = 0 }: ReaderTreeProps) {
+function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExpanded, readSet, depth = 0 }: ReaderTreeProps) {
   return (
     <ul className={depth === 0 ? 'min-w-max space-y-0.5' : 'ml-4 min-w-max space-y-0.5 border-l border-slate-100 pl-1'}>
       {items.map((item) => {
         const hasChildren = !!item.children?.length
         const isExpanded = expanded.has(item.id)
         const active = activeId === item.id
+        const hasRead = readSet.has(item.id)
         return (
           <li key={item.id}>
             <div className={`group relative flex items-center rounded-lg text-sm ${active ? 'bg-primary-50' : 'hover:bg-slate-50'}`}>
@@ -444,10 +461,16 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
                   ? <FolderIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />
                   : <FileTextIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />}
                 <span className={`whitespace-nowrap ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
+                {hasRead && (
+                  <span className="ml-auto flex shrink-0 items-center gap-1 pl-2 text-[11px] font-medium text-emerald-600">
+                    <CheckCircleSmallIcon className="h-3.5 w-3.5" /> 已读
+                  </span>
+                )}
               </Link>
             </div>
             {hasChildren && isExpanded && (
-              <ReaderTree items={item.children!} bookSlug={bookSlug} chapterPrefix={chapterPrefix} activeId={activeId} expanded={expanded} setExpanded={setExpanded} depth={depth + 1} />
+              <ReaderTree items={item.children!} bookSlug={bookSlug} chapterPrefix={chapterPrefix} activeId={activeId}
+                expanded={expanded} setExpanded={setExpanded} readSet={readSet} depth={depth + 1} />
             )}
           </li>
         )
