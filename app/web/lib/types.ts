@@ -39,6 +39,8 @@ export interface Book {
   chapter_count?: number
   watermark_enabled: boolean
   watermark_text: string
+  export_enabled?: boolean
+  export_style_shared?: boolean
   user?: Pick<User, 'id' | 'username' | 'avatar' | 'email' | 'bio' | 'github_url' | 'role'>
   tags?: Tag[]
   created_at: string

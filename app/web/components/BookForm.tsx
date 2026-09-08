@@ -49,6 +49,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [status, setStatus] = useState<BookStatus>(initial?.status || 'draft')
   const [isPublic, setIsPublic] = useState(initial?.is_public || false)
   const [chapterPrefix, setChapterPrefix] = useState(initial?.chapter_prefix || '')
+  const [exportEnabled, setExportEnabled] = useState(initial?.export_enabled ?? true)
+  const [exportStyleShared, setExportStyleShared] = useState(initial?.export_style_shared ?? false)
   const [watermarkEnabled, setWatermarkEnabled] = useState(initial?.watermark_enabled || false)
   const [watermarkText, setWatermarkText] = useState(initial?.watermark_text || '')
   const [tags, setTags] = useState<string[]>((initial?.tags || []).map((t) => t.name))
@@ -114,6 +116,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
         chapter_prefix: chapterPrefix,
         watermark_enabled: watermarkEnabled,
         watermark_text: watermarkText.trim(),
+        export_enabled: exportEnabled,
+        export_style_shared: exportStyleShared,
         tags,
       })
     } catch (err) {
@@ -268,6 +272,24 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
             <div className="mt-4 flex items-start gap-2 rounded-lg bg-primary-50/70 px-3 py-2.5 text-sm text-primary-700">
               <InfoIcon className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{isEdit ? '保存后可继续在章节编辑页调整这些设置。' : '创建后将进入章节编辑页，你可以随时调整这些设置。'}</span>
+            </div>
+          </Section>
+
+          {/* 导出 */}
+          <Section icon={<i className="fa-solid fa-file-export text-sm" aria-hidden="true" />} title="导出">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
+              <div>
+                <div className="text-sm font-medium text-slate-900">允许他人导出本书</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">公开书籍开启后，读者可导出为 PDF（需管理员已安装 PDF 导出插件）；关闭仅作者/协作者可导出。水印始终生效。</p>
+              </div>
+              <Switch checked={exportEnabled} onChange={setExportEnabled} ariaLabel="允许他人导出本书" />
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
+              <div>
+                <div className="text-sm font-medium text-slate-900">共享我的导出样式</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">开启后，他人导出本书时可选择使用你的导出样式；否则只能用他们自己的样式。</p>
+              </div>
+              <Switch checked={exportStyleShared} onChange={setExportStyleShared} ariaLabel="共享我的导出样式" />
             </div>
           </Section>
         </div>

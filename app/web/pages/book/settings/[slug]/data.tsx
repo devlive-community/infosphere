@@ -15,32 +15,48 @@ export default function BookSettingsData({ book }: InferGetServerSidePropsType<t
   const { showToast } = useFeedback()
   const router = useRouter()
   const [exporting, setExporting] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
 
-  async function exportZip() {
-    setExporting(true)
+  async function downloadBook(path: string, ext: string, setBusy: (v: boolean) => void, failTitle: string) {
+    setBusy(true)
     try {
       const token = getToken()
-      const res = await fetch(`${API_BASE}/api/v1/books/${book.id}/export?format=markdown`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      })
-      if (!res.ok) throw new Error('导出失败，请稍后重试')
+      const res = await fetch(`${API_BASE}/api/v1${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+      if (!res.ok) {
+        const msg = await res.json().then((p) => p.message).catch(() => '')
+        throw new Error(msg || '导出失败，请稍后重试')
+      }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `${book.slug}.zip`
+      link.download = `${book.slug}.${ext}`
       link.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      showToast({ title: '导出失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: failTitle, message: (e as Error).message, tone: 'error' })
     } finally {
-      setExporting(false)
+      setBusy(false)
     }
   }
+
+  const exportZip = () => downloadBook(`/books/${book.id}/export?format=markdown`, 'zip', setExporting, '导出失败')
+  const exportPdf = () => downloadBook(`/books/${book.id}/export/pdf?style=mine`, 'pdf', setExportingPdf, 'PDF 导出失败')
 
   return (
     <BookSettingsLayout book={book} active="data">
       <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div>
+            <h2 className="font-semibold text-slate-900">导出 PDF</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              按你的「导出设置」样式渲染为 PDF；开启水印的书籍会带上水印。需管理员在后台安装 PDF 导出插件。
+            </p>
+          </div>
+          <Button loading={exportingPdf} onClick={exportPdf}>
+            <DownloadIcon className="h-4 w-4" /> 导出 PDF
+          </Button>
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
             <h2 className="font-semibold text-slate-900">数据导出</h2>
