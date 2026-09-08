@@ -31,11 +31,13 @@ export interface BookFormProps {
   breadcrumb: string
   submitLabel: string
   showSaveDraft?: boolean
+  /** 是否渲染内置页头（面包屑+标题）；设置页由外层布局提供时置 false，仅保留操作按钮 */
+  showHeader?: boolean
   onSubmit: (payload: Record<string, unknown>) => Promise<void>
 }
 
 // 书籍表单：创建与设置页共用，双栏（分区表单 + 实时预览）
-export default function BookForm({ initial, heading, subheading, breadcrumb, submitLabel, showSaveDraft, onSubmit }: BookFormProps) {
+export default function BookForm({ initial, heading, subheading, breadcrumb, submitLabel, showSaveDraft, showHeader = true, onSubmit }: BookFormProps) {
   const router = useRouter()
   const { user } = useApp()
   const isEdit = !!initial
@@ -123,15 +125,22 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
     <div>
       {/* 页头 */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <nav className="mb-1 flex items-center gap-1.5 text-sm text-slate-400">
-            <button onClick={() => router.push('/books')} className="hover:text-primary-600">我的书籍</button>
-            <span>/</span>
-            <span className="text-slate-500">{breadcrumb}</span>
-          </nav>
-          <h1 className="text-2xl font-bold text-slate-900">{heading}</h1>
-          <p className="mt-1 text-sm text-slate-500">{subheading}</p>
-        </div>
+        {showHeader ? (
+          <div>
+            <nav className="mb-1 flex items-center gap-1.5 text-sm text-slate-400">
+              <button onClick={() => router.push('/books')} className="hover:text-primary-600">我的书籍</button>
+              <span>/</span>
+              <span className="text-slate-500">{breadcrumb}</span>
+            </nav>
+            <h1 className="text-2xl font-bold text-slate-900">{heading}</h1>
+            <p className="mt-1 text-sm text-slate-500">{subheading}</p>
+          </div>
+        ) : (
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{heading}</h2>
+            <p className="mt-1 text-sm text-slate-500">{subheading}</p>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           {showSaveDraft && (
             <button onClick={() => submit('draft')} disabled={saving}
