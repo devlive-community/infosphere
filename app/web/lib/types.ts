@@ -38,6 +38,7 @@ export interface Book {
   order_dir: 'asc' | 'desc'
   chapter_prefix: string
   chapter_count?: number
+  collaborator_role?: 'editor' | 'viewer'
   watermark_enabled: boolean
   watermark_text: string
   export_enabled?: boolean
@@ -46,6 +47,18 @@ export interface Book {
   tags?: Tag[]
   created_at: string
   updated_at: string
+}
+
+export type CollaborationInvitationStatus = 'pending' | 'accepted' | 'rejected'
+
+export interface CollaborationInvitation {
+  id: number
+  book_id: number
+  book_title: string
+  book_slug: string
+  role: 'editor' | 'viewer'
+  inviter_username: string
+  created_at: string
 }
 
 export interface BookAccess {

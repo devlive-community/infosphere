@@ -108,17 +108,55 @@ func TestCollaboration(t *testing.T) {
 		t.Fatalf("非所有者添加协作者应 403: %d", status)
 	}
 
-	// 4. 添加 bob 为 editor；bob 收到协作邀请通知
+	// 4. 邀请 bob 为 editor；待接受期间不得获得私有书籍权限
 	status, added := request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", bookID), map[string]any{
 		"username": "bob", "role": "editor",
 	}, aliceToken)
 	if status != 200 {
 		t.Fatalf("添加协作者失败: %d %v", status, added)
 	}
+	invitationID := int(added["data"].(map[string]any)["id"].(float64))
+	status, _ = request(http.MethodGet, fmt.Sprintf("/api/v1/books/%d", bookID), nil, bobToken)
+	if status != 403 {
+		t.Fatalf("待接受邀请不应授予私有书籍权限: %d", status)
+	}
+	status, collaborationBooks := request(http.MethodGet, "/api/v1/books?scope=collaborating", nil, bobToken)
+	if status != 200 || len(collaborationBooks["data"].(map[string]any)["items"].([]any)) != 0 {
+		t.Fatalf("待接受邀请不应进入协作书籍列表: %d %v", status, collaborationBooks)
+	}
+	status, searchBeforeAccept := request(http.MethodGet, "/api/v1/search?q=secret", nil, bobToken)
+	if status != 200 || searchBeforeAccept["data"].(map[string]any)["total"].(float64) != 0 {
+		t.Fatalf("待接受邀请不应通过搜索泄露私有章节: %d %v", status, searchBeforeAccept)
+	}
 	_, notes := request(http.MethodGet, "/api/v1/notifications", nil, bobToken)
 	notif := notes["data"].(map[string]any)["notifications"].([]any)
 	if len(notif) != 1 || notif[0].(map[string]any)["type"] != "collaboration" {
 		t.Fatalf("应收到 1 条协作邀请通知: %v", notes)
+	}
+	status, invitations := request(http.MethodGet, "/api/v1/collaboration/invitations", nil, bobToken)
+	if status != 200 || len(invitations["data"].(map[string]any)["invitations"].([]any)) != 1 {
+		t.Fatalf("bob 应看到 1 条待确认邀请: %d %v", status, invitations)
+	}
+	status, _ = request(http.MethodPost, fmt.Sprintf("/api/v1/collaboration/invitations/%d/accept", invitationID), nil, aliceToken)
+	if status != 404 {
+		t.Fatalf("非受邀用户处理邀请应隐藏为 404: %d", status)
+	}
+	status, _ = request(http.MethodPost, fmt.Sprintf("/api/v1/collaboration/invitations/%d/accept", invitationID), nil, bobToken)
+	if status != 200 {
+		t.Fatalf("受邀用户接受邀请应成功: %d", status)
+	}
+	status, collaborationBooks = request(http.MethodGet, "/api/v1/books?scope=collaborating", nil, bobToken)
+	items := collaborationBooks["data"].(map[string]any)["items"].([]any)
+	if status != 200 || len(items) != 1 || items[0].(map[string]any)["collaborator_role"] != "editor" {
+		t.Fatalf("接受后应进入协作书籍列表并携带角色: %d %v", status, collaborationBooks)
+	}
+	status, searchAfterAccept := request(http.MethodGet, "/api/v1/search?q=secret", nil, bobToken)
+	if status != 200 || searchAfterAccept["data"].(map[string]any)["total"].(float64) != 1 {
+		t.Fatalf("接受后 editor 应可搜索私有章节: %d %v", status, searchAfterAccept)
+	}
+	status, _ = request(http.MethodPost, fmt.Sprintf("/api/v1/collaboration/invitations/%d/accept", invitationID), nil, bobToken)
+	if status != 404 {
+		t.Fatalf("重复处理邀请应返回 404: %d", status)
 	}
 
 	// 5. editor：可建章节、看草稿目录，不可改书籍设置/删除书籍
@@ -172,6 +210,10 @@ func TestCollaboration(t *testing.T) {
 	if status != 403 {
 		t.Fatalf("退出后访问私有书籍应 403: %d", status)
 	}
+	status, collaborationBooks = request(http.MethodGet, "/api/v1/books?scope=collaborating", nil, bobToken)
+	if status != 200 || len(collaborationBooks["data"].(map[string]any)["items"].([]any)) != 0 {
+		t.Fatalf("退出后协作书籍列表应为空: %d %v", status, collaborationBooks)
+	}
 
 	// 8. 管理员也可管理协作者；重复移除 404
 	status, _ = request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", bookID), map[string]any{
@@ -187,6 +229,23 @@ func TestCollaboration(t *testing.T) {
 	status, _ = request(http.MethodDelete, fmt.Sprintf("/api/v1/books/%d/collaborators/%d", bookID, int(bobID)), nil, adminToken)
 	if status != 404 {
 		t.Fatalf("重复移除应 404: %d", status)
+	}
+
+	// 8.1 拒绝邀请后同样不授予权限
+	status, rejectedInvite := request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", bookID), map[string]any{
+		"username": "bob", "role": "viewer",
+	}, aliceToken)
+	if status != 200 {
+		t.Fatalf("再次邀请失败: %d %v", status, rejectedInvite)
+	}
+	rejectedID := int(rejectedInvite["data"].(map[string]any)["id"].(float64))
+	status, _ = request(http.MethodPost, fmt.Sprintf("/api/v1/collaboration/invitations/%d/reject", rejectedID), nil, bobToken)
+	if status != 200 {
+		t.Fatalf("拒绝邀请应成功: %d", status)
+	}
+	status, _ = request(http.MethodGet, fmt.Sprintf("/api/v1/books/%d", bookID), nil, bobToken)
+	if status != 403 {
+		t.Fatalf("拒绝邀请后不应有私有书籍权限: %d", status)
 	}
 
 	// 9. 边界：用户不存在 / 所有者添加自己

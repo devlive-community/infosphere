@@ -171,6 +171,14 @@ func (a *App) Router() *gin.Engine {
 		}
 		api.GET("/notifications/stream", a.SSENotifications)
 
+		// ── 当前用户的协作邀请（未接受前不授予书籍访问权限） ──
+		collaboration := api.Group("/collaboration", a.RequireAuth())
+		{
+			collaboration.GET("/invitations", a.RequirePermission(authz.CollaboratorRead), a.ListCollaborationInvitations)
+			collaboration.POST("/invitations/:id/accept", a.RequirePermission(authz.CollaboratorUpdate), a.AcceptCollaborationInvitation)
+			collaboration.POST("/invitations/:id/reject", a.RequirePermission(authz.CollaboratorUpdate), a.RejectCollaborationInvitation)
+		}
+
 		// ── 评论（comment:*） ──
 		api.GET("/documents/:id/comments", a.OptionalAuth(), a.ListComments)
 		api.POST("/documents/:id/comments", a.RequireAuth(), a.RequirePermission(authz.CommentCreate), a.CreateComment)

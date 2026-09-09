@@ -9,11 +9,13 @@ interface Collaborator {
   id: number
   user_id: number
   role: 'editor' | 'viewer'
+  status: 'pending' | 'accepted' | 'rejected'
   created_at: string
   user?: Pick<User, 'id' | 'username' | 'avatar'>
 }
 
 const ROLE_LABELS: Record<string, string> = { editor: '编辑者', viewer: '访问者' }
+const STATUS_LABELS: Record<string, string> = { pending: '等待确认', accepted: '已加入', rejected: '已拒绝' }
 
 // CollaboratorManager 书籍设置页的协作者管理：所有者可增删，协作者可查看与自己退出
 export default function CollaboratorManager({ book }: { book: Book }) {
@@ -27,7 +29,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
   const [error, setError] = useState('')
   const [working, setWorking] = useState(false)
 
-  const isOwner = user?.id === book.user_id
+  const isOwner = user?.id === book.user_id || user?.role === 'admin'
 
   const load = useCallback(async () => {
     try {
@@ -47,7 +49,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
     setError('')
     try {
       await api(`/books/${book.id}/collaborators`, { method: 'POST', body: { username: username.trim(), role } })
-      setMessage(`已添加 ${ROLE_LABELS[role]}协作者「${username.trim()}」，对方会收到通知`)
+      setMessage(`已向「${username.trim()}」发送${ROLE_LABELS[role]}邀请，确认后才会获得权限`)
       setUsername('')
       await load()
     } catch (err) {
@@ -106,6 +108,11 @@ export default function CollaboratorManager({ book }: { book: Book }) {
                   <div className="truncate text-sm font-medium text-slate-900">{c.user?.username}</div>
                   <span className="mt-0.5 inline-block">
                     <Badge tone={c.role === 'editor' ? 'emerald' : 'slate'}>{ROLE_LABELS[c.role]}</Badge>
+                    <span className="ml-1.5">
+                      <Badge tone={c.status === 'accepted' ? 'emerald' : c.status === 'pending' ? 'amber' : 'slate'}>
+                        {STATUS_LABELS[c.status] || c.status}
+                      </Badge>
+                    </span>
                   </span>
                 </div>
               </div>
@@ -126,7 +133,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
             className="sm:w-32"
             options={[{ value: 'editor', label: '编辑者' }, { value: 'viewer', label: '访问者' }]}
             value={role} onChange={setRole} />
-          <Button type="submit" loading={working}>添加协作者</Button>
+          <Button type="submit" loading={working}>发送邀请</Button>
         </form>
       )}
     </div>

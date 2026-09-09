@@ -36,6 +36,8 @@ export interface BookCardProps {
   showStatus?: boolean
   /** 显示可见性徽标（公开/仅自己可见）。默认 false */
   showVisibility?: boolean
+  /** 追加到状态区域的业务徽标（如当前用户的协作角色） */
+  badge?: ReactNode
   /** 标签显示上限；0 = 隐藏。默认 grid=3 / list=1 */
   tagsMax?: number
   /** 标签是否可点（链接到发现页过滤）。默认 true */
@@ -99,6 +101,7 @@ export default function BookCard({
   authorLink = true,
   showStatus = false,
   showVisibility = false,
+  badge,
   tagsLink = true,
   showDescription = true,
   showViews = true,
@@ -115,7 +118,7 @@ export default function BookCard({
   const { resolvedTagsMax } = useDefaults(book, view, tagsMax)
   const showTags = resolvedTagsMax > 0 && (book.tags?.length ?? 0) > 0
   const date = buildDate(book, dateField)
-  const hasBadges = showStatus || showVisibility
+  const hasBadges = showStatus || showVisibility || Boolean(badge)
 
   const tagBlock = showTags && (
     <TagChips tags={book.tags} max={resolvedTagsMax} link={tagsLink} />
@@ -179,6 +182,7 @@ export default function BookCard({
           {book.is_public ? '公开' : '仅自己可见'}
         </Badge>
       )}
+      {badge}
     </div>
   )
 
@@ -200,8 +204,9 @@ export default function BookCard({
             {showStatus && <StatusBadge status={book.status} />}
           </div>
           {showVisibility && (
-            <div className="flex items-center gap-2"><Badge tone={book.is_public ? 'sky' : 'slate'}>{book.is_public ? '公开' : '仅自己可见'}</Badge></div>
+            <div className="flex items-center gap-2"><Badge tone={book.is_public ? 'sky' : 'slate'}>{book.is_public ? '公开' : '仅自己可见'}</Badge>{badge}</div>
           )}
+          {!showVisibility && badge && <div className="flex items-center gap-2">{badge}</div>}
           {descBlock}
           {metaBlock}
         </div>
@@ -221,7 +226,7 @@ export default function BookCard({
       <div className="flex flex-1 flex-col gap-1.5 p-4">
         <div className="flex items-center justify-between gap-2">
           {tagBlock}
-          {(topActions || authorBlock) && <div className="ml-auto shrink-0">{topActions || authorBlock}</div>}
+          {(topActions || authorBlock) && <div className="ml-auto flex shrink-0 items-center gap-2">{authorBlock}{topActions}</div>}
         </div>
         {titleBlock}
         {badgeBlock}

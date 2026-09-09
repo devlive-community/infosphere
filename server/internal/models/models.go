@@ -63,12 +63,17 @@ type Notification struct {
 
 // BookCollaborator 书籍协作者（M14；书籍所有者为 book.user_id，不在此表）
 type BookCollaborator struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	BookID    uint      `gorm:"not null;uniqueIndex:uk_book_user" json:"book_id"`
-	UserID    uint      `gorm:"not null;uniqueIndex:uk_book_user" json:"user_id"`
-	Role      string    `gorm:"size:20;default:editor" json:"role"` // editor | viewer
-	CreatedAt time.Time `json:"created_at"`
-	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	BookID      uint       `gorm:"not null;uniqueIndex:uk_book_user" json:"book_id"`
+	UserID      uint       `gorm:"not null;uniqueIndex:uk_book_user" json:"user_id"`
+	Role        string     `gorm:"size:20;default:editor" json:"role"`           // editor | viewer
+	Status      string     `gorm:"size:20;default:accepted;index" json:"status"` // pending | accepted | rejected
+	InvitedBy   uint       `gorm:"index;default:0" json:"invited_by"`
+	RespondedAt *time.Time `json:"responded_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	User        *User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Book        *Book      `gorm:"foreignKey:BookID" json:"book,omitempty"`
 }
 
 // PasswordResetToken 找回密码一次性令牌（M15；只存哈希，明文仅出现在邮件链接里）
@@ -110,6 +115,8 @@ type Book struct {
 	TrashGroup        string         `gorm:"size:64;index" json:"-"`
 	// ChapterCount 非持久化：列表接口按需回填的章节（文档）数量
 	ChapterCount int `gorm:"-" json:"chapter_count"`
+	// CollaboratorRole 非持久化：协作书籍列表按需回填当前用户的角色。
+	CollaboratorRole string `gorm:"-" json:"collaborator_role,omitempty"`
 }
 
 // Tag 标签

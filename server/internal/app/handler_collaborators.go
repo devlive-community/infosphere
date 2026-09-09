@@ -1,9 +1,11 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"infosphere/server/internal/models"
 
@@ -13,10 +15,11 @@ import (
 
 // M14 协作与团队：
 //   - 书籍所有者（book.user_id）或管理员可增删协作者；协作者可查看列表、可自行退出
-//   - editor 可编辑章节内容；viewer 可访问私有协作书籍的已发布章节
-//   - 添加协作者时通过 Notify 发送协作邀请通知
+//   - 只有 accepted editor 可编辑章节；accepted viewer 可访问私有书籍的已发布章节
+//   - 新邀请为 pending，通过 Notify 发送，并由受邀用户接受或拒绝
 
 var collaboratorRoles = map[string]bool{"editor": true, "viewer": true}
+var collaboratorStatuses = map[string]bool{"pending": true, "accepted": true, "rejected": true}
 
 // ListCollaborators GET /books/:id/collaborators
 func (a *App) ListCollaborators(c *gin.Context) {
@@ -34,9 +37,13 @@ func (a *App) ListCollaborators(c *gin.Context) {
 	}
 
 	collaborators := []models.BookCollaborator{}
-	a.DB.Preload("User", func(tx *gorm.DB) *gorm.DB {
+	query := a.DB.Preload("User", func(tx *gorm.DB) *gorm.DB {
 		return tx.Select("id", "username", "avatar", "bio")
-	}).Where("book_id = ?", book.ID).Order("created_at ASC").Find(&collaborators)
+	}).Where("book_id = ?", book.ID)
+	if !a.canManageBook(u, book) {
+		query = query.Where("status = ?", "accepted")
+	}
+	query.Order("created_at ASC").Find(&collaborators)
 	ok(c, gin.H{"collaborators": collaborators})
 }
 
@@ -45,7 +52,7 @@ type collaboratorPayload struct {
 	Role     string `json:"role"`
 }
 
-// AddCollaborator POST /books/:id/collaborators 添加或更新协作者（同名覆盖角色）
+// AddCollaborator POST /books/:id/collaborators 发送邀请；已接受的协作者仅更新角色。
 func (a *App) AddCollaborator(c *gin.Context) {
 	book, status := a.findBook(c)
 	if book == nil {
@@ -83,33 +90,142 @@ func (a *App) AddCollaborator(c *gin.Context) {
 	}
 
 	var collab models.BookCollaborator
-	if err := a.DB.Where("book_id = ? AND user_id = ?", book.ID, target.ID).First(&collab).Error; err == nil {
-		// 已是协作者：更新角色
-		if collab.Role == req.Role {
+	lookupErr := a.DB.Where("book_id = ? AND user_id = ?", book.ID, target.ID).First(&collab).Error
+	if lookupErr == nil {
+		if collab.Status == "accepted" {
+			// 已接受的协作者由所有者直接调整角色，不需要重新确认。
+			if collab.Role == req.Role {
+				ok(c, collab)
+				return
+			}
+			collab.Role = req.Role
+			if err := a.DB.Model(&collab).Updates(map[string]any{"role": req.Role, "invited_by": u.ID}).Error; err != nil {
+				fail(c, http.StatusInternalServerError, "保存失败")
+				return
+			}
 			ok(c, collab)
 			return
 		}
+
+		// 待处理邀请可更新角色；被拒绝后再次邀请会重新进入待确认状态。
+		shouldNotify := collab.Status != "pending" || collab.Role != req.Role
 		collab.Role = req.Role
-		if err := a.DB.Model(&collab).Update("role", req.Role).Error; err != nil {
+		collab.Status = "pending"
+		collab.InvitedBy = u.ID
+		collab.RespondedAt = nil
+		if err := a.DB.Model(&collab).Updates(map[string]any{
+			"role": req.Role, "status": "pending", "invited_by": u.ID, "responded_at": nil,
+		}).Error; err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败")
 			return
+		}
+		if shouldNotify {
+			a.notifyCollaborationInvitation(u, &target, book, &collab)
 		}
 		ok(c, collab)
 		return
 	}
+	if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+		fail(c, http.StatusInternalServerError, "查询协作者失败")
+		return
+	}
 
-	collab = models.BookCollaborator{BookID: book.ID, UserID: target.ID, Role: req.Role}
+	collab = models.BookCollaborator{
+		BookID: book.ID, UserID: target.ID, Role: req.Role, Status: "pending", InvitedBy: u.ID,
+	}
 	if err := a.DB.Create(&collab).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "添加失败: "+err.Error())
 		return
 	}
-	a.Notify(target.ID, "collaboration",
-		"「"+u.Username+"」邀请你协作《"+book.Title+"》",
-		map[string]any{
-			"link": "/book/writer/" + book.Slug,
-			"role": req.Role,
-		})
+	a.notifyCollaborationInvitation(u, &target, book, &collab)
 	ok(c, collab)
+}
+
+func (a *App) notifyCollaborationInvitation(inviter, target *models.User, book *models.Book, collab *models.BookCollaborator) {
+	a.Notify(target.ID, "collaboration",
+		"「"+inviter.Username+"」邀请你协作《"+book.Title+"》",
+		map[string]any{
+			"link":          "/notifications",
+			"book_slug":     book.Slug,
+			"invitation_id": collab.ID,
+			"role":          collab.Role,
+		})
+}
+
+type collaborationInvitationItem struct {
+	ID              uint      `json:"id"`
+	BookID          uint      `json:"book_id"`
+	BookTitle       string    `json:"book_title"`
+	BookSlug        string    `json:"book_slug"`
+	Role            string    `json:"role"`
+	InviterUsername string    `json:"inviter_username"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+// ListCollaborationInvitations GET /collaboration/invitations 当前用户待确认的邀请。
+func (a *App) ListCollaborationInvitations(c *gin.Context) {
+	u := currentUser(c)
+	items := []collaborationInvitationItem{}
+	err := a.DB.Model(&models.BookCollaborator{}).
+		Select("book_collaborators.id, book_collaborators.book_id, books.title AS book_title, books.slug AS book_slug, book_collaborators.role, users.username AS inviter_username, book_collaborators.updated_at AS created_at").
+		Joins("JOIN books ON books.id = book_collaborators.book_id").
+		Joins("LEFT JOIN users ON users.id = book_collaborators.invited_by").
+		Where("book_collaborators.user_id = ? AND book_collaborators.status = ? AND books.deleted_at IS NULL", u.ID, "pending").
+		Order("book_collaborators.created_at DESC").Scan(&items).Error
+	if err != nil {
+		fail(c, http.StatusInternalServerError, "获取协作邀请失败")
+		return
+	}
+	ok(c, gin.H{"invitations": items})
+}
+
+func (a *App) respondCollaborationInvitation(c *gin.Context, nextStatus string) {
+	u := currentUser(c)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || !collaboratorStatuses[nextStatus] || nextStatus == "pending" {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	var collab models.BookCollaborator
+	if err := a.DB.Where("id = ? AND user_id = ? AND status = ?", uint(id), u.ID, "pending").First(&collab).Error; err != nil {
+		fail(c, http.StatusNotFound, "邀请不存在或已处理")
+		return
+	}
+	var book models.Book
+	if err := a.DB.First(&book, collab.BookID).Error; err != nil {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	now := time.Now()
+	result := a.DB.Model(&models.BookCollaborator{}).
+		Where("id = ? AND user_id = ? AND status = ?", collab.ID, u.ID, "pending").
+		Updates(map[string]any{"status": nextStatus, "responded_at": &now})
+	if result.Error != nil {
+		fail(c, http.StatusInternalServerError, "处理邀请失败")
+		return
+	}
+	if result.RowsAffected == 0 {
+		fail(c, http.StatusConflict, "邀请已被处理")
+		return
+	}
+	if collab.InvitedBy != 0 && collab.InvitedBy != u.ID {
+		responseText := "已拒绝"
+		if nextStatus == "accepted" {
+			responseText = "已接受"
+		}
+		a.Notify(collab.InvitedBy, "collaboration",
+			"「"+u.Username+"」"+responseText+"《"+book.Title+"》的协作邀请",
+			map[string]any{"link": "/book/settings/" + book.Slug, "book_slug": book.Slug})
+	}
+	ok(c, gin.H{"id": collab.ID, "status": nextStatus, "book_slug": book.Slug})
+}
+
+func (a *App) AcceptCollaborationInvitation(c *gin.Context) {
+	a.respondCollaborationInvitation(c, "accepted")
+}
+
+func (a *App) RejectCollaborationInvitation(c *gin.Context) {
+	a.respondCollaborationInvitation(c, "rejected")
 }
 
 // RemoveCollaborator DELETE /books/:id/collaborators/:userId 移除协作者（协作者可自行退出）

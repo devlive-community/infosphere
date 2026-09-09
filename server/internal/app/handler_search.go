@@ -40,7 +40,7 @@ func (a *App) GlobalSearch(c *gin.Context) {
 	if u := currentUser(c); u != nil {
 		if !IsAdmin(u) {
 			bookQuery = bookQuery.Where(
-				"(is_public = ? AND status IN ?) OR user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = books.id AND bc.user_id = ?)",
+				"(is_public = ? AND status IN ?) OR user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = books.id AND bc.user_id = ? AND bc.status = 'accepted')",
 				true, publiclyReadableBookStatuses, u.ID, u.ID,
 			)
 		}
@@ -62,8 +62,8 @@ func (a *App) GlobalSearch(c *gin.Context) {
 			docQuery = docQuery.Where(`
 				(b.is_public = ? AND b.status IN ? AND documents.status = ?)
 				OR b.user_id = ?
-				OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ? AND bc.role = 'editor')
-				OR (documents.status = ? AND EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ? AND bc.role = 'viewer'))`,
+				OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ? AND bc.role = 'editor' AND bc.status = 'accepted')
+				OR (documents.status = ? AND EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ? AND bc.role = 'viewer' AND bc.status = 'accepted'))`,
 				true, publiclyReadableBookStatuses, "published", u.ID, u.ID, "published", u.ID,
 			)
 		}

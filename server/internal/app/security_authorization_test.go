@@ -161,7 +161,9 @@ func TestAuthorizationBoundaries(t *testing.T) {
 	if aliceAccessPayload["data"].(map[string]any)["can_manage"] != true {
 		t.Fatal("书籍所有者应拥有管理能力")
 	}
-	request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", publicBookID), map[string]any{"username": "charlie", "role": "editor"}, aliceToken)
+	_, editorInvitePayload, _ := request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", publicBookID), map[string]any{"username": "charlie", "role": "editor"}, aliceToken)
+	editorInviteID := int(editorInvitePayload["data"].(map[string]any)["id"].(float64))
+	request(http.MethodPost, fmt.Sprintf("/api/v1/collaboration/invitations/%d/accept", editorInviteID), nil, charlieToken)
 	_, editorAccessPayload, _ := request(http.MethodGet, "/api/v1/books/slug/public-book/access", nil, charlieToken)
 	editorAccess := editorAccessPayload["data"].(map[string]any)
 	if editorAccess["can_edit_content"] != true || editorAccess["can_manage"] != false {

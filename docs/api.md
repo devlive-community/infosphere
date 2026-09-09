@@ -63,6 +63,7 @@ Authorization: Bearer <token>
 | `notification:update` | 标记通知已读 | ✅ | ✅ |
 | `collaborator:read` | 查看书籍协作者列表 | ✅ | ✅ |
 | `collaborator:create` | 添加/更新协作者（仅书籍所有者/管理员） | ✅ | ✅ |
+| `collaborator:update` | 接受或拒绝发给自己的协作邀请 | ✅ | ✅ |
 | `collaborator:delete` | 移除协作者（所有者；协作者可自行退出） | ✅ | ✅ |
 | `book:export` | 导出书籍为 markdown zip（owner/admin/editor 协作者） | ✅ | ✅ |
 | `book:import` | 从 zip、PDF 或网页导入书籍（成为导入者的私有草稿） | ✅ | ✅ |
@@ -184,7 +185,7 @@ Authorization: Bearer <token>
 | GET | `/books/slug/:slug/access` | 服务端计算当前用户的对象级能力：`can_read/can_manage/can_edit_content/can_export/collaborator_role` | `book:read` + 登录 |
 | PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀/阅读水印） | `book:update` |
 | DELETE | `/books/:id` | 将书籍及当前章节移入 30 天回收站 | `book:delete` |
-| GET | `/books/status-counts` | 当前用户书籍统计（按状态汇总） | `book:read` |
+| GET | `/books/status-counts?scope=owned\|collaborating` | 当前用户创建或已接受协作书籍的状态统计 | `book:read` |
 | POST | `/books/:id/view` | 可见书籍浏览计数 +1；不可见资源统一返回 404 | `book:read` |
 
 书籍字段：`id, title, description, cover_image, slug, status(draft|in_progress|published|completed|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, watermark_enabled, watermark_text, user, tags, created_at, updated_at`
@@ -212,7 +213,7 @@ Authorization: Bearer <token>
 
 版本列表字段：`id, document_id, book_id, title, content_length, status, allow_comments, reason(create|save|publish|pre_restore|restore), author(仅公开字段), created_at`；详情额外返回 `content`。版本记录只新增、不提供修改接口，目录排序等结构调整不会生成版本。
 
-> **协作（M14）**：书籍协作者（editor）拥有章节内容的增删改权限，与所有者相同；书籍设置与删除仍限所有者/管理员。viewer 可访问私有协作书籍及其已发布章节。协作者查看章节/文档端点直接复用上表权限。
+> **协作（M14/M37）**：邀请初始为 `pending`，受邀用户明确接受成为 `accepted` 后才获得权限。accepted editor 拥有章节内容的增删改权限，书籍设置与删除仍限所有者/管理员；accepted viewer 可访问私有协作书籍及其已发布章节。pending/rejected 不得访问私有书籍，也不得出现在协作书籍、搜索或收藏的私有数据中。
 
 ## 回收站（M36）
 
@@ -226,13 +227,18 @@ Authorization: Bearer <token>
 
 回收站条目字段：`type, id, title, slug, book_id, book_title, book_slug, owner_username, descendant_count, deleted_at, expires_at`。普通查询、公开页面、搜索、统计和管理列表均默认排除软删除内容。内容保留 30 天；访问回收站时会清理当前可见范围内已过期的条目。未授权读取、恢复或永久删除统一返回 404，避免泄露资源存在性。
 
-## 协作者（M14）
+## 协作者与邀请（M14/M37）
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| GET | `/books/:id/collaborators` | 协作者列表（含 user 摘要）；所有者/管理员/协作者可查 | `collaborator:read` |
-| POST | `/books/:id/collaborators` | 添加或更新协作者 `{username, role: editor\|viewer}`；已存在则覆盖角色；向对方发送协作邀请通知 | `collaborator:create` |
+| GET | `/books/:id/collaborators` | 协作者列表（含 user 摘要与 pending/accepted/rejected 状态）；所有者/管理员可查全部，已接受协作者只看已加入成员 | `collaborator:read` |
+| POST | `/books/:id/collaborators` | 发送邀请 `{username, role: editor\|viewer}`；新邀请为 pending；已接受成员仅覆盖角色 | `collaborator:create` |
 | DELETE | `/books/:id/collaborators/:userId` | 移除协作者；协作者可传自己的 userId 退出协作 | `collaborator:delete` |
+| GET | `/collaboration/invitations` | 当前用户待确认的协作邀请 | `collaborator:read` |
+| POST | `/collaboration/invitations/:id/accept` | 接受自己的待确认邀请，随后协作权限生效 | `collaborator:update` |
+| POST | `/collaboration/invitations/:id/reject` | 拒绝自己的待确认邀请，不授予权限 | `collaborator:update` |
+
+“我的书籍”协作视图使用 `GET /books?scope=collaborating`，仅返回当前用户已接受的协作书籍，并在每本书上返回 `collaborator_role`。原有 `mine=true` 与 `scope=owned` 均表示本人创建的书籍。
 
 ## 标签
 

@@ -98,7 +98,7 @@ func (a *App) MyReactions(c *gin.Context) {
 		Where("reactions.user_id = ? AND reactions.type = ?", u.ID, rType)
 	if !IsAdmin(u) {
 		q = q.Where(
-			"(b.is_public = ? AND b.status IN ?) OR b.user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ?)",
+			"(b.is_public = ? AND b.status IN ?) OR b.user_id = ? OR EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = b.id AND bc.user_id = ? AND bc.status = 'accepted')",
 			true, publiclyReadableBookStatuses, u.ID, u.ID,
 		)
 	}

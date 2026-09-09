@@ -80,7 +80,7 @@ func (a *App) collaboratorRole(u *models.User, bookID uint) (string, bool) {
 		return "", false
 	}
 	var c models.BookCollaborator
-	if err := a.DB.Where("book_id = ? AND user_id = ?", bookID, u.ID).First(&c).Error; err != nil {
+	if err := a.DB.Where("book_id = ? AND user_id = ? AND status = ?", bookID, u.ID, "accepted").First(&c).Error; err != nil {
 		return "", false
 	}
 	return c.Role, true
@@ -155,16 +155,22 @@ func (a *App) ListBooks(c *gin.Context) {
 	page, pageSize := paginate(c)
 	u := currentUser(c)
 	mine := c.Query("mine") == "true"
+	scope := c.Query("scope")
 
 	query := a.DB.Model(&models.Book{})
-	if mine {
+	if mine || scope == "owned" || scope == "collaborating" {
 		if u == nil {
 			fail(c, http.StatusUnauthorized, "请先登录")
 			return
 		}
-		query = query.Where("user_id = ?", u.ID)
+		if scope == "collaborating" {
+			query = query.Joins("JOIN book_collaborators bc ON bc.book_id = books.id").
+				Where("bc.user_id = ? AND bc.status = ?", u.ID, "accepted")
+		} else {
+			query = query.Where("books.user_id = ?", u.ID)
+		}
 		if s := c.Query("status"); s != "" && bookStatuses[s] {
-			query = query.Where("status = ?", s)
+			query = query.Where("books.status = ?", s)
 		}
 	} else {
 		query = query.Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
@@ -194,6 +200,11 @@ func (a *App) ListBooks(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
+	if scope == "collaborating" {
+		for i := range books {
+			books[i].CollaboratorRole, _ = a.collaboratorRole(u, books[i].ID)
+		}
+	}
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }
 
@@ -229,10 +240,14 @@ func (a *App) MyBookCounts(c *gin.Context) {
 		Count  int64
 	}
 	var rows []row
-	a.DB.Model(&models.Book{}).
-		Select("status, COUNT(*) as count").
-		Where("user_id = ?", u.ID).
-		Group("status").Scan(&rows)
+	query := a.DB.Model(&models.Book{})
+	if c.Query("scope") == "collaborating" {
+		query = query.Joins("JOIN book_collaborators bc ON bc.book_id = books.id").
+			Where("bc.user_id = ? AND bc.status = ?", u.ID, "accepted")
+	} else {
+		query = query.Where("books.user_id = ?", u.ID)
+	}
+	query.Select("books.status, COUNT(*) as count").Group("books.status").Scan(&rows)
 
 	counts := gin.H{"": 0, "draft": 0, "in_progress": 0, "published": 0, "completed": 0, "archived": 0}
 	total := int64(0)

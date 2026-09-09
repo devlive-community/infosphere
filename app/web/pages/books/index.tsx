@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import Link from 'next/link'
@@ -53,9 +54,11 @@ function chapterCount(book: Book): number {
 export default function MyBooks() {
   const { confirmAction, requestInput, showToast } = useFeedback()
   const user = useRequireAuth()
+  const router = useRouter()
   const { site } = useApp()
   const siteName = site.site_name || 'InfoSphere'
   const [status, setStatus] = useState('')
+  const scope: 'owned' | 'collaborating' = router.query.scope === 'collaborating' ? 'collaborating' : 'owned'
   const [page, setPage] = useState(1)
   const [keyword, setKeyword] = useState('')
   const [sort, setSort] = useState<SortKey>('updated')
@@ -73,8 +76,8 @@ export default function MyBooks() {
     if (!user) return
     setLoading(true)
     try {
-      setData(await api<PageResult<Book>>('/books', { params: { mine: 'true', page, page_size: 9, status, title: keyword, sort } }))
-      const summary = await api<Record<string, number>>('/books/status-counts').catch(() => null)
+      setData(await api<PageResult<Book>>('/books', { params: { scope, page, page_size: 9, status, title: keyword, sort } }))
+      const summary = await api<Record<string, number>>('/books/status-counts', { params: { scope } }).catch(() => null)
       if (summary) setCounts(summary)
     } catch (e) {
       showToast({ title: '书籍加载失败', message: (e as Error).message, tone: 'error' })
@@ -83,7 +86,14 @@ export default function MyBooks() {
     }
   }
 
-  useEffect(() => { if (user) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, page, status, keyword, sort])
+  useEffect(() => { if (user && router.isReady) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, router.isReady, page, scope, status, keyword, sort])
+
+  function changeScope(next: 'owned' | 'collaborating') {
+    setStatus('')
+    setPage(1)
+    setMenuFor(null)
+    router.replace({ pathname: '/books', query: next === 'collaborating' ? { scope: next } : {} }, undefined, { shallow: true })
+  }
 
   // 客户端排序（API 分页内排序字段当前仅支持基础列；数量小时在当前页排序即可）
   const items = [...(data.items || [])].sort((a, b) => {
@@ -119,6 +129,22 @@ export default function MyBooks() {
     setMenuFor(null)
   }
 
+  async function leaveCollaboration(book: Book) {
+    if (!user || !await confirmAction({
+      title: '退出书籍协作',
+      message: `确定退出《${book.title}》的协作吗？退出后将无法继续访问这本私有书籍。`,
+      confirmLabel: '确认退出',
+      danger: true,
+    })) return
+    try {
+      await api(`/books/${book.id}/collaborators/${user.id}`, { method: 'DELETE' })
+      showToast({ message: '已退出书籍协作', tone: 'success' })
+      await load()
+    } catch (e) {
+      showToast({ title: '退出失败', message: (e as Error).message, tone: 'error' })
+    }
+  }
+
   if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
 
   const hasBooks = (data.items || []).length > 0
@@ -147,6 +173,17 @@ export default function MyBooks() {
             </ButtonLink>
           </div>
         </div>
+      </div>
+
+      <div className="mb-5 inline-flex rounded-xl bg-slate-100 p-1" aria-label="书籍范围">
+        <button type="button" onClick={() => changeScope('owned')}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${scope === 'owned' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+          我创建的
+        </button>
+        <button type="button" onClick={() => changeScope('collaborating')}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${scope === 'collaborating' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+          与我协作的
+        </button>
       </div>
 
       {/* 筛选行 */}
@@ -191,14 +228,17 @@ export default function MyBooks() {
       ) : hasBooks ? (
         <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
           {items.map((book) => (
-            <BookCardMine key={book.id} book={book} view={view}
+            <BookCardMine key={book.id} book={book} view={view} collaborating={scope === 'collaborating'}
               menuOpen={menuFor === book.id} setMenuOpen={(open) => setMenuFor(open ? book.id : null)}
-              onCopy={() => copyLink(book)} onImportPDF={() => setPDFImportBook(book)} onDelete={() => remove(book)} />
+              onCopy={() => copyLink(book)} onImportPDF={() => setPDFImportBook(book)} onDelete={() => remove(book)}
+              onLeave={() => leaveCollaboration(book)} />
           ))}
         </div>
       ) : (
         <EmptyState>
-          还没有书籍，<Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
+          {scope === 'owned' ? <>
+            还没有书籍，<Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
+          </> : '还没有已接受的书籍协作，新的邀请会显示在通知中心'}
         </EmptyState>
       )}
 
@@ -382,14 +422,16 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
 
 /* ── 单本书卡片（网格 / 列表两种视图） ── */
 
-function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onImportPDF, onDelete }: {
+function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy, onImportPDF, onDelete, onLeave }: {
   book: Book
   view: 'grid' | 'list'
+  collaborating: boolean
   menuOpen: boolean
   setMenuOpen: (open: boolean) => void
   onCopy: () => void
   onImportPDF: () => void
   onDelete: () => void
+  onLeave: () => void
 }) {
   const detailUrl = `/book/detail/${encodeURIComponent(book.slug)}`
 
@@ -407,37 +449,46 @@ function BookCardMine({ book, view, menuOpen, setMenuOpen, onCopy, onImportPDF, 
         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
         <EyeIcon className="h-4 w-4 text-slate-400" /> 查看详情
       </Link>
-      <Link role="menuitem" href={`/book/settings/${encodeURIComponent(book.slug)}`} onClick={() => setMenuOpen(false)}
-        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-        <GearIcon className="h-4 w-4 text-slate-400" /> 书籍设置
-      </Link>
-      <button role="menuitem" onClick={() => { setMenuOpen(false); onImportPDF() }}
-        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-        <i className="fa-solid fa-file-pdf w-4 text-center text-slate-400" aria-hidden="true" /> 导入 PDF
-      </button>
+      {!collaborating && <>
+        <Link role="menuitem" href={`/book/settings/${encodeURIComponent(book.slug)}`} onClick={() => setMenuOpen(false)}
+          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+          <GearIcon className="h-4 w-4 text-slate-400" /> 书籍设置
+        </Link>
+        <button role="menuitem" onClick={() => { setMenuOpen(false); onImportPDF() }}
+          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+          <i className="fa-solid fa-file-pdf w-4 text-center text-slate-400" aria-hidden="true" /> 导入 PDF
+        </button>
+      </>}
       <button role="menuitem" onClick={onCopy}
         className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
         <LinkIcon2 className="h-4 w-4 text-slate-400" /> 复制访问链接
       </button>
       <div className="my-1 border-t border-slate-100" />
-      <button role="menuitem" onClick={() => { setMenuOpen(false); onDelete() }}
+      <button role="menuitem" onClick={() => { setMenuOpen(false); collaborating ? onLeave() : onDelete() }}
         className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50">
-        <TrashIcon className="h-4 w-4" /> 移入回收站
+        {collaborating ? <i className="fa-solid fa-arrow-right-from-bracket w-4 text-center" aria-hidden="true" /> : <TrashIcon className="h-4 w-4" />}
+        {collaborating ? '退出协作' : '移入回收站'}
       </button>
     </DropdownMenu>
   )
 
   // 写作操作行：继续/开始写作 + 章节列表 + 书籍设置。
   // grid 走底部 actions 槽（统一卡片自带分隔线）；list 走右侧栏（含 menu）。
-  const actions = view === 'grid' ? <ActionRow book={book} menu={null} /> : <ActionRow book={book} menu={menu} />
+  const actions = view === 'grid'
+    ? <ActionRow book={book} menu={null} canManage={!collaborating} canEdit={!collaborating || book.collaborator_role === 'editor'} />
+    : <ActionRow book={book} menu={menu} canManage={!collaborating} canEdit={!collaborating || book.collaborator_role === 'editor'} />
 
   return (
     <BookCard
       book={book}
       view={view}
-      showAuthor={false}
+      showAuthor={collaborating}
       showStatus
-      showVisibility
+      showVisibility={!collaborating}
+      badge={collaborating ? <>
+        <Badge tone="slate">协作可见</Badge>
+        <Badge tone={book.collaborator_role === 'editor' ? 'emerald' : 'sky'}>{book.collaborator_role === 'editor' ? '编辑者' : '访问者'}</Badge>
+      </> : undefined}
       tagsMax={3}
       tagsLink={false}
       meta={metaSlot}
@@ -484,32 +535,32 @@ function PDFImportDialog({ book, onClose, onImported }: { book: Book; onClose: (
   )
 }
 
-function ActionRow({ book, menu }: { book: Book; menu: React.ReactNode }) {
+function ActionRow({ book, menu, canManage, canEdit }: { book: Book; menu: React.ReactNode; canManage: boolean; canEdit: boolean }) {
   const isNew = !book.description
   const [chaptersOpen, setChaptersOpen] = useState(false)
   return (
     <div className="flex items-center justify-between">
-      <Link href={`/book/writer/${encodeURIComponent(book.slug)}`} className="text-sm font-medium text-primary-600 hover:underline">
-        {isNew ? '开始写作' : '继续写作'}
+      <Link href={canEdit ? `/book/writer/${encodeURIComponent(book.slug)}` : `/book/detail/${encodeURIComponent(book.slug)}`} className="text-sm font-medium text-primary-600 hover:underline">
+        {canEdit ? (isNew ? '开始写作' : '继续写作') : '查看书籍'}
       </Link>
       <div className="relative flex items-center gap-1">
         <Tooltip content="章节列表"><button type="button" onClick={() => setChaptersOpen(!chaptersOpen)}
           className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${chaptersOpen ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}>
             <FileTextIcon className="h-4 w-4" />
           </button></Tooltip>
-        <Tooltip content="书籍设置"><Link href={`/book/settings/${encodeURIComponent(book.slug)}`}
+        {canManage && <Tooltip content="书籍设置"><Link href={`/book/settings/${encodeURIComponent(book.slug)}`}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
             <GearIcon className="h-4 w-4" />
-          </Link></Tooltip>
+          </Link></Tooltip>}
         {menu}
-        {chaptersOpen && <ChapterPanel book={book} onClose={() => setChaptersOpen(false)} />}
+        {chaptersOpen && <ChapterPanel book={book} canEdit={canEdit} onClose={() => setChaptersOpen(false)} />}
       </div>
     </div>
   )
 }
 
 // ChapterPanel 书籍章节弹出列表：懒加载文档树，点击进阅读，铅笔进编辑
-function ChapterPanel({ book, onClose }: { book: Book; onClose: () => void }) {
+function ChapterPanel({ book, canEdit, onClose }: { book: Book; canEdit: boolean; onClose: () => void }) {
   const [docs, setDocs] = useState<Document[] | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -540,17 +591,17 @@ function ChapterPanel({ book, onClose }: { book: Book; onClose: () => void }) {
                 <FileTextIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                 <span className="truncate">{book.chapter_prefix}{row.doc.title}</span>
               </Link>
-              <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${row.doc.slug}`} onClick={onClose}
+              {canEdit && <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${row.doc.slug}`} onClick={onClose}
                 className="shrink-0 text-slate-300 transition-colors hover:text-primary-600">
                 <PencilIcon className="h-3.5 w-3.5" />
-              </Link>
+              </Link>}
             </div>
           ))}
         </div>
-        <div className="border-t border-slate-100 px-4 py-2">
+        {canEdit && <div className="border-t border-slate-100 px-4 py-2">
           <Link href={`/book/writer/${encodeURIComponent(book.slug)}`} onClick={onClose}
             className="text-sm font-medium text-primary-600 hover:underline">在编辑器中管理全部章节</Link>
-        </div>
+        </div>}
       </div>
     </>
   )

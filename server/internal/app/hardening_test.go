@@ -253,12 +253,16 @@ func TestExportByCollaborator(t *testing.T) {
 		"title": "导出之书", "status": "published", "is_public": true,
 	}, aliceToken)
 	bookID := int(book["data"].(map[string]any)["id"].(float64))
-	request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", bookID), map[string]any{
+	_, bobInvite := request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", bookID), map[string]any{
 		"username": "bob", "role": "editor",
 	}, aliceToken)
-	request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", bookID), map[string]any{
+	_, carolInvite := request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/collaborators", bookID), map[string]any{
 		"username": "carol", "role": "viewer",
 	}, aliceToken)
+	bobInviteID := int(bobInvite["data"].(map[string]any)["id"].(float64))
+	carolInviteID := int(carolInvite["data"].(map[string]any)["id"].(float64))
+	request(http.MethodPost, fmt.Sprintf("/api/v1/collaboration/invitations/%d/accept", bobInviteID), nil, bobToken)
+	request(http.MethodPost, fmt.Sprintf("/api/v1/collaboration/invitations/%d/accept", carolInviteID), nil, carolToken)
 
 	// viewer 导出 → 403；editor 导出 → 200 zip
 	status, _ = request(http.MethodGet, fmt.Sprintf("/api/v1/books/%d/export", bookID), nil, carolToken)

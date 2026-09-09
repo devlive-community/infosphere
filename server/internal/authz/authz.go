@@ -54,6 +54,7 @@ const (
 	// 协作与团队
 	CollaboratorRead   Permission = "collaborator:read"   // 查看书籍协作者列表
 	CollaboratorCreate Permission = "collaborator:create" // 添加/更新协作者（仅书籍所有者）
+	CollaboratorUpdate Permission = "collaborator:update" // 接受或拒绝发给自己的协作邀请
 	CollaboratorDelete Permission = "collaborator:delete" // 移除协作者（所有者；协作者可自行退出）
 
 	// 点赞/收藏
@@ -107,7 +108,7 @@ var All = []Permission{
 	SearchRead,
 	AuthOauth, AuthPasswordReset,
 	NotificationRead, NotificationUpdate,
-	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
+	CollaboratorRead, CollaboratorCreate, CollaboratorUpdate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	ReadingProgressRead, ReadingProgressUpdate,
@@ -129,7 +130,7 @@ var userPermissions = []Permission{
 	SearchRead,
 	AuthOauth, AuthPasswordReset,
 	NotificationRead, NotificationUpdate,
-	CollaboratorRead, CollaboratorCreate, CollaboratorDelete,
+	CollaboratorRead, CollaboratorCreate, CollaboratorUpdate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	ReadingProgressRead, ReadingProgressUpdate,

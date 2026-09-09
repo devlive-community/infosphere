@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Button, EmptyState, Loading, Pagination } from '@/components/ui'
+import { Badge, Button, EmptyState, Loading, Pagination, useFeedback } from '@/components/ui'
 import { BellIcon, FileTextIcon, HeartIcon, UsersIcon, InfoCircleIcon } from '@/components/icons'
 import Seo from '@/components/Seo'
+import type { CollaborationInvitation } from '@/lib/types'
 
 interface NotificationItem {
   id: number
@@ -31,6 +32,7 @@ function typeIcon(type: string) {
 
 // 通知中心：完整的通知列表（分页 + 未读筛选），铃铛下拉只展示最近 10 条
 export default function NotificationsPage() {
+  const { showToast } = useFeedback()
   const { site } = useApp()
   const siteName = site.site_name || 'InfoSphere'
   const user = useRequireAuth()
@@ -42,6 +44,9 @@ export default function NotificationsPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [invitations, setInvitations] = useState<CollaborationInvitation[]>([])
+  const [invitationLoading, setInvitationLoading] = useState(true)
+  const [workingInvitation, setWorkingInvitation] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     if (!user) return
@@ -63,6 +68,15 @@ export default function NotificationsPage() {
   }, [user, page, tab])
 
   useEffect(() => { load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [page, tab])
+
+  useEffect(() => {
+    if (!user) return
+    setInvitationLoading(true)
+    api<{ invitations: CollaborationInvitation[] }>('/collaboration/invitations')
+      .then((data) => setInvitations(data.invitations || []))
+      .catch((e) => showToast({ title: '邀请加载失败', message: (e as Error).message, tone: 'error' }))
+      .finally(() => setInvitationLoading(false))
+  }, [user, showToast])
 
   if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
 
@@ -89,6 +103,23 @@ export default function NotificationsPage() {
     if (n.payload?.link) router.push(n.payload.link)
   }
 
+  async function respondInvitation(invitation: CollaborationInvitation, action: 'accept' | 'reject') {
+    setWorkingInvitation(invitation.id)
+    try {
+      await api(`/collaboration/invitations/${invitation.id}/${action}`, { method: 'POST' })
+      setInvitations((items) => items.filter((item) => item.id !== invitation.id))
+      showToast({
+        title: action === 'accept' ? '已加入协作' : '已拒绝邀请',
+        message: action === 'accept' ? `现在可以访问《${invitation.book_title}》了` : '该邀请已从待处理列表移除',
+        tone: action === 'accept' ? 'success' : 'info',
+      })
+    } catch (e) {
+      showToast({ title: '处理邀请失败', message: (e as Error).message, tone: 'error' })
+    } finally {
+      setWorkingInvitation(null)
+    }
+  }
+
   return (
     <>
       <Seo siteName={siteName} title="通知中心" noindex />
@@ -108,7 +139,42 @@ export default function NotificationsPage() {
           </div>
         </div>
 
-        <div className="mt-6">
+        <section className="mt-6" aria-labelledby="collaboration-invitations-title">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 id="collaboration-invitations-title" className="text-sm font-semibold text-slate-800">待确认的协作邀请</h2>
+            {!invitationLoading && invitations.length > 0 && <Badge tone="primary">{invitations.length} 个待处理</Badge>}
+          </div>
+          {invitationLoading ? (
+            <Loading className="rounded-xl border border-slate-200 bg-white py-8" label="正在加载协作邀请…" />
+          ) : invitations.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-5 text-sm text-slate-400">当前没有待确认的协作邀请</div>
+          ) : (
+            <ul className="space-y-3">
+              {invitations.map((invitation) => (
+                <li key={invitation.id} className="rounded-xl border border-primary-100 bg-primary-50/40 p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-primary-700">
+                        <UsersIcon className="h-4 w-4" />
+                        <span className="text-sm font-semibold">{invitation.inviter_username || '书籍管理员'}邀请你协作</span>
+                      </div>
+                      <p className="mt-2 truncate font-medium text-slate-900">《{invitation.book_title}》</p>
+                      <p className="mt-1 text-xs text-slate-500">角色：{invitation.role === 'editor' ? '编辑者，可管理章节内容' : '访问者，可阅读书籍内容'}</p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <Button variant="ghost" size="sm" disabled={workingInvitation === invitation.id}
+                        onClick={() => respondInvitation(invitation, 'reject')}>拒绝</Button>
+                      <Button size="sm" loading={workingInvitation === invitation.id}
+                        onClick={() => respondInvitation(invitation, 'accept')}>接受邀请</Button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <div className="mt-8">
           {loading ? (
             <Loading className="py-16" />
           ) : error ? (
