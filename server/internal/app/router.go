@@ -260,6 +260,9 @@ func (a *App) Router() *gin.Engine {
 			admin.POST("/admin/plugins/:key/install", a.RequirePermission(authz.PluginManage), a.AdminInstallPlugin)
 			admin.POST("/admin/plugins/:key/uninstall", a.RequirePermission(authz.PluginManage), a.AdminUninstallPlugin)
 		}
+
+		// 插件操作日志 SSE（自行按 query token 鉴权，EventSource 无法带请求头）
+		api.GET("/admin/plugins/:key/logs", a.AdminPluginLogs)
 	}
 
 	RegisterWeb(r, a.web)

@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"infosphere/server/internal/auth"
+	"infosphere/server/internal/authz"
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/models"
 
@@ -160,15 +162,19 @@ func (a *App) runPluginInstall(p *models.Plugin, gen int64) {
 		}
 		a.savePluginMeta(p, meta)
 	}
+	logf := func(level, text string) { a.plugins.log(key, level, text) }
 	fail := func(reason string) {
+		logf("error", reason)
 		save(map[string]any{"status": "failed", "error": reason})
 	}
 
+	logf("info", "开始安装：解析 chrome-headless-shell 下载地址…")
 	version, url, err := resolveChromeDownload()
 	if err != nil {
 		fail("解析下载地址失败: " + err.Error())
 		return
 	}
+	logf("info", "已解析版本 "+version+"，开始下载…")
 	dir := pluginDir(pluginPDFExport)
 	_ = os.RemoveAll(dir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -180,6 +186,7 @@ func (a *App) runPluginInstall(p *models.Plugin, gen int64) {
 		fail("下载失败: " + err.Error())
 		return
 	}
+	logf("info", "下载完成，正在解压…")
 	chromeRoot := filepath.Join(dir, "chrome")
 	if err := unzipTo(zipPath, chromeRoot); err != nil {
 		fail("解压失败: " + err.Error())
@@ -193,6 +200,7 @@ func (a *App) runPluginInstall(p *models.Plugin, gen int64) {
 		return
 	}
 	_ = os.Chmod(binPath, 0o755)
+	logf("info", "正在校验可执行文件…")
 	if out, err := exec.Command(binPath, "--version").CombinedOutput(); err != nil {
 		fail("chrome-headless-shell 自检失败: " + strings.TrimSpace(string(out)))
 		return
@@ -200,6 +208,7 @@ func (a *App) runPluginInstall(p *models.Plugin, gen int64) {
 
 	// 若已被卸载则不落库，并清理刚下载的文件
 	if !a.plugins.current(key, gen) {
+		logf("error", "安装已被取消，清理下载文件")
 		_ = os.RemoveAll(dir)
 		return
 	}
@@ -208,6 +217,7 @@ func (a *App) runPluginInstall(p *models.Plugin, gen int64) {
 	p.Version = version
 	p.InstalledAt = &now
 	save(map[string]any{"status": "installed", "chrome_path": binPath})
+	logf("success", "安装完成：版本 "+version)
 }
 
 // findChromeBinary 在解压目录中递归查找 chrome-headless-shell 可执行文件
@@ -325,7 +335,68 @@ func (a *App) AdminUninstallPlugin(c *gin.Context) {
 	}
 	// 递增代次，使任何进行中的安装 goroutine 的后续写入全部失效，避免卸载后被重新写回
 	a.plugins.begin(key)
+	a.plugins.log(key, "info", "开始卸载：清理下载文件…")
 	_ = os.RemoveAll(pluginDir(key))
 	a.DB.Where("key = ?", key).Delete(&models.Plugin{})
+	a.plugins.log(key, "success", "已卸载")
 	ok(c, gin.H{"message": "已卸载"})
+}
+
+// AdminPluginLogs GET /admin/plugins/:key/logs SSE 推送插件安装/卸载日志
+func (a *App) AdminPluginLogs(c *gin.Context) {
+	key := c.Param("key")
+	if pluginInfoByKey(key) == nil {
+		fail(c, http.StatusNotFound, "插件不存在")
+		return
+	}
+	// EventSource 无法带请求头，令牌经 query 传入
+	token := c.Query("token")
+	if header := c.GetHeader("Authorization"); token == "" && len(header) > 7 {
+		token = header[7:]
+	}
+	claims, err := auth.ParseToken(a.Config.Secret, token)
+	if err != nil {
+		fail(c, http.StatusUnauthorized, "令牌无效")
+		return
+	}
+	var user models.User
+	if err := a.DB.First(&user, claims.UserID).Error; err != nil || !user.IsActive || !authz.Has(user.Role, authz.PluginManage) {
+		fail(c, http.StatusUnauthorized, "令牌无效")
+		return
+	}
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.WriteHeader(http.StatusOK)
+	flusher, canFlush := c.Writer.(http.Flusher)
+	if !canFlush {
+		return
+	}
+
+	history, ch := a.plugins.subscribe(key)
+	defer a.plugins.unsubscribe(key, ch)
+	send := func(line pluginLogLine) {
+		raw, _ := json.Marshal(line)
+		fmt.Fprintf(c.Writer, "data: %s\n\n", raw)
+		flusher.Flush()
+	}
+	for _, line := range history {
+		send(line)
+	}
+
+	heartbeat := time.NewTicker(25 * time.Second)
+	defer heartbeat.Stop()
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case line := <-ch:
+			send(line)
+		case <-heartbeat.C:
+			fmt.Fprint(c.Writer, ": ping\n\n")
+			flusher.Flush()
+		}
+	}
 }
