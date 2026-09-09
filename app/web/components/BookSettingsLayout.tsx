@@ -7,7 +7,7 @@ import { GearIcon, UsersIcon, DownloadIcon, ExternalLinkIcon, PencilIcon, ListIc
 import { ButtonLink } from '@/components/ui'
 import type { Book } from '@/lib/types'
 
-export type BookSettingsTab = 'basic' | 'chapters' | 'analytics' | 'collaborators' | 'data' | 'danger'
+export type BookSettingsTab = 'basic' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'danger'
 
 interface BookSettingsLayoutProps {
   book: Book
@@ -20,6 +20,7 @@ const NAV: { key: BookSettingsTab; label: string; icon: (p: { className?: string
   { key: 'chapters', label: '章节管理', icon: ListIcon, sub: 'chapters' },
   { key: 'analytics', label: '数据分析', icon: ({ className }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" />, sub: 'analytics' },
   { key: 'collaborators', label: '协作者', icon: UsersIcon, sub: 'collaborators' },
+  { key: 'export', label: '导出设置', icon: ({ className }) => <i className={`fa-solid fa-file-export ${className || ''}`} aria-hidden="true" />, sub: 'export' },
   { key: 'data', label: '导入导出', icon: DownloadIcon, sub: 'data' },
   { key: 'danger', label: '危险区', icon: TrashIcon, sub: 'danger', danger: true },
 ]
