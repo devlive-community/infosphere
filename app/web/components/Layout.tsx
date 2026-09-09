@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useState, useRef, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/router'
 import Container from '@/components/Container'
-import { ListBulletIcon, BookIcon, TrashIcon, UserCircleIcon, GridIcon, LogOutIcon } from '@/components/icons'
+import { ListBulletIcon, BookIcon, TrashIcon, UserCircleIcon, GridIcon, LogOutIcon, CloseIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
 import { ButtonLink, Input } from '@/components/ui'
@@ -98,6 +98,7 @@ export default function Layout({ title, children }: { title?: string; children: 
   const { site, user } = useApp()
   const siteName = site.site_name || 'InfoSphere'
   const year = new Date().getFullYear()
+  const [showReleaseModal, setShowReleaseModal] = useState(false)
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip">
       <Head>
@@ -156,10 +157,52 @@ export default function Layout({ title, children }: { title?: string; children: 
         <div className="border-t border-white/10">
           <div className="mx-auto flex flex-col justify-between gap-2 px-4 py-4 text-xs text-slate-400 md:flex-row" style={{ maxWidth: 'var(--content-max-width)' }}>
             <span>© {year} {siteName} · Powered by InfoSphere</span>
-            <span>开源许可：MIT</span>
+            <div className="flex items-center gap-3">
+              <span>开源许可：MIT</span>
+              {site.version && (
+                <button onClick={() => setShowReleaseModal(true)} className="hover:text-white transition-colors">
+                  v{site.version}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* 发布日志 Modal */}
+      {showReleaseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowReleaseModal(false)} />
+          <div className="relative mx-4 w-full max-w-lg rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-slate-900">版本信息</h3>
+              <button onClick={() => setShowReleaseModal(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
+                  <span className="text-sm text-slate-600">当前版本</span>
+                  <span className="font-medium text-slate-900">v{site.version}</span>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-4 py-3">
+                  <p className="mb-2 text-sm font-medium text-slate-700">发布日志</p>
+                  <p className="text-sm text-slate-500">暂无详细发布日志。</p>
+                </div>
+                <a
+                  href="https://github.com/devlive-community/infosphere/releases"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  查看完整发布日志
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
