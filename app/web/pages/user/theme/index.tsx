@@ -144,11 +144,6 @@ export default function ThemeSettings() {
                   </OptionCard>
                 ))}
               </div>
-              <Preview>
-                <button className="btn-theme inline-flex items-center justify-center rounded-lg bg-primary-500 text-white shadow-sm">主要按钮</button>
-                <button className="btn-theme inline-flex items-center justify-center rounded-lg border border-primary-300 bg-white text-primary-700">次要按钮</button>
-                <span className="text-sm font-medium text-primary-600 hover:underline">链接文字</span>
-              </Preview>
             </Section>
 
             {/* 圆角弧度 */}
