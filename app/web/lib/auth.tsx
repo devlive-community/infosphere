@@ -145,9 +145,11 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
   const logout = useCallback(() => {
     clearSession()
     document.cookie = 'infosphere_token=; Max-Age=0; path=/'
+    localStorage.removeItem('infosphere_theme')
+    applyTheme(DEFAULT_THEME)
     setUser(null)
     router.push('/login')
-  }, [router])
+  }, [router, applyTheme])
 
   const refreshUser = useCallback(async () => {
     const me = await api<User>('/auth/me')
