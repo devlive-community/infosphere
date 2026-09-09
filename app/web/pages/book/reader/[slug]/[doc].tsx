@@ -12,6 +12,7 @@ import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, 
 import { saveReadingProgress } from '@/lib/reading-progress'
 import Comments from '@/components/Comments'
 import ReaderAnnotations from '@/components/ReaderAnnotations'
+import ReportButton from '@/components/ReportButton'
 import type { Book, BookAccess, Document, User } from '@/lib/types'
 
 interface ReaderProps {
@@ -294,6 +295,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                         <i className="fa-solid fa-pen-to-square text-xs" aria-hidden="true" /> 编辑
                       </Link>
                     )}
+                    <ReportButton targetType="document" targetId={doc.id} />
                   </div>
                   <hr className="my-6 border-slate-100" />
                   <ReaderAnnotations user={user} book={book} doc={doc} contentRef={contentRef} />

@@ -12,13 +12,18 @@ import {
   ActivityIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'audit' | 'settings' | 'plugins' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'reports' | 'audit' | 'settings' | 'plugins' | 'upgrade'
+
+function ReportIcon({ className }: { className?: string }) {
+  return <i className={`fa-solid fa-flag ${className || ''}`.trim()} aria-hidden="true" />
+}
 
 const NAV: { key: AdminNavKey; label: string; href: string; icon: (p: { className?: string }) => JSX.Element }[] = [
   { key: 'system', label: '系统概览', href: '/admin/system', icon: GridIcon },
   { key: 'users', label: '用户管理', href: '/admin/users', icon: UsersIcon },
   { key: 'books', label: '书籍管理', href: '/admin/books', icon: BookIcon },
   { key: 'documents', label: '章节管理', href: '/admin/documents', icon: ListBulletIcon },
+  { key: 'reports', label: '内容审核', href: '/admin/reports', icon: ReportIcon },
   { key: 'audit', label: '审计日志', href: '/admin/audit-logs', icon: ActivityIcon },
   { key: 'settings', label: '系统设置', href: '/admin/settings/site', icon: GearIcon },
   { key: 'plugins', label: '插件', href: '/admin/plugins', icon: CodeIcon },

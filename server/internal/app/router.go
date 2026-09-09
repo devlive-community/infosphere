@@ -195,6 +195,9 @@ func (a *App) Router() *gin.Engine {
 		api.PUT("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentUpdate), a.UpdateComment)
 		api.DELETE("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentDelete), a.DeleteComment)
 
+		// ── 内容举报（提交者不可查询举报人队列；管理端路由见 admin 组） ──
+		api.POST("/reports", a.RequireAuth(), a.RequirePermission(authz.ReportCreate), a.RateLimit(reportRateLimit), a.CreateContentReport)
+
 		// ── 点赞/收藏（reaction:*） ──
 		books.POST("/:id/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionCreate), a.RateLimit(reactionRateLimit), a.PutReaction)
 		books.DELETE("/:id/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionDelete), a.RateLimit(reactionRateLimit), a.DeleteReaction)
@@ -254,6 +257,8 @@ func (a *App) Router() *gin.Engine {
 			admin.GET("/admin/activity", a.RequirePermission(authz.UserManage), a.AdminActivity)
 			admin.GET("/admin/stats", a.RequirePermission(authz.StatsRead), a.AdminStats)
 			admin.GET("/admin/audit-logs", a.RequirePermission(authz.AuditRead), a.AdminListAuditLogs)
+			admin.GET("/admin/reports", a.RequirePermission(authz.ReportRead), a.AdminListContentReports)
+			admin.PUT("/admin/reports/:id", a.RequirePermission(authz.ReportUpdate), a.AdminResolveContentReport)
 
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
 			admin.GET("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminListConfigs)

@@ -157,6 +157,24 @@ type Comment struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+// ContentReport 用户对书籍、章节或评论提交的内容举报及管理员处理记录。
+type ContentReport struct {
+	ID             uint       `gorm:"primaryKey" json:"id"`
+	ReporterID     uint       `gorm:"index;not null" json:"reporter_id"`
+	TargetType     string     `gorm:"size:20;index;not null" json:"target_type"` // book | document | comment
+	TargetID       uint       `gorm:"index;not null" json:"target_id"`
+	TargetLabel    string     `gorm:"size:255;not null" json:"target_label"`
+	Reason         string     `gorm:"size:30;index;not null" json:"reason"`
+	Description    string     `gorm:"type:text" json:"description"`
+	Status         string     `gorm:"size:20;index;default:pending" json:"status"` // pending | rejected | resolved
+	Resolution     string     `gorm:"size:20" json:"resolution"`                   // reject | takedown
+	ResolutionNote string     `gorm:"type:text" json:"resolution_note"`
+	HandlerID      uint       `gorm:"index;default:0" json:"handler_id"`
+	ResolvedAt     *time.Time `json:"resolved_at"`
+	CreatedAt      time.Time  `gorm:"index" json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
 // Reaction 点赞/收藏：每用户每书一条（like 或 favorite）
 type Reaction struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
@@ -348,6 +366,7 @@ func All(db *gorm.DB) error {
 		&BookExportSetting{},
 		&UserThemeSetting{},
 		&Comment{},
+		&ContentReport{},
 		&Reaction{},
 		&Notification{},
 		&BookCollaborator{},

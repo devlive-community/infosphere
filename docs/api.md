@@ -62,6 +62,9 @@ Authorization: Bearer <token>
 | `annotation:create` | 创建自己的阅读标注、笔记和书签 | ✅ | ✅ |
 | `annotation:update` | 更新自己的阅读标注和锚点状态 | ✅ | ✅ |
 | `annotation:delete` | 删除自己的阅读标注、笔记和书签 | ✅ | ✅ |
+| `report:create` | 举报当前有权查看的书籍、章节或评论 | ✅ | ✅ |
+| `report:read` | 查看举报队列、举报人身份和处理记录 | ❌ | ✅ |
+| `report:update` | 驳回举报或下架被举报内容 | ❌ | ✅ |
 | `auth:oauth` | 管理第三方登录绑定 | ✅ | ✅ |
 | `auth:password-reset` | 申请/执行密码重置（匿名语义，端点公开） | ✅ | ✅ |
 | `notification:read` | 查看自己的通知（含 SSE 流） | ✅ | ✅ |
@@ -113,6 +116,7 @@ Authorization: Bearer <token>
 | 发布评论 | 每用户 30 次 / 分钟 |
 | 点赞、收藏及取消 | 每用户 120 次 / 分钟 |
 | 上传图片 | 每用户 20 次 / 分钟 |
+| 提交内容举报 | 每用户 20 次 / 小时 |
 
 默认不信任 `X-Forwarded-For` 等代理头。只有反向代理的地址或 CIDR 被显式配置到 `INFO_SPHERE_TRUSTED_PROXIES` 后，服务才使用其传入的客户端 IP；多个值使用英文逗号分隔。
 
@@ -314,9 +318,17 @@ Authorization: Bearer <token>
 | POST | `/notifications/read` | 标记已读：`{ids:[]}` 或 `{all:true}`，返回最新 `unread_count` | `notification:update` |
 | GET | `/notifications/stream` | SSE 实时流：连接即推 `{"unread_count":n}`，新通知实时推送；25s 心跳。**鉴权支持 `?token=`**（EventSource 无法带 Authorization 头） | `notification:read` |
 
-- 通知类型：`comment`（评论/回复）、`reaction`（点赞/收藏）、`system`（升级完成等）
+- 通知类型：`comment`（评论/回复）、`reaction`（点赞/收藏）、`collaboration`（协作邀请）、`moderation`（举报处理结果）、`system`（升级完成等）
 - `payload` 为 JSON 对象，含 `link`（点击跳转地址）等扩展字段
 - 触发规则：他人评论你的章节/回复你的评论、他人点赞/收藏你的书（重复操作不重复通知）、服务启动检测到版本变化时通知管理员
+
+## 内容举报（登录用户）
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| POST | `/reports` | 举报当前有权查看的内容：`{target_type:"book"\|"document"\|"comment",target_id,reason,description?}`；原因支持 `spam/harassment/copyright/illegal/misleading/other`；同一用户对同一目标只能存在一条待处理举报 | `report:create` |
+
+普通用户只能提交举报，无法读取队列或其他举报人的信息。目标不可见或不存在时统一返回 404；补充说明最多 1000 字。
 
 ## 导入导出（M16 / M46）
 
@@ -373,7 +385,8 @@ Authorization: Bearer <token>
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |
 | GET | `/admin/audit-logs?page=&page_size=&actor=&action=&resource_type=&from=&to=` | 分页查询管理员高风险操作；支持操作人、动作、资源类型与日期区间筛选，日期格式为 `YYYY-MM-DD` | `audit:read` |
-| GET | `/admin/audit-logs?page=&page_size=&actor=&action=&resource_type=&from=&to=` | 分页查询管理员高风险操作；支持操作人、动作、资源类型与日期区间筛选，日期格式为 `YYYY-MM-DD` | `audit:read` |
+| GET | `/admin/reports?page=&page_size=&status=&target_type=&reason=&q=` | 举报队列与处理记录；`q` 匹配目标摘要、举报人用户名或邮箱；举报人身份仅此管理员接口返回 | `report:read` |
+| PUT | `/admin/reports/:id` | 处理待审举报：`{resolution:"reject"\|"takedown",note?}`；下架会将书籍转为私有归档、章节归档或评论隐藏，并通知举报人 | `report:update` |
 | GET | `/admin/plugins` | 列出后台插件及安装状态（installed/version/status/error） | `plugin:manage` |
 | POST | `/admin/plugins/:key/install` | 后台异步安装插件（pdf-export 下载 chrome-headless-shell 到数据目录），轮询 `/admin/plugins` 看状态 | `plugin:manage` |
 | POST | `/admin/plugins/:key/uninstall` | 卸载插件并清理下载文件 | `plugin:manage` |
@@ -382,8 +395,7 @@ Authorization: Bearer <token>
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |
 
 审计日志响应项包含 `actor_id/actor_username/action/resource_type/resource_id/resource_label/summary/created_at`。`summary` 只保存脱敏变更摘要；密码、令牌、OAuth Secret、存储密钥与通用配置值不进入审计记录。
-
-审计日志响应项包含 `actor_id/actor_username/action/resource_type/resource_id/resource_label/summary/created_at`。`summary` 只保存脱敏变更摘要；密码、令牌、OAuth Secret、存储密钥与通用配置值不进入审计记录。
+举报处理统一写入 `report.resolved` 审计动作，摘要只记录目标类型、目标 ID 与处理结果，不复制举报人身份或举报正文。
 
 ---
 

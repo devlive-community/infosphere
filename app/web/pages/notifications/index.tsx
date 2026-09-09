@@ -18,13 +18,14 @@ interface NotificationItem {
 
 const PER_PAGE = 20
 
-// typeIcon 通知类型图标（comment/reaction/collaboration/system）
+// typeIcon 通知类型图标（comment/reaction/collaboration/moderation/system）
 function typeIcon(type: string) {
   const cls = 'h-4.5 w-4.5'
   switch (type) {
     case 'comment': return <FileTextIcon className={cls} />
     case 'reaction': return <HeartIcon className={cls} />
     case 'collaboration': return <UsersIcon className={cls} />
+    case 'moderation': return <i className="fa-solid fa-shield-halved" aria-hidden="true" />
     case 'system': return <InfoCircleIcon className={cls} />
     default: return <BellIcon className={cls} />
   }

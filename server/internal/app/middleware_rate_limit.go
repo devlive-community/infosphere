@@ -98,6 +98,10 @@ var (
 		Name: "upload-create", Limit: 20, Window: time.Minute, ByUser: true,
 		Message: "上传操作过于频繁，请稍后再试",
 	}
+	reportRateLimit = rateLimitPolicy{
+		Name: "report-create", Limit: 20, Window: time.Hour, ByUser: true,
+		Message: "举报提交过于频繁，请稍后再试",
+	}
 )
 
 // configureTrustedProxies 默认不信任任何转发头。部署在反向代理后时，需显式配置代理 IP/CIDR。

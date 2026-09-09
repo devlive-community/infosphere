@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import type { User } from '@/lib/types'
 import { Button, Loading, useFeedback } from '@/components/ui'
+import ReportButton from '@/components/ReportButton'
 
 interface CommentItem {
   id: number
@@ -76,6 +77,7 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
             {user?.id === comment.user_id && (
               <button onClick={() => remove(comment.id)} className="text-xs text-rose-400 hover:text-rose-600">删除</button>
             )}
+            {user?.id !== comment.user_id && <ReportButton targetType="comment" targetId={comment.id} compact />}
           </div>
           <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{comment.content}</p>
           {user && (
@@ -90,6 +92,11 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-medium text-slate-900">{r.user?.username}</span>
                       <span className="text-xs text-slate-400">{formatDate(r.created_at)}</span>
+                      {user?.id === r.user_id ? (
+                        <button onClick={() => remove(r.id)} className="text-xs text-rose-400 hover:text-rose-600">删除</button>
+                      ) : (
+                        <ReportButton targetType="comment" targetId={r.id} compact />
+                      )}
                     </div>
                     <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-700">{r.content}</p>
                   </div>

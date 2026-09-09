@@ -14,6 +14,7 @@ import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
 import BookExportButton from '@/components/BookExportButton'
+import ReportButton from '@/components/ReportButton'
 import Seo from '@/components/Seo'
 import {
   BookIcon, CalendarIcon, CheckCircleSmallIcon, ChevronRightIcon, EyeIcon,
@@ -405,6 +406,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                   <ShareIcon className="h-4 w-4" />
                 </button></Tooltip>
               <BookExportButton book={book} />
+              <ReportButton targetType="book" targetId={book.id} />
               {(canManage || canEdit) && (
                 <>
                   {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline">写作</ButtonLink>}
@@ -432,10 +434,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               </dl>
             </div>
 
-            <Link href="https://github.com/devlive-community/infosphere/issues" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-primary-600 hover:underline">
-              <HelpCircleIcon className="h-4 w-4" /> 发现内容问题？
-            </Link>
+            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+              <HelpCircleIcon className="h-4 w-4" /> 发现内容问题？请使用页面上方的举报入口。
+            </div>
           </aside>
         </section>
       </Container>

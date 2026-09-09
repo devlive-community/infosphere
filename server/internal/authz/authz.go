@@ -77,6 +77,11 @@ const (
 	CommentUpdate Permission = "comment:update" // 编辑自己的评论
 	CommentDelete Permission = "comment:delete" // 删除评论（本人或书籍作者/管理员）
 
+	// 内容举报与审核
+	ReportCreate Permission = "report:create" // 举报可见的书籍、章节或评论
+	ReportRead   Permission = "report:read"   // 管理员查看举报及举报人信息
+	ReportUpdate Permission = "report:update" // 管理员驳回或下架被举报内容
+
 	// 用户
 	UserRead   Permission = "user:read"   // 查看用户公开主页
 	UserUpdate Permission = "user:update" // 更新个人资料与密码
@@ -116,6 +121,7 @@ var All = []Permission{
 	NotificationRead, NotificationUpdate,
 	CollaboratorRead, CollaboratorCreate, CollaboratorUpdate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
+	ReportCreate, ReportRead, ReportUpdate,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	ReadingProgressRead, ReadingProgressUpdate,
 	AnnotationRead, AnnotationCreate, AnnotationUpdate, AnnotationDelete,
@@ -139,6 +145,7 @@ var userPermissions = []Permission{
 	NotificationRead, NotificationUpdate,
 	CollaboratorRead, CollaboratorCreate, CollaboratorUpdate, CollaboratorDelete,
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
+	ReportCreate,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	ReadingProgressRead, ReadingProgressUpdate,
 	AnnotationRead, AnnotationCreate, AnnotationUpdate, AnnotationDelete,
