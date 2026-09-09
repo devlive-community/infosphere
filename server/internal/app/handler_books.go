@@ -222,6 +222,7 @@ type bookPayload struct {
 	WatermarkText     *string  `json:"watermark_text"`
 	ExportEnabled     *bool    `json:"export_enabled"`
 	ExportStyleShared *bool    `json:"export_style_shared"`
+	ExportFormats     *string  `json:"export_formats"`
 	Tags              []string `json:"tags"`
 }
 
@@ -333,6 +334,9 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 	if req.ExportStyleShared != nil {
 		book.ExportStyleShared = *req.ExportStyleShared
+	}
+	if req.ExportFormats != nil {
+		book.ExportFormats = normalizeExportFormats(*req.ExportFormats)
 	}
 
 	for i := 0; i < 50; i++ {
@@ -465,6 +469,9 @@ func (a *App) UpdateBook(c *gin.Context) {
 	}
 	if req.ExportStyleShared != nil {
 		book.ExportStyleShared = *req.ExportStyleShared
+	}
+	if req.ExportFormats != nil {
+		book.ExportFormats = normalizeExportFormats(*req.ExportFormats)
 	}
 	if req.Slug != nil && *req.Slug != book.Slug {
 		if !validSlug(*req.Slug) {

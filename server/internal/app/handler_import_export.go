@@ -55,7 +55,7 @@ func (a *App) rewriteUploadsToLocal(content string) (string, map[string][]byte) 
 	return out, files
 }
 
-// ExportBook GET /books/:id/export?format=markdown 导出书籍为 zip
+// ExportBook GET /books/:id/export?format=markdown 导出书籍为 zip（作者/协作者）
 func (a *App) ExportBook(c *gin.Context) {
 	book, status := a.findBook(c)
 	if book == nil {
@@ -66,7 +66,11 @@ func (a *App) ExportBook(c *gin.Context) {
 		fail(c, http.StatusForbidden, "无权导出该书籍")
 		return
 	}
+	a.writeBookMarkdownZip(c, book)
+}
 
+// writeBookMarkdownZip 打包书籍为 markdown zip 并写入响应（鉴权由调用方负责）
+func (a *App) writeBookMarkdownZip(c *gin.Context, book *models.Book) {
 	buf := &bytes.Buffer{}
 	w := zip.NewWriter(buf)
 

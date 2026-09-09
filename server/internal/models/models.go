@@ -118,7 +118,9 @@ type Book struct {
 	// ExportEnabled 作者是否允许他人导出本书（公开书籍生效；作者/协作者不受限）
 	ExportEnabled bool `gorm:"default:true" json:"export_enabled"`
 	// ExportStyleShared 作者是否共享自己的导出样式：开启后他人导出本书可选用作者样式，否则只能用自己的
-	ExportStyleShared bool           `gorm:"default:false" json:"export_style_shared"`
+	ExportStyleShared bool `gorm:"default:false" json:"export_style_shared"`
+	// ExportFormats 逗号分隔的允许导出格式（pdf,markdown）；空表示全部格式可用
+	ExportFormats     string         `gorm:"size:100;default:''" json:"export_formats"`
 	User              *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Tags              []Tag          `gorm:"many2many:book_tags" json:"tags,omitempty"`
 	CreatedAt         time.Time      `json:"created_at"`

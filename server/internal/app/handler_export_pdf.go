@@ -60,11 +60,12 @@ func (a *App) ExportBookPDF(c *gin.Context) {
 	}
 	u := currentUser(c)
 
-	// 鉴权：作者/协作者/管理员始终可导出；否则要求书籍处于可公开阅读状态且作者开启导出
-	canExport := a.canEditBookContent(u, book) ||
-		(book.IsPublic && isPubliclyReadableBookStatus(book.Status) && book.ExportEnabled)
-	if !canExport {
+	if !a.canExportBook(u, book) {
 		fail(c, http.StatusForbidden, "该书籍未开放导出")
+		return
+	}
+	if !formatAllowed(book, "pdf") {
+		fail(c, http.StatusForbidden, "作者未开放 PDF 导出")
 		return
 	}
 

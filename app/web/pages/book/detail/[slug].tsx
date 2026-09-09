@@ -13,6 +13,7 @@ import { Button, ButtonLink, Tooltip, Loading, useFeedback } from '@/components/
 import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
+import BookExportButton from '@/components/BookExportButton'
 import Seo from '@/components/Seo'
 import {
   BookIcon, CalendarIcon, CheckCircleSmallIcon, ChevronRightIcon, EyeIcon,
@@ -403,6 +404,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
                   <ShareIcon className="h-4 w-4" />
                 </button></Tooltip>
+              <BookExportButton book={book} />
               {(canManage || canEdit) && (
                 <>
                   {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline">写作</ButtonLink>}
