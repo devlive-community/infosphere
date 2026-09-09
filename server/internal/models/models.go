@@ -50,6 +50,19 @@ type SiteConfig struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// AuditLog 管理员高风险操作审计记录。Summary 仅保存脱敏后的 JSON 变更摘要。
+type AuditLog struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	ActorID       uint      `gorm:"index;not null" json:"actor_id"`
+	ActorUsername string    `gorm:"size:50;index;not null" json:"actor_username"`
+	Action        string    `gorm:"size:80;index;not null" json:"action"`
+	ResourceType  string    `gorm:"size:50;index;not null" json:"resource_type"`
+	ResourceID    string    `gorm:"size:100;index;not null" json:"resource_id"`
+	ResourceLabel string    `gorm:"size:255" json:"resource_label"`
+	Summary       string    `gorm:"type:text;not null" json:"-"`
+	CreatedAt     time.Time `gorm:"index;not null" json:"created_at"`
+}
+
 // Notification 站内通知（M13）
 type Notification struct {
 	ID        uint       `gorm:"primaryKey" json:"id"`
@@ -247,6 +260,7 @@ func All(db *gorm.DB) error {
 		&User{},
 		&UserAuthentication{},
 		&SiteConfig{},
+		&AuditLog{},
 		&Book{},
 		&Document{},
 		&DocumentRevision{},

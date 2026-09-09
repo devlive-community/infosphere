@@ -105,7 +105,9 @@ func (a *App) AdminSaveStorage(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	fields := []string{}
 	if req.Driver != nil {
+		fields = append(fields, "driver")
 		driver := *req.Driver
 		if !storageDrivers[driver] {
 			fail(c, http.StatusBadRequest, "存储驱动必须为 local 或 qiniu")
@@ -130,6 +132,7 @@ func (a *App) AdminSaveStorage(c *gin.Context) {
 		if item.value == nil {
 			continue
 		}
+		fields = append(fields, item.key)
 		if (item.key == "qiniu_domain" || item.key == "qiniu_upload_host") && strings.TrimSpace(*item.value) != "" &&
 			!strings.HasPrefix(*item.value, "http://") && !strings.HasPrefix(*item.value, "https://") {
 			fail(c, http.StatusBadRequest, item.desc+"必须以 http(s):// 开头")
@@ -140,5 +143,6 @@ func (a *App) AdminSaveStorage(c *gin.Context) {
 			return
 		}
 	}
+	a.recordAudit(c, "storage.updated", "config", "storage", "存储配置", map[string]any{"changed_fields": fields})
 	ok(c, gin.H{"message": "已保存"})
 }

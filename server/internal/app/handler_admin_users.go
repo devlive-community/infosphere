@@ -97,11 +97,17 @@ func (a *App) AdminUpdateUserRole(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "至少需保留一位启用状态的管理员")
 		return
 	}
+	oldRole := u.Role
 	if err := a.DB.Model(u).Update("role", req.Role).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败")
 		return
 	}
 	u.Role = req.Role
+	if oldRole != req.Role {
+		a.recordAudit(c, "user.role_updated", "user", auditID(u.ID), u.Username, map[string]any{
+			"role": map[string]any{"from": oldRole, "to": req.Role},
+		})
+	}
 	ok(c, u)
 }
 
@@ -122,11 +128,17 @@ func (a *App) AdminUpdateUserStatus(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "至少需保留一位启用状态的管理员")
 		return
 	}
+	oldStatus := u.IsActive
 	if err := a.DB.Model(u).Update("is_active", *req.IsActive).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败")
 		return
 	}
 	u.IsActive = *req.IsActive
+	if oldStatus != *req.IsActive {
+		a.recordAudit(c, "user.status_updated", "user", auditID(u.ID), u.Username, map[string]any{
+			"is_active": map[string]any{"from": oldStatus, "to": *req.IsActive},
+		})
+	}
 	ok(c, u)
 }
 
@@ -146,5 +158,6 @@ func (a *App) AdminDeleteUser(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "删除失败")
 		return
 	}
+	a.recordAudit(c, "user.deleted", "user", auditID(u.ID), u.Username, changedFields("account_deleted"))
 	ok(c, gin.H{"message": "已删除"})
 }

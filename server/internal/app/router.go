@@ -234,6 +234,7 @@ func (a *App) Router() *gin.Engine {
 			// 控制台首页时间线（user:manage，仅管理员）：最近注册用户 + 最近建书（不限可见性）
 			admin.GET("/admin/activity", a.RequirePermission(authz.UserManage), a.AdminActivity)
 			admin.GET("/admin/stats", a.RequirePermission(authz.StatsRead), a.AdminStats)
+			admin.GET("/admin/audit-logs", a.RequirePermission(authz.AuditRead), a.AdminListAuditLogs)
 
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
 			admin.GET("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminListConfigs)

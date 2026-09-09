@@ -104,6 +104,11 @@ func (a *App) UpdateSiteConfig(c *gin.Context) {
 			return
 		}
 	}
+	fields := make([]string, 0, len(updates))
+	for key := range updates {
+		fields = append(fields, key)
+	}
+	a.recordAudit(c, "site.updated", "site", "public", "公开站点配置", map[string]any{"changed_fields": fields})
 	ok(c, gin.H{"message": "已保存"})
 }
 

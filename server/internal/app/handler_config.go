@@ -76,15 +76,29 @@ func (a *App) AdminUpsertConfig(c *gin.Context) {
 		return
 	}
 	var cfg models.SiteConfig
+	created := false
 	if err := a.DB.Where("config_key = ?", req.Key).First(&cfg).Error; err != nil {
 		cfg = models.SiteConfig{ConfigKey: req.Key}
+		created = true
 	}
+	valueChanged := created || cfg.ConfigValue != req.Value
+	descriptionChanged := created || cfg.Description != req.Description
 	cfg.ConfigValue = req.Value
 	cfg.Description = req.Description
 	if err := a.DB.Save(&cfg).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
 	}
+	fields := []string{}
+	if valueChanged {
+		fields = append(fields, "value")
+	}
+	if descriptionChanged {
+		fields = append(fields, "description")
+	}
+	a.recordAudit(c, "config.updated", "config", cfg.ConfigKey, cfg.ConfigKey, map[string]any{
+		"created": created, "changed_fields": fields,
+	})
 	ok(c, configItem{
 		Key:         cfg.ConfigKey,
 		Value:       cfg.ConfigValue,
@@ -101,9 +115,15 @@ func (a *App) AdminDeleteConfig(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "该配置为系统关键项，禁止删除")
 		return
 	}
-	if err := a.DB.Where("config_key = ?", key).Delete(&models.SiteConfig{}).Error; err != nil {
+	result := a.DB.Where("config_key = ?", key).Delete(&models.SiteConfig{})
+	if result.Error != nil {
 		fail(c, http.StatusInternalServerError, "删除失败")
 		return
 	}
+	if result.RowsAffected == 0 {
+		fail(c, http.StatusNotFound, "配置不存在")
+		return
+	}
+	a.recordAudit(c, "config.deleted", "config", key, key, changedFields("config_deleted"))
 	ok(c, gin.H{"message": "已删除"})
 }

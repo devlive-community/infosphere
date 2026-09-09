@@ -229,6 +229,9 @@ func (a *App) SystemUpgrade(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "替换二进制失败: "+err.Error())
 		return
 	}
+	a.recordAudit(c, "system.upgraded", "system", "infosphere", "InfoSphere", map[string]any{
+		"from_version": Version, "to_version": expectedVersion,
+	})
 
 	// 2. 响应后延迟重启唯一的 InfoSphere 服务。新二进制已同时包含
 	// Go API、Next.js standalone 与 Node.js 运行时。

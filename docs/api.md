@@ -69,6 +69,7 @@ Authorization: Bearer <token>
 | `book:import` | 从 zip、PDF 或网页导入书籍（成为导入者的私有草稿） | ✅ | ✅ |
 | `site:update` | 更新站点配置 | ❌ | ✅ |
 | `config:manage` | 管理任意系统配置键值对 | ❌ | ✅ |
+| `audit:read` | 查看管理员高风险操作审计日志 | ❌ | ✅ |
 | `stats:read` | 读取站点统计 | ✅ | ✅ |
 | `upload:create` | 上传图片 | ✅ | ✅ |
 | `system:read` | 查看系统版本信息 | ❌ | ✅ |
@@ -349,12 +350,18 @@ Authorization: Bearer <token>
 | GET | `/admin/documents?page=&page_size=&q=&book_id=&status=&sort=` | 分页查询全站章节元数据（不返回正文）；`q` 匹配章节标题/slug/书名/作者，支持按书籍、状态及创建/更新/浏览量排序 | `document:read` + 管理员 |
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |
+| GET | `/admin/audit-logs?page=&page_size=&actor=&action=&resource_type=&from=&to=` | 分页查询管理员高风险操作；支持操作人、动作、资源类型与日期区间筛选，日期格式为 `YYYY-MM-DD` | `audit:read` |
+| GET | `/admin/audit-logs?page=&page_size=&actor=&action=&resource_type=&from=&to=` | 分页查询管理员高风险操作；支持操作人、动作、资源类型与日期区间筛选，日期格式为 `YYYY-MM-DD` | `audit:read` |
 | GET | `/admin/plugins` | 列出后台插件及安装状态（installed/version/status/error） | `plugin:manage` |
 | POST | `/admin/plugins/:key/install` | 后台异步安装插件（pdf-export 下载 chrome-headless-shell 到数据目录），轮询 `/admin/plugins` 看状态 | `plugin:manage` |
 | POST | `/admin/plugins/:key/uninstall` | 卸载插件并清理下载文件 | `plugin:manage` |
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |
+
+审计日志响应项包含 `actor_id/actor_username/action/resource_type/resource_id/resource_label/summary/created_at`。`summary` 只保存脱敏变更摘要；密码、令牌、OAuth Secret、存储密钥与通用配置值不进入审计记录。
+
+审计日志响应项包含 `actor_id/actor_username/action/resource_type/resource_id/resource_label/summary/created_at`。`summary` 只保存脱敏变更摘要；密码、令牌、OAuth Secret、存储密钥与通用配置值不进入审计记录。
 
 ---
 

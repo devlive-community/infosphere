@@ -9,15 +9,17 @@ import { Loading } from '@/components/ui'
 import {
   GridIcon, GearIcon, UsersIcon, CloudIcon, BookIcon, CodeIcon,
   SearchIcon, ArrowLeftIcon, ChevronDownIcon, ListBulletIcon,
+  ActivityIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'settings' | 'plugins' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'audit' | 'settings' | 'plugins' | 'upgrade'
 
 const NAV: { key: AdminNavKey; label: string; href: string; icon: (p: { className?: string }) => JSX.Element }[] = [
   { key: 'system', label: '系统概览', href: '/admin/system', icon: GridIcon },
   { key: 'users', label: '用户管理', href: '/admin/users', icon: UsersIcon },
   { key: 'books', label: '书籍管理', href: '/admin/books', icon: BookIcon },
   { key: 'documents', label: '章节管理', href: '/admin/documents', icon: ListBulletIcon },
+  { key: 'audit', label: '审计日志', href: '/admin/audit-logs', icon: ActivityIcon },
   { key: 'settings', label: '系统设置', href: '/admin/settings/site', icon: GearIcon },
   { key: 'plugins', label: '插件', href: '/admin/plugins', icon: CodeIcon },
   { key: 'upgrade', label: '版本更新', href: '/admin/upgrade', icon: CloudIcon },

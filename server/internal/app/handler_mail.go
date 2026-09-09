@@ -42,7 +42,9 @@ func (a *App) AdminSaveMail(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	fields := []string{}
 	if req.Driver != nil {
+		fields = append(fields, "driver")
 		driver := *req.Driver
 		if !mailDrivers[driver] {
 			fail(c, http.StatusBadRequest, "发信驱动必须为 log 或 smtp")
@@ -54,12 +56,14 @@ func (a *App) AdminSaveMail(c *gin.Context) {
 		}
 	}
 	if req.Host != nil {
+		fields = append(fields, "host")
 		if err := a.setSetting("smtp_host", *req.Host, "SMTP 主机"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
 	if req.Port != nil {
+		fields = append(fields, "port")
 		if *req.Port < 0 || *req.Port > 65535 {
 			fail(c, http.StatusBadRequest, "SMTP 端口不合法")
 			return
@@ -70,28 +74,33 @@ func (a *App) AdminSaveMail(c *gin.Context) {
 		}
 	}
 	if req.Username != nil {
+		fields = append(fields, "username")
 		if err := a.setSetting("smtp_username", *req.Username, "SMTP 用户名"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
 	if req.Password != nil {
+		fields = append(fields, "password")
 		if err := a.setSetting("smtp_password", *req.Password, "SMTP 密码"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
 	if req.From != nil {
+		fields = append(fields, "from")
 		if err := a.setSetting("smtp_from", *req.From, "发件人地址"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
 	if req.SiteURL != nil {
+		fields = append(fields, "site_url")
 		if err := a.setSetting("site_url", *req.SiteURL, "站点访问地址（用于邮件中的链接）"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
+	a.recordAudit(c, "mail.updated", "config", "mail", "邮件配置", map[string]any{"changed_fields": fields})
 	ok(c, gin.H{"message": "已保存"})
 }

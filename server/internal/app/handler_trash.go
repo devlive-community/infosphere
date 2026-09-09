@@ -189,6 +189,9 @@ func (a *App) PermanentlyDeleteBook(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "永久删除书籍失败")
 		return
 	}
+	a.recordAudit(c, "book.permanently_deleted", "book", auditID(book.ID), book.Title, map[string]any{
+		"owner_id": book.UserID, "slug": book.Slug,
+	})
 	ok(c, gin.H{"message": "书籍已永久删除"})
 }
 
@@ -247,6 +250,9 @@ func (a *App) PermanentlyDeleteDocument(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "永久删除章节失败")
 		return
 	}
+	a.recordAudit(c, "document.permanently_deleted", "document", auditID(doc.ID), doc.Title, map[string]any{
+		"book_id": doc.BookID, "book_title": book.Title,
+	})
 	ok(c, gin.H{"message": "章节已永久删除"})
 }
 

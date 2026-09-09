@@ -83,6 +83,7 @@ const (
 
 	// 系统配置（通用 key-value）
 	ConfigManage Permission = "config:manage" // 管理任意系统配置键值对（仅管理员）
+	AuditRead    Permission = "audit:read"    // 查看管理员高风险操作审计日志（仅管理员）
 
 	// 统计
 	StatsRead Permission = "stats:read" // 读取站点统计（含匿名访问）
@@ -113,7 +114,7 @@ var All = []Permission{
 	ReactionCreate, ReactionDelete, ReactionRead,
 	ReadingProgressRead, ReadingProgressUpdate,
 	UserRead, UserUpdate, UserManage,
-	SiteRead, SiteUpdate, ConfigManage,
+	SiteRead, SiteUpdate, ConfigManage, AuditRead,
 	StatsRead,
 	UploadCreate,
 	SystemRead, SystemUpgrade,

@@ -405,10 +405,12 @@ func (a *App) UpdateBook(c *gin.Context) {
 		fail(c, status, "书籍不存在")
 		return
 	}
-	if !a.canManageBook(currentUser(c), book) {
+	u := currentUser(c)
+	if !a.canManageBook(u, book) {
 		fail(c, http.StatusForbidden, "无权操作该书籍")
 		return
 	}
+	oldStatus, oldPublic := book.Status, book.IsPublic
 
 	var req bookPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -487,6 +489,13 @@ func (a *App) UpdateBook(c *gin.Context) {
 			fail(c, http.StatusInternalServerError, "标签关联失败: "+err.Error())
 			return
 		}
+	}
+	if IsAdmin(u) && (oldStatus != book.Status || oldPublic != book.IsPublic) {
+		a.recordAudit(c, "book.moderated", "book", auditID(book.ID), book.Title, map[string]any{
+			"status":    map[string]any{"from": oldStatus, "to": book.Status},
+			"is_public": map[string]any{"from": oldPublic, "to": book.IsPublic},
+			"owner_id":  book.UserID,
+		})
 	}
 	ok(c, book)
 }

@@ -419,19 +419,23 @@ func (a *App) AdminSaveOAuth(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	fields := []string{}
 	if req.ClientID != nil {
+		fields = append(fields, "client_id")
 		if err := a.setSetting("oauth_github_client_id", *req.ClientID, "GitHub OAuth Client ID"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
 	if req.ClientSecret != nil {
+		fields = append(fields, "client_secret")
 		if err := a.setSetting("oauth_github_client_secret", *req.ClientSecret, "GitHub OAuth Client Secret"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
 	if req.Enabled != nil {
+		fields = append(fields, "enabled")
 		value := "false"
 		if *req.Enabled {
 			value = "true"
@@ -441,5 +445,6 @@ func (a *App) AdminSaveOAuth(c *gin.Context) {
 			return
 		}
 	}
+	a.recordAudit(c, "oauth.updated", "config", "oauth/github", "GitHub OAuth", map[string]any{"changed_fields": fields})
 	ok(c, gin.H{"message": "已保存"})
 }
