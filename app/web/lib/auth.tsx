@@ -6,6 +6,12 @@ import type { SiteConfig, User } from './types'
 export interface ThemeSetting {
   primary_hue: string
   radius: string
+  button_size: string
+  font_size: string
+  content_width: string
+  nav_height: string
+  sidebar_width: string
+  page_bg: string
 }
 
 /** 将主题设置写入 DOM 与 localStorage，供 _document.tsx 防闪烁脚本与全局使用 */
@@ -14,6 +20,12 @@ export function applyTheme(s: ThemeSetting) {
   const el = document.documentElement
   el.setAttribute('data-primary', s.primary_hue)
   el.setAttribute('data-radius', s.radius)
+  el.setAttribute('data-btn', s.button_size)
+  el.setAttribute('data-font', s.font_size)
+  el.setAttribute('data-width', s.content_width)
+  el.setAttribute('data-nav', s.nav_height)
+  el.setAttribute('data-sidebar', s.sidebar_width)
+  el.setAttribute('data-bg', s.page_bg)
   localStorage.setItem('infosphere_theme', JSON.stringify(s))
 }
 
@@ -29,7 +41,16 @@ interface AppContextValue {
   applyTheme: (s: ThemeSetting) => void
 }
 
-const DEFAULT_THEME: ThemeSetting = { primary_hue: 'blue', radius: 'lg' }
+const DEFAULT_THEME: ThemeSetting = {
+  primary_hue: 'blue',
+  radius: 'lg',
+  button_size: 'md',
+  font_size: '15',
+  content_width: 'normal',
+  nav_height: '64',
+  sidebar_width: '260',
+  page_bg: '#F7F6F2',
+}
 
 const AppContext = createContext<AppContextValue>({
   user: null,

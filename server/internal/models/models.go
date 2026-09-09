@@ -215,8 +215,14 @@ type UserExportSetting struct {
 type UserThemeSetting struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	UserID       uint      `gorm:"uniqueIndex;not null" json:"user_id"`
-	PrimaryHue   string    `gorm:"size:20;default:blue" json:"primary_hue"`   // blue | indigo | violet | emerald | rose | amber
-	Radius       string    `gorm:"size:10;default:lg" json:"radius"`          // sm | md | lg | xl | 2xl
+	PrimaryHue   string    `gorm:"size:20;default:blue" json:"primary_hue"`     // blue | indigo | violet | emerald | rose | amber
+	Radius       string    `gorm:"size:10;default:lg" json:"radius"`            // sm | md | lg | xl | 2xl
+	ButtonSize   string    `gorm:"size:10;default:md" json:"button_size"`       // sm | md | lg
+	FontSize     string    `gorm:"size:10;default:15" json:"font_size"`         // 14 | 15 | 16
+	ContentWidth string    `gorm:"size:10;default:normal" json:"content_width"`  // narrow | normal | wide
+	NavHeight    string    `gorm:"size:10;default:64" json:"nav_height"`        // 56 | 64 | 72
+	SidebarWidth string    `gorm:"size:10;default:260" json:"sidebar_width"`    // 220 | 260 | 300
+	PageBg       string    `gorm:"size:20;default:#F7F6F2" json:"page_bg"`      // hex color
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

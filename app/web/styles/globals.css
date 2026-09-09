@@ -22,6 +22,26 @@
 
     /* 圆角 */
     --radius: 0.5rem;
+
+    /* 按钮大小 */
+    --btn-height: 2.5rem;
+    --btn-px: 1rem;
+    --btn-text: 0.875rem;
+
+    /* 字体大小 */
+    --font-size: 15px;
+
+    /* 内容区宽度 */
+    --content-max-width: 1200px;
+
+    /* 导航栏高度 */
+    --nav-height: 4rem;
+
+    /* 侧边栏宽度 */
+    --sidebar-width: 260px;
+
+    /* 页面底色 */
+    --page-bg: #F7F6F2;
   }
 
   /* ── 预设主题色 ── */
@@ -68,6 +88,40 @@
   [data-radius="lg"]  { --radius: 0.5rem; }
   [data-radius="xl"]  { --radius: 0.75rem; }
   [data-radius="2xl"] { --radius: 1rem; }
+
+  /* ── 按钮大小 ── */
+  [data-btn="sm"] { --btn-height: 2rem; --btn-px: 0.75rem; --btn-text: 0.75rem; }
+  [data-btn="md"] { --btn-height: 2.5rem; --btn-px: 1rem; --btn-text: 0.875rem; }
+  [data-btn="lg"] { --btn-height: 3rem; --btn-px: 1.25rem; --btn-text: 1rem; }
+
+  /* ── 字体大小 ── */
+  [data-font="14"] { --font-size: 14px; }
+  [data-font="15"] { --font-size: 15px; }
+  [data-font="16"] { --font-size: 16px; }
+
+  /* ── 内容区宽度 ── */
+  [data-width="narrow"] { --content-max-width: 960px; }
+  [data-width="normal"] { --content-max-width: 1200px; }
+  [data-width="wide"]   { --content-max-width: 1440px; }
+
+  /* ── 导航栏高度 ── */
+  [data-nav="56"] { --nav-height: 3.5rem; }
+  [data-nav="64"] { --nav-height: 4rem; }
+  [data-nav="72"] { --nav-height: 4.5rem; }
+
+  /* ── 侧边栏宽度 ── */
+  [data-sidebar="220"] { --sidebar-width: 220px; }
+  [data-sidebar="260"] { --sidebar-width: 260px; }
+  [data-sidebar="300"] { --sidebar-width: 300px; }
+
+  /* ── 页面底色 ── */
+  [data-bg] { --page-bg: attr(data-bg); }
+}
+
+body {
+  background-color: var(--page-bg);
+  @apply text-ink antialiased;
+  font-size: var(--font-size);
 }
 
 body {
@@ -83,6 +137,19 @@ body {
 .rounded-2xl   { border-radius: calc(var(--radius) * 2); }
 .rounded-3xl   { border-radius: calc(var(--radius) * 3); }
 .rounded-full  { border-radius: 9999px; }
+
+/* 按钮大小覆盖：让 h-8/h-9/h-10 等按钮高度跟随主题设置 */
+.btn-theme {
+  height: var(--btn-height);
+  padding-left: var(--btn-px);
+  padding-right: var(--btn-px);
+  font-size: var(--btn-text);
+}
+
+/* 内容区宽度 */
+.content-theme {
+  max-width: var(--content-max-width);
+}
 
 body {
   @apply bg-warm text-ink antialiased;
