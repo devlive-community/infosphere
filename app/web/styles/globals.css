@@ -5,6 +5,75 @@
 @import 'highlight.js/styles/github.css';
 @import 'katex/dist/katex.min.css';
 
+/* ── 主题 CSS 变量 ── */
+@layer base {
+  :root {
+    /* primary 色梯度（默认 blue） */
+    --color-primary-50: #EEF2FE;
+    --color-primary-100: #DCE4FD;
+    --color-primary-200: #BCCBFB;
+    --color-primary-300: #93ADF8;
+    --color-primary-400: #6A8FF4;
+    --color-primary-500: #4169E1;
+    --color-primary-600: #3455C6;
+    --color-primary-700: #2A44A0;
+    --color-primary-800: #243980;
+    --color-primary-900: #1F3069;
+
+    /* 圆角 */
+    --radius: 0.5rem;
+  }
+
+  /* ── 预设主题色 ── */
+  [data-primary="blue"] {
+    --color-primary-50: #EEF2FE; --color-primary-100: #DCE4FD; --color-primary-200: #BCCBFB;
+    --color-primary-300: #93ADF8; --color-primary-400: #6A8FF4; --color-primary-500: #4169E1;
+    --color-primary-600: #3455C6; --color-primary-700: #2A44A0; --color-primary-800: #243980;
+    --color-primary-900: #1F3069;
+  }
+  [data-primary="indigo"] {
+    --color-primary-50: #EEF1FE; --color-primary-100: #DDE3FD; --color-primary-200: #BBC9FB;
+    --color-primary-300: #93ADF8; --color-primary-400: #6A8FF4; --color-primary-500: #4F46E5;
+    --color-primary-600: #4338CA; --color-primary-700: #3730A3; --color-primary-800: #312E81;
+    --color-primary-900: #1E1B4B;
+  }
+  [data-primary="violet"] {
+    --color-primary-50: #F5F3FF; --color-primary-100: #EDE9FE; --color-primary-200: #DDD6FE;
+    --color-primary-300: #C4B5FD; --color-primary-400: #A78BFA; --color-primary-500: #8B5CF6;
+    --color-primary-600: #7C3AED; --color-primary-700: #6D28D9; --color-primary-800: #5B21B6;
+    --color-primary-900: #4C1D95;
+  }
+  [data-primary="emerald"] {
+    --color-primary-50: #ECFDF5; --color-primary-100: #D1FAE5; --color-primary-200: #A7F3D0;
+    --color-primary-300: #6EE7B7; --color-primary-400: #34D399; --color-primary-500: #10B981;
+    --color-primary-600: #059669; --color-primary-700: #047857; --color-primary-800: #065F46;
+    --color-primary-900: #064E3B;
+  }
+  [data-primary="rose"] {
+    --color-primary-50: #FFF1F2; --color-primary-100: #FFE4E6; --color-primary-200: #FECDD3;
+    --color-primary-300: #FDA4AF; --color-primary-400: #FB7185; --color-primary-500: #F43F5E;
+    --color-primary-600: #E11D48; --color-primary-700: #BE123C; --color-primary-800: #9F1239;
+    --color-primary-900: #881337;
+  }
+  [data-primary="amber"] {
+    --color-primary-50: #FFFBEB; --color-primary-100: #FEF3C7; --color-primary-200: #FDE68A;
+    --color-primary-300: #FCD34D; --color-primary-400: #FBBF24; --color-primary-500: #F59E0B;
+    --color-primary-600: #D97706; --color-primary-700: #B45309; --color-primary-800: #92400E;
+    --color-primary-900: #78350F;
+  }
+
+  /* ── 圆角等级 ── */
+  [data-radius="sm"]  { --radius: 0.25rem; }
+  [data-radius="md"]  { --radius: 0.375rem; }
+  [data-radius="lg"]  { --radius: 0.5rem; }
+  [data-radius="xl"]  { --radius: 0.75rem; }
+  [data-radius="2xl"] { --radius: 1rem; }
+
+  /* 通过 CSS 变量覆盖 Tailwind rounded-* 的方法：
+     由于 Tailwind 的 rounded-lg 等是固定值，我们通过 CSS 变量控制组件级圆角。
+     组件中使用 rounded-[var(--radius)] 即可响应主题变化。 */
+}
+
 body {
   @apply bg-warm text-ink antialiased;
 }

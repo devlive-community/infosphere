@@ -88,6 +88,9 @@ func (a *App) Router() *gin.Engine {
 				// 导出样式偏好（PDF 导出用）
 				authed.GET("/export-settings", a.RequirePermission(authz.UserRead), a.GetExportSettings)
 				authed.PUT("/export-settings", a.RequirePermission(authz.UserUpdate), a.UpdateExportSettings)
+				// 主题设置
+				authed.GET("/theme-settings", a.RequirePermission(authz.UserRead), a.GetThemeSettings)
+				authed.PUT("/theme-settings", a.RequirePermission(authz.UserUpdate), a.UpdateThemeSettings)
 			}
 		}
 

@@ -3,12 +3,12 @@ import { ReactNode, useRef, useState } from 'react'
 import UserAvatar from '@/components/UserAvatar'
 import { getToken } from '@/lib/api'
 import type { User } from '@/lib/types'
-import { ShieldIcon, UserCircleIcon, DownloadIcon, LinkIcon } from '@/components/icons'
+import { ShieldIcon, UserCircleIcon, DownloadIcon, LinkIcon, PaletteIcon } from '@/components/icons'
 import { useFeedback } from '@/components/ui'
 
 interface AccountSettingsLayoutProps {
   user: User
-  active: 'profile' | 'security' | 'export' | 'oauth'
+  active: 'profile' | 'security' | 'export' | 'oauth' | 'theme'
   /** 头像上传后回调（个人资料页用） */
   onAvatarChange?: (url: string) => void
   children: ReactNode
@@ -45,6 +45,7 @@ export default function AccountSettingsLayout({ user, active, onAvatarChange, ch
     { key: 'profile' as const, label: '个人资料', icon: <UserCircleIcon className="h-4 w-4" />, href: '/user/profile' },
     { key: 'security' as const, label: '账户安全', icon: <ShieldIcon className="h-4 w-4" />, href: '/user/security' },
     { key: 'oauth' as const, label: '第三方账号', icon: <LinkIcon className="h-4 w-4" />, href: '/user/oauth' },
+    { key: 'theme' as const, label: '主题设置', icon: <PaletteIcon className="h-4 w-4" />, href: '/user/theme' },
     { key: 'export' as const, label: '导出设置', icon: <DownloadIcon className="h-4 w-4" />, href: '/user/export' },
   ]
 

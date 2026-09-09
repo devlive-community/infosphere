@@ -3,24 +3,44 @@ import { useRouter } from 'next/router'
 import { api, getToken, storeSession, clearSession } from './api'
 import type { SiteConfig, User } from './types'
 
+export interface ThemeSetting {
+  primary_hue: string
+  radius: string
+}
+
+/** 将主题设置写入 DOM 与 localStorage，供 _document.tsx 防闪烁脚本与全局使用 */
+export function applyTheme(s: ThemeSetting) {
+  if (typeof document === 'undefined') return
+  const el = document.documentElement
+  el.setAttribute('data-primary', s.primary_hue)
+  el.setAttribute('data-radius', s.radius)
+  localStorage.setItem('infosphere_theme', JSON.stringify(s))
+}
+
 interface AppContextValue {
   user: User | null
   authReady: boolean
   installed: boolean | null // null = 未知
   site: SiteConfig
+  theme: ThemeSetting
   login: (token: string, user: User) => void
   logout: () => void
   refreshUser: () => Promise<User>
+  applyTheme: (s: ThemeSetting) => void
 }
+
+const DEFAULT_THEME: ThemeSetting = { primary_hue: 'blue', radius: 'lg' }
 
 const AppContext = createContext<AppContextValue>({
   user: null,
   authReady: false,
   installed: null,
   site: {},
+  theme: DEFAULT_THEME,
   login: () => {},
   logout: () => {},
   refreshUser: async () => { throw new Error('not ready') },
+  applyTheme: () => {},
 })
 
 interface AppProviderProps {
@@ -50,17 +70,28 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
   // 仅信任 SSR 显式传入的安装状态；客户端页面走 boot 检测
   const [installed, setInstalled] = useState<boolean | null>(initialInstalled ?? null)
   const [site, setSite] = useState<SiteConfig>(initialSite ?? {})
+  const [theme, setTheme] = useState<ThemeSetting>(DEFAULT_THEME)
+
+  // 登录后从服务端拉取主题设置并应用
+  const loadAndApplyTheme = useCallback(async () => {
+    try {
+      const s = await api<ThemeSetting>('/auth/theme-settings')
+      setTheme(s)
+      applyTheme(s)
+    } catch { /* 未登录或接口异常时保持默认 */ }
+  }, [])
 
   useEffect(() => {
     if (initialInstalled) {
       // SSR 已渲染登录态；仅当 SSR 未知用户且本地有令牌时才校验（例如令牌过期）
       if (!initialUser && getToken()) {
         api<User>('/auth/me')
-          .then((me) => { setUser(me); ensureAuthCookie() })
+          .then((me) => { setUser(me); ensureAuthCookie(); loadAndApplyTheme() })
           .catch(() => clearSession())
           .finally(() => setAuthReady(true))
       } else {
         setAuthReady(true)
+        if (initialUser) loadAndApplyTheme()
       }
       return
     }
@@ -80,7 +111,7 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
         if (getToken()) {
           try {
             const me = await api<User>('/auth/me')
-            if (!cancelled) { setUser(me); ensureAuthCookie() }
+            if (!cancelled) { setUser(me); ensureAuthCookie(); loadAndApplyTheme() }
           } catch {
             clearSession()
           }
@@ -124,8 +155,13 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
     return me
   }, [])
 
+  const handleApplyTheme = useCallback((s: ThemeSetting) => {
+    setTheme(s)
+    applyTheme(s)
+  }, [])
+
   return (
-    <AppContext.Provider value={{ user, authReady, installed, site, login, logout, refreshUser }}>
+    <AppContext.Provider value={{ user, authReady, installed, site, theme, login, logout, refreshUser, applyTheme: handleApplyTheme }}>
       {children}
     </AppContext.Provider>
   )

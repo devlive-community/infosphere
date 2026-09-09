@@ -211,6 +211,16 @@ type UserExportSetting struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// UserThemeSetting 用户主题设置，每用户一条
+type UserThemeSetting struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	UserID       uint      `gorm:"uniqueIndex;not null" json:"user_id"`
+	PrimaryHue   string    `gorm:"size:20;default:blue" json:"primary_hue"`   // blue | indigo | violet | emerald | rose | amber
+	Radius       string    `gorm:"size:10;default:lg" json:"radius"`          // sm | md | lg | xl | 2xl
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 // BookTag 书籍-标签联接表
 type BookTag struct {
 	BookID    uint      `gorm:"primaryKey" json:"book_id"`
@@ -270,6 +280,7 @@ func All(db *gorm.DB) error {
 		&ReadChapter{},
 		&Plugin{},
 		&UserExportSetting{},
+		&UserThemeSetting{},
 		&Comment{},
 		&Reaction{},
 		&Notification{},
