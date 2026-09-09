@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { ReactNode } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import { SegmentedTabs } from '@/components/ui'
 
 export type SettingsTab = 'site' | 'storage' | 'mail' | 'oauth' | 'config'
 
@@ -27,21 +27,8 @@ export default function SettingsLayout({ active, description, children }: Settin
         <p className="mt-1.5 text-sm text-slate-500">{description}</p>
       </div>
 
-      <div className="mb-6 border-b border-slate-200">
-        <nav className="-mb-px flex gap-1 overflow-x-auto">
-          {TABS.map((t) => {
-            const on = t.key === active
-            return (
-              <Link key={t.key} href={t.href}
-                className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                  on ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}>
-                {t.label}
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
+      <SegmentedTabs className="mb-6" value={active} ariaLabel="系统设置分类"
+        items={TABS.map((tab) => ({ value: tab.key, label: tab.label, href: tab.href }))} />
 
       {children}
     </AdminLayout>

@@ -5,7 +5,7 @@ import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
-import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
+import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import PDFReimportPanel from '@/components/PDFReimportPanel'
 import {
@@ -175,31 +175,19 @@ export default function MyBooks() {
         </div>
       </div>
 
-      <div className="mb-5 inline-flex rounded-xl bg-slate-100 p-1" aria-label="书籍范围">
-        <button type="button" onClick={() => changeScope('owned')}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${scope === 'owned' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-          我创建的
-        </button>
-        <button type="button" onClick={() => changeScope('collaborating')}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${scope === 'collaborating' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-          与我协作的
-        </button>
-      </div>
+      <SegmentedTabs className="mb-5" value={scope} ariaLabel="书籍范围"
+        onChange={(value) => changeScope(value as 'owned' | 'collaborating')} items={[
+          { value: 'owned', label: '我创建的' },
+          { value: 'collaborating', label: '与我协作的' },
+        ]} />
 
       {/* 筛选行 */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-y border-slate-200 py-3">
-        <div className="flex flex-wrap items-center gap-1">
-          {statusTabs.map((t) => (
-            <button key={t.key} onClick={() => { setStatus(t.key); setPage(1) }}
-              className={`-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm font-medium transition-colors ${
-                status === t.key
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}>
-              {t.label} {counts[t.key] !== undefined && <span className="ml-0.5">{counts[t.key]}</span>}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs value={status} ariaLabel="书籍状态" onChange={(value) => { setStatus(value); setPage(1) }}
+          items={statusTabs.map((tab) => ({
+            value: tab.key,
+            label: <>{tab.label}{counts[tab.key] !== undefined && <span className="ml-1 text-xs text-slate-400">{counts[tab.key]}</span>}</>,
+          }))} />
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -208,16 +196,11 @@ export default function MyBooks() {
               className="h-10 w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
           </div>
           <Select className="w-36" value={sort} onChange={(v) => { setSort(v as SortKey); setPage(1) }} options={sortOptions} />
-          <div className="flex overflow-hidden rounded-lg border border-slate-200">
-            <button onClick={() => setView('grid')} aria-label="网格视图"
-              className={`flex h-10 w-10 items-center justify-center transition-colors ${view === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
-              <GridIcon className="h-4 w-4" />
-            </button>
-            <button onClick={() => setView('list')} aria-label="列表视图"
-              className={`flex h-10 w-10 items-center justify-center border-l border-slate-200 transition-colors ${view === 'list' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
-              <ListIcon className="h-4 w-4" />
-            </button>
-          </div>
+          <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"
+            onChange={(value) => setView(value as 'grid' | 'list')} items={[
+              { value: 'grid', label: '网格视图', icon: <GridIcon className="h-4 w-4" /> },
+              { value: 'list', label: '列表视图', icon: <ListIcon className="h-4 w-4" /> },
+            ]} />
         </div>
       </div>
 
@@ -337,18 +320,12 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
         </div>
 
         <div className="px-6 py-6 sm:px-7">
-          <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-100 p-1.5">
-            {([
-              ['pdf', 'PDF 文档', FileTextIcon],
-              ['web', '网页内容', GlobeIcon],
-              ['zip', '书籍压缩包', UploadIcon],
-            ] as const).map(([key, label, Icon]) => (
-              <button key={key} type="button" onClick={() => switchKind(key)}
-                className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-sm font-medium transition-all ${kind === key ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                <Icon className="h-4 w-4" /> <span>{label}</span>
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs fullWidth value={kind} ariaLabel="导入内容类型"
+            onChange={(value) => switchKind(value as ImportKind)} items={[
+              { value: 'pdf', label: 'PDF 文档', icon: <FileTextIcon className="h-4 w-4" /> },
+              { value: 'web', label: '网页内容', icon: <GlobeIcon className="h-4 w-4" /> },
+              { value: 'zip', label: '书籍压缩包', icon: <UploadIcon className="h-4 w-4" /> },
+            ]} />
 
           {result ? (
             <div className="py-10 text-center">

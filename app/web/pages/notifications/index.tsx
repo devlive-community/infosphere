@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Badge, Button, EmptyState, Loading, Pagination, useFeedback } from '@/components/ui'
+import { Badge, Button, EmptyState, Loading, Pagination, SegmentedTabs, useFeedback } from '@/components/ui'
 import { BellIcon, FileTextIcon, HeartIcon, UsersIcon, InfoCircleIcon } from '@/components/icons'
 import Seo from '@/components/Seo'
 import type { CollaborationInvitation } from '@/lib/types'
@@ -126,15 +126,11 @@ export default function NotificationsPage() {
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-ink">通知中心</h1>
-          <div className="flex items-center gap-2">
-            {(['all', 'unread'] as const).map((t) => (
-              <button key={t} onClick={() => { setTab(t); setPage(1) }}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  tab === t ? 'bg-primary-500 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}>
-                {t === 'all' ? '全部' : `未读${unread > 0 ? `（${unread}）` : ''}`}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <SegmentedTabs value={tab} ariaLabel="通知筛选" onChange={(value) => { setTab(value as 'all' | 'unread'); setPage(1) }} items={[
+              { value: 'all', label: '全部' },
+              { value: 'unread', label: `未读${unread > 0 ? `（${unread}）` : ''}` },
+            ]} />
             {unread > 0 && <Button variant="outline" size="sm" onClick={markAllRead}>全部已读</Button>}
           </div>
         </div>

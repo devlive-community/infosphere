@@ -5,7 +5,7 @@ import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown, bindMarkdownInteractivity } from '@/lib/markdown'
 import Seo from '@/components/Seo'
-import { Button, Input, Textarea, Select, Field, Badge, EmptyState, Loading, Tooltip, useFeedback } from '@/components/ui'
+import { Button, Input, Textarea, Select, Field, Badge, EmptyState, Loading, SegmentedTabs, Tooltip, useFeedback } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
@@ -518,14 +518,11 @@ export default function Writer({ user }: WriterProps) {
             </div>
           </div>
 
-          <div className="flex border-b border-slate-100 px-4 text-sm font-medium">
-            {([['toc', '目录'], ['settings', '书籍设置']] as [TabKey, string][]).map(([key, label]) => (
-              <button key={key} onClick={() => setTab(key)}
-                className={`-mb-px border-b-2 px-3 py-2.5 transition-colors ${tab === key ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs fullWidth className="mx-3 mt-3" value={tab} ariaLabel="编辑器侧栏"
+            onChange={(value) => setTab(value as TabKey)} items={[
+              { value: 'toc', label: '目录' },
+              { value: 'settings', label: '书籍设置' },
+            ]} />
 
           {tab === 'toc' ? (
             <div className="flex min-h-0 flex-1 flex-col">

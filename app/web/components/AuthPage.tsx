@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { FormEvent, useEffect, useState } from 'react'
 import OAuthButtons, { oauthErrorText } from '@/components/OAuthButtons'
-import { Button, Field, Input, Tooltip } from '@/components/ui'
+import { Button, Field, Input, SegmentedTabs, Tooltip } from '@/components/ui'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import type { User } from '@/lib/types'
@@ -172,16 +172,10 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
               </p>
             </div>
 
-            <nav className="mb-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1" aria-label="账户入口">
-              <Link href={`/login${nextQuery}`} aria-current={isLogin ? 'page' : undefined}
-                className={`rounded-md py-2.5 text-center text-sm font-semibold transition-colors ${isLogin ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                登录
-              </Link>
-              <Link href={`/register${nextQuery}`} aria-current={!isLogin ? 'page' : undefined}
-                className={`rounded-md py-2.5 text-center text-sm font-semibold transition-colors ${!isLogin ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                注册
-              </Link>
-            </nav>
+            <SegmentedTabs className="mb-6" fullWidth value={mode} ariaLabel="账户入口" items={[
+              { value: 'login', label: '登录', href: `/login${nextQuery}` },
+              { value: 'register', label: '注册', href: `/register${nextQuery}` },
+            ]} />
 
             {error && (
               <div role="alert" className="mb-5 max-h-28 overflow-y-auto break-words rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm leading-6 text-rose-600">

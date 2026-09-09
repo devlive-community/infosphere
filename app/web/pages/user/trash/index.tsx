@@ -5,7 +5,7 @@ import Seo from '@/components/Seo'
 import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import type { PageResult, TrashItem } from '@/lib/types'
-import { Badge, Button, Card, EmptyState, Loading, Pagination, useFeedback } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Loading, Pagination, SegmentedTabs, useFeedback } from '@/components/ui'
 
 type TrashType = 'book' | 'document'
 
@@ -106,16 +106,10 @@ export default function TrashPage() {
           </Button>
         </div>
 
-        <div className="mb-5 flex gap-2 border-b border-slate-200" role="tablist" aria-label="回收站内容类型">
-          <Button type="button" role="tab" variant="ghost" aria-selected={type === 'book'} onClick={() => switchType('book')}
-            className={`min-h-10 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${type === 'book' ? 'border-primary-500 text-primary-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
-            <i className="fa-solid fa-book mr-2" aria-hidden="true" />书籍
-          </Button>
-          <Button type="button" role="tab" variant="ghost" aria-selected={type === 'document'} onClick={() => switchType('document')}
-            className={`min-h-10 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${type === 'document' ? 'border-primary-500 text-primary-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
-            <i className="fa-regular fa-file-lines mr-2" aria-hidden="true" />章节
-          </Button>
-        </div>
+        <SegmentedTabs className="mb-5" value={type} ariaLabel="回收站内容类型" onChange={(value) => switchType(value as TrashType)} items={[
+          { value: 'book', label: '书籍', icon: <i className="fa-solid fa-book" aria-hidden="true" /> },
+          { value: 'document', label: '章节', icon: <i className="fa-regular fa-file-lines" aria-hidden="true" /> },
+        ]} />
 
         {loading || data === null ? (
           <Loading className="py-20" label="正在加载回收站…" />

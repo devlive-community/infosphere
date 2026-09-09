@@ -78,8 +78,8 @@ const tabsExtension: TokenizerAndRendererExtension = {
       .map(
         (t, i) =>
           `<button type="button" data-md-tab="${gid}" data-md-tab-index="${i}" role="tab" aria-selected="${i === 0}"` +
-          ` class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none` +
-          (i === 0 ? ' border-primary-500 text-primary-600' : ' border-transparent text-slate-500 hover:text-slate-700') +
+          ` class="min-h-10 shrink-0 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus:outline-none` +
+          (i === 0 ? ' border-slate-200 bg-white text-primary-700 shadow-sm' : ' border-transparent text-slate-500 hover:bg-white/70 hover:text-slate-800') +
           `">${escapeHtml(t.title)}</button>`
       )
       .join('')
@@ -90,7 +90,7 @@ const tabsExtension: TokenizerAndRendererExtension = {
           ` class="pt-4 ${i === 0 ? '' : 'hidden'}">${this.parser.parse(t.tokens)}</div>`
       )
       .join('')
-    return `<div class="my-4"><div class="flex flex-wrap gap-1 border-b border-slate-200">${buttons}</div>${panels}</div>`
+    return `<div class="my-4"><div class="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner" role="tablist">${buttons}</div>${panels}</div>`
   },
 }
 
@@ -685,8 +685,10 @@ export async function bindMarkdownInteractivity(root: HTMLElement): Promise<void
       root.querySelectorAll(`[data-md-tab="${group}"]`).forEach((b) => {
         const active = b.getAttribute('data-md-tab-index') === index
         b.setAttribute('aria-selected', String(active))
-        b.classList.toggle('border-primary-500', active)
-        b.classList.toggle('text-primary-600', active)
+        b.classList.toggle('border-slate-200', active)
+        b.classList.toggle('bg-white', active)
+        b.classList.toggle('text-primary-700', active)
+        b.classList.toggle('shadow-sm', active)
         b.classList.toggle('border-transparent', !active)
         b.classList.toggle('text-slate-500', !active)
       })

@@ -37,6 +37,9 @@ describe('M17 扩展', () => {
   it(':::tabs 多标签页', () => {
     const html = renderMarkdown(':::tabs\n=== "npm"\nnpm i\n=== "pnpm"\npnpm add\n:::')
     expect(html).toContain('data-md-tab=')
+    expect(html).toContain('role="tablist"')
+    expect(html).toContain('rounded-xl border border-slate-200 bg-slate-100/80 p-1')
+    expect(html).toContain('border-slate-200 bg-white text-primary-700 shadow-sm')
     expect(html).toContain('pnpm add')
   })
 
