@@ -33,7 +33,7 @@ export function SegmentedTabs({
   size = 'md',
 }: SegmentedTabsProps) {
   const rootSizeClass = size === 'sm' ? 'gap-0.5 rounded-lg p-0.5' : 'gap-1 rounded-xl p-1'
-  const itemSizeClass = size === 'sm' ? 'h-8 rounded-md px-3 py-1 text-xs' : 'h-10 rounded-lg px-4 py-2 text-sm'
+  const itemSizeClass = size === 'sm' ? 'h-6 rounded-md px-3 text-xs' : 'h-8 rounded-lg px-4 text-sm'
   const rootClass = `${fullWidth ? 'flex w-full' : 'inline-flex max-w-full'} overflow-x-auto border border-slate-200 bg-slate-100/80 ${rootSizeClass} ${className || ''}`.trim()
   const itemClass = (active: boolean, disabled?: boolean) =>
     `${fullWidth ? 'flex-1' : ''} flex shrink-0 items-center justify-center gap-2 whitespace-nowrap border font-medium outline-none transition-colors focus-visible:border-primary-400 ${itemSizeClass} ${
