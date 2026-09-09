@@ -60,8 +60,8 @@ function UserMenu() {
           })}
           <div className="my-1 border-t border-slate-100" />
           <button onClick={() => { setOpen(false); logout() }}
-            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900">
-            <LogOutIcon className="h-4 w-4 text-slate-400" />
+            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
+            <LogOutIcon className="h-4 w-4" />
             退出登录
           </button>
         </div>
