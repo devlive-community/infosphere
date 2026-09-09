@@ -5,6 +5,7 @@ import type { SiteConfig, User } from './types'
 
 export interface ThemeSetting {
   primary_hue: string
+  custom_color: string
   radius: string
   button_size: string
   font_size: string
@@ -19,6 +20,13 @@ export function applyTheme(s: ThemeSetting) {
   if (typeof document === 'undefined') return
   const el = document.documentElement
   el.setAttribute('data-primary', s.primary_hue)
+  if (s.primary_hue === 'custom' && s.custom_color) {
+    el.setAttribute('data-custom-color', s.custom_color)
+    el.style.setProperty('--custom-color', s.custom_color)
+  } else {
+    el.removeAttribute('data-custom-color')
+    el.style.removeProperty('--custom-color')
+  }
   el.setAttribute('data-radius', s.radius)
   el.setAttribute('data-btn', s.button_size)
   el.setAttribute('data-font', s.font_size)
@@ -43,6 +51,7 @@ interface AppContextValue {
 
 const DEFAULT_THEME: ThemeSetting = {
   primary_hue: 'blue',
+  custom_color: '',
   radius: 'lg',
   button_size: 'md',
   font_size: '15',

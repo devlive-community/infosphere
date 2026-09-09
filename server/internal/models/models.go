@@ -248,7 +248,8 @@ type UserExportSetting struct {
 type UserThemeSetting struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	UserID       uint      `gorm:"uniqueIndex;not null" json:"user_id"`
-	PrimaryHue   string    `gorm:"size:20;default:blue" json:"primary_hue"`     // blue | indigo | violet | emerald | rose | amber
+	PrimaryHue   string    `gorm:"size:20;default:blue" json:"primary_hue"`     // blue | indigo | violet | emerald | rose | amber | custom
+	CustomColor  string    `gorm:"size:20;default:''" json:"custom_color"`      // hex color when primary_hue = custom
 	Radius       string    `gorm:"size:10;default:lg" json:"radius"`            // sm | md | lg | xl | 2xl
 	ButtonSize   string    `gorm:"size:10;default:md" json:"button_size"`       // sm | md | lg
 	FontSize     string    `gorm:"size:10;default:15" json:"font_size"`         // 14 | 15 | 16

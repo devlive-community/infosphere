@@ -90,6 +90,20 @@
     --color-primary-900: #78350F;
   }
 
+  /* ── 自定义颜色 ── */
+  [data-primary="custom"][data-custom-color] {
+    --color-primary-50: color-mix(in srgb, var(--custom-color, #4169E1) 10%, white);
+    --color-primary-100: color-mix(in srgb, var(--custom-color, #4169E1) 20%, white);
+    --color-primary-200: color-mix(in srgb, var(--custom-color, #4169E1) 35%, white);
+    --color-primary-300: color-mix(in srgb, var(--custom-color, #4169E1) 50%, white);
+    --color-primary-400: color-mix(in srgb, var(--custom-color, #4169E1) 75%, white);
+    --color-primary-500: var(--custom-color, #4169E1);
+    --color-primary-600: color-mix(in srgb, var(--custom-color, #4169E1) 85%, black);
+    --color-primary-700: color-mix(in srgb, var(--custom-color, #4169E1) 70%, black);
+    --color-primary-800: color-mix(in srgb, var(--custom-color, #4169E1) 60%, black);
+    --color-primary-900: color-mix(in srgb, var(--custom-color, #4169E1) 50%, black);
+  }
+
   /* ── 圆角等级 ── */
   [data-radius="sm"]  { --radius: 0.25rem; }
   [data-radius="md"]  { --radius: 0.375rem; }

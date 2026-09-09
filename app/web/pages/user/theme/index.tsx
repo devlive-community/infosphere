@@ -16,6 +16,7 @@ const HUES = [
   { key: 'emerald', label: '翡翠', color: '#10B981' },
   { key: 'rose', label: '玫瑰', color: '#F43F5E' },
   { key: 'amber', label: '琥珀', color: '#F59E0B' },
+  { key: 'custom', label: '自定义', color: '' },
 ] as const
 
 const RADII = [
@@ -82,6 +83,7 @@ export default function ThemeSettings() {
 
   const [activeTab, setActiveTab] = useState('color')
   const [hue, setHue] = useState(theme.primary_hue)
+  const [customColor, setCustomColor] = useState(theme.custom_color || '#4169E1')
   const [radius, setRadius] = useState(theme.radius)
   const [btnSize, setBtnSize] = useState(theme.button_size)
   const [fontSize, setFontSize] = useState(theme.font_size)
@@ -93,6 +95,7 @@ export default function ThemeSettings() {
 
   useEffect(() => {
     setHue(theme.primary_hue)
+    setCustomColor(theme.custom_color || '#4169E1')
     setRadius(theme.radius)
     setBtnSize(theme.button_size)
     setFontSize(theme.font_size)
@@ -110,7 +113,8 @@ export default function ThemeSettings() {
       const s = await api('/auth/theme-settings', {
         method: 'PUT',
         body: {
-          primary_hue: hue, radius, button_size: btnSize, font_size: fontSize,
+          primary_hue: hue, custom_color: hue === 'custom' ? customColor : '',
+          radius, button_size: btnSize, font_size: fontSize,
           content_width: contentWidth, nav_height: navHeight, sidebar_width: sidebarWidth, page_bg: pageBg,
         },
       })
@@ -157,16 +161,49 @@ export default function ThemeSettings() {
 
               {/* 主题色 */}
               {activeTab === 'color' && (
-                <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                  {HUES.map((h) => (
-                    <OptionCard key={h.key} active={hue === h.key} onClick={() => setHue(h.key)}>
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-110"
-                        style={{ backgroundColor: h.color }}>
-                        {hue === h.key && <CheckIcon className="h-5 w-5 text-white" />}
-                      </span>
-                      <span className={`text-xs font-medium ${hue === h.key ? 'text-primary-700' : 'text-slate-600'}`}>{h.label}</span>
-                    </OptionCard>
-                  ))}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                    {HUES.map((h) => (
+                      <OptionCard key={h.key} active={hue === h.key} onClick={() => setHue(h.key)}>
+                        {h.key === 'custom' ? (
+                          <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-slate-300 bg-white transition-transform group-hover:scale-110">
+                            <span className="text-lg text-slate-400">+</span>
+                          </span>
+                        ) : (
+                          <span className="flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-110"
+                            style={{ backgroundColor: h.color }}>
+                            {hue === h.key && <CheckIcon className="h-5 w-5 text-white" />}
+                          </span>
+                        )}
+                        <span className={`text-xs font-medium ${hue === h.key ? 'text-primary-700' : 'text-slate-600'}`}>{h.label}</span>
+                      </OptionCard>
+                    ))}
+                  </div>
+
+                  {hue === 'custom' && (
+                    <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-slate-700">选择颜色</label>
+                        <input
+                          type="color"
+                          value={customColor}
+                          onChange={(e) => setCustomColor(e.target.value)}
+                          className="h-10 w-14 cursor-pointer rounded-lg border border-slate-200"
+                        />
+                        <input
+                          type="text"
+                          value={customColor}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setCustomColor(v)
+                          }}
+                          className="h-10 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                          placeholder="#000000"
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500">自定义品牌色，影响按钮、链接、高亮等</span>
+                    </div>
+                  )}
                 </div>
               )}
 

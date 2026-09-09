@@ -11,7 +11,7 @@ import (
 
 var validPrimaryHues = map[string]bool{
 	"blue": true, "indigo": true, "violet": true,
-	"emerald": true, "rose": true, "amber": true,
+	"emerald": true, "rose": true, "amber": true, "custom": true,
 }
 var validRadii = map[string]bool{
 	"sm": true, "md": true, "lg": true, "xl": true, "2xl": true,
@@ -28,6 +28,7 @@ func defaultThemeSetting(userID uint) models.UserThemeSetting {
 	return models.UserThemeSetting{
 		UserID:       userID,
 		PrimaryHue:   "blue",
+		CustomColor:  "",
 		Radius:       "lg",
 		ButtonSize:   "md",
 		FontSize:     "15",
@@ -54,6 +55,7 @@ func (a *App) UpdateThemeSettings(c *gin.Context) {
 	u := currentUser(c)
 	var req struct {
 		PrimaryHue   *string `json:"primary_hue"`
+		CustomColor  *string `json:"custom_color"`
 		Radius       *string `json:"radius"`
 		ButtonSize   *string `json:"button_size"`
 		FontSize     *string `json:"font_size"`
@@ -73,6 +75,13 @@ func (a *App) UpdateThemeSettings(c *gin.Context) {
 	}
 	if req.PrimaryHue != nil && validPrimaryHues[*req.PrimaryHue] {
 		s.PrimaryHue = *req.PrimaryHue
+	}
+	if req.CustomColor != nil {
+		if s.PrimaryHue == "custom" && hexColorRe.MatchString(*req.CustomColor) {
+			s.CustomColor = *req.CustomColor
+		} else if s.PrimaryHue != "custom" {
+			s.CustomColor = ""
+		}
 	}
 	if req.Radius != nil && validRadii[*req.Radius] {
 		s.Radius = *req.Radius
