@@ -518,7 +518,7 @@ export default function Writer({ user }: WriterProps) {
             </div>
           </div>
 
-          <SegmentedTabs fullWidth className="mx-3 mt-3" value={tab} ariaLabel="编辑器侧栏"
+          <SegmentedTabs fullWidth size="sm" className="mx-3 mt-3" value={tab} ariaLabel="编辑器侧栏"
             onChange={(value) => setTab(value as TabKey)} items={[
               { value: 'toc', label: '目录' },
               { value: 'settings', label: '书籍设置' },

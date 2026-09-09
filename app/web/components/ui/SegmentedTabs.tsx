@@ -18,6 +18,7 @@ interface SegmentedTabsProps {
   className?: string
   fullWidth?: boolean
   iconOnly?: boolean
+  size?: 'sm' | 'md'
 }
 
 // SegmentedTabs 全站横向 Tab 唯一实现：浅色卡片轨道 + 独立选中卡片。
@@ -29,10 +30,13 @@ export function SegmentedTabs({
   className,
   fullWidth = false,
   iconOnly = false,
+  size = 'md',
 }: SegmentedTabsProps) {
-  const rootClass = `${fullWidth ? 'flex w-full' : 'inline-flex max-w-full'} gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner ${className || ''}`.trim()
+  const rootSizeClass = size === 'sm' ? 'gap-0.5 rounded-lg p-0.5' : 'gap-1 rounded-xl p-1'
+  const itemSizeClass = size === 'sm' ? 'h-8 rounded-md px-3 py-1 text-xs' : 'h-10 rounded-lg px-4 py-2 text-sm'
+  const rootClass = `${fullWidth ? 'flex w-full' : 'inline-flex max-w-full'} overflow-x-auto border border-slate-200 bg-slate-100/80 ${rootSizeClass} ${className || ''}`.trim()
   const itemClass = (active: boolean, disabled?: boolean) =>
-    `${fullWidth ? 'flex-1' : ''} flex min-h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border px-4 py-2 text-sm font-medium outline-none transition-colors focus-visible:border-primary-400 ${
+    `${fullWidth ? 'flex-1' : ''} flex shrink-0 items-center justify-center gap-2 whitespace-nowrap border font-medium outline-none transition-colors focus-visible:border-primary-400 ${itemSizeClass} ${
       active
         ? 'border-slate-200 bg-white text-primary-700 shadow-sm'
         : 'border-transparent text-slate-500 hover:bg-white/70 hover:text-slate-800'
