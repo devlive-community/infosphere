@@ -16,8 +16,8 @@ const variantClass: Record<Variant, string> = {
 }
 
 const sizeClass: Record<Size, string> = {
-  sm: 'h-8 px-3 text-xs',
-  md: 'h-10 px-4 text-sm',
+  sm: 'h-[var(--btn-height-sm)] px-3 text-xs',
+  md: 'h-[var(--btn-height)] px-4 text-[var(--btn-text)]',
 }
 
 function resolveClass(variant: Variant = 'primary', size: Size = 'md', className?: string) {

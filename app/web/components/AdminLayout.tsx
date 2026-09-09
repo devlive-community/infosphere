@@ -139,7 +139,7 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
       <Head><title>{`${breadcrumb} - ${siteName} 管理后台`}</title></Head>
 
       {/* 侧边栏（桌面固定） */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-200 bg-white md:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden border-r border-slate-200 bg-white md:block" style={{ width: 'var(--sidebar-width)' }}>
         <SidebarNav current={current} />
       </aside>
 
@@ -147,15 +147,15 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
       {drawer && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-slate-900/40" onClick={() => setDrawer(false)} />
-          <aside className="absolute inset-y-0 left-0 w-64 border-r border-slate-200 bg-white">
+          <aside className="absolute inset-y-0 left-0 border-r border-slate-200 bg-white" style={{ width: 'var(--sidebar-width)' }}>
             <SidebarNav current={current} onNavigate={() => setDrawer(false)} />
           </aside>
         </div>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col md:pl-64">
+      <div className="flex min-w-0 flex-1 flex-col md:pl-[var(--sidebar-width)]">
         {/* 顶栏 */}
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6" style={{ height: 'var(--nav-height)' }}>
           <button onClick={() => setDrawer(true)} aria-label="打开菜单"
             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 md:hidden">
             <ListBulletIcon className="h-5 w-5" />

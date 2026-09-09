@@ -97,7 +97,7 @@ export default function Layout({ title, children }: { title?: string; children: 
       </Head>
 
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
+        <div className="mx-auto flex items-center gap-4 px-4" style={{ height: 'var(--nav-height)', maxWidth: 'var(--content-max-width)' }}>
           <Link href="/" className="flex shrink-0 items-center gap-2.5 text-lg font-bold text-slate-900">
             <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
             {siteName}
@@ -121,7 +121,7 @@ export default function Layout({ title, children }: { title?: string; children: 
       <main className="w-full flex-1">{children}</main>
 
       <footer className="bg-[#0b1f3f] text-slate-300">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr]">
+        <div className="mx-auto grid gap-10 px-4 py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr]" style={{ maxWidth: 'var(--content-max-width)' }}>
           <div>
             <div className="flex items-center gap-2.5 text-lg font-bold text-white">
               <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
@@ -145,7 +145,7 @@ export default function Layout({ title, children }: { title?: string; children: 
           ]} />
         </div>
         <div className="border-t border-white/10">
-          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-2 px-4 py-4 text-xs text-slate-400 md:flex-row">
+          <div className="mx-auto flex flex-col justify-between gap-2 px-4 py-4 text-xs text-slate-400 md:flex-row" style={{ maxWidth: 'var(--content-max-width)' }}>
             <span>© {year} {siteName} · Powered by InfoSphere</span>
             <span>开源许可：MIT</span>
           </div>
