@@ -7,18 +7,27 @@ export interface ThemeSetting {
   primary_hue: string
   custom_color: string
   radius: string
+  custom_radius: string
   button_size: string
+  custom_control_height: string
   font_size: string
+  custom_font_size: string
   content_width: string
+  custom_content_width: string
   nav_height: string
+  custom_nav_height: string
   sidebar_width: string
+  custom_sidebar_width: string
   page_bg: string
+  custom_page_bg: string
 }
 
 /** 将主题设置写入 DOM 与 localStorage，供 _document.tsx 防闪烁脚本与全局使用 */
 export function applyTheme(s: ThemeSetting) {
   if (typeof document === 'undefined') return
   const el = document.documentElement
+
+  // 主题色
   el.setAttribute('data-primary', s.primary_hue)
   if (s.primary_hue === 'custom' && s.custom_color) {
     el.setAttribute('data-custom-color', s.custom_color)
@@ -27,13 +36,50 @@ export function applyTheme(s: ThemeSetting) {
     el.removeAttribute('data-custom-color')
     el.style.removeProperty('--custom-color')
   }
+
+  // 圆角
   el.setAttribute('data-radius', s.radius)
+  if (s.radius === 'custom' && s.custom_radius) {
+    el.style.setProperty('--radius', s.custom_radius)
+  }
+
+  // 控件大小
   el.setAttribute('data-btn', s.button_size)
+  if (s.button_size === 'custom' && s.custom_control_height) {
+    el.style.setProperty('--control-height', s.custom_control_height)
+  }
+
+  // 字体大小
   el.setAttribute('data-font', s.font_size)
+  if (s.font_size === 'custom' && s.custom_font_size) {
+    el.style.setProperty('--font-size', s.custom_font_size)
+  }
+
+  // 内容区宽度
   el.setAttribute('data-width', s.content_width)
+  if (s.content_width === 'custom' && s.custom_content_width) {
+    el.style.setProperty('--content-max-width', s.custom_content_width)
+  }
+
+  // 导航栏高度
   el.setAttribute('data-nav', s.nav_height)
+  if (s.nav_height === 'custom' && s.custom_nav_height) {
+    el.style.setProperty('--nav-height', s.custom_nav_height)
+  }
+
+  // 侧边栏宽度
   el.setAttribute('data-sidebar', s.sidebar_width)
-  el.style.setProperty('--page-bg', s.page_bg)
+  if (s.sidebar_width === 'custom' && s.custom_sidebar_width) {
+    el.style.setProperty('--sidebar-width', s.custom_sidebar_width)
+  }
+
+  // 页面底色
+  if (s.page_bg === 'custom' && s.custom_page_bg) {
+    el.style.setProperty('--page-bg', s.custom_page_bg)
+  } else {
+    el.style.setProperty('--page-bg', s.page_bg)
+  }
+
   localStorage.setItem('infosphere_theme', JSON.stringify(s))
 }
 
@@ -53,12 +99,19 @@ const DEFAULT_THEME: ThemeSetting = {
   primary_hue: 'blue',
   custom_color: '',
   radius: 'lg',
+  custom_radius: '',
   button_size: 'md',
+  custom_control_height: '',
   font_size: '15',
+  custom_font_size: '',
   content_width: 'normal',
+  custom_content_width: '',
   nav_height: '64',
+  custom_nav_height: '',
   sidebar_width: '260',
+  custom_sidebar_width: '',
   page_bg: '#F7F6F2',
+  custom_page_bg: '',
 }
 
 const AppContext = createContext<AppContextValue>({

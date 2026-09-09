@@ -246,19 +246,26 @@ type UserExportSetting struct {
 
 // UserThemeSetting 用户主题设置，每用户一条
 type UserThemeSetting struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	UserID       uint      `gorm:"uniqueIndex;not null" json:"user_id"`
-	PrimaryHue   string    `gorm:"size:20;default:blue" json:"primary_hue"`     // blue | indigo | violet | emerald | rose | amber | custom
-	CustomColor  string    `gorm:"size:20;default:''" json:"custom_color"`      // hex color when primary_hue = custom
-	Radius       string    `gorm:"size:10;default:lg" json:"radius"`            // sm | md | lg | xl | 2xl
-	ButtonSize   string    `gorm:"size:10;default:md" json:"button_size"`       // sm | md | lg
-	FontSize     string    `gorm:"size:10;default:15" json:"font_size"`         // 14 | 15 | 16
-	ContentWidth string    `gorm:"size:10;default:normal" json:"content_width"` // narrow | normal | wide
-	NavHeight    string    `gorm:"size:10;default:64" json:"nav_height"`        // 56 | 64 | 72
-	SidebarWidth string    `gorm:"size:10;default:260" json:"sidebar_width"`    // 220 | 260 | 300
-	PageBg       string    `gorm:"size:20;default:#F7F6F2" json:"page_bg"`      // hex color
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                 uint      `gorm:"primaryKey" json:"id"`
+	UserID             uint      `gorm:"uniqueIndex;not null" json:"user_id"`
+	PrimaryHue         string    `gorm:"size:20;default:blue" json:"primary_hue"`         // blue | indigo | violet | emerald | rose | amber | custom
+	CustomColor        string    `gorm:"size:20;default:''" json:"custom_color"`          // hex color when primary_hue = custom
+	Radius             string    `gorm:"size:10;default:lg" json:"radius"`                // sm | md | lg | xl | 2xl | custom
+	CustomRadius       string    `gorm:"size:20;default:''" json:"custom_radius"`         // CSS value when radius = custom
+	ButtonSize         string    `gorm:"size:10;default:md" json:"button_size"`           // sm | md | lg | custom
+	CustomControlHeight string   `gorm:"size:20;default:''" json:"custom_control_height"` // CSS value when button_size = custom
+	FontSize           string    `gorm:"size:10;default:15" json:"font_size"`             // 14 | 15 | 16 | custom
+	CustomFontSize     string    `gorm:"size:20;default:''" json:"custom_font_size"`      // CSS value when font_size = custom
+	ContentWidth       string    `gorm:"size:10;default:normal" json:"content_width"`     // narrow | normal | wide | custom
+	CustomContentWidth string    `gorm:"size:20;default:''" json:"custom_content_width"`  // CSS value when content_width = custom
+	NavHeight          string    `gorm:"size:10;default:64" json:"nav_height"`            // 56 | 64 | 72 | custom
+	CustomNavHeight    string    `gorm:"size:20;default:''" json:"custom_nav_height"`     // CSS value when nav_height = custom
+	SidebarWidth       string    `gorm:"size:10;default:260" json:"sidebar_width"`        // 220 | 260 | 300 | custom
+	CustomSidebarWidth string    `gorm:"size:20;default:''" json:"custom_sidebar_width"`  // CSS value when sidebar_width = custom
+	PageBg             string    `gorm:"size:20;default:#F7F6F2" json:"page_bg"`          // hex color | custom
+	CustomPageBg       string    `gorm:"size:20;default:''" json:"custom_page_bg"`        // hex color when page_bg = custom
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // BookTag 书籍-标签联接表

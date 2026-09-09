@@ -20,41 +20,47 @@ const HUES = [
 ] as const
 
 const RADII = [
-  { key: 'sm', label: '小' },
-  { key: 'md', label: '中' },
-  { key: 'lg', label: '大（默认）' },
-  { key: 'xl', label: '特大' },
-  { key: '2xl', label: '超大' },
+  { key: 'sm', label: '小', value: '0.25rem' },
+  { key: 'md', label: '中', value: '0.375rem' },
+  { key: 'lg', label: '大', value: '0.5rem' },
+  { key: 'xl', label: '特大', value: '0.75rem' },
+  { key: '2xl', label: '超大', value: '1rem' },
+  { key: 'custom', label: '自定义', value: '' },
 ] as const
 
 const BTN_SIZES = [
-  { key: 'sm', label: '小', desc: '紧凑' },
-  { key: 'md', label: '中（默认）', desc: '标准' },
-  { key: 'lg', label: '大', desc: '宽松' },
+  { key: 'sm', label: '小', desc: '紧凑', height: '2rem', heightSm: '1.75rem' },
+  { key: 'md', label: '中', desc: '标准', height: '2.5rem', heightSm: '2rem' },
+  { key: 'lg', label: '大', desc: '宽松', height: '3rem', heightSm: '2.5rem' },
+  { key: 'custom', label: '自定义', desc: '', height: '', heightSm: '' },
 ] as const
 
 const FONT_SIZES = [
   { key: '14', label: '14px', desc: '紧凑' },
   { key: '15', label: '15px', desc: '默认' },
   { key: '16', label: '16px', desc: '舒适' },
+  { key: 'custom', label: '自定义', desc: '' },
 ] as const
 
 const CONTENT_WIDTHS = [
-  { key: 'narrow', label: '窄', desc: '960px' },
-  { key: 'normal', label: '标准', desc: '1200px' },
-  { key: 'wide', label: '宽', desc: '1440px' },
+  { key: 'narrow', label: '窄', value: '960px' },
+  { key: 'normal', label: '标准', value: '1200px' },
+  { key: 'wide', label: '宽', value: '1440px' },
+  { key: 'custom', label: '自定义', value: '' },
 ] as const
 
 const NAV_HEIGHTS = [
-  { key: '56', label: '低', desc: '56px' },
-  { key: '64', label: '标准', desc: '64px' },
-  { key: '72', label: '高', desc: '72px' },
+  { key: '56', label: '低', value: '3.5rem' },
+  { key: '64', label: '标准', value: '4rem' },
+  { key: '72', label: '高', value: '4.5rem' },
+  { key: 'custom', label: '自定义', value: '' },
 ] as const
 
 const SIDEBAR_WIDTHS = [
-  { key: '220', label: '窄', desc: '220px' },
-  { key: '260', label: '标准', desc: '260px' },
-  { key: '300', label: '宽', desc: '300px' },
+  { key: '220', label: '窄', value: '220px' },
+  { key: '260', label: '标准', value: '260px' },
+  { key: '300', label: '宽', value: '300px' },
+  { key: 'custom', label: '自定义', value: '' },
 ] as const
 
 const PAGE_BGS = [
@@ -63,6 +69,7 @@ const PAGE_BGS = [
   { key: '#FFFFFF', label: '纯白' },
   { key: '#F1F5F9', label: '浅灰' },
   { key: '#FAFAF9', label: '自然' },
+  { key: 'custom', label: '自定义' },
 ] as const
 
 const TABS = [
@@ -85,24 +92,38 @@ export default function ThemeSettings() {
   const [hue, setHue] = useState(theme.primary_hue)
   const [customColor, setCustomColor] = useState(theme.custom_color || '#4169E1')
   const [radius, setRadius] = useState(theme.radius)
+  const [customRadius, setCustomRadius] = useState(theme.custom_radius || '0.5rem')
   const [btnSize, setBtnSize] = useState(theme.button_size)
+  const [customControlHeight, setCustomControlHeight] = useState(theme.custom_control_height || '2.5rem')
   const [fontSize, setFontSize] = useState(theme.font_size)
+  const [customFontSize, setCustomFontSize] = useState(theme.custom_font_size || '15px')
   const [contentWidth, setContentWidth] = useState(theme.content_width)
+  const [customContentWidth, setCustomContentWidth] = useState(theme.custom_content_width || '1200px')
   const [navHeight, setNavHeight] = useState(theme.nav_height)
+  const [customNavHeight, setCustomNavHeight] = useState(theme.custom_nav_height || '4rem')
   const [sidebarWidth, setSidebarWidth] = useState(theme.sidebar_width)
+  const [customSidebarWidth, setCustomSidebarWidth] = useState(theme.custom_sidebar_width || '260px')
   const [pageBg, setPageBg] = useState(theme.page_bg)
+  const [customPageBg, setCustomPageBg] = useState(theme.custom_page_bg || '#F7F6F2')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     setHue(theme.primary_hue)
     setCustomColor(theme.custom_color || '#4169E1')
     setRadius(theme.radius)
+    setCustomRadius(theme.custom_radius || '0.5rem')
     setBtnSize(theme.button_size)
+    setCustomControlHeight(theme.custom_control_height || '2.5rem')
     setFontSize(theme.font_size)
+    setCustomFontSize(theme.custom_font_size || '15px')
     setContentWidth(theme.content_width)
+    setCustomContentWidth(theme.custom_content_width || '1200px')
     setNavHeight(theme.nav_height)
+    setCustomNavHeight(theme.custom_nav_height || '4rem')
     setSidebarWidth(theme.sidebar_width)
+    setCustomSidebarWidth(theme.custom_sidebar_width || '260px')
     setPageBg(theme.page_bg)
+    setCustomPageBg(theme.custom_page_bg || '#F7F6F2')
   }, [theme])
 
   if (!user) return <Loading className="min-h-[60vh]" label="正在加载主题设置…" />
@@ -113,9 +134,22 @@ export default function ThemeSettings() {
       const s = await api('/auth/theme-settings', {
         method: 'PUT',
         body: {
-          primary_hue: hue, custom_color: hue === 'custom' ? customColor : '',
-          radius, button_size: btnSize, font_size: fontSize,
-          content_width: contentWidth, nav_height: navHeight, sidebar_width: sidebarWidth, page_bg: pageBg,
+          primary_hue: hue,
+          custom_color: hue === 'custom' ? customColor : '',
+          radius,
+          custom_radius: radius === 'custom' ? customRadius : '',
+          button_size: btnSize,
+          custom_control_height: btnSize === 'custom' ? customControlHeight : '',
+          font_size: fontSize,
+          custom_font_size: fontSize === 'custom' ? customFontSize : '',
+          content_width: contentWidth,
+          custom_content_width: contentWidth === 'custom' ? customContentWidth : '',
+          nav_height: navHeight,
+          custom_nav_height: navHeight === 'custom' ? customNavHeight : '',
+          sidebar_width: sidebarWidth,
+          custom_sidebar_width: sidebarWidth === 'custom' ? customSidebarWidth : '',
+          page_bg: pageBg,
+          custom_page_bg: pageBg === 'custom' ? customPageBg : '',
         },
       })
       applyTheme(s)
@@ -209,17 +243,35 @@ export default function ThemeSettings() {
 
               {/* 圆角 */}
               {activeTab === 'radius' && (
-                <div className="grid grid-cols-5 gap-3">
-                  {RADII.map((r) => (
-                    <OptionCard key={r.key} active={radius === r.key} onClick={() => setRadius(r.key)}>
-                      <span className={`flex h-10 w-14 items-center justify-center border-2 ${
-                        radius === r.key ? 'border-primary-500 bg-primary-100' : 'border-slate-300 bg-slate-100'
-                      }`} style={{ borderRadius: r.key === 'sm' ? '0.25rem' : r.key === 'md' ? '0.375rem' : r.key === 'lg' ? '0.5rem' : r.key === 'xl' ? '0.75rem' : '1rem' }}>
-                        {radius === r.key && <CheckIcon className="h-4 w-4 text-primary-600" />}
-                      </span>
-                      <span className={`text-xs font-medium ${radius === r.key ? 'text-primary-700' : 'text-slate-600'}`}>{r.label}</span>
-                    </OptionCard>
-                  ))}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                    {RADII.map((r) => (
+                      <OptionCard key={r.key} active={radius === r.key} onClick={() => setRadius(r.key)}>
+                        <span className={`flex h-10 w-14 items-center justify-center border-2 ${
+                          radius === r.key ? 'border-primary-500 bg-primary-100' : 'border-slate-300 bg-slate-100'
+                        }`} style={{ borderRadius: r.value || customRadius || '0.5rem' }}>
+                          {radius === r.key && <CheckIcon className="h-4 w-4 text-primary-600" />}
+                        </span>
+                        <span className={`text-xs font-medium ${radius === r.key ? 'text-primary-700' : 'text-slate-600'}`}>{r.label}</span>
+                      </OptionCard>
+                    ))}
+                  </div>
+
+                  {radius === 'custom' && (
+                    <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-slate-700">圆角值</label>
+                        <input
+                          type="text"
+                          value={customRadius}
+                          onChange={(e) => setCustomRadius(e.target.value)}
+                          className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                          placeholder="0.5rem"
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500">支持 rem、px、% 等 CSS 单位</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -229,15 +281,15 @@ export default function ThemeSettings() {
                   <div>
                     <p className="mb-3 text-sm font-medium text-slate-700">控件大小</p>
                     <p className="mb-3 text-xs text-slate-500">影响按钮、输入框、Tab 等所有控件的高度和内边距</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {BTN_SIZES.map((b) => (
                         <OptionCard key={b.key} active={btnSize === b.key} onClick={() => setBtnSize(b.key)}>
                           <div className="space-y-2">
                             <span className={`inline-flex items-center justify-center border-2 px-4 font-medium ${
                               btnSize === b.key ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-300 bg-white text-slate-600'
                             }`} style={{
-                              height: b.key === 'sm' ? '2rem' : b.key === 'md' ? '2.5rem' : '3rem',
-                              fontSize: b.key === 'sm' ? '0.75rem' : b.key === 'md' ? '0.875rem' : '1rem',
+                              height: b.height || customControlHeight || '2.5rem',
+                              fontSize: '0.875rem',
                               borderRadius: 'var(--radius)',
                             }}>
                               按钮
@@ -245,8 +297,8 @@ export default function ThemeSettings() {
                             <span className={`flex items-center justify-center border-2 px-4 text-slate-600 ${
                               btnSize === b.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
                             }`} style={{
-                              height: b.key === 'sm' ? '2rem' : b.key === 'md' ? '2.5rem' : '3rem',
-                              fontSize: b.key === 'sm' ? '0.75rem' : b.key === 'md' ? '0.875rem' : '1rem',
+                              height: b.height || customControlHeight || '2.5rem',
+                              fontSize: '0.875rem',
                               borderRadius: 'var(--radius)',
                             }}>
                               输入框
@@ -257,21 +309,55 @@ export default function ThemeSettings() {
                         </OptionCard>
                       ))}
                     </div>
+
+                    {btnSize === 'custom' && (
+                      <div className="mt-4 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center gap-3">
+                          <label className="text-sm font-medium text-slate-700">高度</label>
+                          <input
+                            type="text"
+                            value={customControlHeight}
+                            onChange={(e) => setCustomControlHeight(e.target.value)}
+                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                            placeholder="2.5rem"
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500">支持 rem、px 等 CSS 单位</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* 字体 */}
               {activeTab === 'font' && (
-                <div className="grid grid-cols-3 gap-3">
-                  {FONT_SIZES.map((f) => (
-                    <OptionCard key={f.key} active={fontSize === f.key} onClick={() => setFontSize(f.key)}>
-                      <span className={`text-lg font-semibold ${fontSize === f.key ? 'text-primary-600' : 'text-slate-700'}`}
-                        style={{ fontSize: f.key + 'px' }}>Aa</span>
-                      <span className={`text-xs font-medium ${fontSize === f.key ? 'text-primary-700' : 'text-slate-600'}`}>{f.label}</span>
-                      <span className="text-xs text-slate-400">{f.desc}</span>
-                    </OptionCard>
-                  ))}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {FONT_SIZES.map((f) => (
+                      <OptionCard key={f.key} active={fontSize === f.key} onClick={() => setFontSize(f.key)}>
+                        <span className={`text-lg font-semibold ${fontSize === f.key ? 'text-primary-600' : 'text-slate-700'}`}
+                          style={{ fontSize: f.key === 'custom' ? customFontSize : f.key + 'px' }}>Aa</span>
+                        <span className={`text-xs font-medium ${fontSize === f.key ? 'text-primary-700' : 'text-slate-600'}`}>{f.label}</span>
+                        <span className="text-xs text-slate-400">{f.desc}</span>
+                      </OptionCard>
+                    ))}
+                  </div>
+
+                  {fontSize === 'custom' && (
+                    <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-slate-700">字号</label>
+                        <input
+                          type="text"
+                          value={customFontSize}
+                          onChange={(e) => setCustomFontSize(e.target.value)}
+                          className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                          placeholder="15px"
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500">支持 px、rem、em 等 CSS 单位</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -280,74 +366,152 @@ export default function ThemeSettings() {
                 <div className="space-y-6">
                   <div>
                     <p className="mb-3 text-sm font-medium text-slate-700">内容区宽度</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {CONTENT_WIDTHS.map((w) => (
                         <OptionCard key={w.key} active={contentWidth === w.key} onClick={() => setContentWidth(w.key)}>
                           <span className={`flex h-8 w-full items-center justify-center rounded border-2 ${
                             contentWidth === w.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
                           }`}>
                             <span className={`h-3 rounded-sm ${contentWidth === w.key ? 'bg-primary-500' : 'bg-slate-300'}`}
-                              style={{ width: w.key === 'narrow' ? '50%' : w.key === 'normal' ? '70%' : '90%' }} />
+                              style={{ width: w.value ? undefined : customContentWidth ? '70%' : '70%' }} />
                           </span>
                           <span className={`text-xs font-medium ${contentWidth === w.key ? 'text-primary-700' : 'text-slate-600'}`}>{w.label}</span>
-                          <span className="text-xs text-slate-400">{w.desc}</span>
+                          <span className="text-xs text-slate-400">{w.value || ''}</span>
                         </OptionCard>
                       ))}
                     </div>
+                    {contentWidth === 'custom' && (
+                      <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center gap-3">
+                          <label className="text-sm font-medium text-slate-700">宽度</label>
+                          <input
+                            type="text"
+                            value={customContentWidth}
+                            onChange={(e) => setCustomContentWidth(e.target.value)}
+                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                            placeholder="1200px"
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500">支持 px、rem、% 等 CSS 单位</span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="mb-3 text-sm font-medium text-slate-700">导航栏高度</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {NAV_HEIGHTS.map((n) => (
                         <OptionCard key={n.key} active={navHeight === n.key} onClick={() => setNavHeight(n.key)}>
                           <span className={`flex w-full items-end justify-center rounded border-2 ${
                             navHeight === n.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
                           }`} style={{ height: '3rem' }}>
                             <span className={`w-8 rounded-t-sm ${navHeight === n.key ? 'bg-primary-500' : 'bg-slate-300'}`}
-                              style={{ height: n.key === '56' ? '1.5rem' : n.key === '64' ? '2rem' : '2.5rem' }} />
+                              style={{ height: n.value ? undefined : customNavHeight ? '2rem' : '2rem' }} />
                           </span>
                           <span className={`text-xs font-medium ${navHeight === n.key ? 'text-primary-700' : 'text-slate-600'}`}>{n.label}</span>
-                          <span className="text-xs text-slate-400">{n.desc}</span>
+                          <span className="text-xs text-slate-400">{n.value || ''}</span>
                         </OptionCard>
                       ))}
                     </div>
+                    {navHeight === 'custom' && (
+                      <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center gap-3">
+                          <label className="text-sm font-medium text-slate-700">高度</label>
+                          <input
+                            type="text"
+                            value={customNavHeight}
+                            onChange={(e) => setCustomNavHeight(e.target.value)}
+                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                            placeholder="4rem"
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500">支持 rem、px 等 CSS 单位</span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="mb-3 text-sm font-medium text-slate-700">侧边栏宽度</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {SIDEBAR_WIDTHS.map((s) => (
                         <OptionCard key={s.key} active={sidebarWidth === s.key} onClick={() => setSidebarWidth(s.key)}>
                           <span className={`flex h-8 w-full items-stretch justify-start rounded border-2 overflow-hidden ${
                             sidebarWidth === s.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
                           }`}>
                             <span className={`${sidebarWidth === s.key ? 'bg-primary-500' : 'bg-slate-300'}`}
-                              style={{ width: s.key === '220' ? '35%' : s.key === '260' ? '45%' : '55%' }} />
+                              style={{ width: s.value ? undefined : customSidebarWidth ? '45%' : '45%' }} />
                             <span className="flex-1 bg-white" />
                           </span>
                           <span className={`text-xs font-medium ${sidebarWidth === s.key ? 'text-primary-700' : 'text-slate-600'}`}>{s.label}</span>
-                          <span className="text-xs text-slate-400">{s.desc}</span>
+                          <span className="text-xs text-slate-400">{s.value || ''}</span>
                         </OptionCard>
                       ))}
                     </div>
+                    {sidebarWidth === 'custom' && (
+                      <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center gap-3">
+                          <label className="text-sm font-medium text-slate-700">宽度</label>
+                          <input
+                            type="text"
+                            value={customSidebarWidth}
+                            onChange={(e) => setCustomSidebarWidth(e.target.value)}
+                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                            placeholder="260px"
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500">支持 px、rem 等 CSS 单位</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* 背景 */}
               {activeTab === 'bg' && (
-                <div className="grid grid-cols-5 gap-3">
-                  {PAGE_BGS.map((bg) => (
-                    <OptionCard key={bg.key} active={pageBg === bg.key} onClick={() => setPageBg(bg.key)}>
-                      <span className="flex h-10 w-full items-center justify-center rounded-lg border-2"
-                        style={{
-                          backgroundColor: bg.key,
-                          borderColor: pageBg === bg.key ? 'var(--color-primary-500)' : '#e2e8f0',
-                        }}>
-                        {pageBg === bg.key && <CheckIcon className="h-4 w-4 text-primary-600" />}
-                      </span>
-                      <span className={`text-xs font-medium ${pageBg === bg.key ? 'text-primary-700' : 'text-slate-600'}`}>{bg.label}</span>
-                    </OptionCard>
-                  ))}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                    {PAGE_BGS.map((bg) => (
+                      <OptionCard key={bg.key} active={pageBg === bg.key} onClick={() => setPageBg(bg.key)}>
+                        {bg.key === 'custom' ? (
+                          <span className="flex h-10 w-full items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white">
+                            <span className="text-lg text-slate-400">+</span>
+                          </span>
+                        ) : (
+                          <span className="flex h-10 w-full items-center justify-center rounded-lg border-2"
+                            style={{
+                              backgroundColor: bg.key,
+                              borderColor: pageBg === bg.key ? 'var(--color-primary-500)' : '#e2e8f0',
+                            }}>
+                            {pageBg === bg.key && <CheckIcon className="h-4 w-4 text-primary-600" />}
+                          </span>
+                        )}
+                        <span className={`text-xs font-medium ${pageBg === bg.key ? 'text-primary-700' : 'text-slate-600'}`}>{bg.label}</span>
+                      </OptionCard>
+                    ))}
+                  </div>
+
+                  {pageBg === 'custom' && (
+                    <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-slate-700">选择颜色</label>
+                        <input
+                          type="color"
+                          value={customPageBg}
+                          onChange={(e) => setCustomPageBg(e.target.value)}
+                          className="h-10 w-14 cursor-pointer rounded-lg border border-slate-200"
+                        />
+                        <input
+                          type="text"
+                          value={customPageBg}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setCustomPageBg(v)
+                          }}
+                          className="h-10 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                          placeholder="#000000"
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500">自定义页面背景颜色</span>
+                    </div>
+                  )}
                 </div>
               )}
 
