@@ -303,12 +303,12 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
       <Container>
         {/* 面包屑 */}
-        <nav className="flex items-center gap-1.5 py-3 text-sm text-slate-500">
-          <Link href="/explore" className="hover:text-primary-600">发现</Link>
+        <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden py-3 text-sm text-slate-500">
+          <Link href="/explore" className="shrink-0 hover:text-primary-600">发现</Link>
           {(book.tags || []).slice(0, 1).map((t) => (
-            <span key={t.id} className="flex items-center gap-1.5">
+            <span key={t.id} className="flex min-w-0 items-center gap-1.5">
               <span className="text-slate-300">/</span>
-              <Link href={`/explore?tag=${encodeURIComponent(t.slug)}`} className="hover:text-primary-600">{t.name}</Link>
+              <Link href={`/explore?tag=${encodeURIComponent(t.slug)}`} className="truncate hover:text-primary-600">{t.name}</Link>
             </span>
           ))}
           <span className="text-slate-300">/</span>
@@ -320,7 +320,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       <Container>
         <section className="grid items-start gap-x-10 gap-y-8 pb-8 lg:grid-cols-[300px_1fr_300px]">
           {/* 左：大封面 */}
-          <div className="mx-auto w-64 lg:mx-0 lg:w-full">
+          <div className="mx-auto w-36 sm:w-52 lg:mx-0 lg:w-full">
             <div className="aspect-[3/4] w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF] shadow-md">
               {cover && <img src={cover} alt={book.title} onError={(e) => { e.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" />}
             </div>
@@ -328,8 +328,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
           {/* 中：标题区 + 操作 */}
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold leading-tight text-ink md:text-4xl">{book.title}</h1>
-            {book.description && <p className="mt-3 text-[15px] leading-7 text-slate-500">{book.description}</p>}
+            <h1 className="break-words text-2xl font-bold leading-tight text-ink sm:text-3xl md:text-4xl">{book.title}</h1>
+            {book.description && <p className="mt-3 break-words text-[15px] leading-7 text-slate-500">{book.description}</p>}
 
             <div className="mt-4 flex flex-wrap gap-2">
               {(book.tags || []).map((t) => (
@@ -354,7 +354,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
             )}
 
             {/* 统计条 */}
-            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
+            <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 text-sm text-slate-500 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
               <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {chapters} 个章节</span>
               <span className="flex items-center gap-1.5"><ClockIcon className="h-4 w-4" /> 约 {readingMin} 分钟</span>
               <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {formatNumber(bookViews)} 次阅读</span>
@@ -373,7 +373,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {readUrl ? (
-                <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="px-7 text-base">
+                <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="w-full px-7 text-base sm:w-auto">
                   <BookIcon className="h-5 w-5" /> {progress && progress.docSlug !== readDocSlug ? '继续阅读' : '开始阅读'}
                 </ButtonLink>
               ) : (
@@ -457,7 +457,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
             {user && totalChapters > 0 && (
               <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                   <span className="font-medium text-slate-700">我的阅读进度</span>
                   <span className="text-slate-500">已读 {readCount} / {totalChapters} 章 · {progressPct}%</span>
                 </div>
@@ -475,8 +475,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                   {tree.map((doc, i) => (
                     <li key={doc.id}>
                       <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${doc.slug}`}
-                        className="group flex items-center gap-5 border-l-2 border-transparent px-6 py-4 transition-colors hover:bg-primary-50/40">
-                        <span className={`w-10 shrink-0 text-center text-2xl font-bold transition-colors group-hover:text-primary-500 ${readSet.has(doc.id) ? 'text-emerald-400' : 'text-slate-300'}`}>{String(i + 1).padStart(2, '0')}</span>
+                        className="group flex items-center gap-3 border-l-2 border-transparent px-3 py-3.5 transition-colors hover:bg-primary-50/40 sm:gap-5 sm:px-6 sm:py-4">
+                        <span className={`w-8 shrink-0 text-center text-lg font-bold transition-colors group-hover:text-primary-500 sm:w-10 sm:text-2xl ${readSet.has(doc.id) ? 'text-emerald-400' : 'text-slate-300'}`}>{String(i + 1).padStart(2, '0')}</span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-1.5">
                             <span className="truncate font-semibold text-slate-900">{chapterPrefix}{doc.title}</span>
@@ -494,7 +494,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                           )}
                         </span>
                         {(doc.children?.length || 0) > 0 && (
-                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{doc.children!.length} 节</span>
+                          <span className="hidden shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 sm:inline-flex">{doc.children!.length} 节</span>
                         )}
                         <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-primary-500" />
                       </Link>
@@ -512,7 +512,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         <section className="border-t border-slate-200 bg-white py-10">
           <Container>
             <h2 className="mb-6 text-xl font-bold text-slate-900">你可能也喜欢</h2>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {related.map((b) => <BookCard key={b.id} book={b} showStatus tagsMax={2} tagsLink={false} dateField="created" />)}
             </div>
           </Container>

@@ -46,7 +46,7 @@ export default function Favorites() {
           <EmptyState>还没有收藏书籍，去书籍详情页收藏喜欢的作品吧</EmptyState>
         ) : (
           <>
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {data.items.map(({ book }) => (
                 <BookCard key={book.id} book={book} />
               ))}

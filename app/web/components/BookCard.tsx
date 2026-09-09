@@ -82,7 +82,7 @@ function CoverLink({ book, href, view, dark }: { book: Book; href: string; view:
     : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'
   const sizeClass = view === 'grid'
     ? 'relative block aspect-[16/8] w-full overflow-hidden'
-    : 'h-20 w-16 shrink-0 overflow-hidden rounded-lg'
+    : 'h-32 w-full shrink-0 overflow-hidden rounded-lg sm:h-20 sm:w-16'
   return (
     <Link href={href} aria-label={book.title} className={`${sizeClass} ${gradient}`}>
       {cover
@@ -199,10 +199,10 @@ export default function BookCard({
   // ── list 行卡 ──
   if (view === 'list') {
     return (
-      <div className={`group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md ${className || ''}`}>
+      <div className={`group flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${className || ''}`}>
         <CoverLink book={book} href={detailHref} view="list" />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {titleBlock}
             {tagBlock}
             {showStatus && <StatusBadge status={book.status} />}
@@ -214,10 +214,10 @@ export default function BookCard({
           {descBlock}
           {metaBlock}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div className="flex w-full shrink-0 items-center justify-between gap-2 border-t border-slate-100 pt-3 sm:w-auto sm:flex-col sm:items-end sm:justify-start sm:border-0 sm:pt-0">
           {authorBlock}
-          {topActions}
-          {actions}
+          {topActions && <div className="shrink-0">{topActions}</div>}
+          {actions && <div className="min-w-0 flex-1 sm:flex-none">{actions}</div>}
         </div>
       </div>
     )

@@ -162,37 +162,39 @@ export default function MyBooks() {
             <h1 className="text-3xl font-bold text-ink md:text-4xl">我的书籍</h1>
             <p className="mt-2 text-[15px] text-slate-500">在这里继续写作、整理章节，或者发布你的下一本知识作品。</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <ButtonLink href="/user/trash" variant="ghost" className="px-4 text-base">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
+            <ButtonLink href="/user/trash" variant="ghost" className="px-3 text-sm sm:px-4 sm:text-base">
               <i className="fa-regular fa-trash-can" aria-hidden="true" /> 回收站
             </ButtonLink>
-            <Button variant="outline" className="px-5 text-base" onClick={() => setImportOpen(true)}>
+            <Button variant="outline" className="px-3 text-sm sm:px-5 sm:text-base" onClick={() => setImportOpen(true)}>
               <UploadIcon className="h-5 w-5" /> 导入书籍
             </Button>
-            <ButtonLink href="/books/create" className="px-5 text-base">
+            <ButtonLink href="/books/create" className="col-span-2 px-3 text-sm sm:px-5 sm:text-base">
               <PlusIcon className="h-5 w-5" /> 新建书籍
             </ButtonLink>
           </div>
         </div>
       </div>
 
-      <SegmentedTabs className="mb-5" value={scope} ariaLabel="书籍范围"
+      <SegmentedTabs className="mb-5 sm:!w-auto" fullWidth value={scope} ariaLabel="书籍范围"
         onChange={(value) => changeScope(value as 'owned' | 'collaborating')} items={[
           { value: 'owned', label: '我创建的' },
           { value: 'collaborating', label: '与我协作的' },
         ]} />
 
       {/* 筛选行 */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-y border-slate-200 py-3">
-        <SegmentedTabs value={status} ariaLabel="书籍状态" onChange={(value) => { setStatus(value); setPage(1) }}
-          items={statusTabs.map((tab) => ({
-            value: tab.key,
-            label: <>{tab.label}{counts[tab.key] !== undefined && <span className="ml-1 text-xs text-slate-400">{counts[tab.key]}</span>}</>,
-          }))} />
-        <div className="flex flex-wrap items-center gap-2">
-          <Input className="w-56" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1) }}
+      <div className="flex flex-col gap-3 border-y border-slate-200 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+        <div className="w-full overflow-x-auto pb-1 lg:w-auto lg:pb-0">
+          <SegmentedTabs className="min-w-max" value={status} ariaLabel="书籍状态" onChange={(value) => { setStatus(value); setPage(1) }}
+            items={statusTabs.map((tab) => ({
+              value: tab.key,
+              label: <>{tab.label}{counts[tab.key] !== undefined && <span className="ml-1 text-xs text-slate-400">{counts[tab.key]}</span>}</>,
+            }))} />
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+          <Input className="w-full sm:w-56" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1) }}
             leading={<SearchIcon className="h-4 w-4" />} placeholder="搜索我的书籍" />
-          <Select className="w-36" value={sort} onChange={(v) => { setSort(v as SortKey); setPage(1) }} options={sortOptions} />
+          <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setSort(v as SortKey); setPage(1) }} options={sortOptions} />
           <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"
             onChange={(value) => setView(value as 'grid' | 'list')} items={[
               { value: 'grid', label: '网格视图', icon: <GridIcon className="h-4 w-4" /> },
@@ -206,7 +208,7 @@ export default function MyBooks() {
       {loading ? (
         <Loading />
       ) : hasBooks ? (
-        <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+        <div className={view === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
           {items.map((book) => (
             <BookCardMine key={book.id} book={book} view={view} collaborating={scope === 'collaborating'}
               menuOpen={menuFor === book.id} setMenuOpen={(open) => setMenuFor(open ? book.id : null)}

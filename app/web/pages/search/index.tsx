@@ -144,10 +144,10 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
         <div className="py-8">
           <h1 className="text-2xl font-bold text-ink">搜索</h1>
           <form onSubmit={submit} className="mt-5 space-y-4">
-            <div className="flex max-w-3xl gap-2">
+            <div className="flex max-w-3xl flex-col gap-2 sm:flex-row">
               <Input className="flex-1" value={keyword} onChange={(event) => setKeyword(event.target.value)}
                 leading={<SearchIcon className="h-4 w-4" />} placeholder="搜索书籍、章节内容…" maxLength={100} />
-              <Button type="submit" loading={loading}>搜索</Button>
+              <Button type="submit" loading={loading} className="w-full sm:w-auto">搜索</Button>
             </div>
             <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 md:grid-cols-4">
               <Input value={draft.author} onChange={(event) => setDraft({ ...draft, author: event.target.value })}
@@ -164,7 +164,7 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
         </div>
 
         {q && (
-          <SegmentedTabs size="sm" value={filters.type} items={typeItems} ariaLabel="搜索结果类型"
+          <SegmentedTabs className="sm:!w-auto" size="sm" fullWidth value={filters.type} items={typeItems} ariaLabel="搜索结果类型"
             onChange={(value) => navigate({ ...filters, type: value as SearchType }, 1, q)} />
         )}
 
@@ -189,7 +189,7 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
                 <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
                   <BookIcon className="h-5 w-5 text-primary-500" /> 书籍
                 </h2>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {result.books.map((book) => <BookCard key={book.id} book={book} highlight={q} />)}
                 </div>
               </section>

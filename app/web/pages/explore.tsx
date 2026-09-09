@@ -20,6 +20,7 @@ interface ExploreProps {
   siteUrl: string
   keyword: string
   tag: string
+  tagName: string
   sort: 'latest' | 'hot'
   page: number
   data: PageResult<Book>
@@ -38,19 +39,23 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
   const sort = (query.sort === 'hot' ? 'hot' : 'latest') as 'latest' | 'hot'
   const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1)
 
-  const [site, data, hotTags] = await Promise.all([
+  const [site, data, tags] = await Promise.all([
     getSiteConfig(),
     tag
       ? serverApi<PageResult<Book>>(`/tags/${encodeURIComponent(tag)}/books`, { params: { page, page_size: 12 } })
           .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>)
       : serverApi<PageResult<Book>>('/books', { params: { page, page_size: 12, title: keyword || undefined } })
           .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>),
-    serverApi<Tag[]>('/tags', { params: { limit: 6 } }).catch(() => [] as Tag[]),
+    serverApi<Tag[]>('/tags', { params: { limit: 200 } }).catch(() => [] as Tag[]),
   ])
-  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), keyword, tag, sort, page, data, hotTags } }
+  const selectedBookTag = data.items
+    .flatMap((book) => book.tags || [])
+    .find((item) => item.slug === tag)
+  const tagName = tag ? selectedBookTag?.name || tags.find((item) => item.slug === tag)?.name || tag : ''
+  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), keyword, tag, tagName, sort, page, data, hotTags: tags.slice(0, 6) } }
 }
 
-export default function Explore({ site, siteUrl, keyword, tag, sort, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [loading, setLoading] = useState(false)
@@ -80,7 +85,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
     return 0
   })
 
-  const sectionTitle = tag ? `标签「${tag}」下的书籍` : keyword ? `「${keyword}」的搜索结果` : '全部公开书籍'
+  const sectionTitle = tag ? `标签「${tagName}」下的书籍` : keyword ? `「${keyword}」的搜索结果` : '全部公开书籍'
 
   const jsonLd = items.length > 0 ? {
     '@context': 'https://schema.org',
@@ -115,17 +120,17 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
 
       {/* Hero：居中标题 + 大搜索框 + 热门搜索 */}
       <section className="border-b border-slate-200 bg-gradient-to-b from-primary-50/60 to-warm">
-        <Container className="py-10 text-center">
+        <Container className="py-8 text-center sm:py-10">
           <p className="text-sm font-medium tracking-wide text-primary-600">开放知识广场</p>
-          <h1 className="mt-2 text-3xl font-bold text-ink md:text-4xl">发现值得反复阅读的知识作品</h1>
+          <h1 className="mt-2 text-2xl font-bold text-ink sm:text-3xl md:text-4xl">发现值得反复阅读的知识作品</h1>
           <p className="mt-3 text-[15px] text-slate-500">浏览社区公开发布的书籍，从不同作者的经验与思考中获得新的连接。</p>
 
-          <form action="/explore" method="get" className="mx-auto mt-6 flex max-w-2xl gap-2">
+          <form action="/explore" method="get" className="mx-auto mt-6 flex max-w-2xl flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <Input size="lg" className="pl-11 text-base" name="title" placeholder="搜索书名、主题或作者" defaultValue={keyword} />
             </div>
-            <Button type="submit" size="lg" className="px-7">搜索</Button>
+            <Button type="submit" size="lg" className="w-full px-7 sm:w-auto">搜索</Button>
           </form>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
@@ -139,8 +144,23 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
       </section>
 
       {/* 主体：左栏浏览 + 右内容 */}
-      <Container className="grid gap-8 py-8 lg:grid-cols-[240px_1fr]">
-        <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-20">
+      <Container className="grid gap-5 py-6 sm:py-8 lg:grid-cols-[240px_1fr] lg:gap-8">
+        <div className="space-y-3 lg:hidden">
+          <SegmentedTabs fullWidth value={activeMode} ariaLabel="浏览内容"
+            items={browseItems.map((item) => ({ value: item.mode, label: item.label, icon: item.icon }))}
+            onChange={(mode) => {
+              const item = browseItems.find((entry) => entry.mode === mode)
+              if (item) { navLoad(item.href); void router.push(item.href) }
+            }} />
+          {hotTags.length > 0 && <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+            {hotTags.map((item) => <Link key={item.id} href={`/explore?tag=${encodeURIComponent(item.slug)}`}
+              onClick={() => navLoad(`/explore?tag=${encodeURIComponent(item.slug)}`)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${tag === item.slug ? 'border-primary-300 bg-primary-50 text-primary-700' : 'border-slate-200 bg-white text-slate-600'}`}>
+              {item.name} <span className="text-xs text-slate-400">{item.book_count}</span>
+            </Link>)}
+          </div>}
+        </div>
+        <aside className="hidden h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-20 lg:block">
           <h2 className="mb-2 px-2 text-sm font-semibold text-slate-900">浏览内容</h2>
           <ul className="space-y-0.5">
             {browseItems.map((item) => {
@@ -183,14 +203,14 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
         </aside>
 
         <section>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-2xl font-bold text-ink">{sectionTitle}</h2>
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-baseline gap-3">
+              <h2 className="min-w-0 text-xl font-bold text-ink sm:text-2xl">{sectionTitle}</h2>
               <span className="text-sm text-slate-400">共 {data.total} 本</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               {!tag && (
-                <Select className="w-36" value={sort} onChange={(v) => { setLoading(true); window.location.href = v === 'hot' ? '/explore?sort=hot' : '/explore' }}
+                <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setLoading(true); window.location.href = v === 'hot' ? '/explore?sort=hot' : '/explore' }}
                   options={[{ value: 'latest', label: '最新发布' }, { value: 'hot', label: '热门阅读' }]} />
               )}
               <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"
@@ -208,7 +228,7 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
               {keyword ? '没有找到相关书籍' : tag ? '该标签下暂无书籍' : '还没有公开的书籍，创建一本吧！'}
             </div>
           ) : (
-            <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+            <div className={view === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
               {items.map((b) => <BookCard key={b.id} book={b} view={view} />)}
             </div>
           )}

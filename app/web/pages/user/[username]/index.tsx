@@ -69,7 +69,7 @@ function joinYear(input: string | null | undefined): string {
 function AuthorProfileCard({ profile, siteUrl, share }: { profile: UserProfile; siteUrl: string; share: () => void }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="grid items-center gap-8 px-8 py-6 lg:grid-cols-[160px_1fr_300px]">
+      <div className="grid items-center gap-5 px-5 py-6 sm:px-8 lg:grid-cols-[160px_1fr_300px] lg:gap-8">
         {/* 左：大圆头像 */}
         <div className="mx-auto lg:mx-0">
           <UserAvatar user={profile} size="h-28 w-28 lg:h-32 lg:w-32 text-4xl" link={false} />
@@ -78,7 +78,7 @@ function AuthorProfileCard({ profile, siteUrl, share }: { profile: UserProfile; 
         {/* 中：身份信息 */}
         <div className="min-w-0">
           <p className="text-sm text-slate-400">知识创作者</p>
-          <h1 className="mt-1 flex items-center gap-3 text-4xl font-bold text-ink">
+          <h1 className="mt-1 flex min-w-0 flex-wrap items-center gap-2 break-words text-2xl font-bold text-ink sm:gap-3 sm:text-4xl">
             {profile.username}
             {profile.role === 'admin' && (
               <span className="inline-flex items-center rounded-md bg-primary-50 px-2.5 py-1 text-sm font-medium text-primary-700 ring-1 ring-inset ring-primary-200">管理员</span>
@@ -199,13 +199,13 @@ export default function UserHome({ site, siteUrl, profile, books, sort }: InferG
 
         {/* 公开书籍 */}
         <section className="mt-10">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-baseline gap-3">
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
               <h2 className="text-2xl font-bold text-ink">公开书籍</h2>
               <span className="text-sm text-slate-400">{profile.username}发布的 {books.total} 本知识作品</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Select className="w-36" value={sort} onChange={changeSort} options={sortOptions} />
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={changeSort} options={sortOptions} />
               <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"
                 onChange={(value) => setView(value as 'grid' | 'list')} items={[
                   { value: 'grid', label: '网格视图', icon: <GridIcon className="h-4 w-4" /> },
@@ -219,7 +219,7 @@ export default function UserHome({ site, siteUrl, profile, books, sort }: InferG
           ) : loading ? (
             <Loading />
           ) : (
-            <div className={view === 'grid' ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+            <div className={view === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
               {items.map((b) => <BookCard key={b.id} book={b} view={view} showAuthor={false} />)}
             </div>
           )}
