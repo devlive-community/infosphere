@@ -161,7 +161,8 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
   const login = useCallback((token: string, u: User) => {
     storeSession(token, u)
     setUser(u)
-  }, [])
+    loadAndApplyTheme()
+  }, [loadAndApplyTheme])
 
   const logout = useCallback(() => {
     clearSession()

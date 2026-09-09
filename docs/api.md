@@ -185,7 +185,9 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/explore/hot` | 浏览量最高的 6 本公开书籍 | `book:read` |
 | GET | `/explore/latest` | 最新发布的 6 本公开书籍 | `book:read` |
-| GET | `/search?q=` | 全局搜索：匿名仅查公开且处于可阅读状态的书籍及其中已发布章节；owner/admin/editor 可搜索草稿，viewer 仅可搜索已发布章节 | `search:read` |
+| GET | `/search?q=&type=&author=&tag=&updated_from=&updated_to=&page=&page_size=` | 高级全文搜索；`type` 为 all/book/document，作者使用用户名、标签使用 slug、日期为 YYYY-MM-DD。返回书籍/章节分页结果及 `book_total/document_total/total/page/page_size`。匿名仅查公开可读书籍及已发布章节；owner/admin/editor 可搜索草稿，viewer 仅可搜索已发布章节 | `search:read` |
+
+搜索优先使用当前数据库原生全文索引（SQLite FTS5、MySQL FULLTEXT、PostgreSQL tsvector）；数据库能力或建索引权限不足时自动回退 LIKE。全文索引仅负责命中候选，权限过滤始终在查询中独立执行。`type=all` 将两类结果按更新时间合并后分页；`total` 表示当前类型的总数，两个分类总数始终分别返回。
 
 ## 用户（公开主页）
 

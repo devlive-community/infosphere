@@ -174,6 +174,7 @@ func (a *App) SetupInstall(c *gin.Context) {
 		return
 	}
 	a.DB = db
+	a.search = configureSearchBackend(db)
 
 	token, err := auth.GenerateToken(a.Config.Secret, admin.ID, admin.Username, admin.Role)
 	if err != nil {

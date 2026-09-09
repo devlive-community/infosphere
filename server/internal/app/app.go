@@ -34,6 +34,7 @@ type App struct {
 	WebFetcher   func(context.Context, *url.URL) (webPage, error)
 	WebRenderer  func(context.Context, *url.URL) (webPage, error)
 	web          *webRuntime
+	search       searchBackend
 }
 
 // New 创建应用实例；已安装时建立数据库连接
@@ -52,6 +53,7 @@ func New(cfg *config.Config) (*App, error) {
 			return nil, fmt.Errorf("数据库迁移失败: %w", err)
 		}
 		a.DB = db
+		a.search = configureSearchBackend(db)
 		// 版本变化时向管理员发送升级完成通知（首次安装时 version 刚写入，不会触发）
 		a.NotifyAdminsOnUpgrade()
 	}

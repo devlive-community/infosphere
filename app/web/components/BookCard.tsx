@@ -7,6 +7,7 @@ import TagChips from '@/components/TagChips'
 import UserAvatar from '@/components/UserAvatar'
 import { ArrowRightIcon, EyeIcon, CalendarIcon } from '@/components/icons'
 import type { Book } from '@/lib/types'
+import HighlightText from '@/components/HighlightText'
 
 // BookCard 全站统一书籍展示卡。
 // 收敛了首页/发现/搜索/收藏/我的书籍/用户主页/相关书籍等全部列表场景，
@@ -60,6 +61,8 @@ export interface BookCardProps {
   meta?: ReactNode
   /** className 透传到卡片根节点 */
   className?: string
+  /** 搜索页命中词；通过安全文本节点高亮标题与简介 */
+  highlight?: string
 }
 
 function useDefaults(book: Book, view: 'grid' | 'list', tagsMax?: number) {
@@ -113,6 +116,7 @@ export default function BookCard({
   meta,
   className,
   tagsMax,
+  highlight,
 }: BookCardProps) {
   const detailHref = href || `/book/detail/${encodeURIComponent(book.slug)}`
   const { resolvedTagsMax } = useDefaults(book, view, tagsMax)
@@ -126,7 +130,7 @@ export default function BookCard({
 
   const titleBlock = (
     <Link href={detailHref} className="min-w-0 truncate font-semibold text-slate-900 transition-colors hover:text-primary-600">
-      {book.title}
+      <HighlightText text={book.title} query={highlight} />
     </Link>
   )
 
@@ -188,7 +192,7 @@ export default function BookCard({
 
   const descBlock = showDescription && (
     <p className={`text-sm leading-6 text-slate-500 ${view === 'grid' ? 'line-clamp-2' : 'line-clamp-2'}`}>
-      {book.description || '暂无简介'}
+      <HighlightText text={book.description || '暂无简介'} query={highlight} />
     </p>
   )
 
