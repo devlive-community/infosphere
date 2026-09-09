@@ -2,7 +2,7 @@ import { useState, FormEvent, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
-import { Button, Input, Field, Loading } from '@/components/ui'
+import { Button, ButtonLink, Input, Field, Loading } from '@/components/ui'
 
 // 重置密码：通过邮件链接进入，携带一次性令牌
 export default function ResetPassword() {
@@ -45,9 +45,9 @@ export default function ResetPassword() {
             <h1 className="text-center text-xl font-bold text-emerald-600">密码已重置</h1>
             <p className="mb-6 mt-2 text-center text-sm text-slate-500">请使用新密码登录你的账户</p>
             <p className="text-center">
-              <Link href="/login" className="inline-block rounded-lg bg-primary-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-600">
+              <ButtonLink href="/login">
                 去登录
-              </Link>
+              </ButtonLink>
             </p>
           </>
         ) : !token ? (

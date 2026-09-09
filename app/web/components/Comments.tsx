@@ -5,7 +5,7 @@ import UserAvatar from '@/components/UserAvatar'
 import { formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import type { User } from '@/lib/types'
-import { Loading, useFeedback } from '@/components/ui'
+import { Button, Loading, useFeedback } from '@/components/ui'
 
 interface CommentItem {
   id: number
@@ -117,10 +117,9 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
             placeholder="写下你的想法…" className="min-h-[88px] w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
           {error && <p className="mt-1 text-sm text-rose-500">{error}</p>}
           <div className="mt-2 flex justify-end">
-            <button type="submit" disabled={submitting || !content.trim()}
-              className="rounded-lg bg-primary-500 px-4 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50">
+            <Button type="submit" disabled={submitting || !content.trim()}>
               {submitting ? '发表中…' : '发表评论'}
-            </button>
+            </Button>
           </div>
         </form>
       ) : !allowComments ? (
