@@ -338,14 +338,14 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/books/:id/export?format=markdown` | 导出书籍为 zip：`book.md`（front-matter：标题/简介/slug/状态/公开/排序/章节前缀/封面/标签）+ `chapters/<序号>-<slug>.md`（front-matter：标题/slug/排序/状态/父章节/评论开关 + 正文）+ `images/`（本站 `/uploads` 图片随包携带并改写为相对引用，外链保持原样） | `book:export` |
 | GET | `/books/:id/export/pdf?style=author\|mine` | 通过 pdf-export 插件（无头 Chrome）导出 PDF。鉴权：作者/协作者/管理员始终可导；否则要求书籍公开、处于可阅读状态且 `export_enabled`。`style=author`（仅当作者 `export_style_shared`）用作者导出样式，否则用请求者样式；水印始终取自作者设置。未安装插件返回 400 | `book:read`（匿名可导开放的公开书） |
-| POST | `/import` | multipart 上传 `file`（zip），可选 `title`；解析同一结构还原为新书：元数据/标签/章节树（按 parent slug 重建）/图片写回上传目录；slug 冲突自动追加 `-imported-N`；安全限制：≤500 文件、解压总量 ≤64MB、拒绝 `..` 路径 | `book:import` |
+| POST | `/import` | multipart 上传 `file`（ZIP，≤64MB），可选 `title`；源文件以 0600 权限私有保存并返回 `202` 和 `task`，后台还原元数据、标签、章节树和图片；slug 冲突自动追加 `-imported-N`。安全限制：≤500 文件、解压总量 ≤64MB、拒绝绝对路径与 `..` 路径 | `book:import` |
 | POST | `/import/pdf` | multipart 上传 `file`（PDF，≤64MB），可选 `title`；文件以 0600 权限私有保存后返回 `202` 和 `task`，后台根据文本坐标、字号和字体样式重建 Markdown 标题、段落、列表及代码块，移除重复页眉页脚并修正双栏阅读顺序；结果固定为私有草稿。扫描版 PDF 需预先 OCR | `book:import` |
 | POST | `/books/:id/import/pdf` | multipart 上传 `file`（PDF，≤64MB）及 `mode=append\|replace`，仅书籍 owner/admin 可用；返回 `202` 和 `task` 后后台执行。`append` 将新解析的 Markdown 章节以草稿追加到目录末尾；`replace` 在同一事务内清理旧章节及关联状态后写入新草稿章节，并将书籍转为私有草稿。解析失败不会改动旧数据 | `book:import` |
 | GET | `/tasks/:id` | 查询当前用户自己的后台任务状态；成功时返回解密后的 `result`，等待/执行/重试/失败状态返回进度和有限错误信息；无法枚举或读取他人的任务，任务载荷永不返回 | 登录用户 |
 | POST | `/import/web` | JSON `{url,title?,render_mode?}`，`render_mode` 为 `auto`（默认）、`static` 或 `browser`；自动模式先静态抓取，检测到 SPA 空壳或正文不足时使用 Chromium 执行 JavaScript；正文转为 Markdown 并将相对链接补全；结果固定为私有草稿 | `book:import` |
 | POST | `/books/:id/documents/import-web` | JSON `{url,title?,render_mode?,parent_id?,sort_order?}`；复用网页正文提取与 SPA 渲染，剔除页头、页脚、导航、侧栏、广告、分享、评论、相关推荐与弹窗，直接在可编辑书籍内创建草稿章节并记录原始来源 | `document:create` |
 
-> 安全边界：网页导入只允许 HTTP(S)，拒绝 localhost、内网、回环及链路本地地址；重定向和浏览器发起的子资源请求也执行同一校验。动态网页首次导入若系统没有 Chrome/Chromium，会在数据目录准备 Chromium 运行环境。所有导入章节都会生成 `create` 初始版本。
+> 安全边界：网页导入只允许 HTTP(S)，拒绝 localhost、内网、回环及链路本地地址；重定向和浏览器发起的子资源请求也执行同一校验。动态网页首次导入若系统没有 Chrome/Chromium，会在数据目录准备 Chromium 运行环境。所有导入章节都会生成 `create` 初始版本。PDF/ZIP 后台任务成功后立即删除源文件；最终失败任务保留源文件以供重试，超过 30 天由启动清理回收。
 
 > ZIP 验收标准：导出再导入内容无损（含嵌套章节、草稿状态、评论开关、标签、封面与正文图片）。
 

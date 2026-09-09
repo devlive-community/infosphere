@@ -300,7 +300,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
     ? 'PDF 已安全上传，正在后台解析并构建章节…'
     : kind === 'web'
       ? renderMode === 'static' ? '正在抓取并解析网页…' : '正在抓取网页，必要时会启动浏览器渲染…'
-      : '正在导入书籍压缩包…'
+      : 'ZIP 已安全上传，正在后台还原书籍…'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/30 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"

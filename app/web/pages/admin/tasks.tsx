@@ -44,6 +44,7 @@ const statusMeta: Record<TaskStatus, { label: string; tone: 'slate' | 'primary' 
 const typeLabels: Record<string, string> = {
   'email.send': '发送邮件',
   'content.import.pdf': '解析 PDF 并导入书籍',
+  'content.import.zip': '还原 ZIP 书籍',
 }
 
 export default function AdminTasks() {

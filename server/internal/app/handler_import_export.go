@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -30,6 +31,19 @@ const (
 	importMaxEntries    = 500
 	importMaxTotalBytes = 64 << 20 // zip 解压后总量上限
 )
+
+type storedZIP struct {
+	Filename string
+	Path     string
+	Size     int64
+}
+
+type zipImportResult struct {
+	Book        models.Book `json:"book"`
+	ImportedDoc int         `json:"imported_doc"`
+	Source      string      `json:"source"`
+	Message     string      `json:"message"`
+}
 
 func uploadsDir() string {
 	return filepath.Join(config.DataDir(), "uploads")
@@ -293,68 +307,117 @@ func unquoteValue(v string) string {
 // ImportBook POST /import 上传 zip 还原书籍（成为当前用户的书籍）
 func (a *App) ImportBook(c *gin.Context) {
 	u := currentUser(c)
-	header, err := c.FormFile("file")
+	stored, status, err := storeUploadedZIP(c)
 	if err != nil {
-		fail(c, http.StatusBadRequest, "请选择要导入的 zip 文件")
+		fail(c, status, err.Error())
 		return
 	}
-	if header.Size > importMaxTotalBytes {
-		fail(c, http.StatusBadRequest, "文件不能超过 64MB")
+	if queue := a.jobQueue(); queue != nil {
+		job, err := queue.EnqueueOwned(c.Request.Context(), u.ID, zipImportJobType, zipImportJob{
+			UserID: u.ID, SourcePath: stored.Path, Filename: stored.Filename, Size: stored.Size,
+			Title: truncateText(strings.TrimSpace(c.PostForm("title")), 255),
+		}, 3)
+		if err != nil {
+			_ = os.Remove(stored.Path)
+			fail(c, http.StatusInternalServerError, "创建 ZIP 导入任务失败")
+			return
+		}
+		c.JSON(http.StatusAccepted, gin.H{"success": true, "data": gin.H{"task": publicBackgroundJob(job), "message": "ZIP 已上传，正在后台还原书籍"}})
 		return
+	}
+	defer os.Remove(stored.Path)
+	result, resultStatus, err := a.importBookFromZIP(stored, u, strings.TrimSpace(c.PostForm("title")))
+	if err != nil {
+		fail(c, resultStatus, err.Error())
+		return
+	}
+	ok(c, result)
+}
+
+func storeUploadedZIP(c *gin.Context) (storedZIP, int, error) {
+	header, err := c.FormFile("file")
+	if err != nil {
+		return storedZIP{}, http.StatusBadRequest, fmt.Errorf("请选择要导入的 zip 文件")
+	}
+	if header.Size <= 0 || header.Size > importMaxTotalBytes {
+		return storedZIP{}, http.StatusBadRequest, fmt.Errorf("ZIP 文件必须小于 64MB")
+	}
+	if strings.ToLower(filepath.Ext(strings.TrimSpace(header.Filename))) != ".zip" {
+		return storedZIP{}, http.StatusBadRequest, fmt.Errorf("仅支持 ZIP 文件")
 	}
 	f, err := header.Open()
 	if err != nil {
-		fail(c, http.StatusBadRequest, "读取文件失败")
-		return
+		return storedZIP{}, http.StatusBadRequest, fmt.Errorf("读取 ZIP 文件失败")
 	}
 	defer f.Close()
-	reader, err := zip.NewReader(f, header.Size)
+	dir := filepath.Join(config.DataDir(), "import-jobs")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return storedZIP{}, http.StatusInternalServerError, fmt.Errorf("准备 ZIP 导入目录失败")
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return storedZIP{}, http.StatusInternalServerError, fmt.Errorf("保护 ZIP 导入目录失败")
+	}
+	temp, err := os.CreateTemp(dir, "zip-*.zip")
 	if err != nil {
-		fail(c, http.StatusBadRequest, "无法解析 zip 文件")
-		return
+		return storedZIP{}, http.StatusInternalServerError, fmt.Errorf("准备 ZIP 导入失败")
+	}
+	path := temp.Name()
+	_ = temp.Chmod(0o600)
+	written, copyErr := io.Copy(temp, io.LimitReader(f, importMaxTotalBytes+1))
+	closeErr := temp.Close()
+	if copyErr != nil || closeErr != nil || written != header.Size {
+		_ = os.Remove(path)
+		return storedZIP{}, http.StatusBadRequest, fmt.Errorf("读取 ZIP 文件失败")
+	}
+	return storedZIP{Filename: strings.TrimSpace(header.Filename), Path: path, Size: written}, http.StatusOK, nil
+}
+
+func (a *App) importBookFromZIP(stored storedZIP, u *models.User, customTitle string) (zipImportResult, int, error) {
+	f, err := os.Open(stored.Path)
+	if err != nil {
+		return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("读取 ZIP 文件失败")
+	}
+	defer f.Close()
+	reader, err := zip.NewReader(f, stored.Size)
+	if err != nil {
+		return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("无法解析 ZIP 文件")
 	}
 
 	// ── 读取 zip 内容并做路径与体量安全校验 ──
 	entries := map[string][]byte{}
 	total := 0
 	if len(reader.File) > importMaxEntries {
-		fail(c, http.StatusBadRequest, "zip 内文件数量过多")
-		return
+		return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("ZIP 内文件数量过多")
 	}
 	for _, entry := range reader.File {
 		name := filepath.ToSlash(entry.Name)
 		if strings.HasPrefix(name, "/") || strings.Contains(name, "..") {
-			fail(c, http.StatusBadRequest, "zip 内存在非法路径: "+name)
-			return
+			return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("ZIP 内存在非法路径: %s", name)
 		}
 		if entry.FileInfo().IsDir() {
 			continue
 		}
 		data, err := readZipEntry(entry)
 		if err != nil {
-			fail(c, http.StatusBadRequest, fmt.Sprintf("读取 %s 失败: %v", name, err))
-			return
+			return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("读取 %s 失败: %v", name, err)
 		}
 		total += len(data)
 		if total > importMaxTotalBytes {
-			fail(c, http.StatusBadRequest, "zip 解压后体量过大")
-			return
+			return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("ZIP 解压后体量过大")
 		}
 		entries[name] = data
 	}
 
 	bookData, found := entries["book.md"]
 	if !found {
-		fail(c, http.StatusBadRequest, "zip 缺少 book.md")
-		return
+		return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("ZIP 缺少 book.md")
 	}
 	bookFields, lists, _ := parseFrontMatter(string(bookData))
 	title := bookFields.get("title")
 	if title == "" {
-		fail(c, http.StatusBadRequest, "book.md 缺少 title")
-		return
+		return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("book.md 缺少 title")
 	}
-	if customTitle := strings.TrimSpace(c.PostForm("title")); customTitle != "" {
+	if customTitle = strings.TrimSpace(customTitle); customTitle != "" {
 		title = truncateText(customTitle, 255)
 	}
 
@@ -366,12 +429,10 @@ func (a *App) ImportBook(c *gin.Context) {
 	watermarkText, validWatermark := normalizeWatermark(bookFields.get("watermark_text"))
 	watermarkEnabled := bookFields.get("watermark_enabled") == "true"
 	if !validWatermark {
-		fail(c, http.StatusBadRequest, "book.md 的 watermark_text 不能超过 80 个字符")
-		return
+		return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("book.md 的 watermark_text 不能超过 80 个字符")
 	}
 	if watermarkEnabled && watermarkText == "" {
-		fail(c, http.StatusBadRequest, "book.md 开启水印后必须提供 watermark_text")
-		return
+		return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("book.md 开启水印后必须提供 watermark_text")
 	}
 	book := models.Book{
 		Title:            title,
@@ -398,8 +459,7 @@ func (a *App) ImportBook(c *gin.Context) {
 	book.Slug = a.uniqueBookSlug(book.Slug)
 	book.CoverImage = a.importImages(bookFields.get("cover_image"), entries)
 	if err := a.DB.Create(&book).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "创建书籍失败: "+err.Error())
-		return
+		return zipImportResult{}, http.StatusInternalServerError, fmt.Errorf("创建书籍失败: %w", err)
 	}
 	if tags := lists["tags"]; len(tags) > 0 {
 		a.syncBookTags(&book, tags)
@@ -457,13 +517,11 @@ func (a *App) ImportBook(c *gin.Context) {
 			pendings[i].doc.Slug += "-x"
 		}
 		if err := a.DB.Create(&pendings[i].doc).Error; err != nil {
-			fail(c, http.StatusInternalServerError, "创建章节失败: "+err.Error())
-			return
+			return zipImportResult{}, http.StatusInternalServerError, fmt.Errorf("创建章节失败: %w", err)
 		}
 		revision := newDocumentRevision(&pendings[i].doc, u.ID, "create")
 		if err := a.DB.Create(&revision).Error; err != nil {
-			fail(c, http.StatusInternalServerError, "创建章节初始版本失败: "+err.Error())
-			return
+			return zipImportResult{}, http.StatusInternalServerError, fmt.Errorf("创建章节初始版本失败: %w", err)
 		}
 		created[pendings[i].doc.Slug] = pendings[i].doc.ID
 	}
@@ -476,11 +534,7 @@ func (a *App) ImportBook(c *gin.Context) {
 		}
 	}
 
-	ok(c, gin.H{
-		"book":         book,
-		"imported_doc": len(created),
-		"message":      fmt.Sprintf("导入完成：《%s》共 %d 个章节", book.Title, len(created)),
-	})
+	return zipImportResult{Book: book, ImportedDoc: len(created), Source: "zip", Message: fmt.Sprintf("导入完成：《%s》共 %d 个章节", book.Title, len(created))}, http.StatusOK, nil
 }
 
 // importImages 把包内 images/ 引用还原为 /uploads/，文件写入上传目录；返回改写后的内容

@@ -3,6 +3,7 @@ package app
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -148,6 +149,14 @@ func TestImportSecurity(t *testing.T) {
 		defer resp.Body.Close()
 		var payload map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&payload)
+		if resp.StatusCode == http.StatusAccepted {
+			if ran, runErr := a.Jobs.RunOnce(context.Background()); !ran {
+				t.Fatal("ZIP import task was not claimed")
+			} else if runErr != nil {
+				return http.StatusBadRequest, map[string]any{"message": runErr.Error()}
+			}
+			return http.StatusOK, payload
+		}
 		return resp.StatusCode, payload
 	}
 	buildZip := func(files map[string][]byte) []byte {

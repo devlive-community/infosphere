@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,6 +17,39 @@ import (
 	"infosphere/server/internal/jobqueue"
 	"infosphere/server/internal/models"
 )
+
+func TestCleanupExpiredImportSources(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("INFO_SPHERE_DATA", dataDir)
+	dir := filepath.Join(dataDir, "import-jobs")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	stale := filepath.Join(dir, "zip-stale.zip")
+	fresh := filepath.Join(dir, "pdf-fresh.pdf")
+	unrelated := filepath.Join(dir, "keep.txt")
+	for _, path := range []string{stale, fresh, unrelated} {
+		if err := os.WriteFile(path, []byte("test"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	old := now.Add(-31 * 24 * time.Hour)
+	if err := os.Chtimes(stale, old, old); err != nil {
+		t.Fatal(err)
+	}
+	if err := cleanupExpiredImportSources(now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Fatalf("expired import source was not removed: %v", err)
+	}
+	for _, path := range []string{fresh, unrelated} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("active or unrelated file was removed: %s: %v", path, err)
+		}
+	}
+}
 
 func TestAdminBackgroundJobs(t *testing.T) {
 	t.Setenv("INFO_SPHERE_DATA", t.TempDir())

@@ -16,8 +16,10 @@ import (
 )
 
 const (
-	emailSendJobType = "email.send"
-	pdfImportJobType = "content.import.pdf"
+	emailSendJobType      = "email.send"
+	pdfImportJobType      = "content.import.pdf"
+	zipImportJobType      = "content.import.zip"
+	importSourceRetention = 30 * 24 * time.Hour
 )
 
 type emailSendJob struct {
@@ -32,6 +34,14 @@ type pdfImportJob struct {
 	Mode       string `json:"mode,omitempty"`
 	SourcePath string `json:"source_path"`
 	Filename   string `json:"filename"`
+	Title      string `json:"title,omitempty"`
+}
+
+type zipImportJob struct {
+	UserID     uint   `json:"user_id"`
+	SourcePath string `json:"source_path"`
+	Filename   string `json:"filename"`
+	Size       int64  `json:"size"`
 	Title      string `json:"title,omitempty"`
 }
 
@@ -51,10 +61,82 @@ func (a *App) configureJobQueue() error {
 		return a.mailSender().Send(job.To, job.Subject, job.HTML)
 	})
 	queue.RegisterResult(pdfImportJobType, a.runPDFImportJob)
+	queue.RegisterResult(zipImportJobType, a.runZIPImportJob)
+	if err := cleanupExpiredImportSources(time.Now()); err != nil {
+		log.Printf("[jobs] cleanup expired import sources failed: %v", err)
+	}
 	a.jobsMu.Lock()
 	a.Jobs = queue
 	a.jobsMu.Unlock()
 	return nil
+}
+
+func cleanupExpiredImportSources(now time.Time) error {
+	dir := filepath.Join(config.DataDir(), "import-jobs")
+	entries, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	cutoff := now.Add(-importSourceRetention)
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || (!strings.HasPrefix(name, "pdf-") && !strings.HasPrefix(name, "zip-")) {
+			continue
+		}
+		info, infoErr := entry.Info()
+		if infoErr != nil || !info.Mode().IsRegular() || !info.ModTime().Before(cutoff) {
+			continue
+		}
+		if removeErr := os.Remove(filepath.Join(dir, name)); removeErr != nil && !os.IsNotExist(removeErr) {
+			return removeErr
+		}
+	}
+	return nil
+}
+
+func (a *App) runZIPImportJob(_ context.Context, raw json.RawMessage) (any, error) {
+	var job zipImportJob
+	if err := json.Unmarshal(raw, &job); err != nil {
+		return nil, fmt.Errorf("解析 ZIP 导入任务失败: %w", err)
+	}
+	if job.UserID == 0 || job.Size <= 0 || strings.TrimSpace(job.SourcePath) == "" || strings.TrimSpace(job.Filename) == "" {
+		return nil, fmt.Errorf("ZIP 导入任务缺少必要字段")
+	}
+	source, err := validateImportJobSource(job.SourcePath)
+	if err != nil {
+		return nil, err
+	}
+	var user models.User
+	if err := a.DB.First(&user, job.UserID).Error; err != nil {
+		return nil, fmt.Errorf("导入用户不存在")
+	}
+	result, _, err := a.importBookFromZIP(storedZIP{Filename: job.Filename, Path: source, Size: job.Size}, &user, job.Title)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.Remove(source); err != nil && !os.IsNotExist(err) {
+		log.Printf("[jobs] cleanup ZIP import source failed: %v", err)
+	}
+	return result, nil
+}
+
+func validateImportJobSource(sourcePath string) (string, error) {
+	root, err := filepath.Abs(filepath.Join(config.DataDir(), "import-jobs"))
+	if err != nil {
+		return "", fmt.Errorf("解析导入目录失败: %w", err)
+	}
+	source, err := filepath.Abs(sourcePath)
+	if err != nil {
+		return "", fmt.Errorf("解析导入源文件路径失败: %w", err)
+	}
+	relative, err := filepath.Rel(root, source)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("导入源文件路径无效")
+	}
+	return source, nil
 }
 
 func (a *App) runPDFImportJob(_ context.Context, raw json.RawMessage) (any, error) {
@@ -65,17 +147,9 @@ func (a *App) runPDFImportJob(_ context.Context, raw json.RawMessage) (any, erro
 	if job.UserID == 0 || strings.TrimSpace(job.SourcePath) == "" || strings.TrimSpace(job.Filename) == "" {
 		return nil, fmt.Errorf("PDF 导入任务缺少必要字段")
 	}
-	root, err := filepath.Abs(filepath.Join(config.DataDir(), "import-jobs"))
+	source, err := validateImportJobSource(job.SourcePath)
 	if err != nil {
-		return nil, fmt.Errorf("解析导入目录失败: %w", err)
-	}
-	source, err := filepath.Abs(job.SourcePath)
-	if err != nil {
-		return nil, fmt.Errorf("解析 PDF 源文件路径失败: %w", err)
-	}
-	relative, err := filepath.Rel(root, source)
-	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return nil, fmt.Errorf("PDF 源文件路径无效")
+		return nil, err
 	}
 	var user models.User
 	if err := a.DB.First(&user, job.UserID).Error; err != nil {

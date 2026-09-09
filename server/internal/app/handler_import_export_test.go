@@ -3,6 +3,7 @@ package app
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -215,7 +216,19 @@ func TestBookExportImport(t *testing.T) {
 		defer resp.Body.Close()
 		var payload map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&payload)
-		return resp.StatusCode, payload
+		if resp.StatusCode != http.StatusAccepted {
+			return resp.StatusCode, payload
+		}
+		taskID := uint(payload["data"].(map[string]any)["task"].(map[string]any)["id"].(float64))
+		if ran, runErr := a.Jobs.RunOnce(context.Background()); !ran || runErr != nil {
+			t.Fatalf("ZIP 后台导入失败: ran=%v err=%v", ran, runErr)
+		}
+		status, taskPayload := request(http.MethodGet, fmt.Sprintf("/api/v1/tasks/%d", taskID), nil, token)
+		if status != http.StatusOK {
+			return status, taskPayload
+		}
+		result := taskPayload["data"].(map[string]any)["result"]
+		return http.StatusOK, map[string]any{"success": true, "data": result}
 	}
 	status, imported := importZip(aliceToken, raw)
 	if status != 200 {
