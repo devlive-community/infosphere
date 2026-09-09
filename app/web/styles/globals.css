@@ -68,17 +68,21 @@
   [data-radius="lg"]  { --radius: 0.5rem; }
   [data-radius="xl"]  { --radius: 0.75rem; }
   [data-radius="2xl"] { --radius: 1rem; }
-
-  /* 用 CSS 变量覆盖 Tailwind 的 rounded-* 工具类，使全站圆角跟随主题设置 */
-  .rounded       { border-radius: var(--radius); }
-  .rounded-sm    { border-radius: calc(var(--radius) * 0.5); }
-  .rounded-md    { border-radius: calc(var(--radius) * 0.75); }
-  .rounded-lg    { border-radius: var(--radius); }
-  .rounded-xl    { border-radius: calc(var(--radius) * 1.5); }
-  .rounded-2xl   { border-radius: calc(var(--radius) * 2); }
-  .rounded-3xl   { border-radius: calc(var(--radius) * 3); }
-  .rounded-full  { border-radius: 9999px; }
 }
+
+body {
+  @apply bg-warm text-ink antialiased;
+}
+
+/* 用 CSS 变量覆盖 Tailwind 的 rounded-* 工具类（放在 @layer 外以获得更高优先级） */
+.rounded       { border-radius: var(--radius); }
+.rounded-sm    { border-radius: calc(var(--radius) * 0.5); }
+.rounded-md    { border-radius: calc(var(--radius) * 0.75); }
+.rounded-lg    { border-radius: var(--radius); }
+.rounded-xl    { border-radius: calc(var(--radius) * 1.5); }
+.rounded-2xl   { border-radius: calc(var(--radius) * 2); }
+.rounded-3xl   { border-radius: calc(var(--radius) * 3); }
+.rounded-full  { border-radius: 9999px; }
 
 body {
   @apply bg-warm text-ink antialiased;
