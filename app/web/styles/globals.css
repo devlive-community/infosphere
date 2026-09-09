@@ -69,9 +69,15 @@
   [data-radius="xl"]  { --radius: 0.75rem; }
   [data-radius="2xl"] { --radius: 1rem; }
 
-  /* 通过 CSS 变量覆盖 Tailwind rounded-* 的方法：
-     由于 Tailwind 的 rounded-lg 等是固定值，我们通过 CSS 变量控制组件级圆角。
-     组件中使用 rounded-[var(--radius)] 即可响应主题变化。 */
+  /* 用 CSS 变量覆盖 Tailwind 的 rounded-* 工具类，使全站圆角跟随主题设置 */
+  .rounded       { border-radius: var(--radius); }
+  .rounded-sm    { border-radius: calc(var(--radius) * 0.5); }
+  .rounded-md    { border-radius: calc(var(--radius) * 0.75); }
+  .rounded-lg    { border-radius: var(--radius); }
+  .rounded-xl    { border-radius: calc(var(--radius) * 1.5); }
+  .rounded-2xl   { border-radius: calc(var(--radius) * 2); }
+  .rounded-3xl   { border-radius: calc(var(--radius) * 3); }
+  .rounded-full  { border-radius: 9999px; }
 }
 
 body {
