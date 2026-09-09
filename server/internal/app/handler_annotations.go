@@ -138,6 +138,10 @@ func (a *App) UpdateAnnotation(c *gin.Context) {
 	updates := map[string]any{}
 	if req.Note != nil {
 		note := strings.TrimSpace(*req.Note)
+		if annotation.Kind == "note" && note == "" {
+			fail(c, http.StatusBadRequest, "请填写笔记内容")
+			return
+		}
 		if utf8.RuneCountInString(note) > 10000 {
 			fail(c, http.StatusBadRequest, "笔记内容不能超过 10000 个字符")
 			return
@@ -155,6 +159,17 @@ func (a *App) UpdateAnnotation(c *gin.Context) {
 	}
 	if req.AnchorStatus != nil && annotationStatuses[*req.AnchorStatus] {
 		updates["anchor_status"] = *req.AnchorStatus
+	}
+	start, end := annotation.StartOffset, annotation.EndOffset
+	if value, ok := updates["start_offset"].(int); ok {
+		start = value
+	}
+	if value, ok := updates["end_offset"].(int); ok {
+		end = value
+	}
+	if annotation.Kind != "bookmark" && end <= start {
+		fail(c, http.StatusBadRequest, "标注位置无效")
+		return
 	}
 	if len(updates) == 0 {
 		fail(c, http.StatusBadRequest, "没有可更新的内容")

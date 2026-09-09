@@ -58,6 +58,10 @@ Authorization: Bearer <token>
 | `reaction:read` | 查看自己的点赞/收藏 | ✅ | ✅ |
 | `reading-progress:read` | 查看自己的阅读进度 | ✅ | ✅ |
 | `reading-progress:update` | 保存自己的阅读进度 | ✅ | ✅ |
+| `annotation:read` | 查看自己的阅读标注、笔记和书签 | ✅ | ✅ |
+| `annotation:create` | 创建自己的阅读标注、笔记和书签 | ✅ | ✅ |
+| `annotation:update` | 更新自己的阅读标注和锚点状态 | ✅ | ✅ |
+| `annotation:delete` | 删除自己的阅读标注、笔记和书签 | ✅ | ✅ |
 | `auth:oauth` | 管理第三方登录绑定 | ✅ | ✅ |
 | `auth:password-reset` | 申请/执行密码重置（匿名语义，端点公开） | ✅ | ✅ |
 | `notification:read` | 查看自己的通知（含 SSE 流） | ✅ | ✅ |
@@ -322,7 +326,7 @@ Authorization: Bearer <token>
 | GET | `/books/:id/export/pdf?style=author\|mine` | 通过 pdf-export 插件（无头 Chrome）导出 PDF。鉴权：作者/协作者/管理员始终可导；否则要求书籍公开、处于可阅读状态且 `export_enabled`。`style=author`（仅当作者 `export_style_shared`）用作者导出样式，否则用请求者样式；水印始终取自作者设置。未安装插件返回 400 | `book:read`（匿名可导开放的公开书） |
 | POST | `/import` | multipart 上传 `file`（zip），可选 `title`；解析同一结构还原为新书：元数据/标签/章节树（按 parent slug 重建）/图片写回上传目录；slug 冲突自动追加 `-imported-N`；安全限制：≤500 文件、解压总量 ≤64MB、拒绝 `..` 路径 | `book:import` |
 | POST | `/import/pdf` | multipart 上传 `file`（PDF，≤64MB），可选 `title`；根据文本坐标、字号和字体样式重建 Markdown 标题、段落、列表及代码块，移除重复页眉页脚，并修正双栏阅读顺序；优先按一、二级 Markdown 标题或“第 N 章/篇/部/卷”、`Chapter N` 拆章，无明确结构时按长度分段；扫描版 PDF 需预先 OCR；结果固定为私有草稿 | `book:import` |
-| POST | `/books/:id/import/pdf` | multipart 上传 `file`（PDF，≤64MB）及 `mode=append\|replace`，仅书籍 owner/admin 可用。`append` 将新解析的 Markdown 章节以草稿追加到目录末尾，不改变原内容与发布状态；`replace` 在同一事务内清理旧章节、章节版本、评论和阅读进度后写入新草稿章节，并将书籍转为私有草稿。新 PDF 解析失败时不会改动旧数据 | `book:import` |
+| POST | `/books/:id/import/pdf` | multipart 上传 `file`（PDF，≤64MB）及 `mode=append\|replace`，仅书籍 owner/admin 可用。`append` 将新解析的 Markdown 章节以草稿追加到目录末尾，不改变原内容与发布状态；`replace` 在同一事务内清理旧章节、章节版本、评论、阅读进度和私人标注后写入新草稿章节，并将书籍转为私有草稿。新 PDF 解析失败时不会改动旧数据 | `book:import` |
 | POST | `/import/web` | JSON `{url,title?,render_mode?}`，`render_mode` 为 `auto`（默认）、`static` 或 `browser`；自动模式先静态抓取，检测到 SPA 空壳或正文不足时使用 Chromium 执行 JavaScript；正文转为 Markdown 并将相对链接补全；结果固定为私有草稿 | `book:import` |
 | POST | `/books/:id/documents/import-web` | JSON `{url,title?,render_mode?,parent_id?,sort_order?}`；复用网页正文提取与 SPA 渲染，剔除页头、页脚、导航、侧栏、广告、分享、评论、相关推荐与弹窗，直接在可编辑书籍内创建草稿章节并记录原始来源 | `document:create` |
 
@@ -337,6 +341,20 @@ Authorization: Bearer <token>
 | GET | `/reading-progress/:bookId` | 当前用户在可见书籍中的最近阅读章节；无进度返回 `null` | `reading-progress:read` |
 | PUT | `/reading-progress/:bookId` | 记录/覆盖进度；`doc_id` 必须属于该书且当前可读，slug/title 由服务端真实章节覆盖；同时将该章节标记为已读 | `reading-progress:update` |
 | GET | `/books/:id/read-chapters` | 当前用户在该书已读的章节 ID 列表 `{doc_ids:[]}`，用于详情页进度标记 | `user:read` |
+
+## 阅读标注与私人笔记（登录用户）
+
+所有数据始终按当前用户隔离。管理员也不能读取或修改其他用户的私人笔记。章节后来变为不可见时，章节标注接口统一返回 404，“我的笔记”聚合列表不再返回该资源；用户仍可凭自己的标注 ID 删除私人数据。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/documents/:id/annotations` | 当前用户在可见章节中的划线、私人笔记和章节书签 | `annotation:read` |
+| POST | `/documents/:id/annotations` | 创建 `highlight\|note\|bookmark`；划线/笔记需提交 `quote/prefix/suffix/start_offset/end_offset`，同章书签重复创建时覆盖 | `annotation:create` |
+| PUT | `/annotations/:id` | 更新自己的笔记、颜色、位置与 `active\|relocated\|orphaned` 锚点状态 | `annotation:update` |
+| DELETE | `/annotations/:id` | 删除自己的私人标注；越权统一返回 404 | `annotation:delete` |
+| GET | `/users/me/annotations` | 分页聚合仍有权访问的私人标注；支持 `kind=highlight\|note\|bookmark` | `annotation:read` |
+
+锚点以正文文本位置和 `quote + prefix + suffix` 文本片段共同保存。客户端优先校验原位置，章节更新后使用上下文重新定位；无法定位时保留 `quote` 原文快照并标记为 `orphaned`。
 
 响应为进度对象 `{ id, user_id, book_id, doc_id, doc_slug, doc_title, updated_at }`，每用户每书一条（upsert）。
 

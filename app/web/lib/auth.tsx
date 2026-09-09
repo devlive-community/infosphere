@@ -233,7 +233,7 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
     applyTheme(DEFAULT_THEME)
     setUser(null)
     router.push('/login')
-  }, [router, applyTheme])
+  }, [router])
 
   const refreshUser = useCallback(async () => {
     const me = await api<User>('/auth/me')

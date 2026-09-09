@@ -1,9 +1,9 @@
-import { ReactNode } from 'react'
+import { HTMLAttributes, ReactNode } from 'react'
 
 // Card 通用卡片容器
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
+export function Card({ className, children, ...rest }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className || ''}`.trim()}>
+    <div className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className || ''}`.trim()} {...rest}>
       {children}
     </div>
   )

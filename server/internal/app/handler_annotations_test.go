@@ -75,6 +75,12 @@ func TestReadingAnnotationsPrivacyAndVisibility(t *testing.T) {
 		t.Fatalf("创建私人笔记失败: %d %v", status, created)
 	}
 	annotationID := int(created["data"].(map[string]any)["id"].(float64))
+	status, updated := request(http.MethodPut, fmt.Sprintf("/api/v1/annotations/%d", annotationID), map[string]any{
+		"note": "updated private thought", "start_offset": 9, "end_offset": 27, "anchor_status": "relocated",
+	}, readerToken)
+	if status != http.StatusOK || updated["data"].(map[string]any)["anchor_status"] != "relocated" {
+		t.Fatalf("更新自己的私人笔记失败: %d %v", status, updated)
+	}
 
 	for range 2 {
 		status, _ = request(http.MethodPost, fmt.Sprintf("/api/v1/documents/%d/annotations", docID), map[string]any{"kind": "bookmark"}, readerToken)
