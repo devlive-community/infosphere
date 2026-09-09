@@ -148,10 +148,20 @@ func (a *App) installedChromePath() string {
 	return path
 }
 
-// runPluginInstall 后台下载并解压 chrome-headless-shell，完成后更新插件记录
-func (a *App) runPluginInstall(p *models.Plugin) {
+// runPluginInstall 后台下载并解压 chrome-headless-shell，完成后更新插件记录。
+// gen 为本次操作的代次令牌：若期间被卸载/重装（代次变化），所有 DB 写入都会被丢弃，
+// 避免旧 goroutine 把已删除的插件行重新写回。
+func (a *App) runPluginInstall(p *models.Plugin, gen int64) {
+	key := p.Key
+	// save 仅在本代次仍有效时写库，否则丢弃（插件已被卸载/重装）
+	save := func(meta map[string]any) {
+		if !a.plugins.current(key, gen) {
+			return
+		}
+		a.savePluginMeta(p, meta)
+	}
 	fail := func(reason string) {
-		a.savePluginMeta(p, map[string]any{"status": "failed", "error": reason})
+		save(map[string]any{"status": "failed", "error": reason})
 	}
 
 	version, url, err := resolveChromeDownload()
@@ -188,11 +198,16 @@ func (a *App) runPluginInstall(p *models.Plugin) {
 		return
 	}
 
+	// 若已被卸载则不落库，并清理刚下载的文件
+	if !a.plugins.current(key, gen) {
+		_ = os.RemoveAll(dir)
+		return
+	}
 	now := time.Now()
 	p.Installed = true
 	p.Version = version
 	p.InstalledAt = &now
-	a.savePluginMeta(p, map[string]any{"status": "installed", "chrome_path": binPath})
+	save(map[string]any{"status": "installed", "chrome_path": binPath})
 }
 
 // findChromeBinary 在解压目录中递归查找 chrome-headless-shell 可执行文件
@@ -294,9 +309,10 @@ func (a *App) AdminInstallPlugin(c *gin.Context) {
 		fail(c, http.StatusConflict, "插件正在安装中")
 		return
 	}
+	gen := a.plugins.begin(key)
 	p.Installed = false
 	a.savePluginMeta(&p, map[string]any{"status": "downloading"})
-	go a.runPluginInstall(&p)
+	go a.runPluginInstall(&p, gen)
 	ok(c, gin.H{"message": "已开始安装，请稍候刷新状态", "status": "downloading"})
 }
 
@@ -307,6 +323,8 @@ func (a *App) AdminUninstallPlugin(c *gin.Context) {
 		fail(c, http.StatusNotFound, "插件不存在")
 		return
 	}
+	// 递增代次，使任何进行中的安装 goroutine 的后续写入全部失效，避免卸载后被重新写回
+	a.plugins.begin(key)
 	_ = os.RemoveAll(pluginDir(key))
 	a.DB.Where("key = ?", key).Delete(&models.Plugin{})
 	ok(c, gin.H{"message": "已卸载"})

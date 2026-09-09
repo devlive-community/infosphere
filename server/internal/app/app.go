@@ -35,11 +35,12 @@ type App struct {
 	WebRenderer  func(context.Context, *url.URL) (webPage, error)
 	web          *webRuntime
 	search       searchBackend
+	plugins      *pluginManager
 }
 
 // New 创建应用实例；已安装时建立数据库连接
 func New(cfg *config.Config) (*App, error) {
-	a := &App{Config: cfg, Notifications: newNotificationHub(), RateLimits: newMemoryRateLimitStore()}
+	a := &App{Config: cfg, Notifications: newNotificationHub(), RateLimits: newMemoryRateLimitStore(), plugins: newPluginManager()}
 	if cfg.Installed {
 		db, err := database.Open(cfg.Database)
 		if err != nil {
