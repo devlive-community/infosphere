@@ -123,9 +123,10 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
           <form action="/explore" method="get" className="mx-auto mt-6 flex max-w-2xl gap-2">
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <Input className="h-12 pl-11 text-base" name="title" placeholder="搜索书名、主题或作者" defaultValue={keyword} />
+              <Input className="pl-11 text-base" name="title" placeholder="搜索书名、主题或作者" defaultValue={keyword}
+                style={{ height: 'var(--control-height-lg)' }} />
             </div>
-            <Button type="submit" className="h-12 px-7 text-base">搜索</Button>
+            <Button type="submit" className="px-7 text-base" style={{ height: 'var(--control-height-lg)' }}>搜索</Button>
           </form>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">

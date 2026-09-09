@@ -169,7 +169,7 @@ export default function AdminSystem() {
           <div className="mt-5">
             {version?.update_available
               ? <ButtonLink href="/admin/upgrade" className="w-full justify-center">前往升级</ButtonLink>
-              : <div className="flex h-11 w-full items-center justify-center rounded-lg bg-slate-100 text-sm text-slate-400">暂无可升级版本</div>}
+              : <div className="flex w-full items-center justify-center rounded-lg bg-slate-100 text-sm text-slate-400" style={{ height: 'var(--control-height)' }}>暂无可升级版本</div>}
           </div>
         </section>
       </div>
@@ -287,7 +287,8 @@ function ConfigCard({ icon: Icon, tone, title, status, href, ok }: {
         <span className={`h-1.5 w-1.5 rounded-full ${ok ? 'bg-emerald-500' : 'bg-amber-500'}`} />
         {status}
       </p>
-      <Link href={href} className="mt-4 inline-flex h-8 w-fit items-center rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50">
+      <Link href={href} className="mt-4 inline-flex w-fit items-center rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
+        style={{ height: 'var(--control-height-sm)' }}>
         管理
       </Link>
     </div>

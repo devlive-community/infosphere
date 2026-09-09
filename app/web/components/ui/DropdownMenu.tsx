@@ -94,7 +94,8 @@ export default function DropdownMenu({ open, onOpenChange, children, label = 'æ›
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => onOpenChange(!open)}
-          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${open ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+          className={`flex items-center justify-center rounded-lg transition-colors ${open ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+          style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
         >
           <i className="fa-solid fa-ellipsis" aria-hidden="true" />
         </button>

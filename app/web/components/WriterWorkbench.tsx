@@ -533,11 +533,13 @@ export default function Writer({ user }: WriterProps) {
                 </div>
                 <div className="relative mt-2.5">
                   <button onClick={() => createNew()}
-                    className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50">
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50"
+                    style={{ height: 'var(--control-height)' }}>
                     + 新建章节
                   </button>
                   <button onClick={() => setNewMenuOpen(!newMenuOpen)} aria-label="更多创建方式"
-                    className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-md text-primary-600 hover:bg-primary-50">
+                    className="absolute right-1 top-1 flex items-center justify-center rounded-md text-primary-600 hover:bg-primary-50"
+                    style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
                     <ChevronDownIcon className="h-4 w-4" />
                   </button>
                   {newMenuOpen && (
@@ -1091,7 +1093,8 @@ function ToolbarSelect({ onPick }: { onPick: (prefix: string) => void }) {
   return (
     <div className="relative">
       <button type="button" onClick={() => setOpen(!open)}
-        className="flex h-8 items-center gap-0.5 rounded-md px-2 text-sm font-bold text-slate-600 hover:bg-slate-100">
+        className="flex items-center gap-0.5 rounded-md px-2 text-sm font-bold text-slate-600 hover:bg-slate-100"
+        style={{ height: 'var(--control-height-sm)' }}>
         H <ChevronDownIcon className="h-3.5 w-3.5" />
       </button>
       {open && (

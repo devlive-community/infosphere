@@ -193,7 +193,8 @@ export default function MyBooks() {
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1) }}
               placeholder="搜索我的书籍"
-              className="h-10 w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
+              className="w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none"
+              style={{ height: 'var(--control-height)' }} />
           </div>
           <Select className="w-36" value={sort} onChange={(v) => { setSort(v as SortKey); setPage(1) }} options={sortOptions} />
           <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"

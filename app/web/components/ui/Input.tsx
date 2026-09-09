@@ -193,7 +193,8 @@ export function Select({ options, value, onChange, className, placeholder, disab
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className={`flex h-10 items-center justify-between gap-2 text-left ${controlClass}`}
+        className={`flex items-center justify-between gap-2 text-left ${controlClass}`}
+        style={{ height: 'var(--control-height)' }}
       >
         <span className="flex min-w-0 items-center gap-2">
           {leading}

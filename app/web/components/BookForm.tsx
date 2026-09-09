@@ -216,7 +216,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">访问路径</label>
-                <div className="flex h-10 items-stretch overflow-hidden rounded-lg border border-slate-200 focus-within:border-primary-500">
+                <div className="flex items-stretch overflow-hidden rounded-lg border border-slate-200 focus-within:border-primary-500"
+                  style={{ height: 'var(--control-height)' }}>
                   <span className="flex items-center whitespace-nowrap bg-slate-50 px-3 text-xs text-slate-400">{host || 'infosphere'}/book/</span>
                   <input value={slug} onChange={(e) => setSlug(e.target.value)} disabled={isEdit}
                     placeholder="knowledge-garden"

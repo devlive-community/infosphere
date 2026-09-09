@@ -70,7 +70,8 @@ export default function Security() {
     return (
       <div className="relative">
         <input type={shown ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3.5 pr-10 text-sm text-slate-900 placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
+          className="w-full rounded-lg border border-slate-200 bg-white px-3.5 pr-10 text-sm text-slate-900 placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none"
+          style={{ height: 'var(--control-height)' }} />
         <button type="button" onClick={toggle} aria-label={shown ? '隐藏密码' : '显示密码'}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
           {shown

@@ -171,7 +171,8 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><SearchIcon className="h-4 w-4" /></span>
               <input type="search" placeholder="搜索设置或功能"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:outline-none" />
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:outline-none"
+                style={{ height: 'var(--control-height)' }} />
             </div>
           </div>
           <div className="ml-auto flex items-center gap-1.5 lg:ml-0">

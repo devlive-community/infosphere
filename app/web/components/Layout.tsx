@@ -33,6 +33,7 @@ function UserMenu() {
   }
   const items = [
     { label: '我的书籍', href: '/books', icon: BookIcon },
+    { label: '我的笔记', href: '/user/notes', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-note-sticky ${className || ''}`} aria-hidden="true" /> },
     { label: '个人资料', href: '/user/profile', icon: UserCircleIcon },
     // 控制台仅对管理员开放
     ...(user.role === 'admin' ? [{ label: '控制台', href: '/admin/system', icon: GridIcon }] : []),
@@ -79,7 +80,8 @@ function MobileNav() {
   return (
     <div className="relative md:hidden">
       <button onClick={() => setOpen(!open)} aria-label="导航菜单"
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
+        className="flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+        style={{ width: 'var(--control-height)', height: 'var(--control-height)' }}>
         <ListBulletIcon className="h-5 w-5" />
       </button>
       {open && (

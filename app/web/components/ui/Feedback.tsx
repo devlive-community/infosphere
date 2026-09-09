@@ -113,7 +113,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 <p className="max-h-28 overflow-y-auto break-words text-sm leading-5">{toast.message}</p>
               </div>
               <button type="button" aria-label="关闭提示" onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-60 transition-colors hover:bg-black/5 hover:opacity-100">
+                className="flex shrink-0 items-center justify-center rounded-md opacity-60 transition-colors hover:bg-black/5 hover:opacity-100"
+                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
@@ -127,7 +128,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
           <section role="dialog" aria-modal="true" aria-labelledby="feedback-dialog-title"
             className="flex max-h-[min(86vh,560px)] w-full flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:max-w-md sm:rounded-2xl">
             <div className="flex items-start gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${dialog.kind === 'confirm' && dialog.danger ? 'bg-rose-50 text-rose-600' : 'bg-primary-50 text-primary-600'}`}>
+              <span className={`flex shrink-0 items-center justify-center rounded-xl ${dialog.kind === 'confirm' && dialog.danger ? 'bg-rose-50 text-rose-600' : 'bg-primary-50 text-primary-600'}`}
+                style={{ width: 'var(--control-height)', height: 'var(--control-height)' }}>
                 <i className={`fa-solid ${dialog.kind === 'confirm' && dialog.danger ? 'fa-triangle-exclamation' : dialog.kind === 'input' ? 'fa-pen' : 'fa-circle-question'}`} aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
@@ -135,7 +137,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 {dialog.message && <p className="mt-1 break-words text-sm leading-6 text-slate-500">{dialog.message}</p>}
               </div>
               <button type="button" aria-label="关闭" onClick={() => closeDialog(false)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+                className="flex shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>

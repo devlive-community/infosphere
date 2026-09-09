@@ -118,7 +118,8 @@ export default function NotificationBell() {
   return (
     <div className="relative" ref={rootRef}>
       <button onClick={() => setOpen(!open)} aria-label="通知"
-        className="relative flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
+        className="relative flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+        style={{ width: 'var(--control-height)', height: 'var(--control-height)' }}>
         <BellIcon className="h-5 w-5" />
         {unread > 0 && (
           <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white">
