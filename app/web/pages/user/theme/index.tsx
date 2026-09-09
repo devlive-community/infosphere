@@ -6,6 +6,7 @@ import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { Button, Loading, useFeedback } from '@/components/ui'
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { SaveIcon } from '@/components/icons'
 
 const HUES = [
@@ -63,6 +64,15 @@ const PAGE_BGS = [
   { key: '#FAFAF9', label: '自然' },
 ] as const
 
+const TABS = [
+  { value: 'color', label: '主题色' },
+  { value: 'radius', label: '圆角' },
+  { value: 'button', label: '按钮' },
+  { value: 'font', label: '字体' },
+  { value: 'layout', label: '布局' },
+  { value: 'bg', label: '背景' },
+]
+
 export default function ThemeSettings() {
   const { site } = useApp()
   const siteName = site.site_name || 'InfoSphere'
@@ -70,6 +80,7 @@ export default function ThemeSettings() {
   const { theme, applyTheme } = useApp()
   const { showToast } = useFeedback()
 
+  const [activeTab, setActiveTab] = useState('color')
   const [hue, setHue] = useState(theme.primary_hue)
   const [radius, setRadius] = useState(theme.radius)
   const [btnSize, setBtnSize] = useState(theme.button_size)
@@ -125,153 +136,171 @@ export default function ThemeSettings() {
         </nav>
         <div className="pb-6">
           <h1 className="text-3xl font-bold text-ink">主题设置</h1>
-          <p className="mt-2 text-[15px] text-slate-500">定制界面外观，修改后全局实时预览。</p>
+          <p className="mt-2 text-[15px] text-slate-500">定制界面外观，保存后全局生效。</p>
         </div>
 
         <AccountSettingsLayout user={user} active="theme">
-          <div className="space-y-6">
-
-            {/* 主题色 */}
-            <Section title="主题色" desc="选择全局主色调，影响按钮、链接、高亮等品牌色元素。">
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                {HUES.map((h) => (
-                  <OptionCard key={h.key} active={hue === h.key} onClick={() => setHue(h.key)}>
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-110"
-                      style={{ backgroundColor: h.color }}>
-                      {hue === h.key && <CheckIcon className="h-5 w-5 text-white" />}
-                    </span>
-                    <span className={`text-xs font-medium ${hue === h.key ? 'text-primary-700' : 'text-slate-600'}`}>{h.label}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            </Section>
-
-            {/* 圆角弧度 */}
-            <Section title="圆角弧度" desc="调整全局组件的圆角大小。">
-              <div className="grid grid-cols-5 gap-3">
-                {RADII.map((r) => (
-                  <OptionCard key={r.key} active={radius === r.key} onClick={() => setRadius(r.key)}>
-                    <span className={`flex h-10 w-14 items-center justify-center border-2 rounded-[var(--radius)] ${
-                      radius === r.key ? 'border-primary-500 bg-primary-100' : 'border-slate-300 bg-slate-100'
-                    }`} style={{ borderRadius: r.key === 'sm' ? '0.25rem' : r.key === 'md' ? '0.375rem' : r.key === 'lg' ? '0.5rem' : r.key === 'xl' ? '0.75rem' : '1rem' }}>
-                      {radius === r.key && <CheckIcon className="h-4 w-4 text-primary-600" />}
-                    </span>
-                    <span className={`text-xs font-medium ${radius === r.key ? 'text-primary-700' : 'text-slate-600'}`}>{r.label}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            </Section>
-
-            {/* 按钮大小 */}
-            <Section title="按钮大小" desc="调整全局按钮的默认尺寸。">
-              <div className="grid grid-cols-3 gap-3">
-                {BTN_SIZES.map((b) => (
-                  <OptionCard key={b.key} active={btnSize === b.key} onClick={() => setBtnSize(b.key)}>
-                    <span className={`inline-flex items-center justify-center rounded-lg border-2 px-4 font-medium ${
-                      btnSize === b.key ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-300 bg-white text-slate-600'
-                    }`} style={{
-                      height: b.key === 'sm' ? '2rem' : b.key === 'md' ? '2.5rem' : '3rem',
-                      fontSize: b.key === 'sm' ? '0.75rem' : b.key === 'md' ? '0.875rem' : '1rem',
-                    }}>
-                      {b.label}
-                    </span>
-                    <span className="text-xs text-slate-400">{b.desc}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            </Section>
-
-            {/* 字体大小 */}
-            <Section title="字体大小" desc="调整全局基础字号。">
-              <div className="grid grid-cols-3 gap-3">
-                {FONT_SIZES.map((f) => (
-                  <OptionCard key={f.key} active={fontSize === f.key} onClick={() => setFontSize(f.key)}>
-                    <span className={`text-lg font-semibold ${fontSize === f.key ? 'text-primary-600' : 'text-slate-700'}`}
-                      style={{ fontSize: f.key + 'px' }}>Aa</span>
-                    <span className={`text-xs font-medium ${fontSize === f.key ? 'text-primary-700' : 'text-slate-600'}`}>{f.label}</span>
-                    <span className="text-xs text-slate-400">{f.desc}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            </Section>
-
-            {/* 内容区宽度 */}
-            <Section title="内容区宽度" desc="调整主内容区域的最大宽度。">
-              <div className="grid grid-cols-3 gap-3">
-                {CONTENT_WIDTHS.map((w) => (
-                  <OptionCard key={w.key} active={contentWidth === w.key} onClick={() => setContentWidth(w.key)}>
-                    <span className={`flex h-8 w-full items-center justify-center rounded border-2 ${
-                      contentWidth === w.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
-                    }`}>
-                      <span className={`h-3 rounded-sm ${contentWidth === w.key ? 'bg-primary-500' : 'bg-slate-300'}`}
-                        style={{ width: w.key === 'narrow' ? '50%' : w.key === 'normal' ? '70%' : '90%' }} />
-                    </span>
-                    <span className={`text-xs font-medium ${contentWidth === w.key ? 'text-primary-700' : 'text-slate-600'}`}>{w.label}</span>
-                    <span className="text-xs text-slate-400">{w.desc}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            </Section>
-
-            {/* 导航栏高度 */}
-            <Section title="导航栏高度" desc="调整顶部导航栏高度。">
-              <div className="grid grid-cols-3 gap-3">
-                {NAV_HEIGHTS.map((n) => (
-                  <OptionCard key={n.key} active={navHeight === n.key} onClick={() => setNavHeight(n.key)}>
-                    <span className={`flex w-full items-end justify-center rounded border-2 ${
-                      navHeight === n.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
-                    }`} style={{ height: '3rem' }}>
-                      <span className={`w-8 rounded-t-sm ${navHeight === n.key ? 'bg-primary-500' : 'bg-slate-300'}`}
-                        style={{ height: n.key === '56' ? '1.5rem' : n.key === '64' ? '2rem' : '2.5rem' }} />
-                    </span>
-                    <span className={`text-xs font-medium ${navHeight === n.key ? 'text-primary-700' : 'text-slate-600'}`}>{n.label}</span>
-                    <span className="text-xs text-slate-400">{n.desc}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            </Section>
-
-            {/* 侧边栏宽度 */}
-            <Section title="侧边栏宽度" desc="调整侧边栏宽度。">
-              <div className="grid grid-cols-3 gap-3">
-                {SIDEBAR_WIDTHS.map((s) => (
-                  <OptionCard key={s.key} active={sidebarWidth === s.key} onClick={() => setSidebarWidth(s.key)}>
-                    <span className={`flex h-8 w-full items-stretch justify-start rounded border-2 overflow-hidden ${
-                      sidebarWidth === s.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
-                    }`}>
-                      <span className={`${sidebarWidth === s.key ? 'bg-primary-500' : 'bg-slate-300'}`}
-                        style={{ width: s.key === '220' ? '35%' : s.key === '260' ? '45%' : '55%' }} />
-                      <span className="flex-1 bg-white" />
-                    </span>
-                    <span className={`text-xs font-medium ${sidebarWidth === s.key ? 'text-primary-700' : 'text-slate-600'}`}>{s.label}</span>
-                    <span className="text-xs text-slate-400">{s.desc}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            </Section>
-
-            {/* 页面底色 */}
-            <Section title="页面底色" desc="调整全局背景颜色。">
-              <div className="grid grid-cols-5 gap-3">
-                {PAGE_BGS.map((bg) => (
-                  <OptionCard key={bg.key} active={pageBg === bg.key} onClick={() => setPageBg(bg.key)}>
-                    <span className="flex h-10 w-full items-center justify-center rounded-lg border-2"
-                      style={{
-                        backgroundColor: bg.key,
-                        borderColor: pageBg === bg.key ? 'var(--color-primary-500)' : '#e2e8f0',
-                      }}>
-                      {pageBg === bg.key && <CheckIcon className="h-4 w-4 text-primary-600" />}
-                    </span>
-                    <span className={`text-xs font-medium ${pageBg === bg.key ? 'text-primary-700' : 'text-slate-600'}`}>{bg.label}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            </Section>
-
-            {/* 保存 */}
-            <div className="flex justify-end">
-              <Button onClick={save} loading={saving}><SaveIcon className="h-4 w-4" /> 保存主题</Button>
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {/* Tab 栏 */}
+            <div className="border-b border-slate-200 p-2">
+              <SegmentedTabs
+                value={activeTab}
+                items={TABS}
+                ariaLabel="主题设置分类"
+                onChange={setActiveTab}
+                fullWidth
+              />
             </div>
+
+            {/* Tab 内容 */}
+            <div className="p-6">
+
+              {/* 主题色 */}
+              {activeTab === 'color' && (
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                  {HUES.map((h) => (
+                    <OptionCard key={h.key} active={hue === h.key} onClick={() => setHue(h.key)}>
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-110"
+                        style={{ backgroundColor: h.color }}>
+                        {hue === h.key && <CheckIcon className="h-5 w-5 text-white" />}
+                      </span>
+                      <span className={`text-xs font-medium ${hue === h.key ? 'text-primary-700' : 'text-slate-600'}`}>{h.label}</span>
+                    </OptionCard>
+                  ))}
+                </div>
+              )}
+
+              {/* 圆角 */}
+              {activeTab === 'radius' && (
+                <div className="grid grid-cols-5 gap-3">
+                  {RADII.map((r) => (
+                    <OptionCard key={r.key} active={radius === r.key} onClick={() => setRadius(r.key)}>
+                      <span className={`flex h-10 w-14 items-center justify-center border-2 ${
+                        radius === r.key ? 'border-primary-500 bg-primary-100' : 'border-slate-300 bg-slate-100'
+                      }`} style={{ borderRadius: r.key === 'sm' ? '0.25rem' : r.key === 'md' ? '0.375rem' : r.key === 'lg' ? '0.5rem' : r.key === 'xl' ? '0.75rem' : '1rem' }}>
+                        {radius === r.key && <CheckIcon className="h-4 w-4 text-primary-600" />}
+                      </span>
+                      <span className={`text-xs font-medium ${radius === r.key ? 'text-primary-700' : 'text-slate-600'}`}>{r.label}</span>
+                    </OptionCard>
+                  ))}
+                </div>
+              )}
+
+              {/* 按钮 */}
+              {activeTab === 'button' && (
+                <div className="grid grid-cols-3 gap-3">
+                  {BTN_SIZES.map((b) => (
+                    <OptionCard key={b.key} active={btnSize === b.key} onClick={() => setBtnSize(b.key)}>
+                      <span className={`inline-flex items-center justify-center rounded-lg border-2 px-4 font-medium ${
+                        btnSize === b.key ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-300 bg-white text-slate-600'
+                      }`} style={{
+                        height: b.key === 'sm' ? '2rem' : b.key === 'md' ? '2.5rem' : '3rem',
+                        fontSize: b.key === 'sm' ? '0.75rem' : b.key === 'md' ? '0.875rem' : '1rem',
+                      }}>
+                        {b.label}
+                      </span>
+                      <span className="text-xs text-slate-400">{b.desc}</span>
+                    </OptionCard>
+                  ))}
+                </div>
+              )}
+
+              {/* 字体 */}
+              {activeTab === 'font' && (
+                <div className="grid grid-cols-3 gap-3">
+                  {FONT_SIZES.map((f) => (
+                    <OptionCard key={f.key} active={fontSize === f.key} onClick={() => setFontSize(f.key)}>
+                      <span className={`text-lg font-semibold ${fontSize === f.key ? 'text-primary-600' : 'text-slate-700'}`}
+                        style={{ fontSize: f.key + 'px' }}>Aa</span>
+                      <span className={`text-xs font-medium ${fontSize === f.key ? 'text-primary-700' : 'text-slate-600'}`}>{f.label}</span>
+                      <span className="text-xs text-slate-400">{f.desc}</span>
+                    </OptionCard>
+                  ))}
+                </div>
+              )}
+
+              {/* 布局 */}
+              {activeTab === 'layout' && (
+                <div className="space-y-6">
+                  <div>
+                    <p className="mb-3 text-sm font-medium text-slate-700">内容区宽度</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {CONTENT_WIDTHS.map((w) => (
+                        <OptionCard key={w.key} active={contentWidth === w.key} onClick={() => setContentWidth(w.key)}>
+                          <span className={`flex h-8 w-full items-center justify-center rounded border-2 ${
+                            contentWidth === w.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
+                          }`}>
+                            <span className={`h-3 rounded-sm ${contentWidth === w.key ? 'bg-primary-500' : 'bg-slate-300'}`}
+                              style={{ width: w.key === 'narrow' ? '50%' : w.key === 'normal' ? '70%' : '90%' }} />
+                          </span>
+                          <span className={`text-xs font-medium ${contentWidth === w.key ? 'text-primary-700' : 'text-slate-600'}`}>{w.label}</span>
+                          <span className="text-xs text-slate-400">{w.desc}</span>
+                        </OptionCard>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-3 text-sm font-medium text-slate-700">导航栏高度</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {NAV_HEIGHTS.map((n) => (
+                        <OptionCard key={n.key} active={navHeight === n.key} onClick={() => setNavHeight(n.key)}>
+                          <span className={`flex w-full items-end justify-center rounded border-2 ${
+                            navHeight === n.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
+                          }`} style={{ height: '3rem' }}>
+                            <span className={`w-8 rounded-t-sm ${navHeight === n.key ? 'bg-primary-500' : 'bg-slate-300'}`}
+                              style={{ height: n.key === '56' ? '1.5rem' : n.key === '64' ? '2rem' : '2.5rem' }} />
+                          </span>
+                          <span className={`text-xs font-medium ${navHeight === n.key ? 'text-primary-700' : 'text-slate-600'}`}>{n.label}</span>
+                          <span className="text-xs text-slate-400">{n.desc}</span>
+                        </OptionCard>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-3 text-sm font-medium text-slate-700">侧边栏宽度</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {SIDEBAR_WIDTHS.map((s) => (
+                        <OptionCard key={s.key} active={sidebarWidth === s.key} onClick={() => setSidebarWidth(s.key)}>
+                          <span className={`flex h-8 w-full items-stretch justify-start rounded border-2 overflow-hidden ${
+                            sidebarWidth === s.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
+                          }`}>
+                            <span className={`${sidebarWidth === s.key ? 'bg-primary-500' : 'bg-slate-300'}`}
+                              style={{ width: s.key === '220' ? '35%' : s.key === '260' ? '45%' : '55%' }} />
+                            <span className="flex-1 bg-white" />
+                          </span>
+                          <span className={`text-xs font-medium ${sidebarWidth === s.key ? 'text-primary-700' : 'text-slate-600'}`}>{s.label}</span>
+                          <span className="text-xs text-slate-400">{s.desc}</span>
+                        </OptionCard>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 背景 */}
+              {activeTab === 'bg' && (
+                <div className="grid grid-cols-5 gap-3">
+                  {PAGE_BGS.map((bg) => (
+                    <OptionCard key={bg.key} active={pageBg === bg.key} onClick={() => setPageBg(bg.key)}>
+                      <span className="flex h-10 w-full items-center justify-center rounded-lg border-2"
+                        style={{
+                          backgroundColor: bg.key,
+                          borderColor: pageBg === bg.key ? 'var(--color-primary-500)' : '#e2e8f0',
+                        }}>
+                        {pageBg === bg.key && <CheckIcon className="h-4 w-4 text-primary-600" />}
+                      </span>
+                      <span className={`text-xs font-medium ${pageBg === bg.key ? 'text-primary-700' : 'text-slate-600'}`}>{bg.label}</span>
+                    </OptionCard>
+                  ))}
+                </div>
+              )}
+
+            </div>
+          </div>
+
+          {/* 保存 */}
+          <div className="mt-6 flex justify-end">
+            <Button onClick={save} loading={saving}><SaveIcon className="h-4 w-4" /> 保存主题</Button>
           </div>
         </AccountSettingsLayout>
       </Container>
@@ -279,35 +308,14 @@ export default function ThemeSettings() {
   )
 }
 
-function Section({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 p-6">
-        <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-        <p className="mt-1 text-sm text-slate-500">{desc}</p>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  )
-}
-
 function OptionCard({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick}
-      className={`group flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
-        active ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-200' : 'border-slate-200 hover:border-slate-300'
+      className={`group flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-colors ${
+        active ? 'border-primary-500 bg-primary-50' : 'border-slate-200 hover:border-slate-300'
       }`}>
       {children}
     </button>
-  )
-}
-
-function Preview({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-      <p className="mb-3 text-xs font-medium text-slate-500">预览效果</p>
-      <div className="flex flex-wrap items-center gap-3">{children}</div>
-    </div>
   )
 }
 
