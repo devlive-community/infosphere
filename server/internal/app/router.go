@@ -115,6 +115,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/tags/:slug/books", a.BooksByTag)
 			public.POST("/books/:id/view", a.IncrementBookView)
 			// 导出（公开且开放导出的书籍匿名可导，鉴权在 handler 内）
+			public.GET("/export/pdf-available", a.PDFExportAvailable)
 			public.GET("/books/:id/export/options", a.GetExportOptions)
 			public.GET("/books/:id/export/markdown", a.ExportBookMarkdownPublic)
 			public.GET("/books/:id/export/pdf", a.ExportBookPDF) // PDF 依赖 pdf-export 插件

@@ -32,10 +32,12 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
   const [formats, setFormats] = useState<string[]>(initialFormats.length ? initialFormats : ALL_FORMATS.map((f) => f.key))
   const [style, setStyle] = useState<BookStyle>(DEFAULT_STYLE)
   const [styleLoaded, setStyleLoaded] = useState(false)
+  const [pdfAvailable, setPdfAvailable] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     api<BookStyle>(`/books/${book.id}/export-style`).then((d) => setStyle({ ...DEFAULT_STYLE, ...d })).catch(() => {}).finally(() => setStyleLoaded(true))
+    api<{ available: boolean }>('/export/pdf-available').then((r) => setPdfAvailable(r.available)).catch(() => {})
   }, [book.id])
 
   function toggleFormat(key: string) {
@@ -43,11 +45,13 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
   }
 
   async function save() {
-    if (formats.length === 0) { showToast({ title: '无法保存', message: '至少保留一种导出格式', tone: 'error' }); return }
+    // 插件未安装时不允许开启 PDF 格式
+    const effective = pdfAvailable ? formats : formats.filter((f) => f !== 'pdf')
+    if (effective.length === 0) { showToast({ title: '无法保存', message: '至少保留一种可用的导出格式', tone: 'error' }); return }
     setSaving(true)
     try {
       // 全选归一化为空串（表示全部），由后端统一处理
-      const export_formats = formats.length === ALL_FORMATS.length ? '' : formats.join(',')
+      const export_formats = effective.length === ALL_FORMATS.length ? '' : effective.join(',')
       await api(`/books/${book.id}`, { method: 'PUT', body: { export_enabled: exportEnabled, export_style_shared: styleShared, export_formats } })
       await api(`/books/${book.id}/export-style`, { method: 'PUT', body: style })
       showToast({ title: '已保存', message: '导出设置已更新', tone: 'success' })
@@ -85,16 +89,19 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
             <div className="text-sm font-medium text-slate-900">允许导出的格式</div>
             <p className="mt-1 text-xs leading-5 text-slate-500">读者只能选择你允许的格式；全部选中表示不限制。</p>
             <div className="mt-3 space-y-2">
-              {ALL_FORMATS.map((f) => (
-                <label key={f.key} className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 hover:border-primary-300">
-                  <input type="checkbox" checked={formats.includes(f.key)} onChange={() => toggleFormat(f.key)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
-                  <span>
-                    <span className="text-sm font-medium text-slate-800">{f.label}</span>
-                    <span className="mt-0.5 block text-xs text-slate-500">{f.hint}</span>
-                  </span>
-                </label>
-              ))}
+              {ALL_FORMATS.map((f) => {
+                const disabled = f.key === 'pdf' && !pdfAvailable
+                return (
+                  <label key={f.key} className={`flex items-start gap-3 rounded-lg border border-slate-200 p-3 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-primary-300'}`}>
+                    <input type="checkbox" checked={formats.includes(f.key) && !disabled} disabled={disabled} onChange={() => toggleFormat(f.key)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                    <span>
+                      <span className="text-sm font-medium text-slate-800">{f.label}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">{disabled ? '需管理员先在后台「插件」中安装 PDF 导出插件' : f.hint}</span>
+                    </span>
+                  </label>
+                )
+              })}
             </div>
           </div>
 

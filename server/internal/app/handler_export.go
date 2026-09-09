@@ -74,6 +74,11 @@ func (a *App) canExportBook(u *models.User, book *models.Book) bool {
 	return book.IsPublic && isPubliclyReadableBookStatus(book.Status) && book.ExportEnabled
 }
 
+// PDFExportAvailable GET /export/pdf-available 是否已安装 PDF 导出插件（供前端联动禁用相关设置）
+func (a *App) PDFExportAvailable(c *gin.Context) {
+	ok(c, gin.H{"available": a.installedChromePath() != ""})
+}
+
 // GetExportOptions GET /books/:id/export/options 返回当前用户对该书的导出能力，供前端渲染导出入口
 func (a *App) GetExportOptions(c *gin.Context) {
 	book, status := a.findBook(c)
