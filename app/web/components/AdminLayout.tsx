@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, ReactNode } from 'react'
 import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
 import NotificationBell from '@/components/NotificationBell'
-import { ButtonLink, Loading } from '@/components/ui'
+import { ButtonLink, Input, Loading } from '@/components/ui'
 import {
   GridIcon, GearIcon, UsersIcon, CloudIcon, BookIcon, CodeIcon,
   SearchIcon, ArrowLeftIcon, ChevronDownIcon, ListBulletIcon,
@@ -46,7 +46,8 @@ function AdminUserMenu() {
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-2 hover:bg-slate-50">
+        className="flex items-center gap-2 rounded-full border border-slate-200 bg-white pl-1 pr-2 hover:bg-slate-50"
+        style={{ height: 'var(--control-height)' }}>
         {user.avatar
           ? <img src={user.avatar.startsWith('/') ? API_BASE + user.avatar : user.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
           : <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-500 text-sm font-bold text-white">{user.username[0]?.toUpperCase()}</span>}
@@ -164,7 +165,8 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
         {/* 顶栏 */}
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6" style={{ height: 'var(--nav-height)' }}>
           <button onClick={() => setDrawer(true)} aria-label="打开菜单"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 md:hidden">
+            className="flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 md:hidden"
+            style={{ width: 'var(--control-height)', height: 'var(--control-height)' }}>
             <ListBulletIcon className="h-5 w-5" />
           </button>
           <nav className="flex items-center gap-2 text-sm text-slate-400">
@@ -173,12 +175,7 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
             <span className="font-medium text-slate-700">{breadcrumb}</span>
           </nav>
           <div className="ml-auto hidden w-full max-w-sm lg:block">
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><SearchIcon className="h-4 w-4" /></span>
-              <input type="search" placeholder="搜索设置或功能"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:outline-none"
-                style={{ height: 'var(--control-height)' }} />
-            </div>
+            <Input type="search" placeholder="搜索设置或功能" leading={<SearchIcon className="h-4 w-4" />} />
           </div>
           <div className="ml-auto flex items-center gap-1.5 lg:ml-0">
             <NotificationBell />

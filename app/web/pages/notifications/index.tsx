@@ -132,7 +132,7 @@ export default function NotificationsPage() {
               { value: 'all', label: '全部' },
               { value: 'unread', label: `未读${unread > 0 ? `（${unread}）` : ''}` },
             ]} />
-            {unread > 0 && <Button variant="outline" size="sm" onClick={markAllRead}>全部已读</Button>}
+            {unread > 0 && <Button variant="outline" onClick={markAllRead}>全部已读</Button>}
           </div>
         </div>
 

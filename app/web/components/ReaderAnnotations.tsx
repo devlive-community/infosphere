@@ -267,8 +267,14 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
                     <p className="mt-2 text-xs text-slate-400">{formatDate(item.updated_at)}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    {item.kind === 'note' && <Tooltip content="编辑笔记"><button type="button" aria-label="编辑笔记" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-primary-50 hover:text-primary-600" onClick={() => { setNote(item.note); setEditing({ annotation: item, selection: null }) }}><i className="fa-solid fa-pen" aria-hidden="true" /></button></Tooltip>}
-                    <Tooltip content="删除标注"><button type="button" aria-label="删除标注" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600" onClick={() => void remove(item)}><i className="fa-solid fa-trash" aria-hidden="true" /></button></Tooltip>
+                    {item.kind === 'note' && <Tooltip content="编辑笔记"><button type="button" aria-label="编辑笔记"
+                      className="flex items-center justify-center rounded-lg text-slate-400 hover:bg-primary-50 hover:text-primary-600"
+                      style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
+                      onClick={() => { setNote(item.note); setEditing({ annotation: item, selection: null }) }}><i className="fa-solid fa-pen" aria-hidden="true" /></button></Tooltip>}
+                    <Tooltip content="删除标注"><button type="button" aria-label="删除标注"
+                      className="flex items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                      style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
+                      onClick={() => void remove(item)}><i className="fa-solid fa-trash" aria-hidden="true" /></button></Tooltip>
                   </div>
                 </div>
               </Card>

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import { API_BASE, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Button, Input, Textarea, Select, Switch } from '@/components/ui'
-import { BookIcon, CheckCircleIcon, ImageIcon, LinkIcon, UploadIcon, EyeIcon } from '@/components/icons'
+import { BookIcon, CheckCircleIcon, CloseIcon, ImageIcon, LinkIcon, UploadIcon, EyeIcon } from '@/components/icons'
 import type { Book, BookStatus } from '@/lib/types'
 
 const MAX_TITLE = 60
@@ -168,7 +168,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                   <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
                     {t}
                     <button type="button" aria-label={`移除 ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}
-                      className="text-primary-400 hover:text-primary-700">×</button>
+                      className="text-primary-400 hover:text-primary-700"><CloseIcon className="h-3 w-3" /></button>
                   </span>
                 ))}
                 <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={onTagKey} onBlur={addTag}
@@ -285,7 +285,10 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-slate-900">实时预览</h2>
             <button type="button" onClick={() => setShowPreview(false)} aria-label="关闭预览"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">✕</button>
+              className="flex items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
+              <CloseIcon className="h-4 w-4" />
+            </button>
           </div>
           <div className="overflow-hidden rounded-xl border border-slate-200">
             <div className="aspect-[4/3] w-full bg-gradient-to-br from-primary-200 to-[#8B8DFF]">

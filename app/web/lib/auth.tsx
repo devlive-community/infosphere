@@ -47,6 +47,8 @@ export function applyTheme(s: ThemeSetting) {
   el.setAttribute('data-btn', s.button_size)
   if (s.button_size === 'custom' && s.custom_control_height) {
     el.style.setProperty('--control-height', s.custom_control_height)
+  } else {
+    el.style.removeProperty('--control-height')
   }
 
   // 字体大小

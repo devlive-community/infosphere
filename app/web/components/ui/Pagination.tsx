@@ -1,9 +1,12 @@
+import { ControlSize, controlHeight, sizedControlStyle } from './controlSize'
+
 // Pagination 通用分页条
-export function Pagination({ page, pageSize, total, onChange }: {
+export function Pagination({ page, pageSize, total, onChange, size = 'md' }: {
   page: number
   pageSize: number
   total: number
   onChange: (page: number) => void
+  size?: ControlSize
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize))
   if (pages <= 1) return null
@@ -14,7 +17,7 @@ export function Pagination({ page, pageSize, total, onChange }: {
     'inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-600 ' +
     'transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50'
   const pageClass = (active: boolean) =>
-    `inline-flex min-w-[var(--control-height)] items-center justify-center rounded-lg border px-3 text-sm transition-colors ${
+    `inline-flex items-center justify-center rounded-lg border px-3 text-sm transition-colors ${
       active
         ? 'border-primary-500 bg-primary-500 text-white'
         : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
@@ -22,13 +25,14 @@ export function Pagination({ page, pageSize, total, onChange }: {
 
   return (
     <div className="mt-6 flex items-center justify-center gap-1.5">
-      <button disabled={page <= 1} onClick={() => onChange(page - 1)} className={navClass} style={{ height: 'var(--control-height)' }}>上一页</button>
+      <button disabled={page <= 1} onClick={() => onChange(page - 1)} className={navClass} style={sizedControlStyle(size)}>上一页</button>
       {list[0] > 1 && <span className="px-1 text-slate-400">…</span>}
       {list.map((p) => (
-        <button key={p} onClick={() => onChange(p)} className={pageClass(p === page)} style={{ height: 'var(--control-height)' }}>{p}</button>
+        <button key={p} onClick={() => onChange(p)} className={pageClass(p === page)}
+          style={{ ...sizedControlStyle(size), minWidth: controlHeight[size] }}>{p}</button>
       ))}
       {list[list.length - 1] < pages && <span className="px-1 text-slate-400">…</span>}
-      <button disabled={page >= pages} onClick={() => onChange(page + 1)} className={navClass} style={{ height: 'var(--control-height)' }}>下一页</button>
+      <button disabled={page >= pages} onClick={() => onChange(page + 1)} className={navClass} style={sizedControlStyle(size)}>下一页</button>
     </div>
   )
 }

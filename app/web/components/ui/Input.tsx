@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { ControlSize, sizedControlStyle } from './controlSize'
 
 // 输入类控件的基础样式：无 focus 外圈阴影，仅边框颜色变化
 const controlClass =
@@ -17,22 +18,23 @@ const controlClass =
   'focus:border-primary-500 focus:outline-none ' +
   'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400'
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   /** 前置图标：输入框内左侧留出图标位置 */
   leading?: ReactNode
   /** 后置内容：可放置密码显隐等交互按钮 */
   trailing?: ReactNode
+  size?: ControlSize
 }
 
 // Input 通用文本输入框
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, leading, trailing, ...rest }, ref) {
-  if (!leading && !trailing) return <input ref={ref} className={`${controlClass} ${className || ''}`.trim()} style={{ height: 'var(--control-height)' }} {...rest} />
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, leading, trailing, size = 'md', style, ...rest }, ref) {
+  if (!leading && !trailing) return <input ref={ref} className={`${controlClass} ${className || ''}`.trim()} {...rest} style={sizedControlStyle(size, style)} />
   return (
     <div className={`relative ${className || ''}`.trim()}>
       {leading && (
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{leading}</span>
       )}
-      <input ref={ref} className={`${leading ? 'pl-9' : ''} ${trailing ? 'pr-10' : ''} ${controlClass}`} style={{ height: 'var(--control-height)' }} {...rest} />
+      <input ref={ref} className={`${leading ? 'pl-9' : ''} ${trailing ? 'pr-10' : ''} ${controlClass}`} {...rest} style={sizedControlStyle(size, style)} />
       {trailing && (
         <span className="absolute right-2 top-1/2 -translate-y-1/2">{trailing}</span>
       )}
@@ -61,6 +63,7 @@ interface SelectProps {
   disabled?: boolean
   leading?: ReactNode
   menuPlacement?: 'top' | 'bottom'
+  size?: ControlSize
 }
 
 interface SelectMenuPosition {
@@ -73,7 +76,7 @@ const SELECT_MENU_GAP = 4
 const SELECT_VIEWPORT_GAP = 8
 
 // Select 自绘下拉选择：选项层通过 Portal 脱离页面 overflow 与层叠上下文。
-export function Select({ options, value, onChange, className, placeholder, disabled, leading, menuPlacement = 'bottom' }: SelectProps) {
+export function Select({ options, value, onChange, className, placeholder, disabled, leading, menuPlacement = 'bottom', size = 'md' }: SelectProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -194,7 +197,7 @@ export function Select({ options, value, onChange, className, placeholder, disab
         aria-expanded={open}
         onClick={() => setOpen(!open)}
         className={`flex items-center justify-between gap-2 text-left ${controlClass}`}
-        style={{ height: 'var(--control-height)' }}
+        style={sizedControlStyle(size)}
       >
         <span className="flex min-w-0 items-center gap-2">
           {leading}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, API_BASE, getToken } from '@/lib/api'
-import { useFeedback } from '@/components/ui'
+import { Button, useFeedback } from '@/components/ui'
 import { DownloadIcon, ChevronDownIcon } from '@/components/icons'
 import type { Book } from '@/lib/types'
 
@@ -66,10 +66,9 @@ export default function BookExportButton({ book }: { book: Book }) {
 
   return (
     <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen((v) => !v)} disabled={busyAny}
-        className="flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 disabled:opacity-60">
+      <Button type="button" variant="outline" onClick={() => setOpen((v) => !v)} disabled={busyAny}>
         <DownloadIcon className="h-4 w-4" /> {busyAny ? '导出中…' : '导出'} <ChevronDownIcon className="h-4 w-4 text-slate-400" />
-      </button>
+      </Button>
       {open && (
         <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
           {opts.formats.map((fmt) => {

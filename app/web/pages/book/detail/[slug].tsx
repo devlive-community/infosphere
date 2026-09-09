@@ -401,10 +401,10 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                   ? '处理中…'
                   : `${favorited ? '已收藏' : '收藏'}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
               </Button>
-              <Tooltip content="分享"><button type="button" onClick={share}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
+              <Tooltip content="分享"><Button type="button" variant="outline" onClick={share}
+                className="!px-0 text-slate-500" style={{ width: 'var(--control-height)' }}>
                   <ShareIcon className="h-4 w-4" />
-                </button></Tooltip>
+                </Button></Tooltip>
               <BookExportButton book={book} />
               <ReportButton targetType="book" targetId={book.id} />
               {(canManage || canEdit) && (

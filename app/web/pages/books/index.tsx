@@ -189,13 +189,8 @@ export default function MyBooks() {
             label: <>{tab.label}{counts[tab.key] !== undefined && <span className="ml-1 text-xs text-slate-400">{counts[tab.key]}</span>}</>,
           }))} />
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1) }}
-              placeholder="搜索我的书籍"
-              className="w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none"
-              style={{ height: 'var(--control-height)' }} />
-          </div>
+          <Input className="w-56" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1) }}
+            leading={<SearchIcon className="h-4 w-4" />} placeholder="搜索我的书籍" />
           <Select className="w-36" value={sort} onChange={(v) => { setSort(v as SortKey); setPage(1) }} options={sortOptions} />
           <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"
             onChange={(value) => setView(value as 'grid' | 'list')} items={[
@@ -315,7 +310,8 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
             <p className="mt-1 text-sm text-slate-500">导入结果会保存为仅自己可见的草稿，确认内容后再发布。</p>
           </div>
           <button type="button" aria-label="关闭" disabled={submitting} onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50">
+            className="flex shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
@@ -501,7 +497,8 @@ function PDFImportDialog({ book, onClose, onImported }: { book: Book; onClose: (
             <p className="mt-2 text-sm leading-6 text-slate-500">解析 PDF 为 Markdown 章节，可追加到目录末尾或覆盖现有章节。</p>
           </div>
           <button type="button" aria-label="关闭 PDF 导入" disabled={busy} onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">
+            className="flex shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <CloseIcon className="h-5 w-5" />
           </button>
         </header>
@@ -523,11 +520,13 @@ function ActionRow({ book, menu, canManage, canEdit }: { book: Book; menu: React
       </Link>
       <div className="relative flex items-center gap-1">
         <Tooltip content="章节列表"><button type="button" onClick={() => setChaptersOpen(!chaptersOpen)}
-          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${chaptersOpen ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}>
+          className={`flex items-center justify-center rounded-lg transition-colors ${chaptersOpen ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+          style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <FileTextIcon className="h-4 w-4" />
           </button></Tooltip>
         {canManage && <Tooltip content="书籍设置"><Link href={`/book/settings/${encodeURIComponent(book.slug)}`}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+            className="flex items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <GearIcon className="h-4 w-4" />
           </Link></Tooltip>}
         {menu}

@@ -595,7 +595,7 @@ export default function Writer({ user }: WriterProps) {
                     <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
                       {t}
                       <button type="button" aria-label={`移除 ${t}`} onClick={() => setBookForm({ ...bookForm, tags: bookForm.tags.filter((x) => x !== t) })}
-                        className="text-primary-400 hover:text-primary-700">×</button>
+                        className="text-primary-400 hover:text-primary-700"><CloseIcon className="h-3 w-3" /></button>
                     </span>
                   ))}
                   <input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
@@ -825,7 +825,8 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
             </div>
           </div>
           <button type="button" aria-label="关闭网页采集" disabled={loading} onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40">
+            className="flex items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40"
+            style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <CloseIcon className="h-5 w-5" />
           </button>
         </header>
@@ -977,7 +978,9 @@ function RevisionDrawer({
               <p className="truncate text-xs text-slate-500">{document.title} · 每次手动保存均生成版本</p>
             </div>
           </div>
-          <button type="button" aria-label="关闭版本历史" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
+          <button type="button" aria-label="关闭版本历史" onClick={onClose}
+            className="flex items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <CloseIcon className="h-5 w-5" />
           </button>
         </header>
@@ -1076,7 +1079,8 @@ function ToolbarButton({ title, onClick, children }: { title: string; onClick: (
   return (
     <Tooltip content={title}>
       <button type="button" aria-label={title} onClick={onClick}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900">
+        className="flex items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
         {children}
       </button>
     </Tooltip>

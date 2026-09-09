@@ -127,6 +127,11 @@
     --control-px: 1.25rem; --control-text: 1rem;
     --btn-height: var(--control-height); --btn-height-sm: var(--control-height-sm); --btn-px: var(--control-px); --btn-text: var(--control-text);
   }
+  [data-btn="custom"] {
+    --control-height-sm: max(1.75rem, calc(var(--control-height) - 0.5rem));
+    --control-height-lg: calc(var(--control-height) + 0.5rem);
+    --btn-height: var(--control-height); --btn-height-sm: var(--control-height-sm);
+  }
 
   /* ── 字体大小 ── */
   [data-font="14"] { --font-size: 14px; }

@@ -6,7 +6,7 @@ import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, site
 import { formatNumber } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Container from '@/components/Container'
-import { Button, Input, Loading, Pagination, Select , Tooltip} from '@/components/ui'
+import { Button, Input, Loading, Pagination, SegmentedTabs, Select } from '@/components/ui'
 import Seo from '@/components/Seo'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
@@ -123,10 +123,9 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
           <form action="/explore" method="get" className="mx-auto mt-6 flex max-w-2xl gap-2">
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <Input className="pl-11 text-base" name="title" placeholder="搜索书名、主题或作者" defaultValue={keyword}
-                style={{ height: 'var(--control-height-lg)' }} />
+              <Input size="lg" className="pl-11 text-base" name="title" placeholder="搜索书名、主题或作者" defaultValue={keyword} />
             </div>
-            <Button type="submit" className="px-7 text-base" style={{ height: 'var(--control-height-lg)' }}>搜索</Button>
+            <Button type="submit" size="lg" className="px-7">搜索</Button>
           </form>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
@@ -194,16 +193,11 @@ export default function Explore({ site, siteUrl, keyword, tag, sort, page, data,
                 <Select className="w-36" value={sort} onChange={(v) => { setLoading(true); window.location.href = v === 'hot' ? '/explore?sort=hot' : '/explore' }}
                   options={[{ value: 'latest', label: '最新发布' }, { value: 'hot', label: '热门阅读' }]} />
               )}
-              <div className="flex overflow-hidden rounded-lg border border-slate-200">
-                <Tooltip content="网格视图"><button onClick={() => setView('grid')}
-                  className={`flex h-10 w-10 items-center justify-center transition-colors ${view === 'grid' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
-                  <GridIcon className="h-4 w-4" />
-                </button></Tooltip>
-                <Tooltip content="列表视图"><button onClick={() => setView('list')}
-                  className={`flex h-10 w-10 items-center justify-center border-l border-slate-200 transition-colors ${view === 'list' ? 'bg-primary-50 text-primary-600' : 'bg-white text-slate-400 hover:text-slate-700'}`}>
-                  <ListIcon className="h-4 w-4" />
-                </button></Tooltip>
-              </div>
+              <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"
+                onChange={(value) => setView(value as 'grid' | 'list')} items={[
+                  { value: 'grid', label: '网格视图', icon: <GridIcon className="h-4 w-4" /> },
+                  { value: 'list', label: '列表视图', icon: <ListIcon className="h-4 w-4" /> },
+                ]} />
             </div>
           </div>
 

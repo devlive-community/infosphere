@@ -5,8 +5,7 @@ import Container from '@/components/Container'
 import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Button, Loading, useFeedback } from '@/components/ui'
-import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
+import { Button, Input, Loading, SegmentedTabs, useFeedback } from '@/components/ui'
 import { SaveIcon } from '@/components/icons'
 
 const HUES = [
@@ -222,16 +221,16 @@ export default function ThemeSettings() {
                           type="color"
                           value={customColor}
                           onChange={(e) => setCustomColor(e.target.value)}
-                          className="h-10 w-14 cursor-pointer rounded-lg border border-slate-200"
+                          className="w-14 cursor-pointer rounded-lg border border-slate-200"
+                          style={{ height: 'var(--control-height)' }}
                         />
-                        <input
-                          type="text"
+                        <Input
                           value={customColor}
                           onChange={(e) => {
                             const v = e.target.value
                             if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setCustomColor(v)
                           }}
-                          className="h-10 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                          className="w-24 font-mono"
                           placeholder="#000000"
                         />
                       </div>
@@ -261,11 +260,10 @@ export default function ThemeSettings() {
                     <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center gap-3">
                         <label className="text-sm font-medium text-slate-700">圆角值</label>
-                        <input
-                          type="text"
+                        <Input
                           value={customRadius}
                           onChange={(e) => setCustomRadius(e.target.value)}
-                          className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                          className="w-28 font-mono"
                           placeholder="0.5rem"
                         />
                       </div>
@@ -314,11 +312,10 @@ export default function ThemeSettings() {
                       <div className="mt-4 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center gap-3">
                           <label className="text-sm font-medium text-slate-700">高度</label>
-                          <input
-                            type="text"
+                          <Input
                             value={customControlHeight}
                             onChange={(e) => setCustomControlHeight(e.target.value)}
-                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                            className="w-28 font-mono"
                             placeholder="2.5rem"
                           />
                         </div>
@@ -347,11 +344,10 @@ export default function ThemeSettings() {
                     <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center gap-3">
                         <label className="text-sm font-medium text-slate-700">字号</label>
-                        <input
-                          type="text"
+                        <Input
                           value={customFontSize}
                           onChange={(e) => setCustomFontSize(e.target.value)}
-                          className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                          className="w-28 font-mono"
                           placeholder="15px"
                         />
                       </div>
@@ -384,11 +380,10 @@ export default function ThemeSettings() {
                       <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center gap-3">
                           <label className="text-sm font-medium text-slate-700">宽度</label>
-                          <input
-                            type="text"
+                          <Input
                             value={customContentWidth}
                             onChange={(e) => setCustomContentWidth(e.target.value)}
-                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                            className="w-28 font-mono"
                             placeholder="1200px"
                           />
                         </div>
@@ -416,11 +411,10 @@ export default function ThemeSettings() {
                       <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center gap-3">
                           <label className="text-sm font-medium text-slate-700">高度</label>
-                          <input
-                            type="text"
+                          <Input
                             value={customNavHeight}
                             onChange={(e) => setCustomNavHeight(e.target.value)}
-                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                            className="w-28 font-mono"
                             placeholder="4rem"
                           />
                         </div>
@@ -449,11 +443,10 @@ export default function ThemeSettings() {
                       <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center gap-3">
                           <label className="text-sm font-medium text-slate-700">宽度</label>
-                          <input
-                            type="text"
+                          <Input
                             value={customSidebarWidth}
                             onChange={(e) => setCustomSidebarWidth(e.target.value)}
-                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                            className="w-28 font-mono"
                             placeholder="260px"
                           />
                         </div>
@@ -496,16 +489,16 @@ export default function ThemeSettings() {
                           type="color"
                           value={customPageBg}
                           onChange={(e) => setCustomPageBg(e.target.value)}
-                          className="h-10 w-14 cursor-pointer rounded-lg border border-slate-200"
+                          className="w-14 cursor-pointer rounded-lg border border-slate-200"
+                          style={{ height: 'var(--control-height)' }}
                         />
-                        <input
-                          type="text"
+                        <Input
                           value={customPageBg}
                           onChange={(e) => {
                             const v = e.target.value
                             if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setCustomPageBg(v)
                           }}
-                          className="h-10 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-primary-500 focus:outline-none"
+                          className="w-24 font-mono"
                           placeholder="#000000"
                         />
                       </div>

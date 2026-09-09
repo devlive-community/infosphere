@@ -39,7 +39,8 @@ function PasswordInput({ value, onChange, autoComplete }: {
           <button
             type="button"
             onClick={() => setVisible((current) => !current)}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none"
+            className="flex items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none"
+            style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
             aria-label={visible ? '隐藏密码' : '显示密码'}
             aria-pressed={visible}
           >
