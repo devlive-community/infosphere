@@ -9,10 +9,10 @@ import { ButtonLink, Input, Loading } from '@/components/ui'
 import {
   GridIcon, GearIcon, UsersIcon, CloudIcon, BookIcon, CodeIcon,
   SearchIcon, ArrowLeftIcon, ChevronDownIcon, ListBulletIcon,
-  ActivityIcon,
+  ActivityIcon, ClockIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'reports' | 'audit' | 'settings' | 'plugins' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'reports' | 'audit' | 'tasks' | 'settings' | 'plugins' | 'upgrade'
 
 function ReportIcon({ className }: { className?: string }) {
   return <i className={`fa-solid fa-flag ${className || ''}`.trim()} aria-hidden="true" />
@@ -25,6 +25,7 @@ const NAV: { key: AdminNavKey; label: string; href: string; icon: (p: { classNam
   { key: 'documents', label: '章节管理', href: '/admin/documents', icon: ListBulletIcon },
   { key: 'reports', label: '内容审核', href: '/admin/reports', icon: ReportIcon },
   { key: 'audit', label: '审计日志', href: '/admin/audit-logs', icon: ActivityIcon },
+  { key: 'tasks', label: '异步任务', href: '/admin/tasks', icon: ClockIcon },
   { key: 'settings', label: '系统设置', href: '/admin/settings/site', icon: GearIcon },
   { key: 'plugins', label: '插件', href: '/admin/plugins', icon: CodeIcon },
   { key: 'upgrade', label: '版本更新', href: '/admin/upgrade', icon: CloudIcon },

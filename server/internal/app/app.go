@@ -9,11 +9,13 @@ import (
 	"net/http"
 	"net/url"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/database"
+	"infosphere/server/internal/jobqueue"
 	"infosphere/server/internal/mail"
 	"infosphere/server/internal/models"
 
@@ -27,6 +29,8 @@ type App struct {
 	DB            *gorm.DB
 	Notifications *notificationHub
 	RateLimits    RateLimitStore
+	Jobs          *jobqueue.Queue
+	jobsMu        sync.RWMutex
 	// MailSender 邮件发送器；为空时按站点配置解析（测试可注入替代实现）
 	MailSender mail.Sender
 	// 导入解析器允许测试注入；生产为空时使用内置 PDF/网页实现。
@@ -55,6 +59,9 @@ func New(cfg *config.Config) (*App, error) {
 		}
 		a.DB = db
 		a.search = configureSearchBackend(db)
+		if err := a.configureJobQueue(); err != nil {
+			return nil, fmt.Errorf("初始化异步任务队列失败: %w", err)
+		}
 		if err := purgeExpiredBookAnalytics(db); err != nil {
 			log.Printf("清理过期书籍分析数据失败: %v", err)
 		}
@@ -94,6 +101,7 @@ func (a *App) Run(port int) error {
 
 	signalCtx, stopSignals := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stopSignals()
+	go a.startJobSupervisor(signalCtx)
 	select {
 	case <-signalCtx.Done():
 		ctx, cancel := shutdownContext()

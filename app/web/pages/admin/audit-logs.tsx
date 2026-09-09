@@ -36,6 +36,7 @@ const actionOptions = [
   { value: 'oauth.updated', label: '修改 OAuth 配置' },
   { value: 'storage.updated', label: '修改存储配置' },
   { value: 'system.upgraded', label: '升级系统' },
+  { value: 'task.retried', label: '重新排队异步任务' },
 ]
 
 const resourceOptions = [
@@ -47,6 +48,7 @@ const resourceOptions = [
   { value: 'config', label: '配置' },
   { value: 'site', label: '站点' },
   { value: 'system', label: '系统' },
+  { value: 'task', label: '异步任务' },
 ]
 
 const actionLabels = Object.fromEntries(actionOptions.map((item) => [item.value, item.label]))

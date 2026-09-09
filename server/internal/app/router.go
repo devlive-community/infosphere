@@ -257,6 +257,8 @@ func (a *App) Router() *gin.Engine {
 			admin.GET("/admin/activity", a.RequirePermission(authz.UserManage), a.AdminActivity)
 			admin.GET("/admin/stats", a.RequirePermission(authz.StatsRead), a.AdminStats)
 			admin.GET("/admin/audit-logs", a.RequirePermission(authz.AuditRead), a.AdminListAuditLogs)
+			admin.GET("/admin/tasks", a.RequirePermission(authz.TaskRead), a.AdminListBackgroundJobs)
+			admin.POST("/admin/tasks/:id/retry", a.RequirePermission(authz.TaskRetry), a.AdminRetryBackgroundJob)
 			admin.GET("/admin/reports", a.RequirePermission(authz.ReportRead), a.AdminListContentReports)
 			admin.PUT("/admin/reports/:id", a.RequirePermission(authz.ReportUpdate), a.AdminResolveContentReport)
 

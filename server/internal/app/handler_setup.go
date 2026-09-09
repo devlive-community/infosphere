@@ -175,6 +175,10 @@ func (a *App) SetupInstall(c *gin.Context) {
 	}
 	a.DB = db
 	a.search = configureSearchBackend(db)
+	if err := a.configureJobQueue(); err != nil {
+		fail(c, http.StatusInternalServerError, "初始化异步任务失败: "+err.Error())
+		return
+	}
 	_ = purgeExpiredBookAnalytics(db)
 
 	token, err := auth.GenerateToken(a.Config.Secret, admin.ID, admin.Username, admin.Role)

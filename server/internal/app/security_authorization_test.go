@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -87,6 +88,9 @@ func TestAuthorizationBoundaries(t *testing.T) {
 		t.Fatalf("OAuth 应回到本站而非外部 origin: %d %s", status, headers.Get("Location"))
 	}
 	request(http.MethodPost, "/api/v1/auth/password/forgot?origin="+url.QueryEscape("https://evil.example"), map[string]any{"email": "alice@test.local"}, "")
+	if ran, err := a.Jobs.RunOnce(context.Background()); err != nil || !ran {
+		t.Fatalf("执行找回密码邮件任务失败: ran=%v err=%v", ran, err)
+	}
 	if len(recorder.sends) != 1 || !strings.Contains(recorder.sends[0], ts.URL+"/reset-password?token=") || strings.Contains(recorder.sends[0], "evil.example") {
 		t.Fatalf("找回密码链接必须使用本站地址: %v", recorder.sends)
 	}

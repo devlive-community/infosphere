@@ -78,6 +78,8 @@ Authorization: Bearer <token>
 | `site:update` | 更新站点配置 | ❌ | ✅ |
 | `config:manage` | 管理任意系统配置键值对 | ❌ | ✅ |
 | `audit:read` | 查看管理员高风险操作审计日志 | ❌ | ✅ |
+| `task:read` | 查看持久化异步任务状态与失败诊断 | ❌ | ✅ |
+| `task:retry` | 将最终失败的异步任务重新排队 | ❌ | ✅ |
 | `stats:read` | 读取站点统计 | ✅ | ✅ |
 | `upload:create` | 上传图片 | ✅ | ✅ |
 | `system:read` | 查看系统版本信息 | ❌ | ✅ |
@@ -162,7 +164,7 @@ Authorization: Bearer <token>
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |
 | GET/PUT | `/auth/export-settings` | 当前用户 PDF 导出样式偏好：`page_size`(A4\|Letter)、`include_cover`、`include_toc`、`font_size`(12–20)、`code_theme`(light\|dark)、`margin`(narrow\|normal\|wide) | `user:read` / `user:update` |
 | PUT | `/auth/password` | 修改密码（old_password/new_password；OAuth 用户未设密码时免验原密码，用于首次设置） | `user:update` |
-| POST | `/auth/password/forgot` | 匿名申请找回：`{email}`；响应不泄露邮箱是否存在，令牌邮件 60 分钟有效、一次性、只保留最新一条；`mail_driver=log` 时链接输出到后端日志 | `auth:password-reset`（匿名语义） |
+| POST | `/auth/password/forgot` | 匿名申请找回：`{email}`；响应不泄露邮箱是否存在，令牌邮件 60 分钟有效、一次性、只保留最新一条；邮件写入持久化异步队列，失败自动退避重试；`mail_driver=log` 时执行任务后把链接输出到后端日志 | `auth:password-reset`（匿名语义） |
 | POST | `/auth/password/reset` | 匿名重置：`{token, password}`（≥6 位）；成功后旧密码立即失效，该用户其余令牌作废 | `auth:password-reset`（匿名语义） |
 
 ## 第三方登录（OAuth，当前支持 github）
@@ -385,6 +387,8 @@ Authorization: Bearer <token>
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |
 | GET | `/admin/audit-logs?page=&page_size=&actor=&action=&resource_type=&from=&to=` | 分页查询管理员高风险操作；支持操作人、动作、资源类型与日期区间筛选，日期格式为 `YYYY-MM-DD` | `audit:read` |
+| GET | `/admin/tasks?page=&page_size=&status=&type=` | 分页查询异步任务；状态支持 pending/running/retrying/succeeded/failed，加密任务载荷永不返回 | `task:read` |
+| POST | `/admin/tasks/:id/retry` | 将最终失败任务清空旧错误和尝试次数后重新排队；重复操作返回 409 | `task:retry` |
 | GET | `/admin/reports?page=&page_size=&status=&target_type=&reason=&q=` | 举报队列与处理记录；`q` 匹配目标摘要、举报人用户名或邮箱；举报人身份仅此管理员接口返回 | `report:read` |
 | PUT | `/admin/reports/:id` | 处理待审举报：`{resolution:"reject"\|"takedown",note?}`；下架会将书籍转为私有归档、章节归档或评论隐藏，并通知举报人 | `report:update` |
 | GET | `/admin/plugins` | 列出后台插件及安装状态（installed/version/status/error） | `plugin:manage` |
@@ -396,6 +400,7 @@ Authorization: Bearer <token>
 
 审计日志响应项包含 `actor_id/actor_username/action/resource_type/resource_id/resource_label/summary/created_at`。`summary` 只保存脱敏变更摘要；密码、令牌、OAuth Secret、存储密钥与通用配置值不进入审计记录。
 举报处理统一写入 `report.resolved` 审计动作，摘要只记录目标类型、目标 ID 与处理结果，不复制举报人身份或举报正文。
+任务载荷使用应用密钥经 AES-GCM 加密后写入数据库；管理员接口只返回类型、状态、尝试次数、时间和截断后的错误信息。服务启动时会把中断超过 5 分钟的 running 任务恢复为 retrying，成功或最终失败记录保留 30 天。
 
 ---
 

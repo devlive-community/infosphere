@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -60,6 +61,13 @@ func TestPasswordReset(t *testing.T) {
 		_ = json.NewDecoder(resp.Body).Decode(&payload)
 		return resp.StatusCode, payload
 	}
+	runNextJob := func() {
+		t.Helper()
+		ran, err := a.Jobs.RunOnce(context.Background())
+		if err != nil || !ran {
+			t.Fatalf("执行邮件任务失败: ran=%v err=%v", ran, err)
+		}
+	}
 
 	// 安装 + 注册 alice（携带邮箱）
 	_, install := request(http.MethodPost, "/api/v1/setup/install", map[string]any{
@@ -92,6 +100,10 @@ func TestPasswordReset(t *testing.T) {
 
 	// 3. 已注册邮箱（大小写混排）→ 发信并携带重置链接
 	status, _ = request(http.MethodPost, "/api/v1/auth/password/forgot", map[string]any{"email": "Alice@Test.Local"}, "")
+	if len(recorder.sends) != 0 {
+		t.Fatalf("找回密码请求不应同步发送邮件: %v", recorder.sends)
+	}
+	runNextJob()
 	if status != 200 || len(recorder.sends) != 1 {
 		t.Fatalf("已注册邮箱应发信: %d %v", status, recorder.sends)
 	}
@@ -131,8 +143,10 @@ func TestPasswordReset(t *testing.T) {
 
 	// 7. 重新申请后旧令牌作废（未用即被删除）
 	request(http.MethodPost, "/api/v1/auth/password/forgot", map[string]any{"email": "alice@test.local"}, "")
+	runNextJob()
 	staleToken := token
 	request(http.MethodPost, "/api/v1/auth/password/forgot", map[string]any{"email": "alice@test.local"}, "")
+	runNextJob()
 	latest := extractResetToken(recorder.sends[len(recorder.sends)-1])
 	status, _ = request(http.MethodPost, "/api/v1/auth/password/reset", map[string]any{"token": staleToken, "password": "hijack000"}, "")
 	if status != 400 {
@@ -169,6 +183,7 @@ func TestPasswordReset(t *testing.T) {
 
 	// 9. site_url 配置后邮件链接使用站点地址
 	request(http.MethodPost, "/api/v1/auth/password/forgot", map[string]any{"email": "alice@test.local"}, "")
+	runNextJob()
 	if !strings.Contains(recorder.sends[len(recorder.sends)-1], "https://infosphere.example.com/reset-password?token=") {
 		t.Fatalf("邮件链接应使用 site_url: %q", recorder.sends[len(recorder.sends)-1])
 	}

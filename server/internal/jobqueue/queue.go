@@ -1,0 +1,269 @@
+// Package jobqueue provides a small database-backed background task queue.
+package jobqueue
+
+import (
+	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"strings"
+	"sync"
+	"time"
+
+	"infosphere/server/internal/models"
+
+	"gorm.io/gorm"
+)
+
+const (
+	StatusPending   = "pending"
+	StatusRunning   = "running"
+	StatusRetrying  = "retrying"
+	StatusSucceeded = "succeeded"
+	StatusFailed    = "failed"
+
+	defaultMaxAttempts = 5
+	staleJobAge        = 5 * time.Minute
+	completedRetention = 30 * 24 * time.Hour
+)
+
+type Handler func(context.Context, json.RawMessage) error
+
+// Queue stores encrypted payloads in the application database and executes one
+// claimed task at a time. Conditional status updates make claiming safe when
+// multiple application processes temporarily share the same database.
+type Queue struct {
+	db       *gorm.DB
+	aead     cipher.AEAD
+	handlers map[string]Handler
+	mu       sync.RWMutex
+	now      func() time.Time
+}
+
+func New(db *gorm.DB, secret string) (*Queue, error) {
+	if db == nil {
+		return nil, errors.New("job queue database is required")
+	}
+	if strings.TrimSpace(secret) == "" {
+		return nil, errors.New("job queue encryption secret is required")
+	}
+	key := sha256.Sum256([]byte(secret))
+	block, err := aes.NewCipher(key[:])
+	if err != nil {
+		return nil, fmt.Errorf("create job payload cipher: %w", err)
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("create job payload AEAD: %w", err)
+	}
+	return &Queue{db: db, aead: aead, handlers: map[string]Handler{}, now: time.Now}, nil
+}
+
+func (q *Queue) Register(jobType string, handler Handler) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.handlers[jobType] = handler
+}
+
+func (q *Queue) Enqueue(ctx context.Context, jobType string, payload any, maxAttempts int) (*models.BackgroundJob, error) {
+	jobType = strings.TrimSpace(jobType)
+	if jobType == "" {
+		return nil, errors.New("job type is required")
+	}
+	if maxAttempts <= 0 {
+		maxAttempts = defaultMaxAttempts
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshal job payload: %w", err)
+	}
+	sealed, err := q.encrypt(jobType, raw)
+	if err != nil {
+		return nil, err
+	}
+	now := q.now()
+	job := &models.BackgroundJob{
+		Type: jobType, Payload: sealed, Status: StatusPending,
+		MaxAttempts: maxAttempts, AvailableAt: now, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := q.db.WithContext(ctx).Create(job).Error; err != nil {
+		return nil, fmt.Errorf("create background job: %w", err)
+	}
+	return job, nil
+}
+
+// RunOnce claims and runs the next available task. ran is false when no task
+// is currently available. A handler error is persisted for retry and returned
+// only for observability; callers should continue processing later tasks.
+func (q *Queue) RunOnce(ctx context.Context) (ran bool, runErr error) {
+	now := q.now()
+	var candidate models.BackgroundJob
+	err := q.db.WithContext(ctx).
+		Where("status IN ? AND available_at <= ?", []string{StatusPending, StatusRetrying}, now).
+		Order("available_at ASC, id ASC").First(&candidate).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find background job: %w", err)
+	}
+
+	claim := q.db.WithContext(ctx).Model(&models.BackgroundJob{}).
+		Where("id = ? AND status IN ? AND available_at <= ?", candidate.ID, []string{StatusPending, StatusRetrying}, now).
+		Updates(map[string]any{
+			"status": StatusRunning, "attempts": gorm.Expr("attempts + 1"),
+			"started_at": now, "locked_at": now, "finished_at": nil, "updated_at": now,
+		})
+	if claim.Error != nil {
+		return false, fmt.Errorf("claim background job: %w", claim.Error)
+	}
+	if claim.RowsAffected == 0 {
+		return false, nil
+	}
+	if err := q.db.WithContext(ctx).First(&candidate, candidate.ID).Error; err != nil {
+		return true, fmt.Errorf("reload background job: %w", err)
+	}
+
+	q.mu.RLock()
+	handler := q.handlers[candidate.Type]
+	q.mu.RUnlock()
+	if handler == nil {
+		return true, q.finishFailure(ctx, &candidate, fmt.Errorf("no handler registered for %s", candidate.Type))
+	}
+	payload, err := q.decrypt(candidate.Type, candidate.Payload)
+	if err == nil {
+		err = handler(ctx, payload)
+	}
+	if err != nil {
+		_ = q.finishFailure(ctx, &candidate, err)
+		return true, err
+	}
+	finished := q.now()
+	err = q.db.WithContext(ctx).Model(&models.BackgroundJob{}).Where("id = ?", candidate.ID).Updates(map[string]any{
+		"status": StatusSucceeded, "finished_at": finished, "locked_at": nil,
+		"last_error": "", "updated_at": finished,
+	}).Error
+	return true, err
+}
+
+func (q *Queue) finishFailure(ctx context.Context, job *models.BackgroundJob, cause error) error {
+	now := q.now()
+	status := StatusRetrying
+	available := now.Add(retryDelay(job.Attempts))
+	var finished any
+	if job.Attempts >= job.MaxAttempts {
+		status = StatusFailed
+		available = now
+		finished = now
+	}
+	if err := q.db.WithContext(ctx).Model(&models.BackgroundJob{}).Where("id = ?", job.ID).Updates(map[string]any{
+		"status": status, "available_at": available, "finished_at": finished,
+		"locked_at": nil, "last_error": safeError(cause), "updated_at": now,
+	}).Error; err != nil {
+		return fmt.Errorf("persist job failure: %w", err)
+	}
+	return cause
+}
+
+func retryDelay(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	shift := attempt - 1
+	if shift > 7 {
+		shift = 7
+	}
+	return time.Duration(5*(1<<shift)) * time.Second
+}
+
+func safeError(err error) string {
+	if err == nil {
+		return ""
+	}
+	message := strings.TrimSpace(strings.ReplaceAll(err.Error(), "\x00", ""))
+	if len(message) > 1000 {
+		message = message[:1000] + "…"
+	}
+	return message
+}
+
+func (q *Queue) RecoverStale(ctx context.Context) error {
+	now := q.now()
+	return q.db.WithContext(ctx).Model(&models.BackgroundJob{}).
+		Where("status = ? AND locked_at < ?", StatusRunning, now.Add(-staleJobAge)).
+		Updates(map[string]any{
+			"status": StatusRetrying, "available_at": now, "locked_at": nil,
+			"last_error": "任务执行被中断，已自动重新排队", "updated_at": now,
+		}).Error
+}
+
+func (q *Queue) Retry(ctx context.Context, id uint) (bool, error) {
+	now := q.now()
+	result := q.db.WithContext(ctx).Model(&models.BackgroundJob{}).
+		Where("id = ? AND status = ?", id, StatusFailed).
+		Updates(map[string]any{
+			"status": StatusPending, "attempts": 0, "available_at": now,
+			"started_at": nil, "finished_at": nil, "locked_at": nil,
+			"last_error": "", "updated_at": now,
+		})
+	return result.RowsAffected > 0, result.Error
+}
+
+func (q *Queue) Start(ctx context.Context) {
+	if err := q.RecoverStale(ctx); err != nil {
+		log.Printf("[jobs] recover stale tasks failed: %v", err)
+	}
+	poll := time.NewTicker(2 * time.Second)
+	cleanup := time.NewTicker(time.Hour)
+	defer poll.Stop()
+	defer cleanup.Stop()
+	for {
+		ran, err := q.RunOnce(ctx)
+		if err != nil {
+			log.Printf("[jobs] task execution failed: %v", err)
+		}
+		if ran {
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-poll.C:
+		case <-cleanup.C:
+			cutoff := q.now().Add(-completedRetention)
+			if err := q.db.WithContext(ctx).Where("status IN ? AND finished_at < ?", []string{StatusSucceeded, StatusFailed}, cutoff).
+				Delete(&models.BackgroundJob{}).Error; err != nil {
+				log.Printf("[jobs] cleanup completed tasks failed: %v", err)
+			}
+		}
+	}
+}
+
+func (q *Queue) encrypt(jobType string, plaintext []byte) (string, error) {
+	nonce := make([]byte, q.aead.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", fmt.Errorf("create job payload nonce: %w", err)
+	}
+	sealed := q.aead.Seal(nil, nonce, plaintext, []byte(jobType))
+	return base64.RawStdEncoding.EncodeToString(append(nonce, sealed...)), nil
+}
+
+func (q *Queue) decrypt(jobType, encoded string) (json.RawMessage, error) {
+	raw, err := base64.RawStdEncoding.DecodeString(encoded)
+	if err != nil || len(raw) < q.aead.NonceSize() {
+		return nil, errors.New("invalid encrypted job payload")
+	}
+	nonce, ciphertext := raw[:q.aead.NonceSize()], raw[q.aead.NonceSize():]
+	plain, err := q.aead.Open(nil, nonce, ciphertext, []byte(jobType))
+	if err != nil {
+		return nil, errors.New("decrypt job payload failed")
+	}
+	return json.RawMessage(plain), nil
+}

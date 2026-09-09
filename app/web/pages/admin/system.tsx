@@ -233,6 +233,8 @@ export default function AdminSystem() {
           status={tagCount !== null ? `${tagCount} 个标签` : '前往发现页'} ok />
         <ConfigCard icon={GearIcon} tone="primary" title="系统配置" href="/admin/settings/config"
           status={configCount !== null ? `${configCount} 个配置项` : '键值对配置管理'} ok />
+        <ConfigCard icon={ClockIcon} tone="amber" title="异步任务" href="/admin/tasks"
+          status="邮件重试与后台任务诊断" ok />
       </div>
     </AdminLayout>
   )

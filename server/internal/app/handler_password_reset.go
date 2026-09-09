@@ -101,9 +101,14 @@ func (a *App) ForgotPassword(c *gin.Context) {
 	}
 
 	link := a.resetLinkBase(c) + "/reset-password?token=" + token
-	if err := a.mailSender().Send(email, "重置你的 InfoSphere 密码", mail.ResetPasswordHTML(link, 60)); err != nil {
-		// 发信失败不暴露给调用方，仅记录日志便于排查 SMTP 配置
-		log.Printf("[mail] 发送找回密码邮件失败 to=%s: %v", email, err)
+	siteName := strings.TrimSpace(a.getSetting("site_name"))
+	if siteName == "" {
+		siteName = "InfoSphere"
+	}
+	mailSiteName := strings.NewReplacer("\r", " ", "\n", " ").Replace(siteName)
+	if err := a.enqueueEmail(c.Request.Context(), email, "重置你的 "+mailSiteName+" 密码", mail.ResetPasswordHTML(link, siteName, 60)); err != nil {
+		// 入队失败不暴露给调用方，仅记录日志；队列执行失败会按退避策略自动重试。
+		log.Printf("[mail] 创建找回密码邮件任务失败 to=%s: %v", email, err)
 	}
 	ok(c, generic)
 }

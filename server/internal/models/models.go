@@ -99,6 +99,23 @@ type PasswordResetToken struct {
 	CreatedAt time.Time  `json:"created_at"`
 }
 
+// BackgroundJob 持久化异步任务。Payload 以应用密钥加密保存，不通过 API 返回。
+type BackgroundJob struct {
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	Type        string     `gorm:"size:80;index;not null" json:"type"`
+	Payload     string     `gorm:"type:text;not null" json:"-"`
+	Status      string     `gorm:"size:20;index;not null;default:pending" json:"status"` // pending | running | retrying | succeeded | failed
+	Attempts    int        `gorm:"not null;default:0" json:"attempts"`
+	MaxAttempts int        `gorm:"not null;default:5" json:"max_attempts"`
+	AvailableAt time.Time  `gorm:"index;not null" json:"available_at"`
+	StartedAt   *time.Time `json:"started_at"`
+	FinishedAt  *time.Time `json:"finished_at"`
+	LockedAt    *time.Time `gorm:"index" json:"-"`
+	LastError   string     `gorm:"type:text" json:"last_error"`
+	CreatedAt   time.Time  `gorm:"index" json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
 // Book 书籍
 type Book struct {
 	ID               uint   `gorm:"primaryKey" json:"id"`
@@ -120,14 +137,14 @@ type Book struct {
 	// ExportStyleShared 作者是否共享自己的导出样式：开启后他人导出本书可选用作者样式，否则只能用自己的
 	ExportStyleShared bool `gorm:"default:false" json:"export_style_shared"`
 	// ExportFormats 逗号分隔的允许导出格式（pdf,markdown）；空表示全部格式可用
-	ExportFormats     string         `gorm:"size:100;default:''" json:"export_formats"`
-	User              *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Tags              []Tag          `gorm:"many2many:book_tags" json:"tags,omitempty"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	DeletedAt         gorm.DeletedAt `gorm:"index" json:"-"`
-	DeletedBy         uint           `gorm:"index;default:0" json:"-"`
-	TrashGroup        string         `gorm:"size:64;index" json:"-"`
+	ExportFormats string         `gorm:"size:100;default:''" json:"export_formats"`
+	User          *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Tags          []Tag          `gorm:"many2many:book_tags" json:"tags,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy     uint           `gorm:"index;default:0" json:"-"`
+	TrashGroup    string         `gorm:"size:64;index" json:"-"`
 	// ChapterCount 非持久化：列表接口按需回填的章节（文档）数量
 	ChapterCount int `gorm:"-" json:"chapter_count"`
 	// CollaboratorRole 非持久化：协作书籍列表按需回填当前用户的角色。
@@ -280,26 +297,26 @@ type UserExportSetting struct {
 
 // UserThemeSetting 用户主题设置，每用户一条
 type UserThemeSetting struct {
-	ID                 uint      `gorm:"primaryKey" json:"id"`
-	UserID             uint      `gorm:"uniqueIndex;not null" json:"user_id"`
-	PrimaryHue         string    `gorm:"size:20;default:blue" json:"primary_hue"`         // blue | indigo | violet | emerald | rose | amber | custom
-	CustomColor        string    `gorm:"size:20;default:''" json:"custom_color"`          // hex color when primary_hue = custom
-	Radius             string    `gorm:"size:10;default:lg" json:"radius"`                // sm | md | lg | xl | 2xl | custom
-	CustomRadius       string    `gorm:"size:20;default:''" json:"custom_radius"`         // CSS value when radius = custom
-	ButtonSize         string    `gorm:"size:10;default:md" json:"button_size"`           // sm | md | lg | custom
-	CustomControlHeight string   `gorm:"size:20;default:''" json:"custom_control_height"` // CSS value when button_size = custom
-	FontSize           string    `gorm:"size:10;default:15" json:"font_size"`             // 14 | 15 | 16 | custom
-	CustomFontSize     string    `gorm:"size:20;default:''" json:"custom_font_size"`      // CSS value when font_size = custom
-	ContentWidth       string    `gorm:"size:10;default:normal" json:"content_width"`     // narrow | normal | wide | custom
-	CustomContentWidth string    `gorm:"size:20;default:''" json:"custom_content_width"`  // CSS value when content_width = custom
-	NavHeight          string    `gorm:"size:10;default:64" json:"nav_height"`            // 56 | 64 | 72 | custom
-	CustomNavHeight    string    `gorm:"size:20;default:''" json:"custom_nav_height"`     // CSS value when nav_height = custom
-	SidebarWidth       string    `gorm:"size:10;default:260" json:"sidebar_width"`        // 220 | 260 | 300 | custom
-	CustomSidebarWidth string    `gorm:"size:20;default:''" json:"custom_sidebar_width"`  // CSS value when sidebar_width = custom
-	PageBg             string    `gorm:"size:20;default:#F7F6F2" json:"page_bg"`          // hex color | custom
-	CustomPageBg       string    `gorm:"size:20;default:''" json:"custom_page_bg"`        // hex color when page_bg = custom
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                  uint      `gorm:"primaryKey" json:"id"`
+	UserID              uint      `gorm:"uniqueIndex;not null" json:"user_id"`
+	PrimaryHue          string    `gorm:"size:20;default:blue" json:"primary_hue"`         // blue | indigo | violet | emerald | rose | amber | custom
+	CustomColor         string    `gorm:"size:20;default:''" json:"custom_color"`          // hex color when primary_hue = custom
+	Radius              string    `gorm:"size:10;default:lg" json:"radius"`                // sm | md | lg | xl | 2xl | custom
+	CustomRadius        string    `gorm:"size:20;default:''" json:"custom_radius"`         // CSS value when radius = custom
+	ButtonSize          string    `gorm:"size:10;default:md" json:"button_size"`           // sm | md | lg | custom
+	CustomControlHeight string    `gorm:"size:20;default:''" json:"custom_control_height"` // CSS value when button_size = custom
+	FontSize            string    `gorm:"size:10;default:15" json:"font_size"`             // 14 | 15 | 16 | custom
+	CustomFontSize      string    `gorm:"size:20;default:''" json:"custom_font_size"`      // CSS value when font_size = custom
+	ContentWidth        string    `gorm:"size:10;default:normal" json:"content_width"`     // narrow | normal | wide | custom
+	CustomContentWidth  string    `gorm:"size:20;default:''" json:"custom_content_width"`  // CSS value when content_width = custom
+	NavHeight           string    `gorm:"size:10;default:64" json:"nav_height"`            // 56 | 64 | 72 | custom
+	CustomNavHeight     string    `gorm:"size:20;default:''" json:"custom_nav_height"`     // CSS value when nav_height = custom
+	SidebarWidth        string    `gorm:"size:10;default:260" json:"sidebar_width"`        // 220 | 260 | 300 | custom
+	CustomSidebarWidth  string    `gorm:"size:20;default:''" json:"custom_sidebar_width"`  // CSS value when sidebar_width = custom
+	PageBg              string    `gorm:"size:20;default:#F7F6F2" json:"page_bg"`          // hex color | custom
+	CustomPageBg        string    `gorm:"size:20;default:''" json:"custom_page_bg"`        // hex color when page_bg = custom
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // BookTag 书籍-标签联接表
@@ -371,5 +388,6 @@ func All(db *gorm.DB) error {
 		&Notification{},
 		&BookCollaborator{},
 		&PasswordResetToken{},
+		&BackgroundJob{},
 	)
 }

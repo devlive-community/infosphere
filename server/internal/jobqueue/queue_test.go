@@ -1,0 +1,139 @@
+package jobqueue
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"infosphere/server/internal/models"
+
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+)
+
+func testQueue(t *testing.T) (*Queue, *gorm.DB, *time.Time) {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open("file:"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&models.BackgroundJob{}); err != nil {
+		t.Fatal(err)
+	}
+	queue, err := New(db, "test-job-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	queue.now = func() time.Time { return now }
+	return queue, db, &now
+}
+
+func TestQueueEncryptsPayloadAndRetriesUntilSuccess(t *testing.T) {
+	queue, db, now := testQueue(t)
+	type payload struct {
+		Email string `json:"email"`
+	}
+	calls := 0
+	queue.Register("email.send", func(_ context.Context, raw json.RawMessage) error {
+		calls++
+		var value payload
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return err
+		}
+		if value.Email != "reader@example.com" {
+			t.Fatalf("unexpected payload: %+v", value)
+		}
+		if calls < 3 {
+			return errors.New("temporary SMTP failure")
+		}
+		return nil
+	})
+
+	job, err := queue.Enqueue(context.Background(), "email.send", payload{Email: "reader@example.com"}, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(job.Payload, "reader@example.com") {
+		t.Fatal("job payload must be encrypted at rest")
+	}
+
+	for attempt, advance := range []time.Duration{0, 6 * time.Second, 11 * time.Second} {
+		*now = now.Add(advance)
+		ran, runErr := queue.RunOnce(context.Background())
+		if !ran {
+			t.Fatalf("attempt %d did not claim a job", attempt+1)
+		}
+		if attempt < 2 && runErr == nil {
+			t.Fatalf("attempt %d should fail", attempt+1)
+		}
+		if attempt == 2 && runErr != nil {
+			t.Fatalf("final attempt failed: %v", runErr)
+		}
+	}
+
+	var stored models.BackgroundJob
+	if err := db.First(&stored, job.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != StatusSucceeded || stored.Attempts != 3 || stored.FinishedAt == nil || stored.LastError != "" {
+		t.Fatalf("unexpected completed job: %+v", stored)
+	}
+}
+
+func TestQueuePersistsFailureAndAllowsManualRetry(t *testing.T) {
+	queue, db, now := testQueue(t)
+	queue.Register("maintenance.test", func(context.Context, json.RawMessage) error {
+		return errors.New("database unavailable")
+	})
+	job, err := queue.Enqueue(context.Background(), "maintenance.test", map[string]string{"scope": "expired"}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ran, runErr := queue.RunOnce(context.Background()); !ran || runErr == nil {
+		t.Fatalf("expected failed execution, ran=%v err=%v", ran, runErr)
+	}
+
+	var failed models.BackgroundJob
+	if err := db.First(&failed, job.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if failed.Status != StatusFailed || failed.Attempts != 1 || failed.LastError == "" {
+		t.Fatalf("unexpected failed job: %+v", failed)
+	}
+
+	*now = now.Add(time.Minute)
+	retried, err := queue.Retry(context.Background(), job.ID)
+	if err != nil || !retried {
+		t.Fatalf("retry failed: retried=%v err=%v", retried, err)
+	}
+	if retriedAgain, err := queue.Retry(context.Background(), job.ID); err != nil || retriedAgain {
+		t.Fatalf("non-failed task must not be queued twice: retried=%v err=%v", retriedAgain, err)
+	}
+}
+
+func TestQueueRecoversStaleRunningJob(t *testing.T) {
+	queue, db, now := testQueue(t)
+	locked := now.Add(-10 * time.Minute)
+	job := models.BackgroundJob{
+		Type: "maintenance.test", Payload: "encrypted", Status: StatusRunning,
+		Attempts: 1, MaxAttempts: 3, AvailableAt: locked, LockedAt: &locked,
+		CreatedAt: locked, UpdatedAt: locked,
+	}
+	if err := db.Create(&job).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := queue.RecoverStale(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var recovered models.BackgroundJob
+	if err := db.First(&recovered, job.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if recovered.Status != StatusRetrying || recovered.LockedAt != nil || recovered.AvailableAt.Before(*now) {
+		t.Fatalf("stale job was not recovered: %+v", recovered)
+	}
+}
