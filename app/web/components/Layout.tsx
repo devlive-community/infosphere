@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useState, useRef, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/router'
 import Container from '@/components/Container'
-import { ListBulletIcon } from '@/components/icons'
+import { ListBulletIcon, BookIcon, TrashIcon, UserCircleIcon, GridIcon, LogOutIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
 import { ButtonLink, Input } from '@/components/ui'
@@ -32,12 +32,11 @@ function UserMenu() {
     )
   }
   const items = [
-    { label: '我的书籍', href: '/books' },
-    { label: '回收站', href: '/user/trash' },
-    { label: '个人资料', href: '/user/profile' },
-    { label: '账户安全', href: '/user/security' },
+    { label: '我的书籍', href: '/books', icon: BookIcon },
+    { label: '个人资料', href: '/user/profile', icon: UserCircleIcon },
     // 控制台仅对管理员开放
-    ...(user.role === 'admin' ? [{ label: '控制台', href: '/admin/system' }] : []),
+    ...(user.role === 'admin' ? [{ label: '控制台', href: '/admin/system', icon: GridIcon }] : []),
+    { label: '回收站', href: '/user/trash', icon: TrashIcon },
   ]
   return (
     <div className="relative" ref={ref}>
@@ -48,13 +47,23 @@ function UserMenu() {
         <span className="max-w-[120px] truncate text-sm">{user.username}</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          {items.map((item) => (
-            <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
-              className="block px-4 py-2 text-sm hover:bg-slate-50">{item.label}</Link>
-          ))}
+        <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          {items.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                <Icon className="h-4 w-4 text-slate-400" />
+                {item.label}
+              </Link>
+            )
+          })}
+          <div className="my-1 border-t border-slate-100" />
           <button onClick={() => { setOpen(false); logout() }}
-            className="block w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50">退出登录</button>
+            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+            <LogOutIcon className="h-4 w-4 text-slate-400" />
+            退出登录
+          </button>
         </div>
       )}
     </div>

@@ -3,10 +3,10 @@ import { ReactNode } from 'react'
 import Container from '@/components/Container'
 import Seo from '@/components/Seo'
 import { resolveMediaUrl } from '@/lib/media'
-import { GearIcon, UsersIcon, DownloadIcon, ExternalLinkIcon, PencilIcon, ListIcon, TrashIcon } from '@/components/icons'
+import { GearIcon, UsersIcon, DownloadIcon, ExternalLinkIcon, PencilIcon, ListIcon, TrashIcon, ChartIcon } from '@/components/icons'
 import type { Book } from '@/lib/types'
 
-export type BookSettingsTab = 'basic' | 'chapters' | 'collaborators' | 'data' | 'danger'
+export type BookSettingsTab = 'basic' | 'chapters' | 'analytics' | 'collaborators' | 'data' | 'danger'
 
 interface BookSettingsLayoutProps {
   book: Book
@@ -17,6 +17,7 @@ interface BookSettingsLayoutProps {
 const NAV: { key: BookSettingsTab; label: string; icon: (p: { className?: string }) => JSX.Element; sub: string; danger?: boolean }[] = [
   { key: 'basic', label: '基本信息', icon: GearIcon, sub: '' },
   { key: 'chapters', label: '章节管理', icon: ListIcon, sub: 'chapters' },
+  { key: 'analytics', label: '数据分析', icon: ChartIcon, sub: 'analytics' },
   { key: 'collaborators', label: '协作者', icon: UsersIcon, sub: 'collaborators' },
   { key: 'data', label: '导入导出', icon: DownloadIcon, sub: 'data' },
   { key: 'danger', label: '危险区', icon: TrashIcon, sub: 'danger', danger: true },

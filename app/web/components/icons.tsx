@@ -37,6 +37,10 @@ export const EyeIcon = svg(<>
   <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" />
 </>)
 
+export const ChartIcon = svg(<>
+  <path d="M3 3v18h18" /><path d="m7 16 4-5 4 3 5-7" />
+</>)
+
 export const ShieldIcon = svg(<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />)
 
 export const CloudIcon = svg(<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z" />)
@@ -199,4 +203,10 @@ export const ArrowLeftIcon = svg(<><path d="m12 19-7-7 7-7" /><path d="M19 12H5"
 export const PaletteIcon = svg(<>
   <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
   <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+</>)
+
+export const LogOutIcon = svg(<>
+  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+  <polyline points="16 17 21 12 16 7" />
+  <line x1="21" y1="12" x2="9" y2="12" />
 </>)

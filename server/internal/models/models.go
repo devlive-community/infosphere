@@ -186,6 +186,19 @@ type ReadChapter struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// BookAnalyticsDaily 按自然日、章节与来源聚合浏览量。只保存聚合桶，不保存 IP、
+// User-Agent 或原始 Referer，兼顾作者分析与读者隐私。
+type BookAnalyticsDaily struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	BookID     uint      `gorm:"uniqueIndex:uk_book_analytics_bucket;index;not null" json:"book_id"`
+	DocumentID uint      `gorm:"uniqueIndex:uk_book_analytics_bucket;index;not null;default:0" json:"document_id"`
+	Day        string    `gorm:"size:10;uniqueIndex:uk_book_analytics_bucket;index;not null" json:"day"`
+	Source     string    `gorm:"size:20;uniqueIndex:uk_book_analytics_bucket;not null" json:"source"`
+	ViewCount  int64     `gorm:"not null;default:0" json:"view_count"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
 // Plugin 后台可安装插件（如 PDF 导出依赖的无头 Chrome）；未安装则相关功能不可用
 type Plugin struct {
 	ID          uint       `gorm:"primaryKey" json:"id"`
@@ -284,6 +297,7 @@ func All(db *gorm.DB) error {
 		&BookTag{},
 		&ReadingProgress{},
 		&ReadChapter{},
+		&BookAnalyticsDaily{},
 		&Plugin{},
 		&UserExportSetting{},
 		&UserThemeSetting{},
