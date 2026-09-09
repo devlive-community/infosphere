@@ -118,7 +118,7 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
           {error && <p className="mt-1 text-sm text-rose-500">{error}</p>}
           <div className="mt-2 flex justify-end">
             <button type="submit" disabled={submitting || !content.trim()}
-              className="h-9 rounded-lg bg-primary-500 px-4 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50">
+              className="rounded-lg bg-primary-500 px-4 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50">
               {submitting ? '发表中…' : '发表评论'}
             </button>
           </div>

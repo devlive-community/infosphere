@@ -361,7 +361,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {readUrl ? (
-                <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="h-11 px-7 text-base">
+                <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="px-7 text-base">
                   <BookIcon className="h-5 w-5" /> {progress && progress.docSlug !== readDocSlug ? '继续阅读' : '开始阅读'}
                 </ButtonLink>
               ) : (
@@ -370,7 +370,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               <Button type="button" variant="outline" onClick={() => toggleReaction('like')}
                 disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
                 aria-pressed={liked}
-                className={`h-11 px-5 ${liked
+                className={`px-5 ${liked
                   ? 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100'
                   : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
                 <HeartIcon className="h-4 w-4" />
@@ -381,7 +381,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               <Button type="button" variant="outline" onClick={() => toggleReaction('favorite')}
                 disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
                 aria-pressed={favorited}
-                className={`h-11 px-5 ${favorited
+                className={`px-5 ${favorited
                   ? 'border-primary-200 bg-primary-50 text-primary-700 hover:border-primary-300 hover:bg-primary-100'
                   : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
                 <BookmarkIcon className="h-4 w-4" />
@@ -390,14 +390,14 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                   : `${favorited ? '已收藏' : '收藏'}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
               </Button>
               <Tooltip content="分享"><button type="button" onClick={share}
-                className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
                   <ShareIcon className="h-4 w-4" />
                 </button></Tooltip>
               {(canManage || canEdit) && (
                 <>
-                  {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">写作</ButtonLink>}
+                  {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline">写作</ButtonLink>}
                   {canManage && (
-                    <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline" className="h-11">
+                    <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline">
                       <GearIcon className="h-4 w-4" /> 设置
                     </ButtonLink>
                   )}

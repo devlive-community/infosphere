@@ -529,11 +529,11 @@ export default function Writer({ user }: WriterProps) {
               <div className="p-3">
                 <div className="relative">
                   <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Input className="h-9 pl-9" placeholder="搜索章节" value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <Input className="pl-9" placeholder="搜索章节" value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <div className="relative mt-2.5">
                   <button onClick={() => createNew()}
-                    className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50">
+                    className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50">
                     + 新建章节
                   </button>
                   <button onClick={() => setNewMenuOpen(!newMenuOpen)} aria-label="更多创建方式"
@@ -830,11 +830,11 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6">
           <Field label="网页地址" hint="自动提取正文，导航、页头、页脚、侧栏、广告、评论与相关推荐不会写入章节。">
-            <Input className="h-11" type="url" value={url} onChange={(event) => setURL(event.target.value)}
+            <Input type="url" value={url} onChange={(event) => setURL(event.target.value)}
               placeholder="https://example.com/article" leading={<GlobeIcon className="h-4 w-4" />} />
           </Field>
           <Field label={<>章节标题 <span className="font-normal text-slate-400">（可选）</span></>} hint="留空时使用网页标题。">
-            <Input className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="使用网页标题" />
+            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="使用网页标题" />
           </Field>
           <Field label="解析方式">
             <Select menuPlacement="top" value={renderMode} onChange={(value) => setRenderMode(value as WebRenderMode)} options={[

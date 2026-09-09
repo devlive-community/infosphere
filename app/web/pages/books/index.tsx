@@ -162,13 +162,13 @@ export default function MyBooks() {
             <p className="mt-2 text-[15px] text-slate-500">在这里继续写作、整理章节，或者发布你的下一本知识作品。</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <ButtonLink href="/user/trash" variant="ghost" className="h-11 px-4 text-base">
+            <ButtonLink href="/user/trash" variant="ghost" className="px-4 text-base">
               <i className="fa-regular fa-trash-can" aria-hidden="true" /> 回收站
             </ButtonLink>
-            <Button variant="outline" className="h-11 px-5 text-base" onClick={() => setImportOpen(true)}>
+            <Button variant="outline" className="px-5 text-base" onClick={() => setImportOpen(true)}>
               <UploadIcon className="h-5 w-5" /> 导入书籍
             </Button>
-            <ButtonLink href="/books/create" className="h-11 px-5 text-base">
+            <ButtonLink href="/books/create" className="px-5 text-base">
               <PlusIcon className="h-5 w-5" /> 新建书籍
             </ButtonLink>
           </div>
@@ -344,7 +344,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
               {kind === 'web' ? (
                 <>
                   <Field label="网页地址">
-                    <Input className="h-11" type="url" value={url} onChange={(event) => setURL(event.target.value)} placeholder="https://example.com/article"
+                    <Input type="url" value={url} onChange={(event) => setURL(event.target.value)} placeholder="https://example.com/article"
                       leading={<GlobeIcon className="h-4 w-4" />} />
                   </Field>
                   <fieldset>
@@ -379,7 +379,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
               )}
 
               <Field label={<>书籍名称 <span className="font-normal text-slate-400">（可选）</span></>}>
-                <Input className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === 'web' ? '留空则使用网页标题' : '留空则使用文件名称'} />
+                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === 'web' ? '留空则使用网页标题' : '留空则使用文件名称'} />
               </Field>
 
               {error && <div role="alert" className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-600 [overflow-wrap:anywhere]">{error}</div>}
