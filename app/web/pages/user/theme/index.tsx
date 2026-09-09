@@ -91,14 +91,6 @@ export default function ThemeSettings() {
     setPageBg(theme.page_bg)
   }, [theme])
 
-  // 实时预览
-  useEffect(() => {
-    applyTheme({
-      primary_hue: hue, radius, button_size: btnSize, font_size: fontSize,
-      content_width: contentWidth, nav_height: navHeight, sidebar_width: sidebarWidth, page_bg: pageBg,
-    })
-  }, [hue, radius, btnSize, fontSize, contentWidth, navHeight, sidebarWidth, pageBg, applyTheme])
-
   if (!user) return <Loading className="min-h-[60vh]" label="正在加载主题设置…" />
 
   async function save() {

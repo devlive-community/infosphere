@@ -25,7 +25,7 @@ export function applyTheme(s: ThemeSetting) {
   el.setAttribute('data-width', s.content_width)
   el.setAttribute('data-nav', s.nav_height)
   el.setAttribute('data-sidebar', s.sidebar_width)
-  el.setAttribute('data-bg', s.page_bg)
+  el.style.setProperty('--page-bg', s.page_bg)
   localStorage.setItem('infosphere_theme', JSON.stringify(s))
 }
 

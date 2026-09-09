@@ -114,18 +114,13 @@
   [data-sidebar="260"] { --sidebar-width: 260px; }
   [data-sidebar="300"] { --sidebar-width: 300px; }
 
-  /* ── 页面底色 ── */
-  [data-bg] { --page-bg: attr(data-bg); }
+  /* ── 页面底色（通过 JS 内联 style 设置） ── */
 }
 
 body {
   background-color: var(--page-bg);
   @apply text-ink antialiased;
   font-size: var(--font-size);
-}
-
-body {
-  @apply bg-warm text-ink antialiased;
 }
 
 /* 用 CSS 变量覆盖 Tailwind 的 rounded-* 工具类（放在 @layer 外以获得更高优先级） */
@@ -149,10 +144,6 @@ body {
 /* 内容区宽度 */
 .content-theme {
   max-width: var(--content-max-width);
-}
-
-body {
-  @apply bg-warm text-ink antialiased;
 }
 
 @keyframes tooltip-in {
