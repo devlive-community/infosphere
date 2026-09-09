@@ -94,12 +94,14 @@ function AuthorProfileCard({ profile, siteUrl, share }: { profile: UserProfile; 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             {profile.github_url && (
               <a href={profile.github_url} target="_blank" rel="noopener noreferrer"
-                className="flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">
+                className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400"
+                style={{ height: 'var(--control-height)' }}>
                 <GitHubIcon className="h-4 w-4" /> 访问 GitHub
               </a>
             )}
             <Tooltip content="分享主页"><button onClick={share}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700">
+              className="flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700"
+              style={{ width: 'var(--control-height)', height: 'var(--control-height)' }}>
                 <ShareIcon className="h-4 w-4" />
               </button></Tooltip>
           </div>

@@ -11,6 +11,7 @@ import { ButtonLink } from '@/components/ui'
 import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress } from '@/lib/reading-progress'
 import Comments from '@/components/Comments'
+import ReaderAnnotations from '@/components/ReaderAnnotations'
 import type { Book, BookAccess, Document, User } from '@/lib/types'
 
 interface ReaderProps {
@@ -212,7 +213,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
         jsonLd={jsonLd}
       />
       {/* 顶栏 */}
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4" style={{ height: 'var(--nav-height)' }}>
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <Link href="/" className="flex shrink-0 items-center gap-2 font-bold text-slate-900">
             <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
@@ -233,10 +234,10 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
       <div className="flex min-h-0 flex-1 items-stretch">
         {/* 左：书籍信息 + 目录 */}
         {!focus && (
-          <aside className="hidden w-72 shrink-0 flex-col border-r border-slate-200 pt-5 lg:flex">
+          <aside className="hidden shrink-0 flex-col border-r border-slate-200 pt-5 lg:flex" style={{ width: 'var(--sidebar-width)' }}>
             <div className="shrink-0 px-4">
             <div className="mb-3 flex flex-col text-left">
-              <div className="aspect-[16/10] w-full overflow-hidden rounded-lg border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF]">
+              <div className="aspect-[16/10] w-full overflow-hidden rounded-lg border border-slate-200 bg-gradient-to-br from-primary-200 to-primary-600">
                 {cover && <img src={cover} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -275,7 +276,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
         {/* 中：正文（内部滚动）+ 底部固定的上一篇/下一篇 */}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-w-0 flex-1 overflow-y-auto">
-            <div className="px-8 py-10 lg:px-14">
+            <div className="mx-auto w-full px-8 py-10 lg:px-14" style={{ maxWidth: 'var(--content-max-width)' }}>
               {doc ? (
                 <article className="relative isolate">
                   {book.watermark_enabled && book.watermark_text && <WatermarkLayer text={book.watermark_text} />}
@@ -295,6 +296,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                     )}
                   </div>
                   <hr className="my-6 border-slate-100" />
+                  <ReaderAnnotations user={user} book={book} doc={doc} contentRef={contentRef} />
                   <div ref={contentRef} className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
 
                   <Comments docId={doc.id} allowComments={doc.allow_comments !== false} />
@@ -340,7 +342,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
 
         {/* 右：本章目录（内滚）+ 阅读设置 + 作者（固定底部） */}
         {!focus && (
-          <aside className="hidden w-72 shrink-0 flex-col border-l border-slate-200 px-5 py-6 xl:flex">
+          <aside className="hidden shrink-0 flex-col border-l border-slate-200 px-5 py-6 xl:flex" style={{ width: 'var(--sidebar-width)' }}>
             {/* 本章目录：占满剩余区域，内部滚动 */}
             <div className="min-h-0 flex-1 overflow-y-auto">
               {headings.length > 0 ? (
@@ -393,7 +395,8 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                   </div>
                 </div>
                 <Link href={`/user/${encodeURIComponent(author.username)}`}
-                  className="mt-3 flex h-9 w-full items-center justify-center rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50">
+                  className="mt-3 flex w-full items-center justify-center rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50"
+                  style={{ height: 'var(--control-height)' }}>
                   查看作者主页
                 </Link>
               </div>

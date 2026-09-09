@@ -71,7 +71,8 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
                   <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{book.chapter_prefix}{doc.title}</span>
                   <Badge tone={meta.tone}>{meta.label}</Badge>
                   <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${encodeURIComponent(doc.slug)}`}
-                    className="flex h-8 items-center gap-1 rounded-lg border border-slate-300 px-2.5 text-xs text-slate-600 transition-colors hover:border-primary-400 hover:text-primary-600">
+                    className="flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 text-xs text-slate-600 transition-colors hover:border-primary-400 hover:text-primary-600"
+                    style={{ height: 'var(--control-height-sm)' }}>
                     <PencilIcon className="h-3.5 w-3.5" /> 编辑
                   </Link>
                   <Button size="sm" variant="danger" disabled={busy === doc.id} onClick={() => remove(doc)}>
