@@ -15,7 +15,7 @@ const FORMAT_LABEL: Record<string, string> = { pdf: 'PDF', markdown: 'Markdown (
 
 // BookExportButton 书籍详情页导出入口：按后端返回的可用格式与样式选项渲染下拉菜单。
 // 仅在当前用户对该书具备导出能力时显示（作者/协作者，或公开且作者开启导出）。
-export default function BookExportButton({ book }: { book: Book }) {
+export default function BookExportButton({ book, className }: { book: Book; className?: string }) {
   const { showToast } = useFeedback()
   const [opts, setOpts] = useState<ExportOptions | null>(null)
   const [open, setOpen] = useState(false)
@@ -65,8 +65,8 @@ export default function BookExportButton({ book }: { book: Book }) {
   const busyAny = busy !== ''
 
   return (
-    <div className="relative" ref={ref}>
-      <Button type="button" variant="outline" onClick={() => setOpen((v) => !v)} disabled={busyAny}>
+    <div className={`relative ${className || ''}`.trim()} ref={ref}>
+      <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setOpen((v) => !v)} disabled={busyAny}>
         <DownloadIcon className="h-4 w-4" /> {busyAny ? '导出中…' : '导出'} <ChevronDownIcon className="h-4 w-4 text-slate-400" />
       </Button>
       {open && (

@@ -291,7 +291,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   }
 
   return (
-    <div className="bg-warm">
+    <div className="min-w-0 overflow-x-hidden bg-warm">
       <Seo
         siteName={siteName}
         title={book.title}
@@ -301,7 +301,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         jsonLd={jsonLd}
       />
 
-      <Container>
+      <Container className="!py-0">
         {/* 面包屑 */}
         <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden py-3 text-sm text-slate-500">
           <Link href="/explore" className="shrink-0 hover:text-primary-600">发现</Link>
@@ -317,8 +317,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       </Container>
 
       {/* Hero */}
-      <Container>
-        <section className="grid items-start gap-x-10 gap-y-8 pb-8 lg:grid-cols-[300px_1fr_300px]">
+      <Container className="!py-5 sm:!py-8">
+        <section className="grid min-w-0 grid-cols-1 items-start gap-x-10 gap-y-6 pb-4 sm:gap-y-8 lg:grid-cols-[300px_minmax(0,1fr)_300px] lg:pb-8">
           {/* 左：大封面 */}
           <div className="mx-auto w-36 sm:w-52 lg:mx-0 lg:w-full">
             <div className="aspect-[3/4] w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF] shadow-md">
@@ -329,21 +329,21 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
           {/* 中：标题区 + 操作 */}
           <div className="min-w-0">
             <h1 className="break-words text-2xl font-bold leading-tight text-ink sm:text-3xl md:text-4xl">{book.title}</h1>
-            {book.description && <p className="mt-3 break-words text-[15px] leading-7 text-slate-500">{book.description}</p>}
+            {book.description && <p className="mt-3 max-w-full whitespace-normal text-[15px] leading-7 text-slate-500 [overflow-wrap:anywhere]">{book.description}</p>}
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex min-w-0 max-w-full flex-wrap gap-2 overflow-hidden">
               {(book.tags || []).map((t) => (
-                <span key={t.id} className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t.name}</span>
+                <span key={t.id} className="inline-flex max-w-full items-center truncate rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t.name}</span>
               ))}
             </div>
 
             {author && (
-              <div className="mt-6 flex flex-wrap items-center gap-4">
-                <Link href={`/user/${encodeURIComponent(author.username)}`} className="flex items-center gap-3">
+              <div className="mt-6 flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
+                <Link href={`/user/${encodeURIComponent(author.username)}`} className="flex min-w-0 items-center gap-3">
                   <UserAvatar user={author} size="h-11 w-11" link={false} />
-                  <span>
-                    <span className="block font-semibold text-slate-900">{author.username}</span>
-                    {author.bio && <span className="block text-xs text-slate-400">{author.bio}</span>}
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-slate-900">{author.username}</span>
+                    {author.bio && <span className="block truncate text-xs text-slate-400">{author.bio}</span>}
                   </span>
                 </Link>
                 <Link href={`/user/${encodeURIComponent(author.username)}`}
@@ -371,7 +371,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               </p>
             )}
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-6 min-w-0 space-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3 sm:space-y-0">
               {readUrl ? (
                 <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="w-full px-7 text-base sm:w-auto">
                   <BookIcon className="h-5 w-5" /> {progress && progress.docSlug !== readDocSlug ? '继续阅读' : '开始阅读'}
@@ -379,50 +379,54 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               ) : (
                 <span className="text-sm text-slate-400">暂无已发布章节</span>
               )}
-              <Button type="button" variant="outline" onClick={() => toggleReaction('like')}
-                disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
-                aria-pressed={liked}
-                className={`px-5 ${liked
-                  ? 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100'
-                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
-                <HeartIcon className="h-4 w-4" />
-                {!authReady || (!!user && !reactionsReady) || reactBusy === 'like'
-                  ? '处理中…'
-                  : `${liked ? '已点赞' : '点赞'}${likeCount !== null ? ` ${formatNumber(likeCount)}` : ''}`}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => toggleReaction('favorite')}
-                disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
-                aria-pressed={favorited}
-                className={`px-5 ${favorited
-                  ? 'border-primary-200 bg-primary-50 text-primary-700 hover:border-primary-300 hover:bg-primary-100'
-                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
-                <BookmarkIcon className="h-4 w-4" />
-                {!authReady || (!!user && !reactionsReady) || reactBusy === 'favorite'
-                  ? '处理中…'
-                  : `${favorited ? '已收藏' : '收藏'}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
-              </Button>
-              <Tooltip content="分享"><Button type="button" variant="outline" onClick={share}
-                className="!px-0 text-slate-500" style={{ width: 'var(--control-height)' }}>
-                  <ShareIcon className="h-4 w-4" />
-                </Button></Tooltip>
-              <BookExportButton book={book} />
-              <ReportButton targetType="book" targetId={book.id} />
+              <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
+                <Button type="button" variant="outline" onClick={() => toggleReaction('like')}
+                  disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
+                  aria-pressed={liked}
+                  className={`w-full px-3 sm:w-auto sm:px-5 ${liked
+                    ? 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
+                  <HeartIcon className="h-4 w-4" />
+                  {!authReady || (!!user && !reactionsReady) || reactBusy === 'like'
+                    ? '处理中…'
+                    : `${liked ? '已点赞' : '点赞'}${likeCount !== null ? ` ${formatNumber(likeCount)}` : ''}`}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => toggleReaction('favorite')}
+                  disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
+                  aria-pressed={favorited}
+                  className={`w-full px-3 sm:w-auto sm:px-5 ${favorited
+                    ? 'border-primary-200 bg-primary-50 text-primary-700 hover:border-primary-300 hover:bg-primary-100'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
+                  <BookmarkIcon className="h-4 w-4" />
+                  {!authReady || (!!user && !reactionsReady) || reactBusy === 'favorite'
+                    ? '处理中…'
+                    : `${favorited ? '已收藏' : '收藏'}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
+                </Button>
+              </div>
+              <div className="grid min-w-0 grid-cols-3 gap-2 sm:contents">
+                <Tooltip content="分享" className="w-full sm:w-auto"><Button type="button" variant="outline" onClick={share}
+                  className="w-full !px-0 text-slate-500 sm:w-[var(--control-height)]">
+                    <ShareIcon className="h-4 w-4" />
+                  </Button></Tooltip>
+                <BookExportButton book={book} className="w-full sm:w-auto" />
+                <ReportButton targetType="book" targetId={book.id} size="md" className="w-full px-2" />
+              </div>
               {(canManage || canEdit) && (
-                <>
-                  {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline">写作</ButtonLink>}
+                <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
+                  {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="w-full sm:w-auto">写作</ButtonLink>}
                   {canManage && (
-                    <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline">
+                    <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline" className="w-full sm:w-auto">
                       <GearIcon className="h-4 w-4" /> 设置
                     </ButtonLink>
                   )}
-                </>
+                </div>
               )}
             </div>
             {reactionError && <p role="alert" className="mt-2 text-sm text-rose-600">{reactionError}</p>}
           </div>
 
           {/* 右：书籍信息卡 */}
-          <aside className="space-y-5">
+          <aside className="min-w-0 space-y-5">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="mb-4 font-bold text-slate-900">书籍信息</h2>
               <dl className="space-y-3 text-sm">
@@ -434,8 +438,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               </dl>
             </div>
 
-            <div className="flex items-center gap-1.5 text-sm text-slate-500">
-              <HelpCircleIcon className="h-4 w-4" /> 发现内容问题？请使用页面上方的举报入口。
+            <div className="flex min-w-0 items-start gap-1.5 text-sm text-slate-500">
+              <HelpCircleIcon className="mt-0.5 h-4 w-4 shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere]">发现内容问题？请使用页面上方的举报入口。</span>
             </div>
           </aside>
         </section>
@@ -446,8 +450,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         <section className="border-t border-slate-200 py-10">
           <div className="max-w-3xl">
             <h2 className="text-xl font-bold text-slate-900">关于这本书</h2>
-            <div className="mt-4 space-y-3 text-[15px] leading-7 text-slate-600">
-              {(book.description || '暂无简介').split('\n').filter(Boolean).map((para, i) => <p key={i}>{para}</p>)}
+            <div className="mt-4 min-w-0 space-y-3 text-[15px] leading-7 text-slate-600">
+              {(book.description || '暂无简介').split('\n').filter(Boolean).map((para, i) => <p key={i} className="max-w-full [overflow-wrap:anywhere]">{para}</p>)}
             </div>
 
             <div className="mb-4 mt-10 flex items-baseline gap-3">

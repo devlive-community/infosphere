@@ -20,10 +20,11 @@ interface ReportButtonProps {
   targetId: number
   className?: string
   compact?: boolean
+  size?: 'sm' | 'md' | 'lg'
 }
 
 // ReportButton 公开内容统一举报入口；表单与反馈均使用站内组件。
-export default function ReportButton({ targetType, targetId, className, compact = false }: ReportButtonProps) {
+export default function ReportButton({ targetType, targetId, className, compact = false, size = 'sm' }: ReportButtonProps) {
   const { user, authReady } = useApp()
   const { showToast } = useFeedback()
   const router = useRouter()
@@ -74,7 +75,7 @@ export default function ReportButton({ targetType, targetId, className, compact 
 
   return (
     <>
-      <Button type="button" variant="ghost" size="sm" onClick={beginReport} disabled={!authReady}
+      <Button type="button" variant="ghost" size={size} onClick={beginReport} disabled={!authReady}
         className={`text-slate-400 hover:text-rose-600 ${className || ''}`.trim()}>
         <i className="fa-regular fa-flag" aria-hidden="true" />
         {compact ? <span className="sr-only">举报</span> : '举报'}
