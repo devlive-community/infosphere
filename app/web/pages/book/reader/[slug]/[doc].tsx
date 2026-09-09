@@ -146,7 +146,9 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   useEffect(() => {
     if (!doc) return
     setDocViews(doc.view_count ?? 0)
-    api<{ view_count: number }>(`/documents/${doc.id}/view`, { method: 'POST' })
+    api<{ view_count: number }>(`/documents/${doc.id}/view`, {
+      method: 'POST', body: { referrer: document.referrer },
+    })
       .then((r) => setDocViews(r.view_count))
       .catch(() => { /* 计数失败不影响阅读 */ })
   }, [doc?.id]) // eslint-disable-line react-hooks/exhaustive-deps

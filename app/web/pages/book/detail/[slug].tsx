@@ -7,7 +7,7 @@ import { resolveMediaUrl } from '@/lib/media'
 import { useApp } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { getReadingProgress } from '@/lib/reading-progress'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Button, ButtonLink, Tooltip, Loading, useFeedback } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
@@ -103,6 +103,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
   // 私有/草稿书 SSR 无令牌取不到，挂载后携带本地令牌客户端重试（避免默认空白）
   const [book, setBook] = useState<Book | null>(ssrBook ?? null)
+  const [bookViews, setBookViews] = useState(ssrBook?.view_count || 0)
+  const countedBook = useRef<number | null>(null)
   const [tree, setTree] = useState<Document[]>(ssrTree || [])
   const [fetching, setFetching] = useState<boolean>(!!needsAuth && !ssrBook)
   useEffect(() => {
@@ -118,6 +120,14 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
     })()
     return () => { cancelled = true }
   }, [needsAuth, ssrBook, slug])
+  useEffect(() => {
+    if (!book || countedBook.current === book.id) return
+    countedBook.current = book.id
+    setBookViews(book.view_count)
+    api<{ view_count: number }>(`/books/${book.id}/view`, {
+      method: 'POST', body: { referrer: document.referrer },
+    }).then((result) => setBookViews(result.view_count)).catch(() => { /* 计数失败不影响详情页 */ })
+  }, [book])
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
   const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string } | null>(null)
   const [liked, setLiked] = useState(false)
@@ -345,7 +355,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
             <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
               <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {chapters} 个章节</span>
               <span className="flex items-center gap-1.5"><ClockIcon className="h-4 w-4" /> 约 {readingMin} 分钟</span>
-              <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {formatNumber(book.view_count)} 次阅读</span>
+              <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {formatNumber(bookViews)} 次阅读</span>
               <span className="flex items-center gap-1.5"><CalendarIcon className="h-4 w-4" /> 更新于 {fmtDate(book.updated_at)}</span>
             </div>
 

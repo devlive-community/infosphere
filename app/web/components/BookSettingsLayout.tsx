@@ -3,7 +3,8 @@ import { ReactNode } from 'react'
 import Container from '@/components/Container'
 import Seo from '@/components/Seo'
 import { resolveMediaUrl } from '@/lib/media'
-import { GearIcon, UsersIcon, DownloadIcon, ExternalLinkIcon, PencilIcon, ListIcon, TrashIcon, ChartIcon } from '@/components/icons'
+import { GearIcon, UsersIcon, DownloadIcon, ExternalLinkIcon, PencilIcon, ListIcon, TrashIcon } from '@/components/icons'
+import { ButtonLink } from '@/components/ui'
 import type { Book } from '@/lib/types'
 
 export type BookSettingsTab = 'basic' | 'chapters' | 'analytics' | 'collaborators' | 'data' | 'danger'
@@ -17,7 +18,7 @@ interface BookSettingsLayoutProps {
 const NAV: { key: BookSettingsTab; label: string; icon: (p: { className?: string }) => JSX.Element; sub: string; danger?: boolean }[] = [
   { key: 'basic', label: '基本信息', icon: GearIcon, sub: '' },
   { key: 'chapters', label: '章节管理', icon: ListIcon, sub: 'chapters' },
-  { key: 'analytics', label: '数据分析', icon: ChartIcon, sub: 'analytics' },
+  { key: 'analytics', label: '数据分析', icon: ({ className }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" />, sub: 'analytics' },
   { key: 'collaborators', label: '协作者', icon: UsersIcon, sub: 'collaborators' },
   { key: 'data', label: '导入导出', icon: DownloadIcon, sub: 'data' },
   { key: 'danger', label: '危险区', icon: TrashIcon, sub: 'danger', danger: true },
@@ -50,7 +51,7 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
           {/* 左：书籍卡 + 导航 */}
           <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-20">
             <div className="flex items-center gap-3">
-              <span className="h-14 w-11 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
+              <span className="h-14 w-11 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-primary-600">
                 {cover
                   ? <img src={cover} alt="" className="h-full w-full object-cover" />
                   : <span className="flex h-full w-full items-center justify-center text-lg font-bold text-white/80">{book.title.slice(0, 1)}</span>}
@@ -79,14 +80,12 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
             </nav>
 
             <div className="mt-6 space-y-2 border-t border-slate-100 pt-4">
-              <Link href={`/book/writer/${encodeURIComponent(book.slug)}`}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 text-sm text-slate-700 transition-colors hover:border-primary-400 hover:text-primary-600">
+              <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="w-full hover:border-primary-400 hover:text-primary-600">
                 <PencilIcon className="h-4 w-4" /> 进入写作
-              </Link>
-              <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm text-slate-500 transition-colors hover:text-primary-600">
+              </ButtonLink>
+              <ButtonLink href={`/book/detail/${encodeURIComponent(book.slug)}`} variant="ghost" className="w-full text-slate-500 hover:text-primary-600">
                 查看书籍详情 <ExternalLinkIcon className="h-3.5 w-3.5" />
-              </Link>
+              </ButtonLink>
             </div>
           </aside>
 

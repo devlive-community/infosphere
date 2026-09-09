@@ -248,6 +248,7 @@ func (a *App) IncrementDocumentView(c *gin.Context) {
 		fail(c, http.StatusNotFound, "文档不存在")
 		return
 	}
+	source := classifyAnalyticsSource(analyticsReferrer(c), c.Request.Host)
 	var viewCount int
 	if err := a.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&models.Document{}).
@@ -258,6 +259,9 @@ func (a *App) IncrementDocumentView(c *gin.Context) {
 		if err := tx.Model(&models.Book{}).
 			Where("id = ?", book.ID).
 			UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+			return err
+		}
+		if err := recordAnalyticsView(tx, book.ID, doc.ID, source); err != nil {
 			return err
 		}
 		return tx.Model(&models.Document{}).

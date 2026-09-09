@@ -31,6 +31,7 @@ Authorization: Bearer <token>
 | `book:create` | 创建书籍 | ✅ | ✅ |
 | `book:update` | 更新书籍（仅本人） | ✅ | ✅ |
 | `book:delete` | 将书籍移入回收站（仅本人） | ✅ | ✅ |
+| `book-analytics:read` | 查看本人书籍的聚合访问分析（管理员可查看全部） | ✅ | ✅ |
 | `document:read` | 浏览文档树与正文 | ✅ | ✅ |
 | `document:create` | 创建文档（仅本人书籍） | ✅ | ✅ |
 | `document:update` | 更新文档（仅本人书籍） | ✅ | ✅ |
@@ -208,7 +209,8 @@ Authorization: Bearer <token>
 | PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀/阅读水印） | `book:update` |
 | DELETE | `/books/:id` | 将书籍及当前章节移入 30 天回收站 | `book:delete` |
 | GET | `/books/status-counts?scope=owned\|collaborating` | 当前用户创建或已接受协作书籍的状态统计 | `book:read` |
-| POST | `/books/:id/view` | 可见书籍浏览计数 +1；不可见资源统一返回 404 | `book:read` |
+| POST | `/books/:id/view` | 可见书籍浏览计数 +1，并写入按日、来源聚合桶；可选 JSON `{referrer}`，只保存来源类别，不保存原始网址；不可见资源统一返回 404 | `book:read` |
+| GET | `/books/:id/analytics?days=7\|30\|90\|180` | 书籍聚合分析：累计/周期浏览、上一周期增长、每日趋势、热门章节、来源类别、登录读者完成率；仅 owner/admin，日聚合最多保留 180 天 | `book-analytics:read` |
 
 书籍字段：`id, title, description, cover_image, slug, status(draft|in_progress|published|completed|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, watermark_enabled, watermark_text, user, tags, created_at, updated_at`
 
@@ -226,7 +228,7 @@ Authorization: Bearer <token>
 | GET | `/documents/:id` | 文档详情（含正文） | `document:read` |
 | PUT | `/documents/:id` | 更新（title/content/parent_id/sort_order/status/slug；防环校验）；手动保存传 `create_revision: true` 与 `revision_reason: save|publish` 生成不可变版本 | `document:update` |
 | DELETE | `/documents/:id` | 将文档及其子树作为同一批次移入 30 天回收站 | `document:delete` |
-| POST | `/documents/:id/view` | 章节浏览计数 +1，并同步累加所属书籍的 `view_count`（书籍总浏览=各章节浏览之和）；不可见返回 404 | `document:read` |
+| POST | `/documents/:id/view` | 章节浏览计数 +1，并同步累加所属书籍的 `view_count` 及按日分析聚合；可选 JSON `{referrer}`；不可见返回 404 | `document:read` |
 | GET | `/documents/:id/revisions` | 章节版本列表（分页，不含正文）；未授权统一 404 | `document-revision:read` |
 | GET | `/documents/:id/revisions/:revisionId` | 版本详情（含正文）；未授权或版本不属于章节时统一 404 | `document-revision:read` |
 | POST | `/documents/:id/revisions/:revisionId/restore` | 恢复标题、正文、发布状态与评论设置；自动保留恢复前及恢复后快照 | `document-revision:restore` |

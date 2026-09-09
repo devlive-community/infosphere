@@ -11,12 +11,12 @@ type Permission string
 // 资源:操作 常量。新增资源时先在此定义，再在路由与 docs/api.md 中登记。
 const (
 	// 书籍
-	BookRead   Permission = "book:read"   // 浏览书籍列表与详情（含公开匿名访问）
-	BookCreate Permission = "book:create" // 创建书籍
-	BookUpdate Permission = "book:update" // 更新书籍（仅限本人或管理员）
-	BookDelete Permission = "book:delete" // 将书籍移入回收站（仅限本人或管理员）
-	BookExport Permission = "book:export" // 导出书籍为 markdown zip（owner/admin/editor 协作者）
-	BookImport Permission = "book:import" // 新建导入书籍，或由 owner/admin 向已有书籍重新导入 PDF
+	BookRead          Permission = "book:read"           // 浏览书籍列表与详情（含公开匿名访问）
+	BookCreate        Permission = "book:create"         // 创建书籍
+	BookUpdate        Permission = "book:update"         // 更新书籍（仅限本人或管理员）
+	BookDelete        Permission = "book:delete"         // 将书籍移入回收站（仅限本人或管理员）
+	BookExport        Permission = "book:export"         // 导出书籍为 markdown zip（owner/admin/editor 协作者）
+	BookImport        Permission = "book:import"         // 新建导入书籍，或由 owner/admin 向已有书籍重新导入 PDF
 	BookAnalyticsRead Permission = "book-analytics:read" // 查看本人书籍的聚合访问分析（管理员可查看全部）
 
 	// 文档（章节）

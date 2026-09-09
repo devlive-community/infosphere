@@ -175,6 +175,7 @@ func (a *App) SetupInstall(c *gin.Context) {
 	}
 	a.DB = db
 	a.search = configureSearchBackend(db)
+	_ = purgeExpiredBookAnalytics(db)
 
 	token, err := auth.GenerateToken(a.Config.Secret, admin.ID, admin.Username, admin.Role)
 	if err != nil {

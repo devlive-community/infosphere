@@ -54,6 +54,9 @@ func New(cfg *config.Config) (*App, error) {
 		}
 		a.DB = db
 		a.search = configureSearchBackend(db)
+		if err := purgeExpiredBookAnalytics(db); err != nil {
+			log.Printf("清理过期书籍分析数据失败: %v", err)
+		}
 		// 版本变化时向管理员发送升级完成通知（首次安装时 version 刚写入，不会触发）
 		a.NotifyAdminsOnUpgrade()
 	}

@@ -541,9 +541,15 @@ func (a *App) IncrementBookView(c *gin.Context) {
 		fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
-	if err := a.DB.Model(&models.Book{}).
-		Where("id = ?", book.ID).
-		UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+	source := classifyAnalyticsSource(analyticsReferrer(c), c.Request.Host)
+	if err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Book{}).
+			Where("id = ?", book.ID).
+			UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+			return err
+		}
+		return recordAnalyticsView(tx, book.ID, 0, source)
+	}); err != nil {
 		fail(c, http.StatusInternalServerError, "更新浏览量失败")
 		return
 	}
