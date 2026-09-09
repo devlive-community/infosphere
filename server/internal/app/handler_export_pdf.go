@@ -35,18 +35,28 @@ func requestToken(c *gin.Context) string {
 // resolveExportStyle 依据 style 选择生效的导出样式：
 // author（且作者开启共享）用书籍作者样式，否则用请求者自己的样式（匿名用默认）。
 func (a *App) resolveExportStyle(style string, book *models.Book, u *models.User) models.UserExportSetting {
-	targetUserID := uint(0)
+	// 作者共享样式且请求作者样式：优先书籍自有导出样式，其次作者个人样式
 	if style == "author" && book.ExportStyleShared {
-		targetUserID = book.UserID
-	} else if u != nil {
-		targetUserID = u.ID
+		var bs models.BookExportSetting
+		if err := a.DB.Where("book_id = ?", book.ID).First(&bs).Error; err == nil {
+			return models.UserExportSetting{
+				PageSize: bs.PageSize, IncludeCover: bs.IncludeCover, IncludeToc: bs.IncludeToc,
+				FontSize: bs.FontSize, CodeTheme: bs.CodeTheme, Margin: bs.Margin,
+			}
+		}
+		var us models.UserExportSetting
+		if err := a.DB.Where("user_id = ?", book.UserID).First(&us).Error; err == nil {
+			return us
+		}
+		return defaultExportSetting(book.UserID)
 	}
-	if targetUserID == 0 {
+	// 否则用请求者自己的样式（匿名用默认）
+	if u == nil {
 		return defaultExportSetting(0)
 	}
 	var s models.UserExportSetting
-	if err := a.DB.Where("user_id = ?", targetUserID).First(&s).Error; err != nil {
-		return defaultExportSetting(targetUserID)
+	if err := a.DB.Where("user_id = ?", u.ID).First(&s).Error; err != nil {
+		return defaultExportSetting(u.ID)
 	}
 	return s
 }

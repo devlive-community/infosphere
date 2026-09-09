@@ -1,11 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { InferGetServerSidePropsType } from 'next'
 import { api } from '@/lib/api'
-import { Button, Switch, useFeedback } from '@/components/ui'
+import { Button, Switch, Field, Select, Loading, useFeedback } from '@/components/ui'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { getBookSettingsProps } from '@/lib/book-settings'
 
 export const getServerSideProps = getBookSettingsProps
+
+interface BookStyle {
+  page_size: string
+  include_cover: boolean
+  include_toc: boolean
+  font_size: number
+  code_theme: string
+  margin: string
+}
+const DEFAULT_STYLE: BookStyle = { page_size: 'A4', include_cover: true, include_toc: true, font_size: 15, code_theme: 'light', margin: 'normal' }
 
 // 书籍设置 · 导出设置：控制他人能否导出本书、是否共享作者导出样式（仅可管理者）
 const ALL_FORMATS: { key: string; label: string; hint: string }[] = [
@@ -20,7 +30,13 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
   // 空字符串表示“全部格式可用”；否则为逗号分隔的允许格式
   const initialFormats = (book.export_formats || '').split(',').map((s) => s.trim()).filter(Boolean)
   const [formats, setFormats] = useState<string[]>(initialFormats.length ? initialFormats : ALL_FORMATS.map((f) => f.key))
+  const [style, setStyle] = useState<BookStyle>(DEFAULT_STYLE)
+  const [styleLoaded, setStyleLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api<BookStyle>(`/books/${book.id}/export-style`).then((d) => setStyle({ ...DEFAULT_STYLE, ...d })).catch(() => {}).finally(() => setStyleLoaded(true))
+  }, [book.id])
 
   function toggleFormat(key: string) {
     setFormats((cur) => cur.includes(key) ? cur.filter((f) => f !== key) : [...cur, key])
@@ -33,6 +49,7 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
       // 全选归一化为空串（表示全部），由后端统一处理
       const export_formats = formats.length === ALL_FORMATS.length ? '' : formats.join(',')
       await api(`/books/${book.id}`, { method: 'PUT', body: { export_enabled: exportEnabled, export_style_shared: styleShared, export_formats } })
+      await api(`/books/${book.id}/export-style`, { method: 'PUT', body: style })
       showToast({ title: '已保存', message: '导出设置已更新', tone: 'success' })
     } catch (e) {
       showToast({ title: '保存失败', message: (e as Error).message, tone: 'error' })
@@ -79,6 +96,45 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
                 </label>
               ))}
             </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 p-4">
+            <div className="text-sm font-medium text-slate-900">书籍导出样式</div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">当你共享导出样式时，读者选择「作者样式」将使用这里的设置（未配置则回退到你的个人导出设置）。</p>
+            {!styleLoaded ? (
+              <Loading className="py-8" label="正在加载书籍样式…" />
+            ) : (
+              <div className="mt-3 space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="页面尺寸">
+                    <Select value={style.page_size} onChange={(v) => setStyle({ ...style, page_size: v })}
+                      options={[{ value: 'A4', label: 'A4' }, { value: 'Letter', label: 'Letter' }]} />
+                  </Field>
+                  <Field label="页边距">
+                    <Select value={style.margin} onChange={(v) => setStyle({ ...style, margin: v })}
+                      options={[{ value: 'narrow', label: '窄' }, { value: 'normal', label: '常规' }, { value: 'wide', label: '宽' }]} />
+                  </Field>
+                  <Field label="正文字号" hint="12–20 px">
+                    <Select value={String(style.font_size)} onChange={(v) => setStyle({ ...style, font_size: Number(v) })}
+                      options={[12, 13, 14, 15, 16, 17, 18, 20].map((n) => ({ value: String(n), label: `${n} px` }))} />
+                  </Field>
+                  <Field label="代码配色">
+                    <Select value={style.code_theme} onChange={(v) => setStyle({ ...style, code_theme: v })}
+                      options={[{ value: 'light', label: '浅色' }, { value: 'dark', label: '深色' }]} />
+                  </Field>
+                </div>
+                <div className="flex flex-wrap gap-6">
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" checked={style.include_cover} onChange={(e) => setStyle({ ...style, include_cover: e.target.checked })}
+                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /> 包含封面页
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" checked={style.include_toc} onChange={(e) => setStyle({ ...style, include_toc: e.target.checked })}
+                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /> 包含目录
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex justify-end border-t border-slate-100 px-6 py-4">
