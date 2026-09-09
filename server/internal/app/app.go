@@ -26,6 +26,7 @@ type App struct {
 	Config        *config.Config
 	DB            *gorm.DB
 	Notifications *notificationHub
+	RateLimits    RateLimitStore
 	// MailSender 邮件发送器；为空时按站点配置解析（测试可注入替代实现）
 	MailSender mail.Sender
 	// 导入解析器允许测试注入；生产为空时使用内置 PDF/网页实现。
@@ -37,7 +38,7 @@ type App struct {
 
 // New 创建应用实例；已安装时建立数据库连接
 func New(cfg *config.Config) (*App, error) {
-	a := &App{Config: cfg, Notifications: newNotificationHub()}
+	a := &App{Config: cfg, Notifications: newNotificationHub(), RateLimits: newMemoryRateLimitStore()}
 	if cfg.Installed {
 		db, err := database.Open(cfg.Database)
 		if err != nil {

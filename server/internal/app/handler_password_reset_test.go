@@ -32,6 +32,8 @@ func TestPasswordReset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建应用失败: %v", err)
 	}
+	// 本测试集中验证找回密码的所有业务分支；限流行为由 middleware_rate_limit_test 单独覆盖。
+	a.RateLimits = allowAllRateLimitStore{}
 	recorder := &mailRecorder{}
 	a.MailSender = recorder
 	ts := httptest.NewServer(a.Router())

@@ -64,6 +64,7 @@ docker run -d --name infosphere -p 6969:6969 -v infosphere-data:/data infosphere
 
 - 端口：`INFO_SPHERE_PORT`（默认 `6969`）。
 - 数据目录：容器内固定为 `/data`，挂载数据卷或宿主目录持久化。
+- 受信代理：默认不信任转发头；经 nginx、网关部署时设置 `INFO_SPHERE_TRUSTED_PROXIES` 为代理 IP/CIDR，多个值用英文逗号分隔（例如 `127.0.0.1,10.0.0.0/8`）。
 - 外接数据库：安装向导中选择 MySQL/PostgreSQL 并填写连接信息即可（可另起 DB 容器并置于同一 network）。
 - 升级：Docker 部署下不使用应用内「在线升级」，改为拉取新镜像重建容器（`docker compose pull && docker compose up -d`）。
 

@@ -39,6 +39,7 @@ func (a *App) installGate() gin.HandlerFunc {
 //	站点与系统管理  site:* / system:*（仅管理员）
 func (a *App) Router() *gin.Engine {
 	r := gin.New()
+	configureTrustedProxies(r)
 	r.Use(gin.Logger(), gin.Recovery(), CORS())
 	r.MaxMultipartMemory = 10 << 20
 
@@ -61,12 +62,12 @@ func (a *App) Router() *gin.Engine {
 		// ── 认证与会话 ──
 		authGroup := api.Group("/auth")
 		{
-			authGroup.POST("/register", a.Register)
-			authGroup.POST("/login", a.Login)
+			authGroup.POST("/register", a.RateLimit(registerRateLimit), a.Register)
+			authGroup.POST("/login", a.RateLimit(loginRateLimit), a.Login)
 
 			// ── 找回密码（auth:password-reset 匿名语义） ──
-			authGroup.POST("/password/forgot", a.ForgotPassword)
-			authGroup.POST("/password/reset", a.ResetPassword)
+			authGroup.POST("/password/forgot", a.RateLimit(passwordForgotRateLimit), a.ForgotPassword)
+			authGroup.POST("/password/reset", a.RateLimit(passwordResetRateLimit), a.ResetPassword)
 
 			// ── 第三方登录（auth:oauth；start/callback 匿名，绑定管理需登录） ──
 			authGroup.GET("/oauth/providers", a.OAuthProviders)
@@ -181,13 +182,13 @@ func (a *App) Router() *gin.Engine {
 
 		// ── 评论（comment:*） ──
 		api.GET("/documents/:id/comments", a.OptionalAuth(), a.ListComments)
-		api.POST("/documents/:id/comments", a.RequireAuth(), a.RequirePermission(authz.CommentCreate), a.CreateComment)
+		api.POST("/documents/:id/comments", a.RequireAuth(), a.RequirePermission(authz.CommentCreate), a.RateLimit(commentRateLimit), a.CreateComment)
 		api.PUT("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentUpdate), a.UpdateComment)
 		api.DELETE("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentDelete), a.DeleteComment)
 
 		// ── 点赞/收藏（reaction:*） ──
-		books.POST("/:id/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionCreate), a.PutReaction)
-		books.DELETE("/:id/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionDelete), a.DeleteReaction)
+		books.POST("/:id/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionCreate), a.RateLimit(reactionRateLimit), a.PutReaction)
+		books.DELETE("/:id/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionDelete), a.RateLimit(reactionRateLimit), a.DeleteReaction)
 		books.GET("/:id/reactions/me", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyBookReaction)
 		api.GET("/users/me/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyReactions)
 
@@ -199,7 +200,7 @@ func (a *App) Router() *gin.Engine {
 		}
 
 		// ── 上传 ──
-		api.POST("/upload", a.RequireAuth(), a.RequirePermission(authz.UploadCreate), a.Upload)
+		api.POST("/upload", a.RequireAuth(), a.RequirePermission(authz.UploadCreate), a.RateLimit(uploadRateLimit), a.Upload)
 
 		// ── 标签管理（tag:*；登录用户可创建，删除仅管理员） ──
 		tags := api.Group("/tags", a.RequireAuth())
