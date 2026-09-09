@@ -26,13 +26,13 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 // Input 通用文本输入框
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, leading, trailing, ...rest }, ref) {
-  if (!leading && !trailing) return <input ref={ref} className={`h-10 ${controlClass} ${className || ''}`.trim()} {...rest} />
+  if (!leading && !trailing) return <input ref={ref} className={`${controlClass} ${className || ''}`.trim()} style={{ height: 'var(--control-height)' }} {...rest} />
   return (
     <div className={`relative ${className || ''}`.trim()}>
       {leading && (
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{leading}</span>
       )}
-      <input ref={ref} className={`h-10 ${leading ? 'pl-9' : ''} ${trailing ? 'pr-10' : ''} ${controlClass}`} {...rest} />
+      <input ref={ref} className={`${leading ? 'pl-9' : ''} ${trailing ? 'pr-10' : ''} ${controlClass}`} style={{ height: 'var(--control-height)' }} {...rest} />
       {trailing && (
         <span className="absolute right-2 top-1/2 -translate-y-1/2">{trailing}</span>
       )}

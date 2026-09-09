@@ -66,6 +66,10 @@ const (
 	// 阅读进度
 	ReadingProgressRead   Permission = "reading-progress:read"   // 查看自己的阅读进度
 	ReadingProgressUpdate Permission = "reading-progress:update" // 保存自己的阅读进度
+	AnnotationRead        Permission = "annotation:read"         // 查看自己的阅读标注与笔记
+	AnnotationCreate      Permission = "annotation:create"       // 创建自己的阅读标注与笔记
+	AnnotationUpdate      Permission = "annotation:update"       // 更新自己的阅读标注与笔记
+	AnnotationDelete      Permission = "annotation:delete"       // 删除自己的阅读标注与笔记
 
 	// 评论
 	CommentRead   Permission = "comment:read"   // 浏览章节评论（含匿名访问）
@@ -114,6 +118,7 @@ var All = []Permission{
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	ReadingProgressRead, ReadingProgressUpdate,
+	AnnotationRead, AnnotationCreate, AnnotationUpdate, AnnotationDelete,
 	UserRead, UserUpdate, UserManage,
 	SiteRead, SiteUpdate, ConfigManage, AuditRead,
 	StatsRead,
@@ -136,6 +141,7 @@ var userPermissions = []Permission{
 	CommentRead, CommentCreate, CommentUpdate, CommentDelete,
 	ReactionCreate, ReactionDelete, ReactionRead,
 	ReadingProgressRead, ReadingProgressUpdate,
+	AnnotationRead, AnnotationCreate, AnnotationUpdate, AnnotationDelete,
 	UserRead, UserUpdate,
 	SiteRead, StatsRead,
 	UploadCreate,

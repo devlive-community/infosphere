@@ -27,9 +27,9 @@ const RADII = [
 ] as const
 
 const BTN_SIZES = [
-  { key: 'sm', label: '小', desc: '紧凑场景' },
-  { key: 'md', label: '中（默认）', desc: '通用' },
-  { key: 'lg', label: '大', desc: '主要操作' },
+  { key: 'sm', label: '小', desc: '紧凑' },
+  { key: 'md', label: '中（默认）', desc: '标准' },
+  { key: 'lg', label: '大', desc: '宽松' },
 ] as const
 
 const FONT_SIZES = [
@@ -67,7 +67,7 @@ const PAGE_BGS = [
 const TABS = [
   { value: 'color', label: '主题色' },
   { value: 'radius', label: '圆角' },
-  { value: 'button', label: '按钮' },
+  { value: 'control', label: '控件' },
   { value: 'font', label: '字体' },
   { value: 'layout', label: '布局' },
   { value: 'bg', label: '背景' },
@@ -186,22 +186,41 @@ export default function ThemeSettings() {
                 </div>
               )}
 
-              {/* 按钮 */}
-              {activeTab === 'button' && (
-                <div className="grid grid-cols-3 gap-3">
-                  {BTN_SIZES.map((b) => (
-                    <OptionCard key={b.key} active={btnSize === b.key} onClick={() => setBtnSize(b.key)}>
-                      <span className={`inline-flex items-center justify-center rounded-lg border-2 px-4 font-medium ${
-                        btnSize === b.key ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-300 bg-white text-slate-600'
-                      }`} style={{
-                        height: b.key === 'sm' ? '2rem' : b.key === 'md' ? '2.5rem' : '3rem',
-                        fontSize: b.key === 'sm' ? '0.75rem' : b.key === 'md' ? '0.875rem' : '1rem',
-                      }}>
-                        {b.label}
-                      </span>
-                      <span className="text-xs text-slate-400">{b.desc}</span>
-                    </OptionCard>
-                  ))}
+              {/* 控件 */}
+              {activeTab === 'control' && (
+                <div className="space-y-6">
+                  <div>
+                    <p className="mb-3 text-sm font-medium text-slate-700">控件大小</p>
+                    <p className="mb-3 text-xs text-slate-500">影响按钮、输入框、Tab 等所有控件的高度和内边距</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {BTN_SIZES.map((b) => (
+                        <OptionCard key={b.key} active={btnSize === b.key} onClick={() => setBtnSize(b.key)}>
+                          <div className="space-y-2">
+                            <span className={`inline-flex items-center justify-center border-2 px-4 font-medium ${
+                              btnSize === b.key ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-300 bg-white text-slate-600'
+                            }`} style={{
+                              height: b.key === 'sm' ? '2rem' : b.key === 'md' ? '2.5rem' : '3rem',
+                              fontSize: b.key === 'sm' ? '0.75rem' : b.key === 'md' ? '0.875rem' : '1rem',
+                              borderRadius: 'var(--radius)',
+                            }}>
+                              按钮
+                            </span>
+                            <span className={`flex items-center justify-center border-2 px-4 text-slate-600 ${
+                              btnSize === b.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
+                            }`} style={{
+                              height: b.key === 'sm' ? '2rem' : b.key === 'md' ? '2.5rem' : '3rem',
+                              fontSize: b.key === 'sm' ? '0.75rem' : b.key === 'md' ? '0.875rem' : '1rem',
+                              borderRadius: 'var(--radius)',
+                            }}>
+                              输入框
+                            </span>
+                          </div>
+                          <span className={`text-xs font-medium ${btnSize === b.key ? 'text-primary-700' : 'text-slate-600'}`}>{b.label}</span>
+                          <span className="text-xs text-slate-400">{b.desc}</span>
+                        </OptionCard>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 

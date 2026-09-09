@@ -159,6 +159,9 @@ func (a *App) ReimportPDFBook(c *gin.Context) {
 				if err := tx.Where("doc_id IN ?", ids).Delete(&models.ReadChapter{}).Error; err != nil {
 					return err
 				}
+				if err := tx.Where("document_id IN ?", ids).Delete(&models.ReadingAnnotation{}).Error; err != nil {
+					return err
+				}
 				if err := tx.Unscoped().Where("id IN ?", ids).Delete(&models.Document{}).Error; err != nil {
 					return err
 				}

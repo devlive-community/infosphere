@@ -32,8 +32,8 @@ export function SegmentedTabs({
   iconOnly = false,
   size = 'md',
 }: SegmentedTabsProps) {
-  const rootSizeClass = size === 'sm' ? 'gap-0.5 rounded-lg p-0.5' : 'gap-1 rounded-xl p-1'
-  const itemSizeClass = size === 'sm' ? 'h-6 rounded-md px-3 text-xs' : 'h-8 rounded-lg px-4 text-sm'
+  const rootSizeClass = size === 'sm' ? 'gap-0.5 p-0.5' : 'gap-1 p-1'
+  const itemSizeClass = size === 'sm' ? 'px-3 text-xs' : 'px-4 text-sm'
   const rootClass = `${fullWidth ? 'flex w-full' : 'inline-flex max-w-full'} overflow-x-auto border border-slate-200 bg-slate-100/80 ${rootSizeClass} ${className || ''}`.trim()
   const itemClass = (active: boolean, disabled?: boolean) =>
     `${fullWidth ? 'flex-1' : ''} flex shrink-0 items-center justify-center gap-2 whitespace-nowrap border font-medium outline-none transition-colors focus-visible:border-primary-400 ${itemSizeClass} ${
@@ -43,7 +43,7 @@ export function SegmentedTabs({
     } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`.trim()
 
   return (
-    <div className={rootClass} role="tablist" aria-label={ariaLabel}>
+    <div className={rootClass} role="tablist" aria-label={ariaLabel} style={{ borderRadius: 'var(--radius)' }}>
       {items.map((item) => {
         const active = item.value === value
         const content = <>{item.icon}{iconOnly ? <span className="sr-only">{item.label}</span> : item.label}</>
@@ -52,6 +52,7 @@ export function SegmentedTabs({
           'aria-selected': active,
           'aria-label': iconOnly && typeof item.label === 'string' ? item.label : undefined,
           className: itemClass(active, item.disabled),
+          style: { height: size === 'sm' ? 'var(--control-height-sm)' : 'var(--control-height)', borderRadius: 'var(--radius)' },
         }
         const control = item.href ? (
           <Link {...common} href={item.href} aria-current={active ? 'page' : undefined}

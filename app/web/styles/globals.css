@@ -23,11 +23,18 @@
     /* 圆角 */
     --radius: 0.5rem;
 
-    /* 按钮大小 */
-    --btn-height: 2.5rem;
-    --btn-height-sm: 2rem;
-    --btn-px: 1rem;
-    --btn-text: 0.875rem;
+    /* 控件大小 */
+    --control-height: 2.5rem;
+    --control-height-sm: 2rem;
+    --control-height-lg: 3rem;
+    --control-px: 1rem;
+    --control-text: 0.875rem;
+
+    /* 按钮大小（别名，保持兼容） */
+    --btn-height: var(--control-height);
+    --btn-height-sm: var(--control-height-sm);
+    --btn-px: var(--control-px);
+    --btn-text: var(--control-text);
 
     /* 字体大小 */
     --font-size: 15px;
@@ -90,10 +97,22 @@
   [data-radius="xl"]  { --radius: 0.75rem; }
   [data-radius="2xl"] { --radius: 1rem; }
 
-  /* ── 按钮大小 ── */
-  [data-btn="sm"] { --btn-height: 2rem; --btn-height-sm: 1.75rem; --btn-px: 0.75rem; --btn-text: 0.75rem; }
-  [data-btn="md"] { --btn-height: 2.5rem; --btn-height-sm: 2rem; --btn-px: 1rem; --btn-text: 0.875rem; }
-  [data-btn="lg"] { --btn-height: 3rem; --btn-height-sm: 2.5rem; --btn-px: 1.25rem; --btn-text: 1rem; }
+  /* ── 控件大小等级 ── */
+  [data-btn="sm"] {
+    --control-height: 2rem; --control-height-sm: 1.75rem; --control-height-lg: 2.5rem;
+    --control-px: 0.75rem; --control-text: 0.75rem;
+    --btn-height: var(--control-height); --btn-height-sm: var(--control-height-sm); --btn-px: var(--control-px); --btn-text: var(--control-text);
+  }
+  [data-btn="md"] {
+    --control-height: 2.5rem; --control-height-sm: 2rem; --control-height-lg: 3rem;
+    --control-px: 1rem; --control-text: 0.875rem;
+    --btn-height: var(--control-height); --btn-height-sm: var(--control-height-sm); --btn-px: var(--control-px); --btn-text: var(--control-text);
+  }
+  [data-btn="lg"] {
+    --control-height: 3rem; --control-height-sm: 2.5rem; --control-height-lg: 3.5rem;
+    --control-px: 1.25rem; --control-text: 1rem;
+    --btn-height: var(--control-height); --btn-height-sm: var(--control-height-sm); --btn-px: var(--control-px); --btn-text: var(--control-text);
+  }
 
   /* ── 字体大小 ── */
   [data-font="14"] { --font-size: 14px; }

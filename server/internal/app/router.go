@@ -203,6 +203,16 @@ func (a *App) Router() *gin.Engine {
 			progress.PUT("/:bookId", a.RequirePermission(authz.ReadingProgressUpdate), a.SaveReadingProgress)
 		}
 
+		// ── 私人阅读标注（annotation:*，始终按当前用户隔离） ──
+		annotations := api.Group("", a.RequireAuth())
+		{
+			annotations.GET("/documents/:id/annotations", a.RequirePermission(authz.AnnotationRead), a.ListDocumentAnnotations)
+			annotations.POST("/documents/:id/annotations", a.RequirePermission(authz.AnnotationCreate), a.CreateDocumentAnnotation)
+			annotations.PUT("/annotations/:id", a.RequirePermission(authz.AnnotationUpdate), a.UpdateAnnotation)
+			annotations.DELETE("/annotations/:id", a.RequirePermission(authz.AnnotationDelete), a.DeleteAnnotation)
+			annotations.GET("/users/me/annotations", a.RequirePermission(authz.AnnotationRead), a.ListMyAnnotations)
+		}
+
 		// ── 上传 ──
 		api.POST("/upload", a.RequireAuth(), a.RequirePermission(authz.UploadCreate), a.RateLimit(uploadRateLimit), a.Upload)
 

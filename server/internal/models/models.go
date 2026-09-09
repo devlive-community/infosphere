@@ -186,6 +186,26 @@ type ReadChapter struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// ReadingAnnotation 用户在章节内创建的私人划线、笔记或章节书签。
+// Quote 始终保留创建时的原文快照，章节更新导致锚点失效时也不会丢失。
+type ReadingAnnotation struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	UserID       uint      `gorm:"index;not null" json:"user_id"`
+	BookID       uint      `gorm:"index;not null" json:"book_id"`
+	DocumentID   uint      `gorm:"index;not null" json:"document_id"`
+	Kind         string    `gorm:"size:20;index;not null" json:"kind"` // highlight | note | bookmark
+	Color        string    `gorm:"size:20;default:yellow" json:"color"`
+	Note         string    `gorm:"type:text" json:"note"`
+	Quote        string    `gorm:"type:text" json:"quote"`
+	Prefix       string    `gorm:"size:500" json:"prefix"`
+	Suffix       string    `gorm:"size:500" json:"suffix"`
+	StartOffset  int       `gorm:"default:0" json:"start_offset"`
+	EndOffset    int       `gorm:"default:0" json:"end_offset"`
+	AnchorStatus string    `gorm:"size:20;default:active" json:"anchor_status"` // active | relocated | orphaned
+	CreatedAt    time.Time `gorm:"index" json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 // BookAnalyticsDaily 按自然日、章节与来源聚合浏览量。只保存聚合桶，不保存 IP、
 // User-Agent 或原始 Referer，兼顾作者分析与读者隐私。
 type BookAnalyticsDaily struct {
@@ -297,6 +317,7 @@ func All(db *gorm.DB) error {
 		&BookTag{},
 		&ReadingProgress{},
 		&ReadChapter{},
+		&ReadingAnnotation{},
 		&BookAnalyticsDaily{},
 		&Plugin{},
 		&UserExportSetting{},
