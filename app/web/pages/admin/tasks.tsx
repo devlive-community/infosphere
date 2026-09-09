@@ -41,7 +41,10 @@ const statusMeta: Record<TaskStatus, { label: string; tone: 'slate' | 'primary' 
   failed: { label: '最终失败', tone: 'rose' },
 }
 
-const typeLabels: Record<string, string> = { 'email.send': '发送邮件' }
+const typeLabels: Record<string, string> = {
+  'email.send': '发送邮件',
+  'content.import.pdf': '解析 PDF 并导入书籍',
+}
 
 export default function AdminTasks() {
   const { user } = useApp()

@@ -115,6 +115,34 @@ func TestQueuePersistsFailureAndAllowsManualRetry(t *testing.T) {
 	}
 }
 
+func TestQueueStoresEncryptedResultForOwner(t *testing.T) {
+	queue, db, _ := testQueue(t)
+	queue.RegisterResult("content.import", func(_ context.Context, raw json.RawMessage) (any, error) {
+		return map[string]any{"book_id": 42, "message": "import completed"}, nil
+	})
+	job, err := queue.EnqueueOwned(context.Background(), 7, "content.import", map[string]string{"path": "private.pdf"}, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ran, runErr := queue.RunOnce(context.Background()); !ran || runErr != nil {
+		t.Fatalf("result job failed: ran=%v err=%v", ran, runErr)
+	}
+	var stored models.BackgroundJob
+	if err := db.First(&stored, job.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.OwnerID != 7 || stored.Result == "" || strings.Contains(stored.Result, "import completed") {
+		t.Fatalf("job result must be encrypted and owned: %+v", stored)
+	}
+	var result map[string]any
+	if err := queue.Result(&stored, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result["book_id"] != float64(42) || result["message"] != "import completed" {
+		t.Fatalf("unexpected decrypted result: %+v", result)
+	}
+}
+
 func TestQueueRecoversStaleRunningJob(t *testing.T) {
 	queue, db, now := testQueue(t)
 	locked := now.Add(-10 * time.Minute)

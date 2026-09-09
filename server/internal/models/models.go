@@ -102,8 +102,10 @@ type PasswordResetToken struct {
 // BackgroundJob 持久化异步任务。Payload 以应用密钥加密保存，不通过 API 返回。
 type BackgroundJob struct {
 	ID          uint       `gorm:"primaryKey" json:"id"`
+	OwnerID     uint       `gorm:"index;not null;default:0" json:"owner_id"`
 	Type        string     `gorm:"size:80;index;not null" json:"type"`
 	Payload     string     `gorm:"type:text;not null" json:"-"`
+	Result      string     `gorm:"type:text" json:"-"`
 	Status      string     `gorm:"size:20;index;not null;default:pending" json:"status"` // pending | running | retrying | succeeded | failed
 	Attempts    int        `gorm:"not null;default:0" json:"attempts"`
 	MaxAttempts int        `gorm:"not null;default:5" json:"max_attempts"`

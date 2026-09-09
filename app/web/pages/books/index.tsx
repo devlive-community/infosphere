@@ -4,6 +4,7 @@ import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
+import { isQueuedTask, waitForTask, type QueuedTask } from '@/lib/background-tasks'
 import { useRequireAuth , useApp} from '@/lib/auth'
 import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
@@ -255,7 +256,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
     setResult(null)
   }
 
-  async function uploadFile(endpoint: string, selectedFile: File): Promise<ImportResult> {
+  async function uploadFile(endpoint: string, selectedFile: File): Promise<ImportResult | QueuedTask<ImportResult>> {
     const form = new FormData()
     form.append('file', selectedFile)
     if (title.trim()) form.append('title', title.trim())
@@ -267,7 +268,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
     })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok || payload.success === false) throw new Error(payload.message || `导入失败 (${response.status})`)
-    return payload.data as ImportResult
+    return payload.data as ImportResult | QueuedTask<ImportResult>
   }
 
   async function submit() {
@@ -282,9 +283,10 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
     setSubmitting(true)
     setError('')
     try {
-      const imported = kind === 'web'
+      const response = kind === 'web'
         ? await api<ImportResult>('/import/web', { method: 'POST', body: { url: url.trim(), title: title.trim(), render_mode: renderMode } })
         : await uploadFile(kind === 'pdf' ? '/import/pdf' : '/import', file as File)
+      const imported = isQueuedTask(response) ? await waitForTask<ImportResult>(response.task.id) : response
       setResult(imported)
       await onImported()
     } catch (e) {
@@ -295,7 +297,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
   }
 
   const loadingLabel = kind === 'pdf'
-    ? '正在解析 PDF 并构建章节…'
+    ? 'PDF 已安全上传，正在后台解析并构建章节…'
     : kind === 'web'
       ? renderMode === 'static' ? '正在抓取并解析网页…' : '正在抓取网页，必要时会启动浏览器渲染…'
       : '正在导入书籍压缩包…'

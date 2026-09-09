@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -56,6 +57,22 @@ func TestAdminBackgroundJobs(t *testing.T) {
 		"username": "alice", "email": "alice@test.local", "password": "secret123",
 	}, "")
 	userToken := registered["data"].(map[string]any)["token"].(string)
+	var alice models.User
+	if err := a.DB.Where("username = ?", "alice").First(&alice).Error; err != nil {
+		t.Fatal(err)
+	}
+	ownedJob, err := a.Jobs.EnqueueOwned(context.Background(), alice.ID, emailSendJobType,
+		emailSendJob{To: "alice@test.local", Subject: "test", HTML: "<p>test</p>"}, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownedPath := "/api/v1/tasks/" + strconv.FormatUint(uint64(ownedJob.ID), 10)
+	if status, _ := request(http.MethodGet, ownedPath, nil, userToken); status != http.StatusOK {
+		t.Fatalf("task owner should read task: %d", status)
+	}
+	if status, _ := request(http.MethodGet, ownedPath, nil, adminToken); status != http.StatusNotFound {
+		t.Fatalf("another user must not read task through owner endpoint: %d", status)
+	}
 
 	if status, _ := request(http.MethodGet, "/api/v1/admin/tasks", nil, ""); status != http.StatusUnauthorized {
 		t.Fatalf("anonymous task list should be 401: %d", status)

@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { API_BASE, getToken } from '@/lib/api'
+import { isQueuedTask, waitForTask, type QueuedTask } from '@/lib/background-tasks'
 import { Button, Card, Select } from '@/components/ui'
 
 type ImportMode = 'append' | 'replace'
@@ -69,7 +70,8 @@ export default function PDFReimportPanel({ bookId, onImported, embedded = false,
       if (!response.ok || payload.success === false) {
         throw new Error(payload.message || `重新导入失败 (${response.status})`)
       }
-      const imported = payload.data as ReimportResult
+      const responseData = payload.data as ReimportResult | QueuedTask<ReimportResult>
+      const imported = isQueuedTask(responseData) ? await waitForTask<ReimportResult>(responseData.task.id) : responseData
       setResult(imported)
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
@@ -136,7 +138,7 @@ export default function PDFReimportPanel({ bookId, onImported, embedded = false,
           </div>
         </div>
       )}
-      {submitting && <p className="mt-4 text-sm text-primary-600" aria-live="polite">正在解析 PDF 并重建 Markdown 章节，请勿关闭页面…</p>}
+      {submitting && <p className="mt-4 text-sm text-primary-600" aria-live="polite">PDF 已上传，正在后台解析并重建 Markdown 章节；离开页面不会中断任务。</p>}
       {error && <div className="mt-4 max-h-28 overflow-y-auto break-words rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600" role="alert">{error}</div>}
       {result && <div className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700" role="status">{result.message}</div>}
     </>

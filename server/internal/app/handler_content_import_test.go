@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/database"
+	"infosphere/server/internal/jobqueue"
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +59,64 @@ func contentImportRouter(app *App, user *models.User) *gin.Engine {
 	router.POST("/books/:id/import/pdf", app.ReimportPDFBook)
 	router.POST("/import/web", app.ImportWebBook)
 	router.POST("/books/:id/documents/import-web", app.ImportWebDocument)
+	router.GET("/tasks/:id", app.GetBackgroundJob)
 	return router
+}
+
+func TestImportPDFBookRunsAsOwnedBackgroundTask(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("INFO_SPHERE_DATA", dataDir)
+	app, owner, db := newContentImportTestApp(t)
+	app.Config = &config.Config{Secret: "pdf-background-task-secret"}
+	if err := app.configureJobQueue(); err != nil {
+		t.Fatal(err)
+	}
+	app.PDFExtractor = func(path string) (pdfExtractResult, error) {
+		if !strings.Contains(filepath.ToSlash(path), "/import-jobs/pdf-") {
+			t.Fatalf("PDF source was not persisted in private import directory: %s", path)
+		}
+		return pdfExtractResult{Markdown: "## 第一章 后台导入\n\n这是后台任务解析得到的 Markdown 正文内容。", Pages: 2}, nil
+	}
+	router := contentImportRouter(app, owner)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, pdfImportRequest(t, http.MethodPost, "/import/pdf", ""))
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("PDF async import should return 202: %d %v", recorder.Code, decodeImportResponse(t, recorder))
+	}
+	payload := decodeImportResponse(t, recorder)
+	jobData := payload["data"].(map[string]any)["task"].(map[string]any)
+	jobID := uint(jobData["id"].(float64))
+	var count int64
+	if err := db.Model(&models.Book{}).Count(&count).Error; err != nil || count != 0 {
+		t.Fatalf("request must return before parsing creates a book: count=%d err=%v", count, err)
+	}
+	if ran, runErr := app.Jobs.RunOnce(context.Background()); !ran || runErr != nil {
+		t.Fatalf("background PDF import failed: ran=%v err=%v", ran, runErr)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/tasks/"+strconv.FormatUint(uint64(jobID), 10), nil)
+	taskResponse := httptest.NewRecorder()
+	router.ServeHTTP(taskResponse, request)
+	if taskResponse.Code != http.StatusOK {
+		t.Fatalf("owner cannot read task result: %d %v", taskResponse.Code, decodeImportResponse(t, taskResponse))
+	}
+	encoded := taskResponse.Body.String()
+	if !strings.Contains(encoded, "修订版") || strings.Contains(encoded, "source_path") || strings.Contains(encoded, "payload") {
+		t.Fatalf("task result or payload exposure is incorrect: %s", encoded)
+	}
+	var job models.BackgroundJob
+	if err := db.First(&job, jobID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if job.OwnerID != owner.ID || job.Status != jobqueue.StatusSucceeded {
+		t.Fatalf("unexpected completed import task: %+v", job)
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "import-jobs")); err != nil {
+		t.Fatalf("import directory missing: %v", err)
+	}
+	entries, err := os.ReadDir(filepath.Join(dataDir, "import-jobs"))
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("successful task must remove source file: entries=%v err=%v", entries, err)
+	}
 }
 
 func pdfImportRequest(t *testing.T, method, target, mode string) *http.Request {

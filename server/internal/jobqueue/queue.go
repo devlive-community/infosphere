@@ -35,16 +35,18 @@ const (
 )
 
 type Handler func(context.Context, json.RawMessage) error
+type ResultHandler func(context.Context, json.RawMessage) (any, error)
 
 // Queue stores encrypted payloads in the application database and executes one
 // claimed task at a time. Conditional status updates make claiming safe when
 // multiple application processes temporarily share the same database.
 type Queue struct {
-	db       *gorm.DB
-	aead     cipher.AEAD
-	handlers map[string]Handler
-	mu       sync.RWMutex
-	now      func() time.Time
+	db             *gorm.DB
+	aead           cipher.AEAD
+	handlers       map[string]Handler
+	resultHandlers map[string]ResultHandler
+	mu             sync.RWMutex
+	now            func() time.Time
 }
 
 func New(db *gorm.DB, secret string) (*Queue, error) {
@@ -63,7 +65,13 @@ func New(db *gorm.DB, secret string) (*Queue, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create job payload AEAD: %w", err)
 	}
-	return &Queue{db: db, aead: aead, handlers: map[string]Handler{}, now: time.Now}, nil
+	return &Queue{db: db, aead: aead, handlers: map[string]Handler{}, resultHandlers: map[string]ResultHandler{}, now: time.Now}, nil
+}
+
+func (q *Queue) RegisterResult(jobType string, handler ResultHandler) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.resultHandlers[jobType] = handler
 }
 
 func (q *Queue) Register(jobType string, handler Handler) {
@@ -73,6 +81,10 @@ func (q *Queue) Register(jobType string, handler Handler) {
 }
 
 func (q *Queue) Enqueue(ctx context.Context, jobType string, payload any, maxAttempts int) (*models.BackgroundJob, error) {
+	return q.EnqueueOwned(ctx, 0, jobType, payload, maxAttempts)
+}
+
+func (q *Queue) EnqueueOwned(ctx context.Context, ownerID uint, jobType string, payload any, maxAttempts int) (*models.BackgroundJob, error) {
 	jobType = strings.TrimSpace(jobType)
 	if jobType == "" {
 		return nil, errors.New("job type is required")
@@ -90,7 +102,7 @@ func (q *Queue) Enqueue(ctx context.Context, jobType string, payload any, maxAtt
 	}
 	now := q.now()
 	job := &models.BackgroundJob{
-		Type: jobType, Payload: sealed, Status: StatusPending,
+		OwnerID: ownerID, Type: jobType, Payload: sealed, Status: StatusPending,
 		MaxAttempts: maxAttempts, AvailableAt: now, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := q.db.WithContext(ctx).Create(job).Error; err != nil {
@@ -133,12 +145,16 @@ func (q *Queue) RunOnce(ctx context.Context) (ran bool, runErr error) {
 
 	q.mu.RLock()
 	handler := q.handlers[candidate.Type]
+	resultHandler := q.resultHandlers[candidate.Type]
 	q.mu.RUnlock()
-	if handler == nil {
+	if handler == nil && resultHandler == nil {
 		return true, q.finishFailure(ctx, &candidate, fmt.Errorf("no handler registered for %s", candidate.Type))
 	}
 	payload, err := q.decrypt(candidate.Type, candidate.Payload)
-	if err == nil {
+	var result any
+	if err == nil && resultHandler != nil {
+		result, err = resultHandler(ctx, payload)
+	} else if err == nil {
 		err = handler(ctx, payload)
 	}
 	if err != nil {
@@ -146,11 +162,33 @@ func (q *Queue) RunOnce(ctx context.Context) (ran bool, runErr error) {
 		return true, err
 	}
 	finished := q.now()
+	sealedResult := ""
+	if result != nil {
+		rawResult, marshalErr := json.Marshal(result)
+		if marshalErr != nil {
+			return true, q.finishFailure(ctx, &candidate, fmt.Errorf("marshal job result: %w", marshalErr))
+		}
+		sealedResult, err = q.encrypt(candidate.Type+".result", rawResult)
+		if err != nil {
+			return true, q.finishFailure(ctx, &candidate, err)
+		}
+	}
 	err = q.db.WithContext(ctx).Model(&models.BackgroundJob{}).Where("id = ?", candidate.ID).Updates(map[string]any{
 		"status": StatusSucceeded, "finished_at": finished, "locked_at": nil,
-		"last_error": "", "updated_at": finished,
+		"last_error": "", "result": sealedResult, "updated_at": finished,
 	}).Error
 	return true, err
+}
+
+func (q *Queue) Result(job *models.BackgroundJob, target any) error {
+	if job == nil || strings.TrimSpace(job.Result) == "" {
+		return errors.New("job result is not available")
+	}
+	raw, err := q.decrypt(job.Type+".result", job.Result)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(raw, target)
 }
 
 func (q *Queue) finishFailure(ctx context.Context, job *models.BackgroundJob, cause error) error {
@@ -211,7 +249,7 @@ func (q *Queue) Retry(ctx context.Context, id uint) (bool, error) {
 		Updates(map[string]any{
 			"status": StatusPending, "attempts": 0, "available_at": now,
 			"started_at": nil, "finished_at": nil, "locked_at": nil,
-			"last_error": "", "updated_at": now,
+			"last_error": "", "result": "", "updated_at": now,
 		})
 	return result.RowsAffected > 0, result.Error
 }

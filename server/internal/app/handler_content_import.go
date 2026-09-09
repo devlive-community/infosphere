@@ -57,6 +57,22 @@ type uploadedPDF struct {
 	Result   pdfExtractResult
 }
 
+type storedPDF struct {
+	Filename string
+	Path     string
+}
+
+type pdfImportResult struct {
+	Book        *models.Book `json:"book,omitempty"`
+	BookID      uint         `json:"book_id"`
+	Mode        string       `json:"mode,omitempty"`
+	ImportedDoc int          `json:"imported_doc"`
+	RemovedDoc  int64        `json:"removed_doc,omitempty"`
+	Pages       int          `json:"pages"`
+	Source      string       `json:"source"`
+	Message     string       `json:"message"`
+}
+
 type webPage struct {
 	HTML     string
 	FinalURL *url.URL
@@ -81,6 +97,24 @@ var pdfChapterHeading = regexp.MustCompile(`(?i)^(?:第[零一二三四五六七
 // ImportPDFBook POST /import/pdf 上传 PDF 并建立草稿书籍。
 func (a *App) ImportPDFBook(c *gin.Context) {
 	u := currentUser(c)
+	if queue := a.jobQueue(); queue != nil {
+		stored, status, err := a.storeUploadedPDF(c)
+		if err != nil {
+			fail(c, status, err.Error())
+			return
+		}
+		job, err := queue.EnqueueOwned(c.Request.Context(), u.ID, pdfImportJobType, pdfImportJob{
+			UserID: u.ID, SourcePath: stored.Path, Filename: stored.Filename,
+			Title: truncateText(strings.TrimSpace(c.PostForm("title")), 255),
+		}, 3)
+		if err != nil {
+			_ = os.Remove(stored.Path)
+			fail(c, http.StatusInternalServerError, "创建 PDF 导入任务失败")
+			return
+		}
+		c.JSON(http.StatusAccepted, gin.H{"success": true, "data": gin.H{"task": publicBackgroundJob(job), "message": "PDF 已上传，正在后台解析并构建书籍"}})
+		return
+	}
 	upload, status, err := a.extractUploadedPDF(c)
 	if err != nil {
 		fail(c, status, err.Error())
@@ -127,20 +161,44 @@ func (a *App) ReimportPDFBook(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "导入方式必须为 append 或 replace")
 		return
 	}
+	if queue := a.jobQueue(); queue != nil {
+		stored, uploadStatus, err := a.storeUploadedPDF(c)
+		if err != nil {
+			fail(c, uploadStatus, err.Error())
+			return
+		}
+		job, err := queue.EnqueueOwned(c.Request.Context(), u.ID, pdfImportJobType, pdfImportJob{
+			UserID: u.ID, BookID: book.ID, Mode: mode, SourcePath: stored.Path, Filename: stored.Filename,
+		}, 3)
+		if err != nil {
+			_ = os.Remove(stored.Path)
+			fail(c, http.StatusInternalServerError, "创建 PDF 重新导入任务失败")
+			return
+		}
+		c.JSON(http.StatusAccepted, gin.H{"success": true, "data": gin.H{"task": publicBackgroundJob(job), "message": "PDF 已上传，正在后台重新解析章节"}})
+		return
+	}
 
 	upload, uploadStatus, err := a.extractUploadedPDF(c)
 	if err != nil {
 		fail(c, uploadStatus, err.Error())
 		return
 	}
-	chapters := splitPDFChapters(upload.Result.Markdown, book.Title)
-	if len(chapters) == 0 || len(chapters) > maxImportedChapters {
-		fail(c, http.StatusUnprocessableEntity, "没有可导入的章节或章节数量过多")
+	result, err := a.applyPDFReimport(book, u, upload, mode)
+	if err != nil {
+		fail(c, http.StatusInternalServerError, "重新导入 PDF 失败: "+err.Error())
 		return
 	}
+	ok(c, result)
+}
 
+func (a *App) applyPDFReimport(book *models.Book, u *models.User, upload uploadedPDF, mode string) (pdfImportResult, error) {
+	chapters := splitPDFChapters(upload.Result.Markdown, book.Title)
+	if len(chapters) == 0 || len(chapters) > maxImportedChapters {
+		return pdfImportResult{}, errors.New("没有可导入的章节或章节数量过多")
+	}
 	removed := int64(0)
-	err = a.DB.Transaction(func(tx *gorm.DB) error {
+	err := a.DB.Transaction(func(tx *gorm.DB) error {
 		startOrder := 0
 		usedSlugs := map[string]bool{}
 		if mode == "replace" {
@@ -190,72 +248,93 @@ func (a *App) ReimportPDFBook(c *gin.Context) {
 		return createImportedChapters(tx, book.ID, book.UserID, u.ID, chapters, startOrder, usedSlugs)
 	})
 	if err != nil {
-		fail(c, http.StatusInternalServerError, "重新导入 PDF 失败: "+err.Error())
-		return
+		return pdfImportResult{}, err
 	}
 
 	message := fmt.Sprintf("已追加 %d 个草稿章节", len(chapters))
 	if mode == "replace" {
 		message = fmt.Sprintf("已覆盖 %d 个旧章节并导入 %d 个草稿章节，书籍已转为私有草稿", removed, len(chapters))
 	}
-	ok(c, gin.H{
-		"book_id": book.ID, "mode": mode, "removed_doc": removed,
-		"imported_doc": len(chapters), "pages": upload.Result.Pages, "message": message,
-	})
+	return pdfImportResult{BookID: book.ID, Mode: mode, RemovedDoc: removed, ImportedDoc: len(chapters), Pages: upload.Result.Pages, Source: "pdf", Message: message}, nil
 }
 
 func (a *App) extractUploadedPDF(c *gin.Context) (uploadedPDF, int, error) {
+	stored, status, err := a.storeUploadedPDF(c)
+	if err != nil {
+		return uploadedPDF{}, status, err
+	}
+	defer os.Remove(stored.Path)
+	result, err := a.extractStoredPDF(stored)
+	if err != nil {
+		return uploadedPDF{}, http.StatusUnprocessableEntity, err
+	}
+	return result, http.StatusOK, nil
+}
+
+func (a *App) storeUploadedPDF(c *gin.Context) (storedPDF, int, error) {
 	header, err := c.FormFile("file")
 	if err != nil {
-		return uploadedPDF{}, http.StatusBadRequest, errors.New("请选择要导入的 PDF 文件")
+		return storedPDF{}, http.StatusBadRequest, errors.New("请选择要导入的 PDF 文件")
 	}
 	if header.Size <= 0 || header.Size > contentImportMaxBytes {
-		return uploadedPDF{}, http.StatusBadRequest, errors.New("PDF 文件必须小于 64MB")
+		return storedPDF{}, http.StatusBadRequest, errors.New("PDF 文件必须小于 64MB")
 	}
 	name := strings.TrimSpace(header.Filename)
 	if ext := strings.ToLower(filepath.Ext(name)); ext != ".pdf" {
-		return uploadedPDF{}, http.StatusBadRequest, errors.New("仅支持 PDF 文件")
+		return storedPDF{}, http.StatusBadRequest, errors.New("仅支持 PDF 文件")
 	}
 
 	source, err := header.Open()
 	if err != nil {
-		return uploadedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
+		return storedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
 	}
 	defer source.Close()
 	magic := make([]byte, 5)
 	if _, err := io.ReadFull(source, magic); err != nil || string(magic) != "%PDF-" {
-		return uploadedPDF{}, http.StatusBadRequest, errors.New("文件内容不是有效的 PDF")
+		return storedPDF{}, http.StatusBadRequest, errors.New("文件内容不是有效的 PDF")
 	}
 	if _, err := source.Seek(0, io.SeekStart); err != nil {
-		return uploadedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
+		return storedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
 	}
 
-	temp, err := os.CreateTemp("", "infosphere-import-*.pdf")
+	dir := filepath.Join(config.DataDir(), "import-jobs")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return storedPDF{}, http.StatusInternalServerError, errors.New("准备 PDF 导入目录失败")
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return storedPDF{}, http.StatusInternalServerError, errors.New("保护 PDF 导入目录失败")
+	}
+	temp, err := os.CreateTemp(dir, "pdf-*.pdf")
 	if err != nil {
-		return uploadedPDF{}, http.StatusInternalServerError, errors.New("准备 PDF 解析失败")
+		return storedPDF{}, http.StatusInternalServerError, errors.New("准备 PDF 解析失败")
 	}
 	tempPath := temp.Name()
-	defer os.Remove(tempPath)
+	_ = temp.Chmod(0o600)
 	if _, err := io.Copy(temp, io.LimitReader(source, contentImportMaxBytes+1)); err != nil {
 		temp.Close()
-		return uploadedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
+		_ = os.Remove(tempPath)
+		return storedPDF{}, http.StatusBadRequest, errors.New("读取 PDF 文件失败")
 	}
 	if err := temp.Close(); err != nil {
-		return uploadedPDF{}, http.StatusInternalServerError, errors.New("准备 PDF 解析失败")
+		_ = os.Remove(tempPath)
+		return storedPDF{}, http.StatusInternalServerError, errors.New("准备 PDF 解析失败")
 	}
+	return storedPDF{Filename: name, Path: tempPath}, http.StatusOK, nil
+}
 
+func (a *App) extractStoredPDF(stored storedPDF) (uploadedPDF, error) {
 	extractor := a.PDFExtractor
 	if extractor == nil {
 		extractor = extractPDFText
 	}
-	extracted, err := extractor(tempPath)
+	extracted, err := extractor(stored.Path)
 	if err != nil {
-		return uploadedPDF{}, http.StatusUnprocessableEntity, errors.New("PDF 解析失败: " + err.Error())
+		return uploadedPDF{}, errors.New("PDF 解析失败: " + err.Error())
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(extracted.Markdown)) < 20 {
-		return uploadedPDF{}, http.StatusUnprocessableEntity, errors.New("PDF 中未识别到可导入文字；扫描版 PDF 需要先完成 OCR")
+		return uploadedPDF{}, errors.New("PDF 中未识别到可导入文字；扫描版 PDF 需要先完成 OCR")
 	}
-	return uploadedPDF{Filename: name, Result: extracted}, http.StatusOK, nil
+	return uploadedPDF{Filename: stored.Filename, Result: extracted}, nil
 }
 
 // ImportWebBook POST /import/web 抓取静态或 JavaScript 渲染后的网页并建立草稿书籍。

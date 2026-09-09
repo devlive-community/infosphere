@@ -1,15 +1,68 @@
 package app
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"infosphere/server/internal/jobqueue"
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
+
+type publicJob struct {
+	ID          uint       `json:"id"`
+	Type        string     `json:"type"`
+	Status      string     `json:"status"`
+	Attempts    int        `json:"attempts"`
+	MaxAttempts int        `json:"max_attempts"`
+	AvailableAt time.Time  `json:"available_at"`
+	StartedAt   *time.Time `json:"started_at"`
+	FinishedAt  *time.Time `json:"finished_at"`
+	LastError   string     `json:"last_error"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	Result      any        `json:"result,omitempty"`
+}
+
+func publicBackgroundJob(job *models.BackgroundJob) publicJob {
+	return publicJob{ID: job.ID, Type: job.Type, Status: job.Status, Attempts: job.Attempts, MaxAttempts: job.MaxAttempts,
+		AvailableAt: job.AvailableAt, StartedAt: job.StartedAt, FinishedAt: job.FinishedAt, LastError: job.LastError,
+		CreatedAt: job.CreatedAt, UpdatedAt: job.UpdatedAt}
+}
+
+// GetBackgroundJob GET /tasks/:id 仅返回当前用户自己的任务；payload 永不返回。
+func (a *App) GetBackgroundJob(c *gin.Context) {
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id64 == 0 {
+		fail(c, http.StatusBadRequest, "任务 ID 无效")
+		return
+	}
+	u := currentUser(c)
+	var job models.BackgroundJob
+	if err := a.DB.Where("id = ? AND owner_id = ?", uint(id64), u.ID).First(&job).Error; err != nil {
+		fail(c, http.StatusNotFound, "任务不存在")
+		return
+	}
+	response := publicBackgroundJob(&job)
+	if job.Status == jobqueue.StatusSucceeded && job.Result != "" {
+		queue := a.jobQueue()
+		if queue == nil {
+			fail(c, http.StatusServiceUnavailable, "异步任务服务尚未就绪")
+			return
+		}
+		var result json.RawMessage
+		if err := queue.Result(&job, &result); err != nil {
+			fail(c, http.StatusInternalServerError, "读取任务结果失败")
+			return
+		}
+		response.Result = result
+	}
+	ok(c, response)
+}
 
 var backgroundJobStatuses = map[string]bool{
 	jobqueue.StatusPending: true, jobqueue.StatusRunning: true, jobqueue.StatusRetrying: true,
