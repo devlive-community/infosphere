@@ -42,7 +42,10 @@ func TestPluginUninstallGuardsAgainstStaleInstall(t *testing.T) {
 	uninstall := func() int {
 		ur, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/admin/plugins/"+pluginPDFExport+"/uninstall", nil)
 		ur.Header.Set("Authorization", "Bearer "+token)
-		ur2, _ := http.DefaultClient.Do(ur)
+		ur2, err := http.DefaultClient.Do(ur)
+		if err != nil {
+			t.Fatalf("卸载请求失败: %v", err)
+		}
 		defer ur2.Body.Close()
 		return ur2.StatusCode
 	}
@@ -78,7 +81,10 @@ func TestPluginUninstallGuardsAgainstStaleInstall(t *testing.T) {
 	// 权限：普通用户与匿名不可卸载
 	if st := func() int {
 		ur, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/admin/plugins/"+pluginPDFExport+"/uninstall", nil)
-		ur2, _ := http.DefaultClient.Do(ur)
+		ur2, err := http.DefaultClient.Do(ur)
+		if err != nil {
+			t.Fatalf("匿名卸载请求失败: %v", err)
+		}
 		defer ur2.Body.Close()
 		return ur2.StatusCode
 	}(); st != http.StatusUnauthorized {
