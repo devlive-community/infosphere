@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { InferGetServerSidePropsType } from 'next'
 import { api } from '@/lib/api'
-import { Button, Switch, Field, Select, Loading, useFeedback } from '@/components/ui'
+import { Button, Switch, Checkbox, Field, Select, Loading, useFeedback } from '@/components/ui'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { getBookSettingsProps } from '@/lib/book-settings'
 
@@ -103,8 +103,7 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
                 const disabled = f.key === 'pdf' && !pdfAvailable
                 return (
                   <label key={f.key} className={`flex items-start gap-3 rounded-lg border border-slate-200 p-3 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-primary-300'}`}>
-                    <input type="checkbox" checked={formats.includes(f.key) && !disabled} disabled={disabled} onChange={() => toggleFormat(f.key)}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                    <Checkbox checked={formats.includes(f.key) && !disabled} disabled={disabled} onChange={() => toggleFormat(f.key)} ariaLabel={f.label} />
                     <span>
                       <span className="text-sm font-medium text-slate-800">{f.label}</span>
                       <span className="mt-0.5 block text-xs text-slate-500">{disabled ? '需管理员先在后台「插件」中安装 PDF 导出插件' : f.hint}</span>
@@ -142,12 +141,10 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
                 </div>
                 <div className="flex flex-wrap gap-6">
                   <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="checkbox" checked={style.include_cover} onChange={(e) => setStyle({ ...style, include_cover: e.target.checked })}
-                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /> 包含封面页
+                    <Checkbox checked={style.include_cover} onChange={(v) => setStyle({ ...style, include_cover: v })} ariaLabel="包含封面页" /> 包含封面页
                   </label>
                   <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="checkbox" checked={style.include_toc} onChange={(e) => setStyle({ ...style, include_toc: e.target.checked })}
-                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /> 包含目录
+                    <Checkbox checked={style.include_toc} onChange={(v) => setStyle({ ...style, include_toc: v })} ariaLabel="包含目录" /> 包含目录
                   </label>
                 </div>
               </div>
