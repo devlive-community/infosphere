@@ -409,7 +409,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                     <ShareIcon className="h-4 w-4" />
                   </Button></Tooltip>
                 <BookExportButton book={book} className="w-full sm:w-auto" />
-                <ReportButton targetType="book" targetId={book.id} size="md" className="w-full px-2" />
+                <ReportButton targetType="book" targetId={book.id} size="md" className="w-full px-2 sm:w-auto sm:px-4" />
               </div>
               {(canManage || canEdit) && (
                 <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
