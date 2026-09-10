@@ -71,7 +71,14 @@ func (a *App) canExportBook(u *models.User, book *models.Book) bool {
 	if a.canEditBookContent(u, book) {
 		return true
 	}
-	return book.IsPublic && isPubliclyReadableBookStatus(book.Status) && book.ExportEnabled
+	if !(book.IsPublic && isPubliclyReadableBookStatus(book.Status) && book.ExportEnabled) {
+		return false
+	}
+	// 未登录游客还需作者额外开启游客导出
+	if u == nil {
+		return book.GuestExportEnabled
+	}
+	return true
 }
 
 // PDFExportAvailable GET /export/pdf-available 是否已安装 PDF 导出插件（供前端联动禁用相关设置）

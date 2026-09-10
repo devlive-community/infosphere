@@ -26,6 +26,7 @@ const ALL_FORMATS: { key: string; label: string; hint: string }[] = [
 export default function BookSettingsExport({ book }: InferGetServerSidePropsType<typeof getBookSettingsProps>) {
   const { showToast } = useFeedback()
   const [exportEnabled, setExportEnabled] = useState(book.export_enabled ?? true)
+  const [guestExportEnabled, setGuestExportEnabled] = useState(book.guest_export_enabled ?? true)
   const [styleShared, setStyleShared] = useState(book.export_style_shared ?? false)
   // 空字符串表示“全部格式可用”；否则为逗号分隔的允许格式
   const initialFormats = (book.export_formats || '').split(',').map((s) => s.trim()).filter(Boolean)
@@ -52,7 +53,7 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
     try {
       // 全选归一化为空串（表示全部），由后端统一处理
       const export_formats = effective.length === ALL_FORMATS.length ? '' : effective.join(',')
-      await api(`/books/${book.id}`, { method: 'PUT', body: { export_enabled: exportEnabled, export_style_shared: styleShared, export_formats } })
+      await api(`/books/${book.id}`, { method: 'PUT', body: { export_enabled: exportEnabled, guest_export_enabled: guestExportEnabled, export_style_shared: styleShared, export_formats } })
       await api(`/books/${book.id}/export-style`, { method: 'PUT', body: style })
       showToast({ title: '已保存', message: '导出设置已更新', tone: 'success' })
     } catch (e) {
@@ -70,12 +71,21 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
           <p className="mt-1 text-sm text-slate-500">控制读者能否导出本书，以及是否向他们共享你的导出样式。水印始终按书籍设置生效。</p>
         </div>
         <div className="space-y-4 p-6">
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
-            <div>
-              <div className="text-sm font-medium text-slate-900">允许他人导出本书</div>
-              <p className="mt-1 text-xs leading-5 text-slate-500">公开书籍开启后，读者可导出为 PDF（需管理员已安装 PDF 导出插件）；关闭仅作者/协作者可导出。</p>
+          <div className="rounded-xl border border-slate-200 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm font-medium text-slate-900">允许他人导出本书</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">公开书籍开启后，读者可导出为 PDF（需管理员已安装 PDF 导出插件）；关闭仅作者/协作者可导出。</p>
+              </div>
+              <Switch checked={exportEnabled} onChange={setExportEnabled} ariaLabel="允许他人导出本书" />
             </div>
-            <Switch checked={exportEnabled} onChange={setExportEnabled} ariaLabel="允许他人导出本书" />
+            <div className={`mt-4 flex items-center justify-between gap-4 border-t border-slate-100 pt-4 ${exportEnabled ? '' : 'opacity-50'}`}>
+              <div>
+                <div className="text-sm font-medium text-slate-900">允许游客（未登录）导出</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">关闭后仅登录用户可导出本书；游客需登录后才能导出。需先开启上方「允许他人导出」。</p>
+              </div>
+              <Switch checked={exportEnabled && guestExportEnabled} disabled={!exportEnabled} onChange={setGuestExportEnabled} ariaLabel="允许游客导出" />
+            </div>
           </div>
           <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
             <div>

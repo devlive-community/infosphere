@@ -42,6 +42,7 @@ export interface Book {
   watermark_enabled: boolean
   watermark_text: string
   export_enabled?: boolean
+  guest_export_enabled?: boolean
   export_style_shared?: boolean
   export_formats?: string
   user?: Pick<User, 'id' | 'username' | 'avatar' | 'email' | 'bio' | 'github_url' | 'role'>

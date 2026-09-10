@@ -209,21 +209,22 @@ func (a *App) ListBooks(c *gin.Context) {
 }
 
 type bookPayload struct {
-	Title             *string  `json:"title"`
-	Description       *string  `json:"description"`
-	CoverImage        *string  `json:"cover_image"`
-	Slug              *string  `json:"slug"`
-	Status            *string  `json:"status"`
-	IsPublic          *bool    `json:"is_public"`
-	OrderCol          *string  `json:"order_col"`
-	OrderDir          *string  `json:"order_dir"`
-	ChapterPrefix     *string  `json:"chapter_prefix"`
-	WatermarkEnabled  *bool    `json:"watermark_enabled"`
-	WatermarkText     *string  `json:"watermark_text"`
-	ExportEnabled     *bool    `json:"export_enabled"`
-	ExportStyleShared *bool    `json:"export_style_shared"`
-	ExportFormats     *string  `json:"export_formats"`
-	Tags              []string `json:"tags"`
+	Title              *string  `json:"title"`
+	Description        *string  `json:"description"`
+	CoverImage         *string  `json:"cover_image"`
+	Slug               *string  `json:"slug"`
+	Status             *string  `json:"status"`
+	IsPublic           *bool    `json:"is_public"`
+	OrderCol           *string  `json:"order_col"`
+	OrderDir           *string  `json:"order_dir"`
+	ChapterPrefix      *string  `json:"chapter_prefix"`
+	WatermarkEnabled   *bool    `json:"watermark_enabled"`
+	WatermarkText      *string  `json:"watermark_text"`
+	ExportEnabled      *bool    `json:"export_enabled"`
+	GuestExportEnabled *bool    `json:"guest_export_enabled"`
+	ExportStyleShared  *bool    `json:"export_style_shared"`
+	ExportFormats      *string  `json:"export_formats"`
+	Tags               []string `json:"tags"`
 }
 
 const maxWatermarkLength = 80
@@ -331,6 +332,9 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 	if req.ExportEnabled != nil {
 		book.ExportEnabled = *req.ExportEnabled
+	}
+	if req.GuestExportEnabled != nil {
+		book.GuestExportEnabled = *req.GuestExportEnabled
 	}
 	if req.ExportStyleShared != nil {
 		book.ExportStyleShared = *req.ExportStyleShared
@@ -466,6 +470,9 @@ func (a *App) UpdateBook(c *gin.Context) {
 	}
 	if req.ExportEnabled != nil {
 		book.ExportEnabled = *req.ExportEnabled
+	}
+	if req.GuestExportEnabled != nil {
+		book.GuestExportEnabled = *req.GuestExportEnabled
 	}
 	if req.ExportStyleShared != nil {
 		book.ExportStyleShared = *req.ExportStyleShared

@@ -136,6 +136,8 @@ type Book struct {
 	WatermarkText    string `gorm:"size:255;default:''" json:"watermark_text"`
 	// ExportEnabled 作者是否允许他人导出本书（公开书籍生效；作者/协作者不受限）
 	ExportEnabled bool `gorm:"default:true" json:"export_enabled"`
+	// GuestExportEnabled 作者是否允许未登录游客导出本书（需先开启 ExportEnabled；关闭后仅登录读者可导出）
+	GuestExportEnabled bool `gorm:"default:true" json:"guest_export_enabled"`
 	// ExportStyleShared 作者是否共享自己的导出样式：开启后他人导出本书可选用作者样式，否则只能用自己的
 	ExportStyleShared bool `gorm:"default:false" json:"export_style_shared"`
 	// ExportFormats 逗号分隔的允许导出格式（pdf,markdown）；空表示全部格式可用
