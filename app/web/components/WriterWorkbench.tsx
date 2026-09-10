@@ -5,7 +5,7 @@ import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown, bindMarkdownInteractivity } from '@/lib/markdown'
 import Seo from '@/components/Seo'
-import { Button, Input, Textarea, Select, Field, Badge, EmptyState, Loading, SegmentedTabs, Tooltip, useFeedback } from '@/components/ui'
+import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Tooltip, useFeedback } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
@@ -15,6 +15,7 @@ import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookSta
 
 type SaveState = 'saved' | 'dirty' | 'saving'
 type TabKey = 'toc' | 'settings'
+type ChapterMenuState = { doc: Document; x: number; y: number; align: 'start' | 'end'; flipY?: number }
 
 interface BookFormState {
   title: string
@@ -57,7 +58,7 @@ export default function Writer({ user }: WriterProps) {
   const [tab, setTab] = useState<TabKey>('toc')
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [menuFor, setMenuFor] = useState<number | null>(null)
+  const [chapterMenu, setChapterMenu] = useState<ChapterMenuState | null>(null)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'inside' | 'after' } | null>(null)
@@ -67,6 +68,11 @@ export default function Writer({ user }: WriterProps) {
   const [message, setMessage] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [webImportOpen, setWebImportOpen] = useState(false)
+
+  const closeChapterMenu = useCallback(() => setChapterMenu(null), [])
+  const openChapterMenu = useCallback((doc: Document, x: number, y: number, align: 'start' | 'end' = 'start', flipY?: number) => {
+    setChapterMenu({ doc, x, y, align, flipY })
+  }, [])
 
   // 章节表单
   const [title, setTitle] = useState('')
@@ -501,8 +507,8 @@ export default function Writer({ user }: WriterProps) {
       </header>
 
       {/* 透明遮罩：任一浮层菜单打开时点击外部即关闭（菜单层级更高，不受影响） */}
-      {(newMenuOpen || menuFor !== null) && (
-        <div className="fixed inset-0 z-10" onClick={() => { setNewMenuOpen(false); setMenuFor(null) }} />
+      {newMenuOpen && (
+        <div className="fixed inset-0 z-10" onClick={() => setNewMenuOpen(false)} />
       )}
 
       <div className="flex min-h-0 flex-1">
@@ -561,7 +567,7 @@ export default function Writer({ user }: WriterProps) {
                   <TreeItems items={filteredTree} search={search.trim()} expanded={expanded} setExpanded={setExpanded}
                     currentId={current?.id ?? creatingUnder ?? undefined} chapterPrefix={chapterPrefix}
                     onSelect={selectDoc} onMove={move} onDelete={removeDoc}
-                    menuFor={menuFor} setMenuFor={setMenuFor}
+                    menuFor={chapterMenu?.doc.id ?? null} onOpenMenu={openChapterMenu} onCloseMenu={closeChapterMenu}
                     dragEnabled={!search.trim()} dragId={dragId} dragBlocked={dragBlocked} dropTarget={dropTarget}
                     onDragStartItem={(d) => setDragId(d.id)}
                     onDragOverItem={(d, pos) => setDropTarget({ id: d.id, pos })}
@@ -720,6 +726,19 @@ export default function Writer({ user }: WriterProps) {
           </div>
         </aside>
       </div>
+      <ContextMenu open={chapterMenu !== null} x={chapterMenu?.x ?? 0} y={chapterMenu?.y ?? 0}
+        align={chapterMenu?.align} flipY={chapterMenu?.flipY} onClose={closeChapterMenu} label="章节操作">
+        <ContextMenuItem onClick={() => { if (chapterMenu) move(chapterMenu.doc, -1); closeChapterMenu() }}>
+          <i className="fa-solid fa-arrow-up" aria-hidden="true" /> 上移
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => { if (chapterMenu) move(chapterMenu.doc, 1); closeChapterMenu() }}>
+          <i className="fa-solid fa-arrow-down" aria-hidden="true" /> 下移
+        </ContextMenuItem>
+        <div role="separator" className="my-1 border-t border-slate-100" />
+        <ContextMenuItem danger onClick={() => { if (chapterMenu) removeDoc(chapterMenu.doc); closeChapterMenu() }}>
+          <TrashIcon className="h-4 w-4" /> 删除
+        </ContextMenuItem>
+      </ContextMenu>
       <RevisionDrawer
         open={historyOpen}
         document={current}
@@ -1126,7 +1145,8 @@ interface TreeProps {
   onMove: (doc: Document, delta: -1 | 1) => void
   onDelete: (doc: Document) => void
   menuFor: number | null
-  setMenuFor: (id: number | null) => void
+  onOpenMenu: (doc: Document, x: number, y: number, align?: 'start' | 'end', flipY?: number) => void
+  onCloseMenu: () => void
   dragEnabled: boolean
   dragId: number | null
   dragBlocked: Set<number> | null
@@ -1148,7 +1168,7 @@ function TreeItems(props: TreeProps) {
 
 function TreeItem(props: TreeProps & { item: Document; depth: number }) {
   const {
-    item, depth, search, expanded, setExpanded, currentId, chapterPrefix, onSelect, onMove, onDelete, menuFor, setMenuFor,
+    item, depth, search, expanded, setExpanded, currentId, chapterPrefix, onSelect, menuFor, onOpenMenu, onCloseMenu,
     dragEnabled, dragId, dragBlocked, dropTarget, onDragStartItem, onDragOverItem, onDropItem, onDragEndItem,
   } = props
   function toggleExpand() {
@@ -1166,6 +1186,11 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
     <li>
       <div
         draggable={dragEnabled}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          onOpenMenu(item, event.clientX, event.clientY)
+        }}
         onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStartItem(item) }}
         onDragEnd={onDragEndItem}
         onDragOver={(e) => {
@@ -1204,18 +1229,20 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
               <span className="flex h-6 w-6 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700"><GripIcon className="h-4 w-4" /></span>
             </Tooltip>
           ) : <span className="flex h-6 w-6 cursor-default items-center justify-center rounded text-slate-400"><GripIcon className="h-4 w-4" /></span>}
-          <button aria-label="章节操作" onClick={() => setMenuFor(menuFor === item.id ? null : item.id)}
+          <button type="button" aria-label="章节操作" aria-haspopup="menu" aria-expanded={menuFor === item.id}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (menuFor === item.id) {
+                onCloseMenu()
+                return
+              }
+              const rect = event.currentTarget.getBoundingClientRect()
+              onOpenMenu(item, rect.right, rect.bottom + 4, 'end', rect.top - 4)
+            }}
             className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700">
             <MoreIcon className="h-4 w-4" />
           </button>
         </span>
-        {menuFor === item.id && (
-          <div className="absolute right-1 top-9 z-20 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-            <button onClick={() => { onMove(item, -1); setMenuFor(null) }} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">上移</button>
-            <button onClick={() => { onMove(item, 1); setMenuFor(null) }} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">下移</button>
-            <button onClick={() => { onDelete(item); setMenuFor(null) }} className="block w-full px-3 py-1.5 text-left text-sm text-rose-600 hover:bg-rose-50">删除</button>
-          </div>
-        )}
       </div>
       {hasChildren && isExpanded && (
         <ul className="ml-4 border-l border-slate-200 pl-1">
