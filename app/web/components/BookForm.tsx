@@ -52,6 +52,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [slug, setSlug] = useState(initial?.slug || '')
   const [status, setStatus] = useState<BookStatus>(initial?.status || 'draft')
   const [isPublic, setIsPublic] = useState(initial?.is_public || false)
+  const [loginRequired, setLoginRequired] = useState(initial?.login_required || false)
   const [chapterPrefix, setChapterPrefix] = useState(initial?.chapter_prefix || '')
   const [watermarkEnabled, setWatermarkEnabled] = useState(initial?.watermark_enabled || false)
   const [watermarkText, setWatermarkText] = useState(initial?.watermark_text || '')
@@ -115,6 +116,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
         slug: slug || undefined,
         status: overrideStatus ?? status,
         is_public: isPublic,
+        login_required: isPublic && loginRequired,
         chapter_prefix: chapterPrefix,
         watermark_enabled: watermarkEnabled,
         watermark_text: watermarkText.trim(),
@@ -260,10 +262,12 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
 
           {/* 发布设置 */}
           <Section icon={<SlidersIcon className="h-4 w-4" />} title="发布设置">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <VisibilityCard active={!isPublic} onClick={() => setIsPublic(false)}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <VisibilityCard active={!isPublic} onClick={() => { setIsPublic(false); setLoginRequired(false) }}
                 icon={<LockIcon className="h-5 w-5" />} title="仅自己可见" desc="适合尚未完成的内容" />
-              <VisibilityCard active={isPublic} onClick={() => setIsPublic(true)}
+              <VisibilityCard active={isPublic && loginRequired} onClick={() => { setIsPublic(true); setLoginRequired(true) }}
+                icon={<i className="fa-solid fa-user-lock text-[1.1rem]" aria-hidden="true" />} title="仅登录用户" desc="仅登录用户可发现和阅读" />
+              <VisibilityCard active={isPublic && !loginRequired} onClick={() => { setIsPublic(true); setLoginRequired(false) }}
                 icon={<GlobeIcon className="h-5 w-5" />} title="公开访问" desc="所有访客都可以阅读" />
             </div>
             <div className="mt-4 max-w-xs">
@@ -312,7 +316,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
               </div>
               <div className="flex items-center gap-1.5 pt-1 text-xs text-slate-400">
                 <LockIcon className="h-3.5 w-3.5" />
-                {isPublic ? '公开访问' : '仅自己可见'} · {statusNames[status]}
+                {isPublic ? (loginRequired ? '仅登录用户' : '公开访问') : '仅自己可见'} · {statusNames[status]}
               </div>
             </div>
           </div>

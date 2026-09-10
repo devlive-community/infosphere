@@ -120,14 +120,16 @@ type BackgroundJob struct {
 
 // Book 书籍
 type Book struct {
-	ID               uint   `gorm:"primaryKey" json:"id"`
-	Title            string `gorm:"size:255;not null" json:"title"`
-	Description      string `gorm:"type:text" json:"description"`
-	CoverImage       string `gorm:"size:500" json:"cover_image"`
-	Slug             string `gorm:"size:255;uniqueIndex;not null" json:"slug"`
-	UserID           uint   `gorm:"index;not null" json:"user_id"`
-	Status           string `gorm:"size:20;default:draft;index" json:"status"` // draft | in_progress | published | completed | archived
-	IsPublic         bool   `gorm:"default:false;index" json:"is_public"`
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	Title       string `gorm:"size:255;not null" json:"title"`
+	Description string `gorm:"type:text" json:"description"`
+	CoverImage  string `gorm:"size:500" json:"cover_image"`
+	Slug        string `gorm:"size:255;uniqueIndex;not null" json:"slug"`
+	UserID      uint   `gorm:"index;not null" json:"user_id"`
+	Status      string `gorm:"size:20;default:draft;index" json:"status"` // draft | in_progress | published | completed | archived
+	IsPublic    bool   `gorm:"default:false;index" json:"is_public"`
+	// LoginRequired 公开书籍是否仅限登录用户阅读/发现：开启后未登录游客既看不到也读不到，登录用户不受限
+	LoginRequired    bool   `gorm:"default:false;index" json:"login_required"`
 	ViewCount        int    `gorm:"default:0" json:"view_count"`
 	OrderCol         string `gorm:"size:50;default:created_at" json:"order_col"`
 	OrderDir         string `gorm:"size:10;default:desc" json:"order_dir"`

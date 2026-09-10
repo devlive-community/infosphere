@@ -98,7 +98,8 @@ func (a *App) canEditBookContent(u *models.User, b *models.Book) bool {
 
 // canReadBook 判断书籍是否对当前用户可见
 func (a *App) canReadBook(u *models.User, b *models.Book) bool {
-	if b.IsPublic && isPubliclyReadableBookStatus(b.Status) {
+	// 公开且可读：默认所有人可读；开启「仅登录可读」时未登录游客不可读
+	if b.IsPublic && isPubliclyReadableBookStatus(b.Status) && (!b.LoginRequired || u != nil) {
 		return true
 	}
 	if a.canManageBook(u, b) {
@@ -174,6 +175,10 @@ func (a *App) ListBooks(c *gin.Context) {
 		}
 	} else {
 		query = query.Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
+		// 未登录游客看不到「仅登录可读」书籍
+		if u == nil {
+			query = query.Where("books.login_required = ?", false)
+		}
 	}
 	if title := c.Query("title"); title != "" {
 		query = query.Where("title LIKE ?", "%"+title+"%")
@@ -215,6 +220,7 @@ type bookPayload struct {
 	Slug               *string  `json:"slug"`
 	Status             *string  `json:"status"`
 	IsPublic           *bool    `json:"is_public"`
+	LoginRequired      *bool    `json:"login_required"`
 	OrderCol           *string  `json:"order_col"`
 	OrderDir           *string  `json:"order_dir"`
 	ChapterPrefix      *string  `json:"chapter_prefix"`
@@ -290,12 +296,13 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 
 	book := models.Book{
-		Title:    *req.Title,
-		UserID:   u.ID,
-		Status:   "draft",
-		OrderCol: "created_at",
-		OrderDir: "desc",
-		IsPublic: req.IsPublic != nil && *req.IsPublic,
+		Title:         *req.Title,
+		UserID:        u.ID,
+		Status:        "draft",
+		OrderCol:      "created_at",
+		OrderDir:      "desc",
+		IsPublic:      req.IsPublic != nil && *req.IsPublic,
+		LoginRequired: req.LoginRequired != nil && *req.LoginRequired,
 	}
 	if req.Description != nil {
 		book.Description = *req.Description
@@ -443,6 +450,9 @@ func (a *App) UpdateBook(c *gin.Context) {
 	}
 	if req.IsPublic != nil {
 		book.IsPublic = *req.IsPublic
+	}
+	if req.LoginRequired != nil {
+		book.LoginRequired = *req.LoginRequired
 	}
 	if req.OrderCol != nil && allowedOrderCols[*req.OrderCol] {
 		book.OrderCol = *req.OrderCol

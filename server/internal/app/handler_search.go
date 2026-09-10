@@ -158,7 +158,8 @@ func (a *App) bookSearchQuery(c *gin.Context, options searchOptions) *gorm.DB {
 			)
 		}
 	} else {
-		query = query.Where("books.is_public = ? AND books.status IN ?", true, publiclyReadableBookStatuses)
+		// 未登录游客看不到「仅登录可读」书籍
+		query = query.Where("books.is_public = ? AND books.status IN ? AND books.login_required = ?", true, publiclyReadableBookStatuses, false)
 	}
 	if options.Author != "" {
 		query = query.Where("EXISTS (SELECT 1 FROM users su WHERE su.id = books.user_id AND su.username = ?)", options.Author)
@@ -241,7 +242,8 @@ func (a *App) documentSearchQuery(c *gin.Context, options searchOptions) *gorm.D
 			)
 		}
 	} else {
-		query = query.Where("b.is_public = ? AND b.status IN ? AND documents.status = ?", true, publiclyReadableBookStatuses, "published")
+		// 未登录游客看不到「仅登录可读」书籍
+		query = query.Where("b.is_public = ? AND b.status IN ? AND documents.status = ? AND b.login_required = ?", true, publiclyReadableBookStatuses, "published", false)
 	}
 	if options.Author != "" {
 		query = query.Where("EXISTS (SELECT 1 FROM users su WHERE su.id = b.user_id AND su.username = ?)", options.Author)

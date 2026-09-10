@@ -13,10 +13,19 @@ func (a *App) publicReadableBooks() *gorm.DB {
 	return a.DB.Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
 }
 
+// publicDiscoverableBooks 在公开可读基础上，对未登录游客隐藏「仅登录可读」书籍
+func (a *App) publicDiscoverableBooks(u *models.User) *gorm.DB {
+	q := a.publicReadableBooks()
+	if u == nil {
+		q = q.Where("login_required = ?", false)
+	}
+	return q
+}
+
 // ExploreHot GET /explore/hot 浏览量最高的 6 本公开书籍
 func (a *App) ExploreHot(c *gin.Context) {
 	books := []models.Book{}
-	if err := preloadBookUser(a.publicReadableBooks()).
+	if err := preloadBookUser(a.publicDiscoverableBooks(currentUser(c))).
 		Order("view_count DESC").Limit(6).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
@@ -28,7 +37,7 @@ func (a *App) ExploreHot(c *gin.Context) {
 // ExploreLatest GET /explore/latest 最新发布的 6 本公开书籍
 func (a *App) ExploreLatest(c *gin.Context) {
 	books := []models.Book{}
-	if err := preloadBookUser(a.publicReadableBooks()).
+	if err := preloadBookUser(a.publicDiscoverableBooks(currentUser(c))).
 		Order("created_at DESC").Limit(6).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return

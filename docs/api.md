@@ -222,9 +222,11 @@ Authorization: Bearer <token>
 | POST | `/books/:id/view` | 可见书籍浏览计数 +1，并写入按日、来源聚合桶；可选 JSON `{referrer}`，只保存来源类别，不保存原始网址；不可见资源统一返回 404 | `book:read` |
 | GET | `/books/:id/analytics?days=7\|30\|90\|180` | 书籍聚合分析：累计/周期浏览、上一周期增长、每日趋势、热门章节、来源类别、登录读者完成率；仅 owner/admin，日聚合最多保留 180 天 | `book-analytics:read` |
 
-书籍字段：`id, title, description, cover_image, slug, status(draft|in_progress|published|completed|archived), is_public, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, watermark_enabled, watermark_text, user, tags, created_at, updated_at`
+书籍字段：`id, title, description, cover_image, slug, status(draft|in_progress|published|completed|archived), is_public, login_required, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, watermark_enabled, watermark_text, user, tags, created_at, updated_at`
 
 > **书籍状态语义**：`draft` 草稿（不对外阅读）、`in_progress` 进行中、`published` 已发布（兼容既有数据）、`completed` 已完成、`archived` 已归档（从公开区域下线）。当 `is_public=true` 时，`in_progress / published / completed` 均属于可公开阅读状态；章节仍只使用 `draft / published / archived`。
+>
+> **可见性**：`is_public=false` 仅作者/协作者可见；`is_public=true` 且 `login_required=false` 所有访客可发现并阅读；`is_public=true` 且 `login_required=true` 仅登录用户可发现并阅读（未登录游客在列表、探索、搜索、标签中均看不到，直接访问也被拒绝）。作者/协作者/管理员不受 `login_required` 限制。
 
 - 阅读水印默认关闭。创建或更新书籍时传 `watermark_enabled: true` 与自定义 `watermark_text`（去除首尾空白后最多 80 个字符）；开启时水印内容不能为空。关闭水印不会清除已经保存的自定义内容。
 

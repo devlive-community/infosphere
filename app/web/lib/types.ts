@@ -33,6 +33,7 @@ export interface Book {
   user_id: number
   status: BookStatus
   is_public: boolean
+  login_required?: boolean
   view_count: number
   order_col: string
   order_dir: 'asc' | 'desc'

@@ -220,7 +220,8 @@ func (a *App) canReadDocument(u *models.User, doc *models.Document, book *models
 	if role, ok := a.collaboratorRole(u, book.ID); ok && role == "viewer" {
 		return doc.Status == "published"
 	}
-	return book.IsPublic && isPubliclyReadableBookStatus(book.Status) && doc.Status == "published"
+	// 公开已发布章节：默认所有人可读；书籍开启「仅登录可读」时未登录游客不可读
+	return book.IsPublic && isPubliclyReadableBookStatus(book.Status) && doc.Status == "published" && (!book.LoginRequired || u != nil)
 }
 
 // GetDocument GET /documents/:id

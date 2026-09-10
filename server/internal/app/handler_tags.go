@@ -24,6 +24,9 @@ func (a *App) ListTags(c *gin.Context) {
 		Joins("JOIN books ON books.id = book_tags.book_id").
 		Where("books.is_public = ? AND books.status IN ?", true, publiclyReadableBookStatuses).
 		Group("tags.id")
+	if currentUser(c) == nil {
+		query = query.Where("books.login_required = ?", false)
+	}
 	if q != "" {
 		query = query.Where("tags.name LIKE ?", "%"+q+"%")
 	}
@@ -96,6 +99,9 @@ func (a *App) BooksByTag(c *gin.Context) {
 		Joins("JOIN book_tags ON book_tags.book_id = books.id").
 		Joins("JOIN tags ON tags.id = book_tags.tag_id AND tags.slug = ?", slug).
 		Where("books.is_public = ? AND books.status IN ?", true, publiclyReadableBookStatuses)
+	if currentUser(c) == nil {
+		base = base.Where("books.login_required = ?", false)
+	}
 
 	var total int64
 	if err := base.Count(&total).Error; err != nil {
