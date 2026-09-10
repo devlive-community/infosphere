@@ -137,7 +137,7 @@ func chromeBinaryName() string {
 // installedChromePath 返回已安装插件记录的 chrome 可执行路径（未安装返回空）
 func (a *App) installedChromePath() string {
 	var p models.Plugin
-	if err := a.DB.Where("key = ? AND installed = ?", pluginPDFExport, true).First(&p).Error; err != nil {
+	if err := a.DB.Where("`key` = ? AND installed = ?", pluginPDFExport, true).First(&p).Error; err != nil {
 		return ""
 	}
 	path, _ := pluginMeta(&p)["chrome_path"].(string)
@@ -312,7 +312,7 @@ func (a *App) AdminInstallPlugin(c *gin.Context) {
 		return
 	}
 	var p models.Plugin
-	if err := a.DB.Where("key = ?", key).First(&p).Error; err != nil {
+	if err := a.DB.Where("`key` = ?", key).First(&p).Error; err != nil {
 		p = models.Plugin{Key: key}
 	}
 	if s, _ := pluginMeta(&p)["status"].(string); s == "downloading" {
@@ -337,7 +337,7 @@ func (a *App) AdminUninstallPlugin(c *gin.Context) {
 	a.plugins.begin(key)
 	a.plugins.log(key, "info", "开始卸载：清理下载文件…")
 	_ = os.RemoveAll(pluginDir(key))
-	if err := a.DB.Where("key = ?", key).Delete(&models.Plugin{}).Error; err != nil {
+	if err := a.DB.Where("`key` = ?", key).Delete(&models.Plugin{}).Error; err != nil {
 		a.plugins.log(key, "error", fmt.Sprintf("卸载失败：删除数据库记录出错：%v", err))
 		fail(c, http.StatusInternalServerError, fmt.Sprintf("卸载失败：删除数据库记录出错：%v", err))
 		return
