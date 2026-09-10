@@ -73,16 +73,24 @@ export default function BookExportButton({ book, className }: { book: Book; clas
         <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
           {opts.formats.map((fmt) => {
             if (fmt === 'pdf') {
-              // PDF 需插件；作者共享样式时提供两种样式选择
               const disabled = !opts.pdf_available
-              const styles: ('author' | 'mine')[] = opts.style_shared ? ['author', 'mine'] : ['mine']
+              const suffix = disabled ? '（插件未安装）' : ''
+              // 作者共享样式时提供两种样式选择，用分组标题区分；否则直接一个「导出 PDF」项
+              if (!opts.style_shared) {
+                return (
+                  <button key="pdf" type="button" disabled={disabled} onClick={() => download('pdf', 'mine')}
+                    className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                    导出 PDF{suffix}
+                  </button>
+                )
+              }
               return (
                 <div key="pdf">
-                  <div className="px-4 pb-1 pt-2 text-xs font-medium text-slate-400">PDF{disabled ? '（插件未安装）' : ''}</div>
-                  {styles.map((st) => (
+                  <div className="px-4 pb-1 pt-2 text-xs font-medium text-slate-400">PDF{suffix}</div>
+                  {(['author', 'mine'] as const).map((st) => (
                     <button key={st} type="button" disabled={disabled} onClick={() => download('pdf', st)}
                       className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300">
-                      {opts.style_shared ? (st === 'author' ? '使用作者样式' : '使用我的样式') : '导出 PDF'}
+                      {st === 'author' ? '使用作者样式' : '使用我的样式'}
                     </button>
                   ))}
                 </div>
