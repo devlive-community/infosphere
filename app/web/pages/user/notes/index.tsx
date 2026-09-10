@@ -104,7 +104,7 @@ export default function MyNotesPage() {
           <Button variant="outline" disabled={loading} onClick={() => void load()}><i className="fa-solid fa-rotate" aria-hidden="true" />刷新</Button>
         </div>
 
-        <SegmentedTabs className="mb-5" size="sm" value={filter} items={filters} ariaLabel="笔记类型" onChange={switchFilter} />
+        <SegmentedTabs className="mb-5" value={filter} items={filters} ariaLabel="笔记类型" onChange={switchFilter} />
 
         {loading || data === null ? (
           <Loading className="py-20" label="正在加载私人笔记…" />
