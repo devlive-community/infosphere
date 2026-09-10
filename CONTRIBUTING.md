@@ -2,9 +2,7 @@ Contributing Guidelines
 We love improvements to our tools! There are a few key ways you can help us improve our projects:
 
 Submitting Feedback, Requests, and Bugs
-Our process for submitting feedback, feature requests, and reporting bugs usually begins by discussion on our chat and, after initial clarification, through GitHub issues. Each project repository generally maintains its own set of issues:
-
-    https://community.devlive.org/t/infosphere
+Our process for submitting feedback, feature requests, and reporting bugs usually begins with a GitHub issue:
 
 Some projects have additional templates or sets of questions for each issue, which you will be prompted to fill out when creating one.
 
