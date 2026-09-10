@@ -176,8 +176,8 @@ export default function MyBooks() {
         </div>
       </div>
 
-      <div className="mb-5 w-full sm:max-w-lg">
-        <SegmentedTabs fullWidth value={scope} ariaLabel="书籍范围"
+      <div className="mb-5">
+        <SegmentedTabs value={scope} ariaLabel="书籍范围"
           onChange={(value) => changeScope(value as 'owned' | 'collaborating')} items={[
             { value: 'owned', label: '我创建的' },
             { value: 'collaborating', label: '与我协作的' },
