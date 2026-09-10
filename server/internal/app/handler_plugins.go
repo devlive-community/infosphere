@@ -338,8 +338,8 @@ func (a *App) AdminUninstallPlugin(c *gin.Context) {
 	a.plugins.log(key, "info", "开始卸载：清理下载文件…")
 	_ = os.RemoveAll(pluginDir(key))
 	if err := a.DB.Where("key = ?", key).Delete(&models.Plugin{}).Error; err != nil {
-		a.plugins.log(key, "error", "卸载失败：删除数据库记录出错")
-		fail(c, http.StatusInternalServerError, "卸载失败：删除数据库记录出错")
+		a.plugins.log(key, "error", fmt.Sprintf("卸载失败：删除数据库记录出错：%v", err))
+		fail(c, http.StatusInternalServerError, fmt.Sprintf("卸载失败：删除数据库记录出错：%v", err))
 		return
 	}
 	a.plugins.log(key, "success", "已卸载")

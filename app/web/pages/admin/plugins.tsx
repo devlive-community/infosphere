@@ -43,6 +43,7 @@ export default function AdminPlugins() {
   // 打开某插件的日志 SSE 流；重复调用先关闭旧连接
   const openLogs = useCallback((key: string) => {
     sources.current[key]?.close()
+    setLogs((s) => ({ ...s, [key]: [] }))
     setLogOpen((s) => ({ ...s, [key]: true }))
     const token = getToken()
     const es = new EventSource(`${API_BASE}/api/v1/admin/plugins/${key}/logs?token=${encodeURIComponent(token || '')}`)
