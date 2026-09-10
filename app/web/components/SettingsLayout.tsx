@@ -2,14 +2,13 @@ import { ReactNode } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import { SegmentedTabs } from '@/components/ui'
 
-export type SettingsTab = 'site' | 'storage' | 'mail' | 'oauth' | 'config'
+export type SettingsTab = 'site' | 'storage' | 'mail' | 'oauth'
 
 const TABS: { key: SettingsTab; label: string; href: string }[] = [
   { key: 'site', label: '站点设置', href: '/admin/settings/site' },
   { key: 'storage', label: '存储配置', href: '/admin/settings/storage' },
   { key: 'mail', label: '邮件服务', href: '/admin/settings/mail' },
   { key: 'oauth', label: '第三方登录', href: '/admin/settings/oauth' },
-  { key: 'config', label: '系统配置', href: '/admin/settings/config' },
 ]
 
 interface SettingsLayoutProps {
