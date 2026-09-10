@@ -403,13 +403,12 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                     : `${favorited ? '已收藏' : '收藏'}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
                 </Button>
               </div>
-              <div className="grid min-w-0 grid-cols-3 gap-2 sm:contents">
+              <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
                 <Tooltip content="分享" className="w-full sm:w-auto"><Button type="button" variant="outline" onClick={share}
                   className="w-full !px-0 text-slate-500 sm:w-[var(--control-height)]">
                     <ShareIcon className="h-4 w-4" />
                   </Button></Tooltip>
                 <BookExportButton book={book} className="w-full sm:w-auto" />
-                <ReportButton targetType="book" targetId={book.id} size="md" className="w-full px-2 sm:w-auto sm:px-4" />
               </div>
               {(canManage || canEdit) && (
                 <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
@@ -438,8 +437,13 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               </dl>
             </div>
 
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <ReportButton targetType="book" targetId={book.id} size="md"
+                className="w-full border border-rose-300 text-rose-600 hover:bg-rose-50" />
+            </div>
+
             <div className="flex min-w-0 items-start gap-1.5 text-sm text-slate-500">
-              <HelpCircleIcon className="mt-0.5 h-4 w-4 shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere]">发现内容问题？请使用页面上方的举报入口。</span>
+              <HelpCircleIcon className="mt-0.5 h-4 w-4 shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere]">发现内容问题？请使用上方的举报入口。</span>
             </div>
           </aside>
         </section>
