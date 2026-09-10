@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"strings"
 
 	"infosphere/server/internal/models"
 
@@ -11,6 +12,17 @@ import (
 var exportPageSizes = map[string]bool{"A4": true, "Letter": true}
 var exportMargins = map[string]bool{"narrow": true, "normal": true, "wide": true}
 var exportCodeThemes = map[string]bool{"light": true, "dark": true}
+
+const maxExportFooterLength = 100
+
+// normalizeExportFooter 去除换行并按长度截断，避免破坏 PDF 页脚模板
+func normalizeExportFooter(footer string) string {
+	footer = strings.NewReplacer("\r", " ", "\n", " ").Replace(strings.TrimSpace(footer))
+	if runes := []rune(footer); len(runes) > maxExportFooterLength {
+		footer = string(runes[:maxExportFooterLength])
+	}
+	return footer
+}
 
 // defaultExportSetting 未配置时的默认导出样式
 func defaultExportSetting(userID uint) models.UserExportSetting {
@@ -41,6 +53,7 @@ func (a *App) UpdateExportSettings(c *gin.Context) {
 		FontSize     *int    `json:"font_size"`
 		CodeTheme    *string `json:"code_theme"`
 		Margin       *string `json:"margin"`
+		Footer       *string `json:"footer"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
@@ -68,6 +81,9 @@ func (a *App) UpdateExportSettings(c *gin.Context) {
 	}
 	if req.Margin != nil && exportMargins[*req.Margin] {
 		s.Margin = *req.Margin
+	}
+	if req.Footer != nil {
+		s.Footer = normalizeExportFooter(*req.Footer)
 	}
 	if err := a.DB.Save(&s).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
@@ -106,6 +122,7 @@ type exportStyleReq struct {
 	FontSize     *int    `json:"font_size"`
 	CodeTheme    *string `json:"code_theme"`
 	Margin       *string `json:"margin"`
+	Footer       *string `json:"footer"`
 }
 
 // GetBookExportStyle GET /books/:id/export-style 书籍自有导出样式（未配置返回默认）
@@ -150,6 +167,9 @@ func (a *App) UpdateBookExportStyle(c *gin.Context) {
 	applyExportStyleFields(req.PageSize, req.CodeTheme, req.Margin, req.FontSize, req.IncludeCover, req.IncludeToc,
 		func(v string) { s.PageSize = v }, func(v bool) { s.IncludeCover = v }, func(v bool) { s.IncludeToc = v },
 		func(v int) { s.FontSize = v }, func(v string) { s.CodeTheme = v }, func(v string) { s.Margin = v })
+	if req.Footer != nil {
+		s.Footer = normalizeExportFooter(*req.Footer)
+	}
 	if err := a.DB.Save(&s).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return

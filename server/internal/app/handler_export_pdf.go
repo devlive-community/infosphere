@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -61,6 +62,26 @@ func (a *App) resolveExportStyle(style string, book *models.Book, u *models.User
 	return s
 }
 
+// resolveExportFooter 解析每页页脚文案（Powered by …）：
+// 优先书籍自有配置，其次导出者个人配置，最后回退默认 "Powered by <站点名>"。
+func (a *App) resolveExportFooter(book *models.Book, u *models.User) string {
+	var bs models.BookExportSetting
+	if err := a.DB.Where("book_id = ?", book.ID).First(&bs).Error; err == nil && strings.TrimSpace(bs.Footer) != "" {
+		return bs.Footer
+	}
+	if u != nil {
+		var us models.UserExportSetting
+		if err := a.DB.Where("user_id = ?", u.ID).First(&us).Error; err == nil && strings.TrimSpace(us.Footer) != "" {
+			return us.Footer
+		}
+	}
+	site := strings.TrimSpace(a.getSetting("site_name"))
+	if site == "" {
+		site = "InfoSphere"
+	}
+	return "Powered by " + site
+}
+
 // ExportBookPDF GET /books/:id/export/pdf?style=author|mine 通过无头 Chrome 导出 PDF
 func (a *App) ExportBookPDF(c *gin.Context) {
 	book, status := a.findBook(c)
@@ -103,7 +124,8 @@ func (a *App) ExportBookPDF(c *gin.Context) {
 	q.Set("toc", boolParam(setting.IncludeToc))
 	printURL := fmt.Sprintf("http://127.0.0.1:%d/book/print/%s?%s", webPort, url.PathEscape(book.Slug), q.Encode())
 
-	pdf, err := a.renderPDF(printURL, requestToken(c), setting)
+	footer := a.resolveExportFooter(book, u)
+	pdf, err := a.renderPDF(printURL, requestToken(c), setting, footer)
 	if err != nil {
 		fail(c, http.StatusInternalServerError, "生成 PDF 失败: "+err.Error())
 		return
@@ -119,8 +141,9 @@ func boolParam(b bool) string {
 	return "0"
 }
 
-// renderPDF 用 chrome-headless-shell 打开打印页并输出 PDF；带上登录 Cookie 以渲染私有内容
-func (a *App) renderPDF(printURL, token string, setting models.UserExportSetting) ([]byte, error) {
+// renderPDF 用 chrome-headless-shell 打开打印页并输出 PDF；带上登录 Cookie 以渲染私有内容。
+// footer 为每页页脚文案，经 Chrome 原生 footerTemplate 渲染，保证出现在每一物理页底部。
+func (a *App) renderPDF(printURL, token string, setting models.UserExportSetting, footer string) ([]byte, error) {
 	execOpts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.ExecPath(a.installedChromePath()),
 		chromedp.Flag("headless", true),
@@ -142,6 +165,17 @@ func (a *App) renderPDF(printURL, token string, setting models.UserExportSetting
 	if m == 0 {
 		m = pdfMargin["normal"]
 	}
+	// 底部预留足够空间容纳页脚（英寸）
+	marginBottom := m
+	if marginBottom < 0.55 {
+		marginBottom = 0.55
+	}
+
+	// Chrome 页脚模板：不继承页面样式，需显式设定字号；文本转义避免破坏模板
+	footerTemplate := fmt.Sprintf(
+		`<div style="width:100%%;font-size:9px;color:#9ca3af;text-align:center;padding:0 12px;">%s</div>`,
+		html.EscapeString(footer),
+	)
 
 	var pdf []byte
 	err := chromedp.Run(ctx,
@@ -161,7 +195,10 @@ func (a *App) renderPDF(printURL, token string, setting models.UserExportSetting
 				WithPrintBackground(true).
 				WithPaperWidth(paper[0]).
 				WithPaperHeight(paper[1]).
-				WithMarginTop(m).WithMarginBottom(m).WithMarginLeft(m).WithMarginRight(m).
+				WithMarginTop(m).WithMarginBottom(marginBottom).WithMarginLeft(m).WithMarginRight(m).
+				WithDisplayHeaderFooter(true).
+				WithHeaderTemplate("<span></span>").
+				WithFooterTemplate(footerTemplate).
 				Do(ctx)
 			pdf = buf
 			return err

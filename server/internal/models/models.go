@@ -273,30 +273,34 @@ type Plugin struct {
 
 // BookExportSetting 书籍自有导出（PDF）样式，每书一条；作者共享样式时优先于个人样式
 type BookExportSetting struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	BookID       uint      `gorm:"uniqueIndex;not null" json:"book_id"`
-	PageSize     string    `gorm:"size:10;default:A4" json:"page_size"`
-	IncludeCover bool      `gorm:"default:true" json:"include_cover"`
-	IncludeToc   bool      `gorm:"default:true" json:"include_toc"`
-	FontSize     int       `gorm:"default:15" json:"font_size"`
-	CodeTheme    string    `gorm:"size:20;default:light" json:"code_theme"`
-	Margin       string    `gorm:"size:10;default:normal" json:"margin"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	BookID       uint   `gorm:"uniqueIndex;not null" json:"book_id"`
+	PageSize     string `gorm:"size:10;default:A4" json:"page_size"`
+	IncludeCover bool   `gorm:"default:true" json:"include_cover"`
+	IncludeToc   bool   `gorm:"default:true" json:"include_toc"`
+	FontSize     int    `gorm:"default:15" json:"font_size"`
+	CodeTheme    string `gorm:"size:20;default:light" json:"code_theme"`
+	Margin       string `gorm:"size:10;default:normal" json:"margin"`
+	// Footer 每页页脚文案（Powered by …）；空表示使用默认 "Powered by <站点名>"
+	Footer    string    `gorm:"size:200;default:''" json:"footer"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // UserExportSetting 用户导出（PDF）样式偏好，每用户一条
 type UserExportSetting struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	UserID       uint      `gorm:"uniqueIndex;not null" json:"user_id"`
-	PageSize     string    `gorm:"size:10;default:A4" json:"page_size"` // A4 | Letter
-	IncludeCover bool      `gorm:"default:true" json:"include_cover"`
-	IncludeToc   bool      `gorm:"default:true" json:"include_toc"`
-	FontSize     int       `gorm:"default:15" json:"font_size"`             // 正文字号 px
-	CodeTheme    string    `gorm:"size:20;default:light" json:"code_theme"` // light | dark
-	Margin       string    `gorm:"size:10;default:normal" json:"margin"`    // narrow | normal | wide
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	UserID       uint   `gorm:"uniqueIndex;not null" json:"user_id"`
+	PageSize     string `gorm:"size:10;default:A4" json:"page_size"` // A4 | Letter
+	IncludeCover bool   `gorm:"default:true" json:"include_cover"`
+	IncludeToc   bool   `gorm:"default:true" json:"include_toc"`
+	FontSize     int    `gorm:"default:15" json:"font_size"`             // 正文字号 px
+	CodeTheme    string `gorm:"size:20;default:light" json:"code_theme"` // light | dark
+	Margin       string `gorm:"size:10;default:normal" json:"margin"`    // narrow | normal | wide
+	// Footer 每页页脚文案（Powered by …）；空表示使用默认 "Powered by <站点名>"
+	Footer    string    `gorm:"size:200;default:''" json:"footer"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // UserThemeSetting 用户主题设置，每用户一条

@@ -162,7 +162,7 @@ Authorization: Bearer <token>
 | GET | `/auth/me` | 当前用户信息 | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |
-| GET/PUT | `/auth/export-settings` | 当前用户 PDF 导出样式偏好：`page_size`(A4\|Letter)、`include_cover`、`include_toc`、`font_size`(12–20)、`code_theme`(light\|dark)、`margin`(narrow\|normal\|wide) | `user:read` / `user:update` |
+| GET/PUT | `/auth/export-settings` | 当前用户 PDF 导出样式偏好：`page_size`(A4\|Letter)、`include_cover`、`include_toc`、`font_size`(12–20)、`code_theme`(light\|dark)、`margin`(narrow\|normal\|wide)、`footer`（每页页脚 Powered by 文案，≤100 字，留空用默认 `Powered by <站点名>`） | `user:read` / `user:update` |
 | PUT | `/auth/password` | 修改密码（old_password/new_password；OAuth 用户未设密码时免验原密码，用于首次设置） | `user:update` |
 | POST | `/auth/password/forgot` | 匿名申请找回：`{email}`；响应不泄露邮箱是否存在，令牌邮件 60 分钟有效、一次性、只保留最新一条；邮件写入持久化异步队列，失败自动退避重试；`mail_driver=log` 时执行任务后把链接输出到后端日志 | `auth:password-reset`（匿名语义） |
 | POST | `/auth/password/reset` | 匿名重置：`{token, password}`（≥6 位）；成功后旧密码立即失效，该用户其余令牌作废 | `auth:password-reset`（匿名语义） |
@@ -337,7 +337,7 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/books/:id/export?format=markdown` | 导出书籍为 zip：`book.md`（front-matter：标题/简介/slug/状态/公开/排序/章节前缀/封面/标签）+ `chapters/<序号>-<slug>.md`（front-matter：标题/slug/排序/状态/父章节/评论开关 + 正文）+ `images/`（本站 `/uploads` 图片随包携带并改写为相对引用，外链保持原样） | `book:export` |
-| GET | `/books/:id/export/pdf?style=author\|mine` | 通过 pdf-export 插件（无头 Chrome）导出 PDF。鉴权：作者/协作者/管理员始终可导；否则要求书籍公开、处于可阅读状态且 `export_enabled`，未登录游客还需 `guest_export_enabled`。`style=author`（仅当作者 `export_style_shared`）用作者导出样式，否则用请求者样式；水印始终取自作者设置。未安装插件返回 400 | `book:read`（匿名可导开放的公开书） |
+| GET | `/books/:id/export/pdf?style=author\|mine` | 通过 pdf-export 插件（无头 Chrome）导出 PDF。鉴权：作者/协作者/管理员始终可导；否则要求书籍公开、处于可阅读状态且 `export_enabled`，未登录游客还需 `guest_export_enabled`。`style=author`（仅当作者 `export_style_shared`）用作者导出样式，否则用请求者样式；水印始终取自作者设置。每页底部渲染页脚（书籍配置 > 导出者个人配置 > 默认 `Powered by <站点名>`）。未安装插件返回 400 | `book:read`（匿名可导开放的公开书） |
 | POST | `/import` | multipart 上传 `file`（ZIP，≤64MB），可选 `title`；源文件以 0600 权限私有保存并返回 `202` 和 `task`，后台还原元数据、标签、章节树和图片；slug 冲突自动追加 `-imported-N`。安全限制：≤500 文件、解压总量 ≤64MB、拒绝绝对路径与 `..` 路径 | `book:import` |
 | POST | `/import/pdf` | multipart 上传 `file`（PDF，≤64MB），可选 `title`；文件以 0600 权限私有保存后返回 `202` 和 `task`，后台根据文本坐标、字号和字体样式重建 Markdown 标题、段落、列表及代码块，移除重复页眉页脚并修正双栏阅读顺序；结果固定为私有草稿。扫描版 PDF 需预先 OCR | `book:import` |
 | POST | `/books/:id/import/pdf` | multipart 上传 `file`（PDF，≤64MB）及 `mode=append\|replace`，仅书籍 owner/admin 可用；返回 `202` 和 `task` 后后台执行。`append` 将新解析的 Markdown 章节以草稿追加到目录末尾；`replace` 在同一事务内清理旧章节及关联状态后写入新草稿章节，并将书籍转为私有草稿。解析失败不会改动旧数据 | `book:import` |

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { InferGetServerSidePropsType } from 'next'
 import { api } from '@/lib/api'
-import { Button, Switch, Checkbox, Field, Select, Loading, useFeedback } from '@/components/ui'
+import { Button, Switch, Checkbox, Field, Select, Input, Loading, useFeedback } from '@/components/ui'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { getBookSettingsProps } from '@/lib/book-settings'
 
@@ -14,8 +14,9 @@ interface BookStyle {
   font_size: number
   code_theme: string
   margin: string
+  footer: string
 }
-const DEFAULT_STYLE: BookStyle = { page_size: 'A4', include_cover: true, include_toc: true, font_size: 15, code_theme: 'light', margin: 'normal' }
+const DEFAULT_STYLE: BookStyle = { page_size: 'A4', include_cover: true, include_toc: true, font_size: 15, code_theme: 'light', margin: 'normal', footer: '' }
 
 // 书籍设置 · 导出设置：控制他人能否导出本书、是否共享作者导出样式（仅可管理者）
 const ALL_FORMATS: { key: string; label: string; hint: string }[] = [
@@ -147,6 +148,10 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
                     <Checkbox checked={style.include_toc} onChange={(v) => setStyle({ ...style, include_toc: v })} ariaLabel="包含目录" /> 包含目录
                   </label>
                 </div>
+                <Field label="每页页脚（Powered by）" hint="留空使用默认「Powered by 站点名」">
+                  <Input value={style.footer} maxLength={100} placeholder="Powered by 站点名"
+                    onChange={(e) => setStyle({ ...style, footer: e.target.value })} />
+                </Field>
               </div>
             )}
           </div>

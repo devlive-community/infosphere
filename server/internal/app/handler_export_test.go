@@ -1,10 +1,25 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	"infosphere/server/internal/models"
 )
+
+// 页脚归一化：去除换行、按长度截断，避免破坏 PDF footerTemplate。
+func TestNormalizeExportFooter(t *testing.T) {
+	if got := normalizeExportFooter("  hi  "); got != "hi" {
+		t.Fatalf("应去除首尾空白，得到 %q", got)
+	}
+	if got := normalizeExportFooter("a\nb\r\nc"); strings.ContainsAny(got, "\r\n") {
+		t.Fatalf("不应保留换行，得到 %q", got)
+	}
+	long := strings.Repeat("测", maxExportFooterLength+20)
+	if got := []rune(normalizeExportFooter(long)); len(got) != maxExportFooterLength {
+		t.Fatalf("应截断到 %d 个字符，得到 %d", maxExportFooterLength, len(got))
+	}
+}
 
 // canExportBook 的游客门禁：公开可读且开启导出的书籍，未登录游客还需 GuestExportEnabled。
 func TestCanExportBookGuestGating(t *testing.T) {

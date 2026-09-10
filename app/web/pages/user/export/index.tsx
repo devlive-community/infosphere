@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Container from '@/components/Container'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Button, Field, Select, Switch, Loading, useFeedback } from '@/components/ui'
+import { Button, Field, Select, Switch, Input, Loading, useFeedback } from '@/components/ui'
 import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 
 interface ExportSettings {
@@ -14,9 +14,10 @@ interface ExportSettings {
   font_size: number
   code_theme: string
   margin: string
+  footer: string
 }
 
-const DEFAULTS: ExportSettings = { page_size: 'A4', include_cover: true, include_toc: true, font_size: 15, code_theme: 'light', margin: 'normal' }
+const DEFAULTS: ExportSettings = { page_size: 'A4', include_cover: true, include_toc: true, font_size: 15, code_theme: 'light', margin: 'normal', footer: '' }
 
 export default function ExportSettingsPage() {
   const { site } = useApp()
@@ -96,6 +97,10 @@ export default function ExportSettingsPage() {
                   <div><div className="text-sm font-medium text-slate-900">包含目录</div><p className="mt-1 text-xs text-slate-500">在正文前插入章节目录。</p></div>
                   <Switch checked={s.include_toc} onChange={(v) => setS({ ...s, include_toc: v })} ariaLabel="包含目录" />
                 </div>
+                <Field label="每页页脚（Powered by）" hint={`留空使用默认「Powered by ${siteName}」；书籍单独配置时以书籍为准`}>
+                  <Input value={s.footer} maxLength={100} placeholder={`Powered by ${siteName}`}
+                    onChange={(e) => setS({ ...s, footer: e.target.value })} />
+                </Field>
               </div>
             )}
             <div className="flex justify-end border-t border-slate-100 px-6 py-4">
