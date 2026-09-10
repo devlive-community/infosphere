@@ -176,11 +176,13 @@ export default function MyBooks() {
         </div>
       </div>
 
-      <SegmentedTabs className="mb-5 sm:!w-auto" fullWidth value={scope} ariaLabel="书籍范围"
-        onChange={(value) => changeScope(value as 'owned' | 'collaborating')} items={[
-          { value: 'owned', label: '我创建的' },
-          { value: 'collaborating', label: '与我协作的' },
-        ]} />
+      <div className="mb-5 w-full sm:max-w-lg">
+        <SegmentedTabs fullWidth value={scope} ariaLabel="书籍范围"
+          onChange={(value) => changeScope(value as 'owned' | 'collaborating')} items={[
+            { value: 'owned', label: '我创建的' },
+            { value: 'collaborating', label: '与我协作的' },
+          ]} />
+      </div>
 
       {/* 筛选行 */}
       <div className="flex flex-col gap-3 border-y border-slate-200 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
