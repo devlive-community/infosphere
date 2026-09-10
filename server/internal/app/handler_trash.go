@@ -35,10 +35,6 @@ func (a *App) ListTrash(c *gin.Context) {
 		return
 	}
 	u := currentUser(c)
-	if err := a.purgeExpiredTrash(u); err != nil {
-		fail(c, http.StatusInternalServerError, "清理过期内容失败")
-		return
-	}
 	if kind == "document" {
 		a.listTrashedDocuments(c, u)
 		return
@@ -48,7 +44,8 @@ func (a *App) ListTrash(c *gin.Context) {
 
 func (a *App) listTrashedBooks(c *gin.Context, u *models.User) {
 	page, pageSize := paginate(c)
-	query := a.DB.Unscoped().Table("books").Where("books.deleted_at IS NOT NULL")
+	query := a.DB.Unscoped().Table("books").
+		Where("books.deleted_at IS NOT NULL AND books.deleted_at >= ?", currentTime().Add(-trashRetention))
 	if !IsAdmin(u) {
 		query = query.Where("books.user_id = ?", u.ID)
 	}
@@ -93,7 +90,7 @@ func (a *App) listTrashedDocuments(c *gin.Context, u *models.User) {
 	page, pageSize := paginate(c)
 	query := a.DB.Unscoped().Table("documents").
 		Joins("JOIN books ON books.id = documents.book_id AND books.deleted_at IS NULL").
-		Where("documents.deleted_at IS NOT NULL").
+		Where("documents.deleted_at IS NOT NULL AND documents.deleted_at >= ?", currentTime().Add(-trashRetention)).
 		Where(`NOT EXISTS (
 			SELECT 1 FROM documents parent
 			WHERE parent.id = documents.parent_id
@@ -274,18 +271,15 @@ func (a *App) trashExpired(deletedAt time.Time) bool {
 	return deletedAt.Add(trashRetention).Before(currentTime())
 }
 
-func (a *App) purgeExpiredTrash(u *models.User) error {
-	cutoff := currentTime().Add(-trashRetention)
-	booksQuery := a.DB.Unscoped().Where("deleted_at IS NOT NULL AND deleted_at < ?", cutoff)
-	if !IsAdmin(u) {
-		booksQuery = booksQuery.Where("user_id = ?", u.ID)
-	}
+func purgeExpiredTrash(db *gorm.DB, now time.Time) error {
+	cutoff := now.Add(-trashRetention)
+	booksQuery := db.Unscoped().Where("deleted_at IS NOT NULL AND deleted_at < ?", cutoff)
 	expiredBooks := []models.Book{}
 	if err := booksQuery.Find(&expiredBooks).Error; err != nil {
 		return err
 	}
 	for _, book := range expiredBooks {
-		if err := a.DB.Transaction(func(tx *gorm.DB) error { return hardDeleteBook(tx, book.ID) }); err != nil {
+		if err := db.Transaction(func(tx *gorm.DB) error { return hardDeleteBook(tx, book.ID) }); err != nil {
 			return err
 		}
 	}
@@ -293,20 +287,17 @@ func (a *App) purgeExpiredTrash(u *models.User) error {
 		BookID     uint
 		TrashGroup string
 	}
-	docQuery := a.DB.Unscoped().Table("documents").
+	docQuery := db.Unscoped().Table("documents").
 		Select("documents.book_id, documents.trash_group").
 		Joins("JOIN books ON books.id = documents.book_id AND books.deleted_at IS NULL").
 		Where("documents.deleted_at IS NOT NULL AND documents.deleted_at < ?", cutoff).
 		Where("documents.trash_group <> ''")
-	if !IsAdmin(u) {
-		docQuery = docQuery.Where("books.user_id = ?", u.ID)
-	}
 	groups := []groupRow{}
 	if err := docQuery.Group("documents.book_id, documents.trash_group").Scan(&groups).Error; err != nil {
 		return err
 	}
 	for _, group := range groups {
-		if err := a.DB.Transaction(func(tx *gorm.DB) error { return hardDeleteDocumentGroup(tx, group.BookID, group.TrashGroup) }); err != nil {
+		if err := db.Transaction(func(tx *gorm.DB) error { return hardDeleteDocumentGroup(tx, group.BookID, group.TrashGroup) }); err != nil {
 			return err
 		}
 	}

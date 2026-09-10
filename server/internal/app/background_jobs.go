@@ -19,7 +19,10 @@ const (
 	emailSendJobType      = "email.send"
 	pdfImportJobType      = "content.import.pdf"
 	zipImportJobType      = "content.import.zip"
+	maintenanceJobType    = "maintenance.cleanup"
 	importSourceRetention = 30 * 24 * time.Hour
+	maintenanceInterval   = 24 * time.Hour
+	maintenanceCheckEvery = time.Hour
 )
 
 type emailSendJob struct {
@@ -62,13 +65,34 @@ func (a *App) configureJobQueue() error {
 	})
 	queue.RegisterResult(pdfImportJobType, a.runPDFImportJob)
 	queue.RegisterResult(zipImportJobType, a.runZIPImportJob)
-	if err := cleanupExpiredImportSources(time.Now()); err != nil {
-		log.Printf("[jobs] cleanup expired import sources failed: %v", err)
-	}
+	queue.Register(maintenanceJobType, a.runMaintenanceCleanup)
 	a.jobsMu.Lock()
 	a.Jobs = queue
 	a.jobsMu.Unlock()
 	return nil
+}
+
+func (a *App) runMaintenanceCleanup(ctx context.Context, _ json.RawMessage) error {
+	now := currentTime()
+	if err := purgeExpiredBookAnalytics(a.DB.WithContext(ctx)); err != nil {
+		return fmt.Errorf("清理过期书籍分析数据失败: %w", err)
+	}
+	if err := purgeExpiredTrash(a.DB.WithContext(ctx), now); err != nil {
+		return fmt.Errorf("清理过期回收站内容失败: %w", err)
+	}
+	if err := cleanupExpiredImportSources(now); err != nil {
+		return fmt.Errorf("清理过期导入源文件失败: %w", err)
+	}
+	return nil
+}
+
+func (a *App) enqueueMaintenanceIfDue(ctx context.Context, queue *jobqueue.Queue) {
+	if queue == nil {
+		return
+	}
+	if _, _, err := queue.EnqueueIfDue(ctx, maintenanceJobType, struct{}{}, 5, maintenanceInterval); err != nil {
+		log.Printf("[jobs] enqueue maintenance task failed: %v", err)
+	}
 }
 
 func cleanupExpiredImportSources(now time.Time) error {
@@ -211,6 +235,7 @@ func (a *App) startJobSupervisor(ctx context.Context) {
 	defer ticker.Stop()
 	var active *jobqueue.Queue
 	var cancel context.CancelFunc
+	nextMaintenanceCheck := time.Time{}
 	for {
 		queue := a.jobQueue()
 		if queue != nil && queue != active {
@@ -221,6 +246,11 @@ func (a *App) startJobSupervisor(ctx context.Context) {
 			cancel = workerCancel
 			active = queue
 			go queue.Start(workerCtx)
+			a.enqueueMaintenanceIfDue(ctx, queue)
+			nextMaintenanceCheck = currentTime().Add(maintenanceCheckEvery)
+		} else if queue != nil && !currentTime().Before(nextMaintenanceCheck) {
+			a.enqueueMaintenanceIfDue(ctx, queue)
+			nextMaintenanceCheck = currentTime().Add(maintenanceCheckEvery)
 		}
 		select {
 		case <-ctx.Done():

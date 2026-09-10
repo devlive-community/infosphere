@@ -165,3 +165,32 @@ func TestQueueRecoversStaleRunningJob(t *testing.T) {
 		t.Fatalf("stale job was not recovered: %+v", recovered)
 	}
 }
+
+func TestQueueEnqueueIfDueSuppressesActiveAndRecentTasks(t *testing.T) {
+	queue, db, now := testQueue(t)
+	ctx := context.Background()
+
+	first, created, err := queue.EnqueueIfDue(ctx, "maintenance.cleanup", map[string]any{}, 3, 24*time.Hour)
+	if err != nil || !created || first == nil {
+		t.Fatalf("first due task was not created: created=%v job=%v err=%v", created, first, err)
+	}
+	if duplicate, created, err := queue.EnqueueIfDue(ctx, "maintenance.cleanup", map[string]any{}, 3, 24*time.Hour); err != nil || created || duplicate != nil {
+		t.Fatalf("active task must suppress duplicate: created=%v job=%v err=%v", created, duplicate, err)
+	}
+
+	finished := *now
+	if err := db.Model(&models.BackgroundJob{}).Where("id = ?", first.ID).Updates(map[string]any{
+		"status": StatusSucceeded, "finished_at": finished,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if recent, created, err := queue.EnqueueIfDue(ctx, "maintenance.cleanup", map[string]any{}, 3, 24*time.Hour); err != nil || created || recent != nil {
+		t.Fatalf("recent successful task must suppress duplicate: created=%v job=%v err=%v", created, recent, err)
+	}
+
+	*now = now.Add(25 * time.Hour)
+	next, created, err := queue.EnqueueIfDue(ctx, "maintenance.cleanup", map[string]any{}, 3, 24*time.Hour)
+	if err != nil || !created || next == nil || next.ID == first.ID {
+		t.Fatalf("task should become due after cooldown: created=%v job=%v err=%v", created, next, err)
+	}
+}

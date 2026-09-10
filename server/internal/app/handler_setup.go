@@ -179,8 +179,6 @@ func (a *App) SetupInstall(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "初始化异步任务失败: "+err.Error())
 		return
 	}
-	_ = purgeExpiredBookAnalytics(db)
-
 	token, err := auth.GenerateToken(a.Config.Secret, admin.ID, admin.Username, admin.Role)
 	if err != nil {
 		fail(c, http.StatusInternalServerError, "签发令牌失败")

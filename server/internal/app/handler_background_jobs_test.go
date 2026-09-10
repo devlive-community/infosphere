@@ -51,6 +51,75 @@ func TestCleanupExpiredImportSources(t *testing.T) {
 	}
 }
 
+func TestMaintenanceCleanupRunsFromPersistentQueueAndIsIdempotent(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("INFO_SPHERE_DATA", dataDir)
+	a, owner, db := newContentImportTestApp(t)
+	a.Config = &config.Config{Secret: "maintenance-background-task-secret"}
+	if err := a.configureJobQueue(); err != nil {
+		t.Fatal(err)
+	}
+
+	book := models.Book{Title: "过期回收站书籍", Slug: "expired-trash-book", UserID: owner.ID, Status: "draft"}
+	if err := db.Create(&book).Error; err != nil {
+		t.Fatal(err)
+	}
+	doc := models.Document{BookID: book.ID, UserID: owner.ID, Title: "待清理章节", Slug: "expired-doc", Status: "draft"}
+	if err := db.Create(&doc).Error; err != nil {
+		t.Fatal(err)
+	}
+	trashTime := currentTime().Add(-trashRetention - time.Hour)
+	if err := db.Delete(&book).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Unscoped().Model(&models.Book{}).Where("id = ?", book.ID).Updates(map[string]any{
+		"deleted_at": trashTime, "trash_group": "maintenance-test",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	expiredDay := analyticsDayStart(currentTime()).AddDate(0, 0, -bookAnalyticsRetentionDays).Format("2006-01-02")
+	if err := db.Create(&models.BookAnalyticsDaily{BookID: book.ID, DocumentID: doc.ID, Day: expiredDay, Source: "direct", ViewCount: 1}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	dir := filepath.Join(dataDir, "import-jobs")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	staleSource := filepath.Join(dir, "pdf-maintenance.pdf")
+	if err := os.WriteFile(staleSource, []byte("test"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	old := currentTime().Add(-importSourceRetention - time.Hour)
+	if err := os.Chtimes(staleSource, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	a.enqueueMaintenanceIfDue(context.Background(), a.Jobs)
+	a.enqueueMaintenanceIfDue(context.Background(), a.Jobs)
+	var queued int64
+	if err := db.Model(&models.BackgroundJob{}).Where("type = ?", maintenanceJobType).Count(&queued).Error; err != nil || queued != 1 {
+		t.Fatalf("maintenance task must be queued once: count=%d err=%v", queued, err)
+	}
+	if ran, runErr := a.Jobs.RunOnce(context.Background()); !ran || runErr != nil {
+		t.Fatalf("maintenance task failed: ran=%v err=%v", ran, runErr)
+	}
+
+	if err := db.Unscoped().First(&models.Book{}, book.ID).Error; err == nil {
+		t.Fatal("expired trashed book was not permanently deleted")
+	}
+	var analyticsCount int64
+	if err := db.Model(&models.BookAnalyticsDaily{}).Where("day = ?", expiredDay).Count(&analyticsCount).Error; err != nil || analyticsCount != 0 {
+		t.Fatalf("expired analytics were not deleted: count=%d err=%v", analyticsCount, err)
+	}
+	if _, err := os.Stat(staleSource); !os.IsNotExist(err) {
+		t.Fatalf("expired import source was not deleted: %v", err)
+	}
+	if err := a.runMaintenanceCleanup(context.Background(), nil); err != nil {
+		t.Fatalf("repeated maintenance cleanup must be safe: %v", err)
+	}
+}
+
 func TestAdminBackgroundJobs(t *testing.T) {
 	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
 	cfg, err := config.Load()

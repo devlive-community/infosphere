@@ -173,7 +173,13 @@ func TestTrashBookRestoreIsolationAndExpiration(t *testing.T) {
 	if status != http.StatusOK || payload["data"].(map[string]any)["total"].(float64) != 0 {
 		t.Fatalf("过期书籍不应继续展示: %d %v", status, payload)
 	}
+	if err := db.Unscoped().First(&models.Book{}, book.ID).Error; err != nil {
+		t.Fatalf("回收站列表不应同步执行永久删除: %v", err)
+	}
+	if err := purgeExpiredTrash(db, currentTime()); err != nil {
+		t.Fatalf("后台清理过期书籍失败: %v", err)
+	}
 	if err := db.Unscoped().First(&models.Book{}, book.ID).Error; err != gorm.ErrRecordNotFound {
-		t.Fatalf("访问回收站时应清理过期书籍: %v", err)
+		t.Fatalf("后台维护任务应永久删除过期书籍: %v", err)
 	}
 }

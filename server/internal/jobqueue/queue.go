@@ -85,6 +85,62 @@ func (q *Queue) Enqueue(ctx context.Context, jobType string, payload any, maxAtt
 }
 
 func (q *Queue) EnqueueOwned(ctx context.Context, ownerID uint, jobType string, payload any, maxAttempts int) (*models.BackgroundJob, error) {
+	job, err := q.newJob(ownerID, jobType, payload, maxAttempts)
+	if err != nil {
+		return nil, err
+	}
+	if err := q.db.WithContext(ctx).Create(job).Error; err != nil {
+		return nil, fmt.Errorf("create background job: %w", err)
+	}
+	return job, nil
+}
+
+// EnqueueIfDue creates a system task only when the same type is neither active
+// nor completed within cooldown. It lets periodic maintenance survive restarts
+// without filling the queue with duplicate tasks.
+func (q *Queue) EnqueueIfDue(ctx context.Context, jobType string, payload any, maxAttempts int, cooldown time.Duration) (*models.BackgroundJob, bool, error) {
+	job, err := q.newJob(0, jobType, payload, maxAttempts)
+	if err != nil {
+		return nil, false, err
+	}
+	created := false
+	err = q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var active int64
+		if err := tx.Model(&models.BackgroundJob{}).
+			Where("type = ? AND status IN ?", job.Type, []string{StatusPending, StatusRunning, StatusRetrying}).
+			Count(&active).Error; err != nil {
+			return err
+		}
+		if active > 0 {
+			return nil
+		}
+		if cooldown > 0 {
+			var recent int64
+			if err := tx.Model(&models.BackgroundJob{}).
+				Where("type = ? AND status = ? AND finished_at >= ?", job.Type, StatusSucceeded, job.CreatedAt.Add(-cooldown)).
+				Count(&recent).Error; err != nil {
+				return err
+			}
+			if recent > 0 {
+				return nil
+			}
+		}
+		if err := tx.Create(job).Error; err != nil {
+			return err
+		}
+		created = true
+		return nil
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("create due background job: %w", err)
+	}
+	if !created {
+		return nil, false, nil
+	}
+	return job, true, nil
+}
+
+func (q *Queue) newJob(ownerID uint, jobType string, payload any, maxAttempts int) (*models.BackgroundJob, error) {
 	jobType = strings.TrimSpace(jobType)
 	if jobType == "" {
 		return nil, errors.New("job type is required")
@@ -104,9 +160,6 @@ func (q *Queue) EnqueueOwned(ctx context.Context, ownerID uint, jobType string, 
 	job := &models.BackgroundJob{
 		OwnerID: ownerID, Type: jobType, Payload: sealed, Status: StatusPending,
 		MaxAttempts: maxAttempts, AvailableAt: now, CreatedAt: now, UpdatedAt: now,
-	}
-	if err := q.db.WithContext(ctx).Create(job).Error; err != nil {
-		return nil, fmt.Errorf("create background job: %w", err)
 	}
 	return job, nil
 }

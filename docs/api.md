@@ -388,7 +388,7 @@ Authorization: Bearer <token>
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |
 | GET | `/admin/audit-logs?page=&page_size=&actor=&action=&resource_type=&from=&to=` | 分页查询管理员高风险操作；支持操作人、动作、资源类型与日期区间筛选，日期格式为 `YYYY-MM-DD` | `audit:read` |
-| GET | `/admin/tasks?page=&page_size=&status=&type=` | 分页查询异步任务；状态支持 pending/running/retrying/succeeded/failed，加密任务载荷永不返回 | `task:read` |
+| GET | `/admin/tasks?page=&page_size=&status=&type=` | 分页查询异步任务；状态支持 pending/running/retrying/succeeded/failed，类型包含 `email.send`、`content.import.pdf`、`content.import.zip`、`maintenance.cleanup`，加密任务载荷永不返回 | `task:read` |
 | POST | `/admin/tasks/:id/retry` | 将最终失败任务清空旧错误和尝试次数后重新排队；重复操作返回 409 | `task:retry` |
 | GET | `/admin/reports?page=&page_size=&status=&target_type=&reason=&q=` | 举报队列与处理记录；`q` 匹配目标摘要、举报人用户名或邮箱；举报人身份仅此管理员接口返回 | `report:read` |
 | PUT | `/admin/reports/:id` | 处理待审举报：`{resolution:"reject"\|"takedown",note?}`；下架会将书籍转为私有归档、章节归档或评论隐藏，并通知举报人 | `report:update` |
