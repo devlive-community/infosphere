@@ -248,9 +248,16 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
   const [title, setTitle] = useState('')
   const [url, setURL] = useState('')
   const [renderMode, setRenderMode] = useState<WebRenderMode>('auto')
+  const [browserAvailable, setBrowserAvailable] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<ImportResult | null>(null)
+
+  useEffect(() => {
+    api<{ available: boolean }>('/import/browser-available')
+      .then((r) => { setBrowserAvailable(r.available); if (!r.available) setRenderMode((m) => m === 'browser' ? 'auto' : m) })
+      .catch(() => {})
+  }, [])
 
   function switchKind(next: ImportKind) {
     if (submitting) return
@@ -356,7 +363,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
                       {([
                         ['auto', '自动识别', '优先快速抓取，检测到单页应用后自动渲染'],
                         ['static', '静态抓取', '适合服务端直接输出正文的网页'],
-                        ['browser', '浏览器渲染', '适合必须运行 JavaScript 才显示正文的网页'],
+                        ...(browserAvailable ? [['browser', '浏览器渲染', '适合必须运行 JavaScript 才显示正文的网页'] as const] : []),
                       ] as const).map(([value, label, help]) => (
                         <label key={value} className={`cursor-pointer rounded-xl border p-3 transition-colors ${renderMode === value ? 'border-primary-400 bg-primary-50/60' : 'border-slate-200 hover:border-slate-300'}`}>
                           <input className="sr-only" type="radio" name="render-mode" value={value} checked={renderMode === value} onChange={() => setRenderMode(value)} />
@@ -365,7 +372,8 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
                         </label>
                       ))}
                     </div>
-                    {renderMode !== 'static' && <p className="mt-2 text-xs leading-5 text-slate-400">服务器首次处理动态网页时可能需要准备 Chromium 运行环境，耗时会比后续导入更长。</p>}
+                    {!browserAvailable && <p className="mt-2 text-xs leading-5 text-amber-600">浏览器渲染需管理员在后台「插件」中安装无头浏览器插件；当前仅可静态抓取。</p>}
+                    {browserAvailable && renderMode !== 'static' && <p className="mt-2 text-xs leading-5 text-slate-400">检测到需要 JavaScript 渲染的网页时会调用无头浏览器插件，耗时会比静态抓取更长。</p>}
                   </fieldset>
                 </>
               ) : (

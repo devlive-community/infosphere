@@ -172,6 +172,8 @@ func (a *App) Router() *gin.Engine {
 		api.POST("/import", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportBook)
 		api.POST("/import/pdf", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportPDFBook)
 		api.POST("/import/web", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportWebBook)
+		// 浏览器渲染是否可用（依赖无头浏览器插件），供前端联动禁用「浏览器运行 JavaScript」采集模式
+		api.GET("/import/browser-available", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.BrowserRenderAvailable)
 		api.GET("/tasks/:id", a.RequireAuth(), a.GetBackgroundJob)
 
 		// ── 站内通知（notification:*；SSE 端点自行鉴权，EventSource 无法带请求头） ──

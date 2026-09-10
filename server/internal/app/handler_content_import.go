@@ -419,6 +419,11 @@ func (a *App) ImportWebDocument(c *gin.Context) {
 	})
 }
 
+// BrowserRenderAvailable GET /import/browser-available 无头浏览器插件是否已安装（决定「浏览器渲染」采集是否可用）
+func (a *App) BrowserRenderAvailable(c *gin.Context) {
+	ok(c, gin.H{"available": a.installedChromePath() != ""})
+}
+
 func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webArticle, webPage, string, error) {
 	mode := strings.ToLower(strings.TrimSpace(req.RenderMode))
 	if mode == "" {
@@ -435,18 +440,31 @@ func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webA
 	if fetcher == nil {
 		fetcher = fetchStaticWebPage
 	}
+	// 浏览器渲染依赖无头浏览器插件（chrome-headless-shell）；未安装时 browser 模式不可用。
+	// 测试可注入 a.WebRenderer 绕过插件依赖。
 	renderer := a.WebRenderer
+	browserAvailable := renderer != nil
 	if renderer == nil {
-		renderer = renderDynamicWebPage
+		chromePath := a.installedChromePath()
+		browserAvailable = chromePath != ""
+		renderer = func(ctx context.Context, target *url.URL) (webPage, error) {
+			return renderDynamicWebPage(ctx, target, chromePath)
+		}
 	}
 
 	usedMode := mode
 	var page webPage
 	if mode == "browser" {
+		if !browserAvailable {
+			return webArticle{}, webPage{}, "", errBrowserPluginNotInstalled
+		}
 		page, err = renderer(ctx, target)
 	} else {
 		page, err = fetcher(ctx, target)
 		if mode == "auto" && err != nil {
+			if !browserAvailable {
+				return webArticle{}, webPage{}, "", err
+			}
 			staticErr := err
 			page, err = renderer(ctx, target)
 			if err == nil {
@@ -456,15 +474,25 @@ func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webA
 			}
 		} else if mode == "auto" {
 			article, parseErr := extractWebArticle(page)
-			if parseErr == nil && !shouldRenderSPA(page.HTML, article.Markdown) {
+			switch {
+			case parseErr == nil && !shouldRenderSPA(page.HTML, article.Markdown):
 				usedMode = "static"
-			} else if rendered, renderErr := renderer(ctx, target); renderErr == nil {
-				page = rendered
-				usedMode = "browser"
-			} else if parseErr != nil || utf8.RuneCountInString(strings.TrimSpace(article.Markdown)) < 100 {
-				err = fmt.Errorf("网页需要 JavaScript 渲染，但浏览器渲染失败: %w", renderErr)
-			} else {
-				usedMode = "static"
+			case browserAvailable:
+				if rendered, renderErr := renderer(ctx, target); renderErr == nil {
+					page = rendered
+					usedMode = "browser"
+				} else if parseErr != nil || utf8.RuneCountInString(strings.TrimSpace(article.Markdown)) < 100 {
+					err = fmt.Errorf("网页需要 JavaScript 渲染，但浏览器渲染失败: %w", renderErr)
+				} else {
+					usedMode = "static"
+				}
+			default:
+				// 需要 JS 渲染但插件未安装：正文过少则提示安装插件，否则退回静态尽力而为
+				if parseErr != nil || utf8.RuneCountInString(strings.TrimSpace(article.Markdown)) < 100 {
+					err = errBrowserPluginNotInstalled
+				} else {
+					usedMode = "static"
+				}
 			}
 		}
 	}
@@ -493,11 +521,14 @@ func failWebImport(c *gin.Context, err error) {
 
 func publicWebImportError(err error) string {
 	message := err.Error()
+	if errors.Is(err, errBrowserPluginNotInstalled) {
+		return errBrowserPluginNotInstalled.Error()
+	}
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return "处理超时，请稍后重试或改用静态抓取"
 	}
 	if strings.Contains(message, "Chromium") || strings.Contains(message, "debug url") || strings.Contains(message, "crashpad") {
-		return "服务器浏览器启动失败，请联系管理员检查 Chromium 运行环境，或尝试静态抓取"
+		return "服务器浏览器启动失败，请联系管理员在后台「插件」中安装无头浏览器插件，或尝试静态抓取"
 	}
 	for _, safeMessage := range []string{
 		"render_mode", "网页地址", "不允许访问", "无法解析网页地址", "网页返回状态码",
@@ -855,29 +886,19 @@ func fetchStaticWebPage(ctx context.Context, target *url.URL) (webPage, error) {
 	return webPage{HTML: string(data), FinalURL: response.Request.URL}, nil
 }
 
-func renderDynamicWebPage(ctx context.Context, target *url.URL) (webPage, error) {
-	browserPath, found := launcher.LookPath()
-	if !found {
-		var err error
-		browserPath, err = downloadManagedBrowser(ctx)
-		if err != nil {
-			return webPage{}, fmt.Errorf("无法准备 Chromium: %w", err)
-		}
+// errBrowserPluginNotInstalled 浏览器渲染依赖无头浏览器插件（chrome-headless-shell），未安装时返回。
+var errBrowserPluginNotInstalled = errors.New("网页浏览器渲染依赖无头浏览器插件，请联系管理员在后台「插件」中安装，或改用静态抓取")
+
+// renderDynamicWebPage 用插件安装的 chrome-headless-shell 渲染网页；browserPath 来自已安装的无头浏览器插件。
+func renderDynamicWebPage(ctx context.Context, target *url.URL, browserPath string) (webPage, error) {
+	if browserPath == "" {
+		return webPage{}, errBrowserPluginNotInstalled
 	}
 	profileRoot := filepath.Join(config.DataDir(), "browser-profiles")
 	if err := os.MkdirAll(profileRoot, 0o700); err != nil {
 		return webPage{}, fmt.Errorf("无法准备 Chromium 配置目录: %w", err)
 	}
 	controlURL, profileDir, err := launchImportBrowser(ctx, browserPath, profileRoot)
-	if err != nil && found {
-		systemBrowserErr := err
-		managedPath, downloadErr := downloadManagedBrowser(ctx)
-		if downloadErr == nil && managedPath != browserPath {
-			controlURL, profileDir, err = launchImportBrowser(ctx, managedPath, profileRoot)
-		} else if downloadErr != nil {
-			err = fmt.Errorf("系统 Chromium 启动失败（%v），备用浏览器准备失败: %w", systemBrowserErr, downloadErr)
-		}
-	}
 	if err != nil {
 		return webPage{}, fmt.Errorf("无法启动 Chromium: %w", err)
 	}
@@ -951,13 +972,6 @@ func renderDynamicWebPage(ctx context.Context, target *url.URL) (webPage, error)
 		return webPage{}, err
 	}
 	return webPage{HTML: markup, FinalURL: finalURL}, nil
-}
-
-func downloadManagedBrowser(ctx context.Context) (string, error) {
-	downloader := launcher.NewBrowser()
-	downloader.Context = ctx
-	downloader.RootDir = filepath.Join(config.DataDir(), "browser")
-	return downloader.Get()
 }
 
 func launchImportBrowser(ctx context.Context, browserPath, profileRoot string) (string, string, error) {

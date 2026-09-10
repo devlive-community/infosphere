@@ -344,10 +344,11 @@ Authorization: Bearer <token>
 | POST | `/import/pdf` | multipart 上传 `file`（PDF，≤64MB），可选 `title`；文件以 0600 权限私有保存后返回 `202` 和 `task`，后台根据文本坐标、字号和字体样式重建 Markdown 标题、段落、列表及代码块，移除重复页眉页脚并修正双栏阅读顺序；结果固定为私有草稿。扫描版 PDF 需预先 OCR | `book:import` |
 | POST | `/books/:id/import/pdf` | multipart 上传 `file`（PDF，≤64MB）及 `mode=append\|replace`，仅书籍 owner/admin 可用；返回 `202` 和 `task` 后后台执行。`append` 将新解析的 Markdown 章节以草稿追加到目录末尾；`replace` 在同一事务内清理旧章节及关联状态后写入新草稿章节，并将书籍转为私有草稿。解析失败不会改动旧数据 | `book:import` |
 | GET | `/tasks/:id` | 查询当前用户自己的后台任务状态；成功时返回解密后的 `result`，等待/执行/重试/失败状态返回进度和有限错误信息；无法枚举或读取他人的任务，任务载荷永不返回 | 登录用户 |
-| POST | `/import/web` | JSON `{url,title?,render_mode?}`，`render_mode` 为 `auto`（默认）、`static` 或 `browser`；自动模式先静态抓取，检测到 SPA 空壳或正文不足时使用 Chromium 执行 JavaScript；正文转为 Markdown 并将相对链接补全；结果固定为私有草稿 | `book:import` |
+| POST | `/import/web` | JSON `{url,title?,render_mode?}`，`render_mode` 为 `auto`（默认）、`static` 或 `browser`；自动模式先静态抓取，检测到 SPA 空壳或正文不足时使用无头浏览器插件执行 JavaScript；`browser` 模式及自动模式的浏览器回退均依赖已安装的无头浏览器插件，未安装时 `browser` 直接报错、`auto` 退回静态；正文转为 Markdown 并将相对链接补全；结果固定为私有草稿 | `book:import` |
+| GET | `/import/browser-available` | 无头浏览器插件是否已安装（`{available}`），供前端联动禁用「浏览器渲染」采集模式 | `book:import` |
 | POST | `/books/:id/documents/import-web` | JSON `{url,title?,render_mode?,parent_id?,sort_order?}`；复用网页正文提取与 SPA 渲染，剔除页头、页脚、导航、侧栏、广告、分享、评论、相关推荐与弹窗，直接在可编辑书籍内创建草稿章节并记录原始来源 | `document:create` |
 
-> 安全边界：网页导入只允许 HTTP(S)，拒绝 localhost、内网、回环及链路本地地址；重定向和浏览器发起的子资源请求也执行同一校验。动态网页首次导入若系统没有 Chrome/Chromium，会在数据目录准备 Chromium 运行环境。所有导入章节都会生成 `create` 初始版本。PDF/ZIP 后台任务成功后立即删除源文件；最终失败任务保留源文件以供重试，超过 30 天由启动清理回收。
+> 安全边界：网页导入只允许 HTTP(S)，拒绝 localhost、内网、回环及链路本地地址；重定向和浏览器发起的子资源请求也执行同一校验。动态网页渲染依赖后台「无头浏览器」插件（与 PDF 导出共用同一 chrome-headless-shell），未安装则浏览器渲染不可用。所有导入章节都会生成 `create` 初始版本。PDF/ZIP 后台任务成功后立即删除源文件；最终失败任务保留源文件以供重试，超过 30 天由启动清理回收。
 
 > ZIP 验收标准：导出再导入内容无损（含嵌套章节、草稿状态、评论开关、标签、封面与正文图片）。
 

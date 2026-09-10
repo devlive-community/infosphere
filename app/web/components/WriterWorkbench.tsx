@@ -784,6 +784,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
   const [url, setURL] = useState('')
   const [title, setTitle] = useState('')
   const [renderMode, setRenderMode] = useState<WebRenderMode>('auto')
+  const [browserAvailable, setBrowserAvailable] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -793,6 +794,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
     setTitle('')
     setRenderMode('auto')
     setError('')
+    api<{ available: boolean }>('/import/browser-available').then((r) => setBrowserAvailable(r.available)).catch(() => {})
   }, [open])
 
   useEffect(() => {
@@ -860,11 +862,11 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
           <Field label={<>章节标题 <span className="font-normal text-slate-400">（可选）</span></>} hint="留空时使用网页标题。">
             <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="使用网页标题" />
           </Field>
-          <Field label="解析方式">
+          <Field label="解析方式" hint={browserAvailable ? undefined : '浏览器渲染需管理员在后台「插件」中安装无头浏览器插件；当前仅可静态抓取。'}>
             <Select menuPlacement="top" value={renderMode} onChange={(value) => setRenderMode(value as WebRenderMode)} options={[
               { value: 'auto', label: '自动识别（推荐）' },
               { value: 'static', label: '仅静态抓取' },
-              { value: 'browser', label: '使用浏览器运行 JavaScript' },
+              ...(browserAvailable ? [{ value: 'browser', label: '使用浏览器运行 JavaScript' }] : []),
             ]} />
           </Field>
 
