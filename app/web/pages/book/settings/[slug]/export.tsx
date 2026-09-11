@@ -20,9 +20,9 @@ const DEFAULT_STYLE: BookStyle = { page_size: 'A4', include_cover: true, include
 
 // 书籍设置 · 导出设置：控制他人能否导出本书、是否共享作者导出样式（仅可管理者）
 const ALL_FORMATS: { key: string; label: string; hint: string }[] = [
-  { key: 'pdf', label: 'PDF', hint: '按导出样式渲染，需管理员已安装无头浏览器插件' },
-  { key: 'epub', label: 'EPUB (电子书)', hint: '通用电子书格式，含封面/目录，纯服务端生成无需插件' },
-  { key: 'markdown', label: 'Markdown (zip)', hint: '章节 markdown 与图片打包，可再次导入' },
+  { key: 'pdf', label: 'PDF', hint: '带排版的文档，适合打印与离线阅读' },
+  { key: 'epub', label: 'EPUB (电子书)', hint: '通用电子书格式，含封面与目录，适配手机 / 电纸书阅读器' },
+  { key: 'markdown', label: 'Markdown (zip)', hint: '章节 Markdown 与图片打包，可再次导入编辑' },
 ]
 
 export default function BookSettingsExport({ book }: InferGetServerSidePropsType<typeof getBookSettingsProps>) {
@@ -77,7 +77,7 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="text-sm font-medium text-slate-900">允许他人导出本书</div>
-                <p className="mt-1 text-xs leading-5 text-slate-500">公开书籍开启后，读者可导出为 PDF（需管理员已安装 PDF 导出插件）；关闭仅作者/协作者可导出。</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">公开书籍开启后，读者可按下方允许的格式导出本书；关闭则仅作者/协作者可导出。</p>
               </div>
               <Switch checked={exportEnabled} onChange={setExportEnabled} ariaLabel="允许他人导出本书" />
             </div>
