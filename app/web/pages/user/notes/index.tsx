@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Container from '@/components/Container'
 import Seo from '@/components/Seo'
-import { api, formatDate } from '@/lib/api'
+import { api, formatDate, API_BASE, getToken } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { Badge, Button, Card, EmptyState, Loading, Pagination, SegmentedTabs, useFeedback } from '@/components/ui'
 import type { ReadingAnnotation } from '@/lib/reading-annotations'
@@ -43,7 +43,34 @@ export default function MyNotesPage() {
   const [data, setData] = useState<AnnotationPage | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [exporting, setExporting] = useState(false)
   const siteName = site.site_name || 'InfoSphere'
+
+  // exportNotes 下载全部标注为 Markdown（复用书籍导出的 fetch→blob→下载 方式）
+  async function exportNotes() {
+    setExporting(true)
+    try {
+      const token = getToken()
+      const res = await fetch(`${API_BASE}/api/v1/users/me/annotations/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
+      if (!res.ok) {
+        const msg = await res.json().then((p) => p.message).catch(() => '')
+        throw new Error(msg || '导出失败，请稍后重试')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `my-notes-${new Date().toISOString().slice(0, 10)}.md`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      showToast({ title: '导出失败', message: (error as Error).message, tone: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const load = useCallback(async () => {
     if (!user) return
@@ -101,7 +128,10 @@ export default function MyNotesPage() {
             <h1 className="text-3xl font-bold text-ink">我的笔记</h1>
             <p className="mt-2 text-sm text-slate-500">集中查看跨设备同步的划线、私人笔记和章节书签。</p>
           </div>
-          <Button variant="outline" disabled={loading} onClick={() => void load()}><i className="fa-solid fa-rotate" aria-hidden="true" />刷新</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" disabled={loading} onClick={() => void load()}><i className="fa-solid fa-rotate" aria-hidden="true" />刷新</Button>
+            <Button variant="outline" loading={exporting} disabled={loading || (data?.total ?? 0) === 0} onClick={() => void exportNotes()}><i className="fa-solid fa-file-arrow-down" aria-hidden="true" />导出</Button>
+          </div>
         </div>
 
         <SegmentedTabs className="mb-5" value={filter} items={filters} ariaLabel="笔记类型" onChange={switchFilter} />

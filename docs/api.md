@@ -379,6 +379,7 @@ Authorization: Bearer <token>
 | PUT | `/annotations/:id` | 更新自己的笔记、颜色、位置与 `active\|relocated\|orphaned` 锚点状态 | `annotation:update` |
 | DELETE | `/annotations/:id` | 删除自己的私人标注；越权统一返回 404 | `annotation:delete` |
 | GET | `/users/me/annotations` | 分页聚合仍有权访问的私人标注；支持 `kind=highlight\|note\|bookmark` | `annotation:read` |
+| GET | `/users/me/annotations/export` | 导出全部私人标注为 Markdown 文件下载（按 书→章节→时间 分组，附 `Content-Disposition`） | `annotation:read` |
 
 锚点以正文文本位置和 `quote + prefix + suffix` 文本片段共同保存。客户端优先校验原位置，章节更新后使用上下文重新定位；无法定位时保留 `quote` 原文快照并标记为 `orphaned`。
 

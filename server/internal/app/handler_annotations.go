@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -246,6 +247,69 @@ func (a *App) ListMyAnnotations(c *gin.Context) {
 		return
 	}
 	ok(c, PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
+}
+
+// ExportMyAnnotations GET /users/me/annotations/export 把当前用户的全部标注导出为 Markdown 文件下载。
+// 复用「我的笔记」的可见性过滤，按 书 → 章节 → 时间 分组组织。
+func (a *App) ExportMyAnnotations(c *gin.Context) {
+	u := currentUser(c)
+	query := a.DB.Table("reading_annotations").
+		Joins("JOIN books ON books.id = reading_annotations.book_id AND books.deleted_at IS NULL").
+		Joins("JOIN documents ON documents.id = reading_annotations.document_id AND documents.deleted_at IS NULL").
+		Where("reading_annotations.user_id = ?", u.ID)
+	if !IsAdmin(u) {
+		query = query.Where(`(
+			books.user_id = ? OR
+			(books.is_public = ? AND books.status IN ? AND documents.status = ?) OR
+			EXISTS (SELECT 1 FROM book_collaborators bc WHERE bc.book_id = books.id AND bc.user_id = ? AND bc.status = ? AND (bc.role = ? OR documents.status = ?))
+		)`, u.ID, true, []string{"in_progress", "published", "completed"}, "published", u.ID, "accepted", "editor", "published")
+	}
+	rows := []myAnnotationRow{}
+	if err := query.Select(`reading_annotations.*, books.title AS book_title, books.slug AS book_slug,
+		documents.title AS document_title, documents.slug AS document_slug`).
+		Order("books.title ASC, documents.sort_order ASC, reading_annotations.created_at ASC").
+		Scan(&rows).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "导出失败")
+		return
+	}
+
+	var b strings.Builder
+	b.WriteString("# 我的阅读笔记\n\n")
+	fmt.Fprintf(&b, "> 导出于 %s · 共 %d 条\n", currentTime().Format("2006-01-02"), len(rows))
+	labels := map[string]string{"highlight": "划线", "note": "笔记", "bookmark": "书签"}
+	var curBook, curDoc string
+	for _, r := range rows {
+		if r.BookTitle != curBook {
+			fmt.Fprintf(&b, "\n## 《%s》\n", r.BookTitle)
+			curBook, curDoc = r.BookTitle, ""
+		}
+		if r.DocumentTitle != curDoc {
+			fmt.Fprintf(&b, "\n### %s\n\n", r.DocumentTitle)
+			curDoc = r.DocumentTitle
+		}
+		label := labels[r.Kind]
+		if label == "" {
+			label = r.Kind
+		}
+		fmt.Fprintf(&b, "- **%s** · %s\n", label, r.CreatedAt.Format("2006-01-02"))
+		if strings.TrimSpace(r.Quote) != "" {
+			for _, line := range strings.Split(r.Quote, "\n") {
+				fmt.Fprintf(&b, "  > %s\n", line)
+			}
+		}
+		if strings.TrimSpace(r.Note) != "" {
+			for _, line := range strings.Split(r.Note, "\n") {
+				fmt.Fprintf(&b, "  %s\n", line)
+			}
+		}
+	}
+	if len(rows) == 0 {
+		b.WriteString("\n_暂无标注_\n")
+	}
+
+	filename := fmt.Sprintf("my-notes-%s.md", currentTime().Format("20060102"))
+	c.Header("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	c.Data(http.StatusOK, "text/markdown; charset=utf-8", []byte(b.String()))
 }
 
 func trimRunes(value string, limit int) string {

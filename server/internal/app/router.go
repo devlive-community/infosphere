@@ -230,6 +230,7 @@ func (a *App) Router() *gin.Engine {
 			annotations.PUT("/annotations/:id", a.RequirePermission(authz.AnnotationUpdate), a.UpdateAnnotation)
 			annotations.DELETE("/annotations/:id", a.RequirePermission(authz.AnnotationDelete), a.DeleteAnnotation)
 			annotations.GET("/users/me/annotations", a.RequirePermission(authz.AnnotationRead), a.ListMyAnnotations)
+			annotations.GET("/users/me/annotations/export", a.RequirePermission(authz.AnnotationRead), a.ExportMyAnnotations)
 		}
 
 		// ── 上传 ──
