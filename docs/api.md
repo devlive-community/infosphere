@@ -163,6 +163,7 @@ Authorization: Bearer <token>
 | POST | `/auth/email/verify` | 匿名凭令牌激活邮箱：`{token}`（一次性、24h 有效） | 匿名 |
 | POST | `/auth/email/resend` | 登录用户重发激活邮件 | 登录 |
 | GET/POST/DELETE | `/auth/invite-code` | 邀请码 opt-in：GET 返回 `{invite_code}`（未开启为空）；POST 开启并生成；DELETE 关闭（清空） | 登录 |
+| GET | `/auth/invited` | 我邀请的用户列表 `{items:[{username,avatar,created_at}],total}`（关闭邀请码后仍可查看） | 登录 |
 | GET | `/auth/2fa` | 二次认证状态 `{enabled, operations:[login\|credentials\|delete\|unbind_export]}` | 登录 |
 | POST | `/auth/2fa/setup` | 预配置 TOTP：返回 `{secret, otpauth_url, qr(data-uri)}`（尚未开启） | 登录 |
 | POST | `/auth/2fa/enable` | 校验 `{code}` 后开启，默认勾选全部敏感操作，返回一次性 `backup_codes` | 登录 |

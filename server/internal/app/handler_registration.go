@@ -154,6 +154,18 @@ func (a *App) EnableInviteCode(c *gin.Context) {
 	ok(c, gin.H{"invite_code": a.ensureInviteCode(u)})
 }
 
+// MyInvitedUsers GET /auth/invited 我邀请的用户列表（referral），关闭邀请码也可查看。
+func (a *App) MyInvitedUsers(c *gin.Context) {
+	u := currentUser(c)
+	var users []models.User
+	a.DB.Where("invited_by = ?", u.ID).Order("created_at DESC").Find(&users)
+	items := make([]gin.H, 0, len(users))
+	for _, x := range users {
+		items = append(items, gin.H{"username": x.Username, "avatar": x.Avatar, "created_at": x.CreatedAt})
+	}
+	ok(c, gin.H{"items": items, "total": len(items)})
+}
+
 // DisableInviteCode DELETE /auth/invite-code 用户关闭邀请码（清空，之后不能再用它注册）。
 func (a *App) DisableInviteCode(c *gin.Context) {
 	u := currentUser(c)

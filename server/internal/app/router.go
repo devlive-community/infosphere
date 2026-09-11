@@ -91,6 +91,7 @@ func (a *App) Router() *gin.Engine {
 				authed.GET("/invite-code", a.MyInviteCode)          // 我的邀请码（未开启为空）
 				authed.POST("/invite-code", a.EnableInviteCode)     // 开启专属邀请码
 				authed.DELETE("/invite-code", a.DisableInviteCode)  // 关闭邀请码
+				authed.GET("/invited", a.MyInvitedUsers)            // 我邀请的用户列表
 				authed.POST("/email/resend", a.ResendActivation)    // 重新发送激活邮件
 				// ── 二次认证（TOTP） ──
 				authed.GET("/2fa", a.GetTwoFactor)

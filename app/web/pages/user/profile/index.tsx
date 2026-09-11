@@ -6,64 +6,11 @@ import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 import { api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Button, Input, Textarea, Field, Loading, useFeedback } from '@/components/ui'
+import { Button, Input, Textarea, Field, Loading } from '@/components/ui'
 import { EyeIcon, SaveIcon } from '@/components/icons'
 import UserAvatar from '@/components/UserAvatar'
 
 const MAX_BIO = 200
-
-// InviteCodeField 邀请码：默认未开启（无码）；用户可自行开启获得专属邀请码，或关闭。
-function InviteCodeField() {
-  const { showToast } = useFeedback()
-  const [code, setCode] = useState('')
-  const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    api<{ invite_code: string }>('/auth/invite-code').then((d) => setCode(d.invite_code || '')).catch(() => { /* 忽略 */ })
-  }, [])
-  async function enable() {
-    setBusy(true)
-    try {
-      const d = await api<{ invite_code: string }>('/auth/invite-code', { method: 'POST' })
-      setCode(d.invite_code || '')
-    } catch (e) {
-      showToast({ message: (e as Error).message || '开启失败', tone: 'error' })
-    } finally {
-      setBusy(false)
-    }
-  }
-  async function disable() {
-    setBusy(true)
-    try {
-      await api('/auth/invite-code', { method: 'DELETE' })
-      setCode('')
-    } catch (e) {
-      showToast({ message: (e as Error).message || '关闭失败', tone: 'error' })
-    } finally {
-      setBusy(false)
-    }
-  }
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(code)
-      showToast({ message: '邀请码已复制', tone: 'success' })
-    } catch {
-      showToast({ message: '复制失败，请手动复制', tone: 'error' })
-    }
-  }
-  return (
-    <Field label="我的邀请码" hint="默认不开启。开启后会生成你的专属邀请码，可分享给朋友用于注册。">
-      {code ? (
-        <div className="flex items-center gap-2">
-          <Input value={code} readOnly className="font-mono tracking-widest" aria-label="我的邀请码" />
-          <Button type="button" variant="outline" onClick={copy}>复制</Button>
-          <Button type="button" variant="ghost" loading={busy} onClick={disable} className="text-rose-600 hover:bg-rose-50">关闭</Button>
-        </div>
-      ) : (
-        <Button type="button" variant="outline" loading={busy} onClick={enable}>开启邀请码</Button>
-      )}
-    </Field>
-  )
-}
 
 export default function Profile() {
   const { site } = useApp()
@@ -164,7 +111,6 @@ export default function Profile() {
                     <Field label="电子邮箱">
                       <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                     </Field>
-                    <InviteCodeField />
                   </div>
                 </div>
 
