@@ -8,6 +8,7 @@ import (
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // SaveReadingProgress PUT /reading-progress/:bookId 记录当前用户在书籍中读到的章节
@@ -22,6 +23,9 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 		DocID    uint   `json:"doc_id"`
 		DocSlug  string `json:"doc_slug"`
 		DocTitle string `json:"doc_title"`
+		// 可选：章节滚动百分比（0-100，覆盖写）与本次活跃阅读秒数（增量累加）
+		ScrollPercent    *int `json:"scroll_percent"`
+		ReadSecondsDelta *int `json:"read_seconds_delta"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.DocID == 0 || req.DocSlug == "" {
 		fail(c, http.StatusBadRequest, "参数错误")
@@ -44,20 +48,37 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 		return
 	}
 
-	progress := models.ReadingProgress{
-		UserID:   u.ID,
-		BookID:   book.ID,
-		DocID:    req.DocID,
-		DocSlug:  doc.Slug,
-		DocTitle: doc.Title,
-	}
-	// upsert：每用户每书一条
+	// upsert：每用户每书一条，先确保行存在
+	progress := models.ReadingProgress{UserID: u.ID, BookID: book.ID}
 	if err := a.DB.Where("user_id = ? AND book_id = ?", u.ID, book.ID).
-		Assign(progress).FirstOrCreate(&progress).Error; err != nil {
+		FirstOrCreate(&progress).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
 	}
-	a.DB.Model(&progress).Updates(map[string]any{"doc_id": doc.ID, "doc_slug": doc.Slug, "doc_title": doc.Title})
+	updates := map[string]any{"doc_id": doc.ID, "doc_slug": doc.Slug, "doc_title": doc.Title}
+	if req.ScrollPercent != nil {
+		sp := *req.ScrollPercent
+		if sp < 0 {
+			sp = 0
+		} else if sp > 100 {
+			sp = 100
+		}
+		updates["scroll_percent"] = sp
+	}
+	if req.ReadSecondsDelta != nil {
+		d := *req.ReadSecondsDelta
+		if d > 3600 {
+			d = 3600 // 单次上报上限 1 小时，防止异常/刷量
+		}
+		if d > 0 {
+			updates["read_seconds"] = gorm.Expr("read_seconds + ?", d)
+		}
+	}
+	if err := a.DB.Model(&progress).Updates(updates).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
+		return
+	}
+	a.DB.First(&progress, progress.ID) // 回读增量后的最新值
 
 	// 记录该章节已读（每用户每章一条，重复读不重复插入）
 	read := models.ReadChapter{UserID: u.ID, BookID: book.ID, DocID: doc.ID}
@@ -185,6 +206,7 @@ func (a *App) MyReading(c *gin.Context) {
 			"last_doc_slug":  p.DocSlug,
 			"last_doc_title": p.DocTitle,
 			"last_read_at":   p.UpdatedAt,
+			"read_seconds":   p.ReadSeconds,
 		})
 	}
 	ok(c, gin.H{"items": items, "total": total, "page": page, "page_size": pageSize})

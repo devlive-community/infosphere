@@ -210,14 +210,18 @@ type Reaction struct {
 
 // ReadingProgress 阅读进度：每个用户在每个书籍中最近读到的章节
 type ReadingProgress struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"uniqueIndex:uk_user_book;not null" json:"user_id"`
-	BookID    uint      `gorm:"uniqueIndex:uk_user_book;not null" json:"book_id"`
-	DocID     uint      `gorm:"not null" json:"doc_id"`
-	DocSlug   string    `gorm:"size:255;not null" json:"doc_slug"`
-	DocTitle  string    `gorm:"size:255" json:"doc_title"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	UserID   uint   `gorm:"uniqueIndex:uk_user_book;not null" json:"user_id"`
+	BookID   uint   `gorm:"uniqueIndex:uk_user_book;not null" json:"book_id"`
+	DocID    uint   `gorm:"not null" json:"doc_id"`
+	DocSlug  string `gorm:"size:255;not null" json:"doc_slug"`
+	DocTitle string `gorm:"size:255" json:"doc_title"`
+	// ScrollPercent 最近章节的滚动百分比（0-100），用于精确续读定位
+	ScrollPercent int `gorm:"default:0" json:"scroll_percent"`
+	// ReadSeconds 该书累计阅读秒数（由阅读器活跃计时增量累加）
+	ReadSeconds int       `gorm:"default:0" json:"read_seconds"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // ReadChapter 记录用户读过的每个章节（用于详情页阅读进度标记），每用户每章一条

@@ -16,6 +16,15 @@ interface ReadingItem {
   last_doc_slug: string
   last_doc_title: string
   last_read_at: string
+  read_seconds: number
+}
+
+// formatReadTime 把累计秒数格式化为「N 分钟 / N.N 小时」
+function formatReadTime(seconds: number): string {
+  if (!seconds || seconds < 60) return '不足 1 分钟'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} 分钟`
+  return `${(minutes / 60).toFixed(1)} 小时`
 }
 
 interface ReadingPage {
@@ -49,7 +58,7 @@ function StatTile({ icon, label, value, tone }: { icon: string; label: string; v
 
 // ReadingCard 复用全站 BookCard（grid 视图），在底部操作区叠加进度条与「继续阅读」。
 function ReadingCard({ item }: { item: ReadingItem }) {
-  const { book, read_count, total_chapters, percentage, last_doc_slug, last_doc_title } = item
+  const { book, read_count, total_chapters, percentage, last_doc_slug, last_doc_title, read_seconds } = item
   const resumeUrl = last_doc_slug
     ? `/book/reader/${encodeURIComponent(book.slug)}/${encodeURIComponent(last_doc_slug)}`
     : `/book/detail/${encodeURIComponent(book.slug)}`
@@ -58,7 +67,12 @@ function ReadingCard({ item }: { item: ReadingItem }) {
       book={book}
       view="grid"
       showViews={false}
-      meta={<span>已读 {read_count}/{total_chapters} 章</span>}
+      meta={
+        <span>
+          已读 {read_count}/{total_chapters} 章
+          {read_seconds > 0 && <span className="text-slate-400"> · 阅读 {formatReadTime(read_seconds)}</span>}
+        </span>
+      }
       actions={
         <div className="w-full">
           <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-500">

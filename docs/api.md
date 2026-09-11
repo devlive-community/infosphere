@@ -358,9 +358,9 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/reading-progress/:bookId` | 当前用户在可见书籍中的最近阅读章节；无进度返回 `null` | `reading-progress:read` |
-| PUT | `/reading-progress/:bookId` | 记录/覆盖进度；`doc_id` 必须属于该书且当前可读，slug/title 由服务端真实章节覆盖；同时将该章节标记为已读 | `reading-progress:update` |
+| PUT | `/reading-progress/:bookId` | 记录/覆盖进度；`doc_id` 必须属于该书且当前可读，slug/title 由服务端真实章节覆盖；同时将该章节标记为已读。可选 `scroll_percent`（0-100，覆盖写，精确续读）与 `read_seconds_delta`（活跃阅读秒数增量，单次上限 3600，累加到 `read_seconds`） | `reading-progress:update` |
 | GET | `/books/:id/read-chapters` | 当前用户在该书已读的章节 ID 列表 `{doc_ids:[]}`，用于详情页进度标记 | `user:read` |
-| GET | `/users/me/reading?page=&page_size=` | 「我在读」列表：跨书聚合进度，按最近阅读倒序分页；每项含 `book`、`read_count`、`total_chapters`、`percentage`、`last_doc_slug`、`last_doc_title`、`last_read_at` | `reading-progress:read` |
+| GET | `/users/me/reading?page=&page_size=` | 「我在读」列表：跨书聚合进度，按最近阅读倒序分页；每项含 `book`、`read_count`、`total_chapters`、`percentage`、`last_doc_slug`、`last_doc_title`、`last_read_at`、`read_seconds` | `reading-progress:read` |
 | GET | `/users/me/reading-stats` | 阅读数据概览：`reading_books`（在读）、`completed_books`（已读完）、`chapters_read`（累计已读章节）、`streak_days`（连续阅读天数） | `reading-progress:read` |
 
 ## 阅读标注与私人笔记（登录用户）

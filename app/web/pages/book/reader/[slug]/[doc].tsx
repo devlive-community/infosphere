@@ -9,7 +9,7 @@ import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import { ButtonLink } from '@/components/ui'
 import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
-import { saveReadingProgress } from '@/lib/reading-progress'
+import { saveReadingProgress, getReadingProgress } from '@/lib/reading-progress'
 import Comments from '@/components/Comments'
 import ReaderAnnotations from '@/components/ReaderAnnotations'
 import ReportButton from '@/components/ReportButton'
@@ -130,12 +130,72 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
     setExpanded(ids)
   }, [tree, flat.length])
 
-  // 记录阅读进度（登录用户按用户名隔离）
+  // 记录阅读进度（登录用户按用户名隔离）：打开即标记该章已读并置为最近章节
   useEffect(() => {
     if (user && book && doc) {
       saveReadingProgress(user.username, book.id, { docId: doc.id, docSlug: doc.slug, docTitle: doc.title, chapterPrefix: book.chapter_prefix || '' } as any)
     }
   }, [user, book, doc])
+
+  // 精确续读：首次进入时，若上次进度停留在当前章节则恢复滚动位置
+  const restoredRef = useRef(false)
+  useEffect(() => {
+    if (restoredRef.current || !book || !doc) return
+    restoredRef.current = true
+    getReadingProgress(user?.username || '', book.id).then((p) => {
+      if (p && p.docId === doc.id && (p.scrollPercent ?? 0) > 0) {
+        requestAnimationFrame(() => {
+          const max = document.documentElement.scrollHeight - window.innerHeight
+          if (max > 0) window.scrollTo({ top: (max * (p.scrollPercent as number)) / 100 })
+        })
+      }
+    })
+  }, [book?.id, doc?.id, user?.username]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 阅读时长与滚动位置上报（登录用户）：活跃计时（隐藏暂停），节流上报滚动百分比，
+  // 每 15s / 页面隐藏 / 切章 / 关闭时 flush 一次增量。
+  const activeSecondsRef = useRef(0)
+  const scrollPctRef = useRef(0)
+  useEffect(() => {
+    if (!user || !book || !doc) return
+    let lastTick = Date.now()
+    const computeScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      scrollPctRef.current = max > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / max) * 100))) : 0
+    }
+    const onScroll = () => computeScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    computeScroll()
+
+    const tick = setInterval(() => {
+      const now = Date.now()
+      if (document.visibilityState === 'visible') activeSecondsRef.current += Math.round((now - lastTick) / 1000)
+      lastTick = now
+    }, 1000)
+
+    const flush = () => {
+      const secs = activeSecondsRef.current
+      activeSecondsRef.current = 0
+      saveReadingProgress(user.username, book.id, {
+        docId: doc.id, docSlug: doc.slug, docTitle: doc.title, chapterPrefix: book.chapter_prefix || '',
+        scrollPercent: scrollPctRef.current, secondsDelta: secs,
+      })
+    }
+    const heartbeat = setInterval(flush, 15000)
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onVisibility)
+    // pagehide 是 beforeunload 的现代替代（兼容 bfcache），用于关闭/离开前 flush
+    window.addEventListener('pagehide', flush)
+
+    return () => {
+      clearInterval(tick)
+      clearInterval(heartbeat)
+      window.removeEventListener('scroll', onScroll)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
+      flush()
+    }
+  }, [user?.id, book?.id, doc?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const next = new Set(readDocIds)
