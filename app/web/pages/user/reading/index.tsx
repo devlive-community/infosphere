@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Container from '@/components/Container'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Button, ButtonLink, EmptyState, Input, Loading, Pagination, useFeedback } from '@/components/ui'
+import { Button, ButtonLink, EmptyState, Input, Loading, Pagination, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import Seo from '@/components/Seo'
 import { BookIcon } from '@/components/icons'
@@ -63,7 +63,7 @@ function CheckinCalendar() {
   const [saving, setSaving] = useState(false)
 
   const load = () => {
-    api<ActivityData>('/users/me/reading-activity', { params: { days: 84 } })
+    api<ActivityData>('/users/me/reading-activity', { params: { days: 364 } })
       .then((d) => { setData(d); setGoalInput(d.goal.daily_chapters) })
       .catch(() => { /* 忽略 */ })
   }
@@ -90,10 +90,12 @@ function CheckinCalendar() {
     if (!d.met) return 'bg-primary-200'
     return d.count >= goal * 2 ? 'bg-primary-600' : 'bg-primary-500'
   }
-  // 首日之前用空格补齐，使第一格落在其星期几所在行（周日=0 在最上）
+  // 组织成「周列」（周日在最上）：首日之前补空，使第一格落在其星期几行
   const leadPad = data.days.length ? new Date(data.days[0].date + 'T00:00:00').getDay() : 0
-
-  const weekdays = ['', '一', '', '三', '', '五', '']
+  const padded: (ActivityDay | null)[] = [...Array(leadPad).fill(null), ...data.days]
+  const weeks: (ActivityDay | null)[][] = []
+  for (let i = 0; i < padded.length; i += 7) weeks.push(padded.slice(i, i + 7))
+  const weekdayLabels = ['', '一', '', '三', '', '五', '']
 
   return (
     <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
@@ -106,33 +108,47 @@ function CheckinCalendar() {
             {data.today_met && <i className="fa-solid fa-circle-check text-emerald-500" aria-label="已达标" />}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          <span className="shrink-0">每日目标</span>
-          <Input
-            type="number" min={1} max={100} size="sm" value={goalInput}
-            onChange={(e) => setGoalInput(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
-            className="w-16 text-center"
-            aria-label="每日目标章节数"
-          />
-          <span className="shrink-0">章</span>
+        <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+          <span>每日目标</span>
+          <span className="inline-block w-16 shrink-0">
+            <Input
+              type="number" min={1} max={100} size="sm" value={goalInput}
+              onChange={(e) => setGoalInput(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+              className="text-center"
+              aria-label="每日目标章节数"
+            />
+          </span>
+          <span>章</span>
           <Button variant="ghost" size="sm" loading={saving} disabled={goalInput === goal} onClick={saveGoal}>保存</Button>
         </div>
       </div>
 
-      <div className="mt-3 overflow-x-auto">
+      <div className="mt-3 overflow-x-auto pb-1">
         <div className="flex gap-1">
-          <div className="grid shrink-0 gap-1" style={{ gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px' }}>
-            {weekdays.map((d, i) => (
-              <span key={i} className="text-[9px] leading-none text-slate-300">{d}</span>
-            ))}
+          {/* 星期标签列（一/三/五） */}
+          <div className="grid shrink-0 gap-1 pr-1 text-[9px] leading-none text-slate-300" style={{ gridTemplateRows: 'repeat(7, 14px)' }}>
+            {weekdayLabels.map((w, i) => <span key={i} className="flex items-center">{w}</span>)}
           </div>
-          <div className="grid grid-flow-col gap-1" style={{ gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px' }}>
-            {Array.from({ length: leadPad }).map((_, i) => <span key={`pad-${i}`} />)}
-            {data.days.map((d) => (
-              <span key={d.date} className={`rounded-sm ${cellColor(d)}`} style={{ width: 12, height: 12 }} aria-label={`${d.date}：${d.count} 章`} />
-            ))}
-          </div>
+          {/* 每周一列，从旧到新 */}
+          {weeks.map((week, wi) => (
+            <div key={wi} className="grid shrink-0 gap-1" style={{ gridTemplateRows: 'repeat(7, 14px)' }}>
+              {week.map((d, di) => d ? (
+                <Tooltip key={d.date} content={`${d.date} · 读 ${d.count} 章${d.met ? ' · 已达标' : ''}`} className="h-3.5 w-3.5">
+                  <span className={`h-3.5 w-3.5 rounded-sm ${cellColor(d)}`} />
+                </Tooltip>
+              ) : <span key={`e-${di}`} className="h-3.5 w-3.5" />)}
+            </div>
+          ))}
         </div>
+      </div>
+      {/* 图例 */}
+      <div className="mt-2 flex items-center justify-end gap-1 text-[10px] text-slate-400">
+        <span>少</span>
+        <span className="h-3 w-3 rounded-sm bg-slate-100" />
+        <span className="h-3 w-3 rounded-sm bg-primary-200" />
+        <span className="h-3 w-3 rounded-sm bg-primary-500" />
+        <span className="h-3 w-3 rounded-sm bg-primary-600" />
+        <span>多</span>
       </div>
     </div>
   )
