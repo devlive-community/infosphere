@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { FormEvent, useEffect, useState } from 'react'
 import OAuthButtons, { oauthErrorText } from '@/components/OAuthButtons'
+import CaptchaField, { CaptchaValue } from '@/components/CaptchaField'
 import { Button, Field, Input, SegmentedTabs, Tooltip } from '@/components/ui'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
@@ -58,6 +59,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   const siteName = site.site_name?.trim() || ''
   const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '', inviteCode: '' })
   const [regInfo, setRegInfo] = useState<{ mode: string; require_email: boolean } | null>(null)
+  const [captcha, setCaptcha] = useState<CaptchaValue>({ id: '', answer: '', required: false })
+  const [captchaRefresh, setCaptchaRefresh] = useState(0)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const isLogin = mode === 'login'
@@ -96,16 +99,17 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
       const data = isLogin
         ? await api<{ token: string; user: User }>('/auth/login', {
           method: 'POST',
-          body: { username: form.username, password: form.password },
+          body: { username: form.username, password: form.password, captcha_id: captcha.id, captcha_answer: captcha.answer },
         })
         : await api<{ token: string; user: User }>('/auth/register', {
           method: 'POST',
-          body: { username: form.username, email: form.email, password: form.password, invite_code: form.inviteCode },
+          body: { username: form.username, email: form.email, password: form.password, invite_code: form.inviteCode, captcha_id: captcha.id, captcha_answer: captcha.answer },
         })
       login(data.token, data.user)
       router.replace(nextPath)
     } catch (submitError) {
       setError((submitError as Error).message)
+      if (captcha.required) setCaptchaRefresh((n) => n + 1) // 验证码一次性，失败后换新
     } finally {
       setLoading(false)
     }
@@ -243,6 +247,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
                   <Link href="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">忘记密码？</Link>
                 </div>
               )}
+
+              <CaptchaField scene={isLogin ? 'login' : 'register'} onChange={setCaptcha} refreshSignal={captchaRefresh} />
 
               <Button type="submit" className="w-full" loading={loading}>{isLogin ? '登录' : '创建账户'}</Button>
             </form>

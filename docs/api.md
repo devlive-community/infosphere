@@ -164,6 +164,8 @@ Authorization: Bearer <token>
 | POST | `/auth/email/resend` | 登录用户重发激活邮件 | 登录 |
 | GET/POST/DELETE | `/auth/invite-code` | 邀请码 opt-in：GET 返回 `{invite_code}`（未开启为空）；POST 开启并生成；DELETE 关闭（清空） | 登录 |
 | GET/PUT | `/registration` | 管理员读取/保存注册设置：`{mode, require_email, require_activation}` | `site:update` |
+| GET | `/captcha?scene=register\|login\|comment` | 场景验证码：未开启返回 `{required:false}`；开启返回 `{required:true, id, type, image(data-uri)/question}`；提交对应操作时带 `captcha_id`+`captcha_answer` | 匿名 |
+| GET/PUT | `/captcha-settings` | 管理员读取/保存验证码设置：`{type(image\|arithmetic), length, charset(digit\|alnum), noise(0-3), arith_hard, on_register, on_login, on_comment}` | `site:update` |
 | GET | `/auth/me` | 当前用户信息（含 `email_verified`、`invite_code`） | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |

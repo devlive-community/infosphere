@@ -23,10 +23,12 @@ func (a *App) issueToken(c *gin.Context, u *models.User) {
 }
 
 type registerRequest struct {
-	Username   string `json:"username"`
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	InviteCode string `json:"invite_code"`
+	Username      string `json:"username"`
+	Email         string `json:"email"`
+	Password      string `json:"password"`
+	InviteCode    string `json:"invite_code"`
+	CaptchaID     string `json:"captcha_id"`
+	CaptchaAnswer string `json:"captcha_answer"`
 }
 
 // Register POST /auth/register
@@ -34,6 +36,10 @@ func (a *App) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	if err := a.checkCaptcha("register", req.CaptchaID, req.CaptchaAnswer); err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -118,8 +124,10 @@ func (a *App) Register(c *gin.Context) {
 }
 
 type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	CaptchaID     string `json:"captcha_id"`
+	CaptchaAnswer string `json:"captcha_answer"`
 }
 
 // Login POST /auth/login
@@ -131,6 +139,10 @@ func (a *App) Login(c *gin.Context) {
 	}
 	if req.Username == "" || req.Password == "" {
 		fail(c, http.StatusBadRequest, "请输入用户名和密码")
+		return
+	}
+	if err := a.checkCaptcha("login", req.CaptchaID, req.CaptchaAnswer); err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 

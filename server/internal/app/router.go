@@ -63,6 +63,7 @@ func (a *App) Router() *gin.Engine {
 		authGroup := api.Group("/auth")
 		{
 			authGroup.GET("/registration", a.PublicRegistrationInfo) // 注册页读取注册方式/邮箱要求
+			api.GET("/captcha", a.NewCaptcha)                        // 场景验证码：required=false 或挑战
 			authGroup.POST("/register", a.RateLimit(registerRateLimit), a.Register)
 			authGroup.POST("/login", a.RateLimit(loginRateLimit), a.Login)
 
@@ -263,6 +264,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/storage", a.RequirePermission(authz.SiteUpdate), a.AdminSaveStorage)
 			admin.GET("/registration", a.RequirePermission(authz.SiteUpdate), a.GetRegistrationSettings)
 			admin.PUT("/registration", a.RequirePermission(authz.SiteUpdate), a.UpdateRegistrationSettings)
+			admin.GET("/captcha-settings", a.RequirePermission(authz.SiteUpdate), a.GetCaptchaSettings)
+			admin.PUT("/captcha-settings", a.RequirePermission(authz.SiteUpdate), a.UpdateCaptchaSettings)
 			admin.GET("/system/version", a.RequirePermission(authz.SystemRead), a.SystemVersion)
 			admin.POST("/system/upgrade", a.RequirePermission(authz.SystemUpgrade), a.SystemUpgrade)
 

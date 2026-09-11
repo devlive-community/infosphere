@@ -7,6 +7,7 @@ import { useApp } from '@/lib/auth'
 import type { User } from '@/lib/types'
 import { Button, Loading, useFeedback } from '@/components/ui'
 import ReportButton from '@/components/ReportButton'
+import CaptchaField, { CaptchaValue } from '@/components/CaptchaField'
 
 interface CommentItem {
   id: number
@@ -26,6 +27,8 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
   const [replyTo, setReplyTo] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [captcha, setCaptcha] = useState<CaptchaValue>({ id: '', answer: '', required: false })
+  const [captchaRefresh, setCaptchaRefresh] = useState(0)
 
   const load = useCallback(async () => {
     try {
@@ -44,13 +47,14 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
     try {
       await api(`/documents/${docId}/comments`, {
         method: 'POST',
-        body: { content, parent_id: parentId },
+        body: { content, parent_id: parentId, captcha_id: captcha.id, captcha_answer: captcha.answer },
       })
       setContent('')
       setReplyTo(null)
       await load()
     } catch (err) {
       setError((err as Error).message)
+      if (captcha.required) setCaptchaRefresh((n) => n + 1) // 验证码一次性，失败后换新
     } finally {
       setSubmitting(false)
     }
@@ -122,6 +126,9 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
           )}
           <textarea value={content} onChange={(e) => setContent(e.target.value)} maxLength={2000}
             placeholder="写下你的想法…" className="min-h-[88px] w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
+          <div className="mt-3 max-w-sm">
+            <CaptchaField scene="comment" onChange={setCaptcha} refreshSignal={captchaRefresh} />
+          </div>
           {error && <p className="mt-1 text-sm text-rose-500">{error}</p>}
           <div className="mt-2 flex justify-end">
             <Button type="submit" disabled={submitting || !content.trim()}>

@@ -102,8 +102,10 @@ func (a *App) CreateComment(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Content  string `json:"content"`
-		ParentID *uint  `json:"parent_id"`
+		Content       string `json:"content"`
+		ParentID      *uint  `json:"parent_id"`
+		CaptchaID     string `json:"captcha_id"`
+		CaptchaAnswer string `json:"captcha_answer"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || len([]rune(req.Content)) == 0 {
 		fail(c, http.StatusBadRequest, "请填写评论内容")
@@ -111,6 +113,10 @@ func (a *App) CreateComment(c *gin.Context) {
 	}
 	if len([]rune(req.Content)) > 2000 {
 		fail(c, http.StatusBadRequest, "评论最多 2000 字")
+		return
+	}
+	if err := a.checkCaptcha("comment", req.CaptchaID, req.CaptchaAnswer); err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
