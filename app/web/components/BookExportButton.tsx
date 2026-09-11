@@ -11,7 +11,8 @@ interface ExportOptions {
   pdf_available: boolean
 }
 
-const FORMAT_LABEL: Record<string, string> = { pdf: 'PDF', markdown: 'Markdown (zip)' }
+const FORMAT_LABEL: Record<string, string> = { pdf: 'PDF', epub: 'EPUB (电子书)', markdown: 'Markdown (zip)' }
+const FORMAT_EXT: Record<string, string> = { pdf: 'pdf', epub: 'epub', markdown: 'zip' }
 
 // BookExportButton 书籍详情页导出入口：按后端返回的可用格式与样式选项渲染下拉菜单。
 // 仅在当前用户对该书具备导出能力时显示（作者/协作者，或公开且作者开启导出）。
@@ -41,7 +42,7 @@ export default function BookExportButton({ book, className }: { book: Book; clas
     try {
       const path = format === 'pdf'
         ? `/books/${book.id}/export/pdf?style=${style}`
-        : `/books/${book.id}/export/markdown`
+        : `/books/${book.id}/export/${format}`
       const token = getToken()
       const res = await fetch(`${API_BASE}/api/v1${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
       if (!res.ok) {
@@ -52,7 +53,7 @@ export default function BookExportButton({ book, className }: { book: Book; clas
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${book.slug}.${format === 'pdf' ? 'pdf' : 'zip'}`
+      a.download = `${book.slug}.${FORMAT_EXT[format] || 'bin'}`
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {

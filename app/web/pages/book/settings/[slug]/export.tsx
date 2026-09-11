@@ -20,7 +20,8 @@ const DEFAULT_STYLE: BookStyle = { page_size: 'A4', include_cover: true, include
 
 // 书籍设置 · 导出设置：控制他人能否导出本书、是否共享作者导出样式（仅可管理者）
 const ALL_FORMATS: { key: string; label: string; hint: string }[] = [
-  { key: 'pdf', label: 'PDF', hint: '按导出样式渲染，需管理员已安装 PDF 导出插件' },
+  { key: 'pdf', label: 'PDF', hint: '按导出样式渲染，需管理员已安装无头浏览器插件' },
+  { key: 'epub', label: 'EPUB (电子书)', hint: '通用电子书格式，含封面/目录，纯服务端生成无需插件' },
   { key: 'markdown', label: 'Markdown (zip)', hint: '章节 markdown 与图片打包，可再次导入' },
 ]
 
@@ -107,7 +108,7 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
                     <Checkbox checked={formats.includes(f.key) && !disabled} disabled={disabled} onChange={() => toggleFormat(f.key)} ariaLabel={f.label} />
                     <span>
                       <span className="text-sm font-medium text-slate-800">{f.label}</span>
-                      <span className="mt-0.5 block text-xs text-slate-500">{disabled ? '需管理员先在后台「插件」中安装 PDF 导出插件' : f.hint}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">{disabled ? '需管理员先在后台「插件」中安装无头浏览器插件' : f.hint}</span>
                     </span>
                   </label>
                 )

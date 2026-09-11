@@ -118,6 +118,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/export/pdf-available", a.PDFExportAvailable)
 			public.GET("/books/:id/export/options", a.GetExportOptions)
 			public.GET("/books/:id/export/markdown", a.ExportBookMarkdownPublic)
+			public.GET("/books/:id/export/epub", a.ExportBookEPUB)
 			public.GET("/books/:id/export/pdf", a.ExportBookPDF) // PDF 依赖 pdf-export 插件
 			public.POST("/documents/:id/view", a.IncrementDocumentView)
 		}

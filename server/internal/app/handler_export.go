@@ -10,7 +10,7 @@ import (
 )
 
 // allExportFormats 目前支持的全部导出格式
-var allExportFormats = []string{"pdf", "markdown"}
+var allExportFormats = []string{"pdf", "epub", "markdown"}
 
 func isKnownFormat(f string) bool {
 	for _, x := range allExportFormats {
