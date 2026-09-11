@@ -14,6 +14,7 @@ export interface User {
   is_active: boolean
   email_verified?: boolean
   invite_code?: string
+  two_factor_enabled?: boolean
   last_login_at: string | null
   created_at: string
   updated_at: string

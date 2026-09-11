@@ -252,6 +252,9 @@ func (a *App) ListMyAnnotations(c *gin.Context) {
 // ExportMyAnnotations GET /users/me/annotations/export 把当前用户的全部标注导出为 Markdown 文件下载。
 // 复用「我的笔记」的可见性过滤，按 书 → 章节 → 时间 分组组织。
 func (a *App) ExportMyAnnotations(c *gin.Context) {
+	if !a.requireStepUp(c, tfOpUnbindExport) {
+		return
+	}
 	u := currentUser(c)
 	query := a.DB.Table("reading_annotations").
 		Joins("JOIN books ON books.id = reading_annotations.book_id AND books.deleted_at IS NULL").

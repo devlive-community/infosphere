@@ -92,6 +92,14 @@ func (a *App) Router() *gin.Engine {
 				authed.POST("/invite-code", a.EnableInviteCode)     // 开启专属邀请码
 				authed.DELETE("/invite-code", a.DisableInviteCode)  // 关闭邀请码
 				authed.POST("/email/resend", a.ResendActivation)    // 重新发送激活邮件
+				// ── 二次认证（TOTP） ──
+				authed.GET("/2fa", a.GetTwoFactor)
+				authed.POST("/2fa/setup", a.SetupTwoFactor)
+				authed.POST("/2fa/enable", a.EnableTwoFactor)
+				authed.POST("/2fa/disable", a.DisableTwoFactor)
+				authed.PUT("/2fa/operations", a.UpdateTwoFactorOps)
+				authed.POST("/2fa/verify", a.VerifyTwoFactor)
+				authed.POST("/2fa/backup-codes", a.RegenerateBackupCodes)
 				authed.PUT("/profile", a.RequirePermission(authz.UserUpdate), a.UpdateProfile)
 				authed.PUT("/password", a.RequirePermission(authz.UserUpdate), a.ChangePassword)
 				// 导出样式偏好（PDF 导出用）

@@ -22,7 +22,13 @@ type User struct {
 	// InviteCode 用户专属邀请码（referral），注册可用他人邀请码；应用层保证唯一
 	InviteCode string `gorm:"size:20;index" json:"invite_code"`
 	// InvitedBy 邀请人用户 ID（0 表示无）
-	InvitedBy       uint                 `gorm:"index;default:0" json:"invited_by,omitempty"`
+	InvitedBy uint `gorm:"index;default:0" json:"invited_by,omitempty"`
+	// TwoFactorEnabled 是否开启二次认证（TOTP）
+	TwoFactorEnabled bool `gorm:"default:false" json:"two_factor_enabled"`
+	// TwoFactorSecret TOTP 密钥（base32）；不随 JSON 返回
+	TwoFactorSecret string `gorm:"size:64" json:"-"`
+	// TwoFactorOps 需要二次认证的操作键，逗号分隔：login,credentials,delete,unbind_export
+	TwoFactorOps    string               `gorm:"size:100" json:"two_factor_ops,omitempty"`
 	LastLoginAt     *time.Time           `json:"last_login_at"`
 	CreatedAt       time.Time            `json:"created_at"`
 	UpdatedAt       time.Time            `json:"updated_at"`
@@ -101,6 +107,15 @@ type PasswordResetToken struct {
 	UserID    uint       `gorm:"index;not null" json:"user_id"`
 	TokenHash string     `gorm:"size:64;uniqueIndex;not null" json:"-"`
 	ExpiresAt time.Time  `gorm:"index" json:"expires_at"`
+	UsedAt    *time.Time `json:"used_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
+// TwoFactorBackupCode 二次认证备用码：一次性，数据库只存哈希，供丢失验证器时恢复。
+type TwoFactorBackupCode struct {
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	UserID    uint       `gorm:"index;not null" json:"user_id"`
+	CodeHash  string     `gorm:"size:64;index;not null" json:"-"`
 	UsedAt    *time.Time `json:"used_at"`
 	CreatedAt time.Time  `json:"created_at"`
 }
@@ -422,6 +437,7 @@ func All(db *gorm.DB) error {
 		&UserExportSetting{},
 		&UserReadingGoal{},
 		&EmailVerificationToken{},
+		&TwoFactorBackupCode{},
 		&BookExportSetting{},
 		&UserThemeSetting{},
 		&Comment{},

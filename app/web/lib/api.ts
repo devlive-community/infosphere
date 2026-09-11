@@ -32,6 +32,13 @@ export function clearSession(): void {
 
 export type QueryParams = Record<string, string | number | boolean | undefined | null>
 
+// 二次认证 step-up：当接口返回 TWO_FACTOR_REQUIRED 时，全局处理器弹出验证框；
+// 用户验证通过（服务端授予 5 分钟窗口）后原请求自动重试一次。
+let stepUpHandler: (() => Promise<boolean>) | null = null
+export function setStepUpHandler(handler: (() => Promise<boolean>) | null): void {
+  stepUpHandler = handler
+}
+
 export async function api<T = any>(
   path: string,
   { method = 'GET', body, params, token }: {
@@ -53,15 +60,28 @@ export async function api<T = any>(
   const t = token ?? getToken()
   if (t) headers.Authorization = `Bearer ${t}`
 
-  const res = await fetch(`${API_BASE}/api/v1${path}${query}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
-  const payload = await res.json().catch(() => ({}))
+  const run = async () => {
+    const res = await fetch(`${API_BASE}/api/v1${path}${query}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+    const payload = await res.json().catch(() => ({}))
+    return { res, payload }
+  }
+
+  let { res, payload } = await run()
+
+  // 需要二次认证：交给全局处理器验证后重试一次
+  if (res.status === 403 && payload?.code === 'TWO_FACTOR_REQUIRED' && stepUpHandler) {
+    const verified = await stepUpHandler()
+    if (verified) ({ res, payload } = await run())
+  }
+
   if (!res.ok || payload.success === false) {
-    const err = new Error(payload.message || `请求失败 (${res.status})`) as Error & { status?: number }
+    const err = new Error(payload.message || `请求失败 (${res.status})`) as Error & { status?: number; code?: string }
     err.status = res.status
+    err.code = payload.code
     throw err
   }
   return payload.data as T

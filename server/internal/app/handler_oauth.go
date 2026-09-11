@@ -390,6 +390,9 @@ func (a *App) OAuthBindings(c *gin.Context) {
 
 // OAuthUnbind DELETE /auth/oauth/:provider 解绑第三方登录
 func (a *App) OAuthUnbind(c *gin.Context) {
+	if !a.requireStepUp(c, tfOpUnbindExport) {
+		return
+	}
 	u := currentUser(c)
 	if u.Password == "" {
 		fail(c, http.StatusBadRequest, "尚未设置登录密码，请先在个人资料页设置密码后再解绑")

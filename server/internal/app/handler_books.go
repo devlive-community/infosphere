@@ -526,6 +526,9 @@ func (a *App) UpdateBook(c *gin.Context) {
 
 // DeleteBook DELETE /books/:id 将书籍及当前可见章节移入回收站。
 func (a *App) DeleteBook(c *gin.Context) {
+	if !a.requireStepUp(c, tfOpDelete) {
+		return
+	}
 	book, status := a.findBook(c)
 	if book == nil {
 		fail(c, status, "书籍不存在")

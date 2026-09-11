@@ -163,6 +163,13 @@ Authorization: Bearer <token>
 | POST | `/auth/email/verify` | 匿名凭令牌激活邮箱：`{token}`（一次性、24h 有效） | 匿名 |
 | POST | `/auth/email/resend` | 登录用户重发激活邮件 | 登录 |
 | GET/POST/DELETE | `/auth/invite-code` | 邀请码 opt-in：GET 返回 `{invite_code}`（未开启为空）；POST 开启并生成；DELETE 关闭（清空） | 登录 |
+| GET | `/auth/2fa` | 二次认证状态 `{enabled, operations:[login\|credentials\|delete\|unbind_export]}` | 登录 |
+| POST | `/auth/2fa/setup` | 预配置 TOTP：返回 `{secret, otpauth_url, qr(data-uri)}`（尚未开启） | 登录 |
+| POST | `/auth/2fa/enable` | 校验 `{code}` 后开启，默认勾选全部敏感操作，返回一次性 `backup_codes` | 登录 |
+| POST | `/auth/2fa/disable` | 校验 `{code}`（动态码/备用码）后关闭并清除密钥与备用码 | 登录 |
+| PUT | `/auth/2fa/operations` | 保存需二次认证的操作集合 `{operations:[]}` | 登录 |
+| POST | `/auth/2fa/verify` | step-up 验证 `{code}`，成功授予 5 分钟窗口（受保护操作据此放行；否则返回 403 `TWO_FACTOR_REQUIRED`） | 登录 |
+| POST | `/auth/2fa/backup-codes` | 校验 `{code}` 后重置并返回新 `backup_codes` | 登录 |
 | GET/PUT | `/registration` | 管理员读取/保存注册设置：`{mode, require_email, require_activation}` | `site:update` |
 | GET | `/captcha?scene=register\|login\|comment` | 场景验证码：未开启返回 `{required:false}`；开启返回 `{required:true, id, type, image(data-uri)/question}`；提交对应操作时带 `captcha_id`+`captcha_answer` | 匿名 |
 | GET/PUT | `/captcha-settings` | 管理员读取/保存验证码设置：`{type(image\|arithmetic), length, charset(digit\|alnum), noise(0-3), arith_hard, on_register, on_login, on_comment}` | `site:update` |

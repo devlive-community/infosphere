@@ -128,6 +128,7 @@ type loginRequest struct {
 	Password      string `json:"password"`
 	CaptchaID     string `json:"captcha_id"`
 	CaptchaAnswer string `json:"captcha_answer"`
+	TwoFactorCode string `json:"two_factor_code"`
 }
 
 // Login POST /auth/login
@@ -158,6 +159,18 @@ func (a *App) Login(c *gin.Context) {
 	if !u.IsActive {
 		fail(c, http.StatusForbidden, "账户已被禁用")
 		return
+	}
+
+	// 登录二次认证：开启且勾选「登录」时，密码正确后还需 TOTP 动态码/备用码
+	if u.TwoFactorEnabled && tfOpEnabled(u.TwoFactorOps, tfOpLogin) {
+		if strings.TrimSpace(req.TwoFactorCode) == "" {
+			ok(c, gin.H{"two_factor_required": true})
+			return
+		}
+		if !a.validateUserTOTP(&u, req.TwoFactorCode) {
+			fail(c, http.StatusUnauthorized, "二次认证码错误")
+			return
+		}
 	}
 
 	now := currentTime()
@@ -192,6 +205,9 @@ func (a *App) UpdateProfile(c *gin.Context) {
 			return
 		}
 		if *req.Email != u.Email {
+			if !a.requireStepUp(c, tfOpCredentials) {
+				return
+			}
 			var count int64
 			a.DB.Model(&models.User{}).Where("email = ? AND id != ?", *req.Email, u.ID).Count(&count)
 			if count > 0 {
@@ -224,6 +240,9 @@ type passwordUpdate struct {
 
 // ChangePassword PUT /auth/password
 func (a *App) ChangePassword(c *gin.Context) {
+	if !a.requireStepUp(c, tfOpCredentials) {
+		return
+	}
 	var req passwordUpdate
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")

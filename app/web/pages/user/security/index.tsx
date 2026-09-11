@@ -6,6 +6,7 @@ import { api, formatDate } from '@/lib/api'
 import { useRequireAuth , useApp} from '@/lib/auth'
 import { Button, Input, Field, Loading } from '@/components/ui'
 import AccountSettingsLayout from '@/components/AccountSettingsLayout'
+import TwoFactorSettings from '@/components/TwoFactorSettings'
 import { CalendarIcon, CheckCircleSmallIcon, HistoryIcon, ShieldIcon, UserCircleIcon } from '@/components/icons'
 
 export default function Security() {
@@ -198,6 +199,8 @@ export default function Security() {
               </div>
             </form>
           </div>
+
+          <TwoFactorSettings />
         </AccountSettingsLayout>
       </Container>
     </>

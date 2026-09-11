@@ -71,6 +71,9 @@ func (a *App) rewriteUploadsToLocal(content string) (string, map[string][]byte) 
 
 // ExportBook GET /books/:id/export?format=markdown 导出书籍为 zip（作者/协作者）
 func (a *App) ExportBook(c *gin.Context) {
+	if !a.requireStepUp(c, tfOpUnbindExport) {
+		return
+	}
 	book, status := a.findBook(c)
 	if book == nil {
 		fail(c, status, "书籍不存在")

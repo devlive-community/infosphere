@@ -61,13 +61,15 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   const [regInfo, setRegInfo] = useState<{ mode: string; require_email: boolean } | null>(null)
   const [captcha, setCaptcha] = useState<CaptchaValue>({ id: '', answer: '', required: false })
   const [captchaRefresh, setCaptchaRefresh] = useState(0)
+  const [twoFactorNeeded, setTwoFactorNeeded] = useState(false)
+  const [twoFactorCode, setTwoFactorCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const isLogin = mode === 'login'
   const nextPath = safeNextPath(router.query.next)
   const nextQuery = nextPath === '/' ? '' : `?next=${encodeURIComponent(nextPath)}`
 
-  useEffect(() => setError(''), [mode])
+  useEffect(() => { setError(''); setTwoFactorNeeded(false); setTwoFactorCode('') }, [mode])
 
   // 注册方式/邮箱要求：决定是否显示邀请码、邮箱是否必填、是否关闭注册
   useEffect(() => {
@@ -97,15 +99,20 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
     setLoading(true)
     try {
       const data = isLogin
-        ? await api<{ token: string; user: User }>('/auth/login', {
+        ? await api<{ token?: string; user?: User; two_factor_required?: boolean }>('/auth/login', {
           method: 'POST',
-          body: { username: form.username, password: form.password, captcha_id: captcha.id, captcha_answer: captcha.answer },
+          body: { username: form.username, password: form.password, captcha_id: captcha.id, captcha_answer: captcha.answer, two_factor_code: twoFactorCode },
         })
         : await api<{ token: string; user: User }>('/auth/register', {
           method: 'POST',
           body: { username: form.username, email: form.email, password: form.password, invite_code: form.inviteCode, captcha_id: captcha.id, captcha_answer: captcha.answer },
         })
-      login(data.token, data.user)
+      if (isLogin && (data as { two_factor_required?: boolean }).two_factor_required) {
+        setTwoFactorNeeded(true)
+        setError('')
+        return
+      }
+      login((data as { token: string }).token, (data as { user: User }).user)
       router.replace(nextPath)
     } catch (submitError) {
       setError((submitError as Error).message)
@@ -250,7 +257,15 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 
               <CaptchaField scene={isLogin ? 'login' : 'register'} onChange={setCaptcha} refreshSignal={captchaRefresh} />
 
-              <Button type="submit" className="w-full" loading={loading}>{isLogin ? '登录' : '创建账户'}</Button>
+              {isLogin && twoFactorNeeded && (
+                <Field label="二次认证" hint="请输入身份验证器 App 中的 6 位动态码，或一条备用码">
+                  <Input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)}
+                    autoComplete="one-time-code" autoFocus placeholder="6 位动态码 / 备用码"
+                    leading={<i className="fa-solid fa-shield-halved w-4 text-center text-xs" aria-hidden="true" />} />
+                </Field>
+              )}
+
+              <Button type="submit" className="w-full" loading={loading}>{isLogin ? (twoFactorNeeded ? '验证并登录' : '登录') : '创建账户'}</Button>
             </form>
 
             <div className="mt-5"><OAuthButtons label={isLogin ? '登录' : '注册'} /></div>

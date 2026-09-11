@@ -7,6 +7,7 @@ import { AppProvider, useApp } from '@/lib/auth'
 import Layout from '@/components/Layout'
 import Seo from '@/components/Seo'
 import { FeedbackProvider, Loading } from '@/components/ui'
+import StepUpModal from '@/components/StepUpModal'
 import type { ReactNode } from 'react'
 import type { SiteConfig } from '@/lib/types'
 
@@ -81,6 +82,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <Shell>
           <Component {...pageProps} />
         </Shell>
+        <StepUpModal />
       </FeedbackProvider>
     </AppProvider>
   )

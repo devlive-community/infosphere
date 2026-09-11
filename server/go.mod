@@ -12,6 +12,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/ledongthuc/pdf v0.0.0-20260903153007-b3c860c23753
+	github.com/pquerna/otp v1.5.0
 	github.com/yuin/goldmark v1.8.6
 	golang.org/x/crypto v0.51.0
 	golang.org/x/net v0.55.0
@@ -22,6 +23,7 @@ require (
 
 require (
 	github.com/JohannesKaufmann/dom v0.3.1 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect

@@ -173,6 +173,9 @@ func (a *App) RestoreTrashedBook(c *gin.Context) {
 
 // PermanentlyDeleteBook DELETE /trash/books/:id 永久删除书籍及全部关联内容。
 func (a *App) PermanentlyDeleteBook(c *gin.Context) {
+	if !a.requireStepUp(c, tfOpDelete) {
+		return
+	}
 	var book models.Book
 	if err := a.DB.Unscoped().Where("id = ? AND deleted_at IS NOT NULL", c.Param("id")).First(&book).Error; err != nil {
 		fail(c, http.StatusNotFound, "回收站中不存在该书籍")
@@ -231,6 +234,9 @@ func (a *App) RestoreTrashedDocument(c *gin.Context) {
 
 // PermanentlyDeleteDocument DELETE /trash/documents/:id 永久删除同一批次的章节子树。
 func (a *App) PermanentlyDeleteDocument(c *gin.Context) {
+	if !a.requireStepUp(c, tfOpDelete) {
+		return
+	}
 	doc, book := a.findTrashedDocument(c)
 	if doc == nil {
 		return

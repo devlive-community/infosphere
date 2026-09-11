@@ -408,6 +408,9 @@ func isDescendant(db *gorm.DB, rootID, candidateID uint) bool {
 
 // DeleteDocument DELETE /documents/:id 将章节子树作为同一批次移入回收站。
 func (a *App) DeleteDocument(c *gin.Context) {
+	if !a.requireStepUp(c, tfOpDelete) {
+		return
+	}
 	doc, book, status := a.findDocument(c)
 	if doc == nil {
 		fail(c, status, "文档不存在")
