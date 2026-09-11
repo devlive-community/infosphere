@@ -268,3 +268,52 @@ func currentReadingStreak(times []time.Time) int {
 	}
 	return streak
 }
+
+// ResetReadingProgress DELETE /reading-progress/:bookId 清除当前用户在该书的阅读进度与逐章已读记录。
+func (a *App) ResetReadingProgress(c *gin.Context) {
+	u := currentUser(c)
+	bookID, err := strconv.Atoi(c.Param("bookId"))
+	if err != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	var book models.Book
+	if err := a.DB.First(&book, bookID).Error; err != nil || !a.canReadBook(u, &book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	a.DB.Where("user_id = ? AND book_id = ?", u.ID, book.ID).Delete(&models.ReadingProgress{})
+	a.DB.Where("user_id = ? AND book_id = ?", u.ID, book.ID).Delete(&models.ReadChapter{})
+	ok(c, nil)
+}
+
+// MarkBookRead POST /reading-progress/:bookId/complete 将该书全部已发布章节标记为已读，进度置为最后一章。
+func (a *App) MarkBookRead(c *gin.Context) {
+	u := currentUser(c)
+	bookID, err := strconv.Atoi(c.Param("bookId"))
+	if err != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	var book models.Book
+	if err := a.DB.First(&book, bookID).Error; err != nil || !a.canReadBook(u, &book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	var docs []models.Document
+	a.DB.Where("book_id = ? AND status = ?", book.ID, "published").
+		Order("sort_order ASC, id ASC").Find(&docs)
+	if len(docs) == 0 {
+		fail(c, http.StatusBadRequest, "该书暂无已发布章节")
+		return
+	}
+	for _, d := range docs {
+		read := models.ReadChapter{UserID: u.ID, BookID: book.ID, DocID: d.ID}
+		a.DB.Where("user_id = ? AND doc_id = ?", u.ID, d.ID).FirstOrCreate(&read)
+	}
+	last := docs[len(docs)-1]
+	progress := models.ReadingProgress{UserID: u.ID, BookID: book.ID}
+	a.DB.Where("user_id = ? AND book_id = ?", u.ID, book.ID).FirstOrCreate(&progress)
+	a.DB.Model(&progress).Updates(map[string]any{"doc_id": last.ID, "doc_slug": last.Slug, "doc_title": last.Title})
+	ok(c, gin.H{"read": len(docs)})
+}

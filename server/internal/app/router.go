@@ -215,6 +215,8 @@ func (a *App) Router() *gin.Engine {
 		{
 			progress.GET("/:bookId", a.RequirePermission(authz.ReadingProgressRead), a.GetReadingProgress)
 			progress.PUT("/:bookId", a.RequirePermission(authz.ReadingProgressUpdate), a.SaveReadingProgress)
+			progress.DELETE("/:bookId", a.RequirePermission(authz.ReadingProgressUpdate), a.ResetReadingProgress)
+			progress.POST("/:bookId/complete", a.RequirePermission(authz.ReadingProgressUpdate), a.MarkBookRead)
 		}
 
 		// ── 私人阅读标注（annotation:*，始终按当前用户隔离） ──

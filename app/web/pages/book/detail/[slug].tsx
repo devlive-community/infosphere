@@ -99,7 +99,7 @@ function countChapters(docs: Document[]): { chapters: number; sections: number }
 }
 
 export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree, related, needsAuth, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { requestInput, showToast } = useFeedback()
+  const { requestInput, showToast, confirmAction } = useFeedback()
   const { user, authReady } = useApp()
   const router = useRouter()
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
@@ -132,6 +132,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   }, [book])
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
   const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string; readSeconds?: number } | null>(null)
+  const [progressBusy, setProgressBusy] = useState<'reset' | 'complete' | null>(null)
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState<number | null>(null)
   const [favorited, setFavorited] = useState(false)
@@ -225,6 +226,47 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const totalChapters = allDocIds.length
   const readCount = allDocIds.filter((id) => readSet.has(id)).length
   const progressPct = totalChapters > 0 ? Math.round((readCount / totalChapters) * 100) : 0
+
+  // 重新拉取已读章节与进度（重置/标记读完后刷新展示）
+  const refreshReading = async () => {
+    try {
+      const r = await api<{ doc_ids: number[] }>(`/books/${book.id}/read-chapters`)
+      setReadSet(new Set(r.doc_ids || []))
+    } catch { /* 忽略 */ }
+    try { setProgress(await getReadingProgress(username, book.id)) } catch { /* 忽略 */ }
+  }
+  const handleMarkRead = async () => {
+    setProgressBusy('complete')
+    try {
+      await api(`/reading-progress/${book.id}/complete`, { method: 'POST' })
+      await refreshReading()
+      showToast({ message: '已标记为读完', tone: 'success' })
+    } catch (e) {
+      showToast({ message: (e as Error)?.message || '操作失败', tone: 'error' })
+    } finally {
+      setProgressBusy(null)
+    }
+  }
+  const handleResetProgress = async () => {
+    const confirmed = await confirmAction({
+      title: '重置阅读进度',
+      message: '将清除本书的逐章已读记录与阅读进度（不影响你的笔记与收藏），确定吗？',
+      confirmLabel: '重置',
+      danger: true,
+    })
+    if (!confirmed) return
+    setProgressBusy('reset')
+    try {
+      await api(`/reading-progress/${book.id}`, { method: 'DELETE' })
+      setReadSet(new Set())
+      setProgress(null)
+      showToast({ message: '阅读进度已重置', tone: 'success' })
+    } catch (e) {
+      showToast({ message: (e as Error)?.message || '操作失败', tone: 'error' })
+    } finally {
+      setProgressBusy(null)
+    }
+  }
 
   const jsonLd = [
     {
@@ -472,6 +514,18 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 </div>
                 <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                   <span className="block h-full rounded-full bg-primary-500 transition-all duration-300" style={{ width: `${progressPct}%` }} />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {progressPct < 100 && (
+                    <Button variant="ghost" size="sm" loading={progressBusy === 'complete'} disabled={progressBusy !== null} onClick={handleMarkRead}>
+                      标记读完
+                    </Button>
+                  )}
+                  {readCount > 0 && (
+                    <Button variant="ghost" size="sm" loading={progressBusy === 'reset'} disabled={progressBusy !== null} onClick={handleResetProgress}>
+                      重置进度
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
