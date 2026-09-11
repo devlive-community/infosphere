@@ -31,7 +31,7 @@ jobs:
           PREV="$(git describe --tags --match 'v*' --abbrev=0 "${TAG}^" 2>/dev/null || true)"
           if [ -n "$PREV" ]; then
             RANGE="${PREV}..${TAG}"
-            echo "### 自 ${PREV} 起的变更" > release-notes.md
+            echo "### 变更记录" > release-notes.md
           else
             RANGE="${TAG}"
             echo "### 变更记录" > release-notes.md
