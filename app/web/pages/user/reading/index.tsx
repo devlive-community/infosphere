@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Container from '@/components/Container'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { ButtonLink, EmptyState, Loading, Pagination } from '@/components/ui'
+import { Button, ButtonLink, EmptyState, Loading, Pagination, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import Seo from '@/components/Seo'
 import { BookIcon } from '@/components/icons'
@@ -39,6 +39,93 @@ interface ReadingStats {
   completed_books: number
   chapters_read: number
   streak_days: number
+}
+
+interface ActivityDay {
+  date: string
+  count: number
+  met: boolean
+}
+interface ActivityData {
+  goal: { daily_chapters: number }
+  days: ActivityDay[]
+  current_streak: number
+  longest_streak: number
+  today_count: number
+  today_met: boolean
+}
+
+// CheckinCalendar 打卡日历：可配置每日目标（新读章节数）+ 近 12 周活动热力图 + 连续打卡。
+function CheckinCalendar() {
+  const { showToast } = useFeedback()
+  const [data, setData] = useState<ActivityData | null>(null)
+  const [goalInput, setGoalInput] = useState(1)
+  const [saving, setSaving] = useState(false)
+
+  const load = () => {
+    api<ActivityData>('/users/me/reading-activity', { params: { days: 84 } })
+      .then((d) => { setData(d); setGoalInput(d.goal.daily_chapters) })
+      .catch(() => { /* 忽略 */ })
+  }
+  useEffect(() => { load() }, [])
+
+  if (!data) return null
+  const goal = data.goal.daily_chapters
+
+  const saveGoal = async () => {
+    setSaving(true)
+    try {
+      await api('/users/me/reading-goal', { method: 'PUT', body: { daily_chapters: goalInput } })
+      load()
+      showToast({ message: '每日目标已更新', tone: 'success' })
+    } catch (e) {
+      showToast({ message: (e as Error)?.message || '保存失败', tone: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cellColor = (d: ActivityDay) => {
+    if (d.count === 0) return 'bg-slate-100'
+    if (!d.met) return 'bg-primary-200'
+    return d.count >= goal * 2 ? 'bg-primary-600' : 'bg-primary-500'
+  }
+  // 首日之前用空格补齐，使第一格落在其星期几所在行（周日=0 在最上）
+  const leadPad = data.days.length ? new Date(data.days[0].date + 'T00:00:00').getDay() : 0
+
+  return (
+    <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700">阅读打卡</h2>
+          <p className="mt-0.5 text-xs text-slate-400">
+            连续打卡 <span className="font-semibold text-primary-600">{data.current_streak}</span> 天 · 最长 {data.longest_streak} 天 ·
+            今日 {data.today_count}/{goal} 章{data.today_met ? ' ✓' : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span>每日目标</span>
+          <input
+            type="number" min={1} max={100} value={goalInput}
+            onChange={(e) => setGoalInput(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+            className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-center outline-none focus:border-primary-500"
+            aria-label="每日目标章节数"
+          />
+          <span>章</span>
+          <Button variant="ghost" size="sm" loading={saving} disabled={goalInput === goal} onClick={saveGoal}>保存</Button>
+        </div>
+      </div>
+
+      <div className="mt-3 overflow-x-auto">
+        <div className="grid grid-flow-col gap-1" style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }}>
+          {Array.from({ length: leadPad }).map((_, i) => <span key={`pad-${i}`} className="h-3 w-3" />)}
+          {data.days.map((d) => (
+            <span key={d.date} className={`h-3 w-3 rounded-sm ${cellColor(d)}`} aria-label={`${d.date}：${d.count} 章`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // StatTile 阅读概览磁贴，视觉对齐首页统计条。
@@ -136,6 +223,8 @@ export default function MyReading() {
             <StatTile icon="fa-fire" label="连续阅读(天)" value={stats.streak_days} tone="bg-amber-50 text-amber-500" />
           </div>
         )}
+
+        <CheckinCalendar />
 
         {loading || data === null ? (
           <Loading label="正在加载阅读进度…" />

@@ -309,6 +309,16 @@ type UserExportSetting struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// UserReadingGoal 用户每日阅读目标（打卡日历用），每用户一条。
+// 指标为「每日新读章节数」，达到 DailyChapters 即当日打卡成功。
+type UserReadingGoal struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	UserID        uint      `gorm:"uniqueIndex;not null" json:"user_id"`
+	DailyChapters int       `gorm:"default:1" json:"daily_chapters"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
 // UserThemeSetting 用户主题设置，每用户一条
 type UserThemeSetting struct {
 	ID                  uint      `gorm:"primaryKey" json:"id"`
@@ -394,6 +404,7 @@ func All(db *gorm.DB) error {
 		&BookAnalyticsDaily{},
 		&Plugin{},
 		&UserExportSetting{},
+		&UserReadingGoal{},
 		&BookExportSetting{},
 		&UserThemeSetting{},
 		&Comment{},

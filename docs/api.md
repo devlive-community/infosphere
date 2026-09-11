@@ -364,6 +364,9 @@ Authorization: Bearer <token>
 | GET | `/books/:id/read-chapters` | 当前用户在该书已读的章节 ID 列表 `{doc_ids:[]}`，用于详情页进度标记 | `user:read` |
 | GET | `/users/me/reading?page=&page_size=` | 「我在读」列表：跨书聚合进度，按最近阅读倒序分页；每项含 `book`、`read_count`、`total_chapters`、`percentage`、`last_doc_slug`、`last_doc_title`、`last_read_at`、`read_seconds` | `reading-progress:read` |
 | GET | `/users/me/reading-stats` | 阅读数据概览：`reading_books`（在读）、`completed_books`（已读完）、`chapters_read`（累计已读章节）、`streak_days`（连续阅读天数） | `reading-progress:read` |
+| GET | `/users/me/reading-activity?days=N` | 打卡日历：近 N 天（7-366，默认 84）每日新读章节数与是否达标 `days:[{date,count,met}]`，含 `goal.daily_chapters`、`current_streak`、`longest_streak`、`today_count`、`today_met` | `reading-progress:read` |
+| GET | `/users/me/reading-goal` | 每日阅读目标 `{daily_chapters}`（无记录默认 1） | `reading-progress:read` |
+| PUT | `/users/me/reading-goal` | 设置每日阅读目标（`daily_chapters`，1-100 章） | `reading-progress:update` |
 
 ## 阅读标注与私人笔记（登录用户）
 
