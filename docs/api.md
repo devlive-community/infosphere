@@ -361,6 +361,7 @@ Authorization: Bearer <token>
 | PUT | `/reading-progress/:bookId` | 记录/覆盖进度；`doc_id` 必须属于该书且当前可读，slug/title 由服务端真实章节覆盖；同时将该章节标记为已读 | `reading-progress:update` |
 | GET | `/books/:id/read-chapters` | 当前用户在该书已读的章节 ID 列表 `{doc_ids:[]}`，用于详情页进度标记 | `user:read` |
 | GET | `/users/me/reading?page=&page_size=` | 「我在读」列表：跨书聚合进度，按最近阅读倒序分页；每项含 `book`、`read_count`、`total_chapters`、`percentage`、`last_doc_slug`、`last_doc_title`、`last_read_at` | `reading-progress:read` |
+| GET | `/users/me/reading-stats` | 阅读数据概览：`reading_books`（在读）、`completed_books`（已读完）、`chapters_read`（累计已读章节）、`streak_days`（连续阅读天数） | `reading-progress:read` |
 
 ## 阅读标注与私人笔记（登录用户）
 

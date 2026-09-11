@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"infosphere/server/internal/models"
 
@@ -187,4 +188,61 @@ func (a *App) MyReading(c *gin.Context) {
 		})
 	}
 	ok(c, gin.H{"items": items, "total": total, "page": page, "page_size": pageSize})
+}
+
+// MyReadingStats GET /users/me/reading-stats 当前用户阅读数据概览。
+func (a *App) MyReadingStats(c *gin.Context) {
+	u := currentUser(c)
+
+	var readingBooks, chaptersRead, completedBooks int64
+	a.DB.Model(&models.ReadingProgress{}).Where("user_id = ?", u.ID).Count(&readingBooks)
+	a.DB.Model(&models.ReadChapter{}).Where("user_id = ?", u.ID).Count(&chaptersRead)
+
+	// 读完的书：某书已读的已发布章节数 ≥ 该书已发布章节总数（复用 analytics 的完成判定思路）
+	a.DB.Raw(`SELECT COUNT(*) FROM (
+		SELECT rc.book_id
+		FROM read_chapters rc
+		JOIN documents d ON d.id = rc.doc_id AND d.deleted_at IS NULL AND d.status = ?
+		WHERE rc.user_id = ?
+		GROUP BY rc.book_id
+		HAVING COUNT(DISTINCT rc.doc_id) >= (
+			SELECT COUNT(*) FROM documents pd
+			WHERE pd.book_id = rc.book_id AND pd.deleted_at IS NULL AND pd.status = ?
+		)
+	) completed`, "published", u.ID, "published").Scan(&completedBooks)
+
+	// 连续阅读天数：仅当最近阅读日为今天或昨天才视为“当前连续”，再向前逐日回溯
+	var readTimes []time.Time
+	a.DB.Model(&models.ReadChapter{}).Where("user_id = ?", u.ID).Order("created_at DESC").Pluck("created_at", &readTimes)
+
+	ok(c, gin.H{
+		"reading_books":   readingBooks,
+		"completed_books": completedBooks,
+		"chapters_read":   chaptersRead,
+		"streak_days":     currentReadingStreak(readTimes),
+	})
+}
+
+// currentReadingStreak 从今天/昨天为起点向前统计连续有阅读记录的天数（按服务器时区取日期）。
+func currentReadingStreak(times []time.Time) int {
+	if len(times) == 0 {
+		return 0
+	}
+	const layout = "2006-01-02"
+	days := make(map[string]bool, len(times))
+	for _, t := range times {
+		days[t.Format(layout)] = true
+	}
+	start := analyticsDayStart(currentTime())
+	if !days[start.Format(layout)] {
+		start = start.AddDate(0, 0, -1) // 今天未读则允许从昨天起算
+		if !days[start.Format(layout)] {
+			return 0
+		}
+	}
+	streak := 0
+	for d := start; days[d.Format(layout)]; d = d.AddDate(0, 0, -1) {
+		streak++
+	}
+	return streak
 }
