@@ -1,84 +1,225 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InfoSphere 桌面端</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(160deg, #eef4ff 0%, #f8fafc 60%); color: #1e293b;
-    }
-    .card { width: 420px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
-            padding: 40px 36px; box-shadow: 0 12px 32px rgba(59, 111, 240, .08); }
-    .logo { width: 64px; height: 64px; object-fit: contain; margin: 0 auto 16px; display: block; }
-    h1 { font-size: 20px; text-align: center; margin-bottom: 6px; }
-    p.desc { font-size: 13px; color: #64748b; text-align: center; margin-bottom: 24px; }
-    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
-    input { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px;
-            font-size: 14px; outline: none; }
-    input:focus { border-color: #3b6ff0; box-shadow: 0 0 0 3px rgba(59, 111, 240, .15); }
-    button { width: 100%; margin-top: 16px; background: #3b6ff0; color: #fff; border: 0;
-             border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 500; cursor: pointer; }
-    button:disabled { opacity: .55; cursor: default; }
-    button.link { background: none; color: #94a3b8; margin-top: 10px; font-size: 12px; }
-    button.link:hover { color: #3b6ff0; }
-    .error { display: none; margin-top: 14px; background: #fef2f2; color: #dc2626;
-             border-radius: 8px; padding: 10px 12px; font-size: 13px; }
-    .hint { margin-top: 20px; font-size: 12px; color: #94a3b8; line-height: 1.7; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <img class="logo" src="logo.png" alt="InfoSphere" />
-    <h1>连接 InfoSphere 服务器</h1>
-    <p class="desc">输入自托管的 InfoSphere 服务地址（默认端口 6969）</p>
-    <form id="form">
-      <label for="url">服务器地址</label>
-      <input id="url" placeholder="例如 http://192.168.1.10:6969" autofocus />
-      <button id="btn" type="submit">连 接</button>
-    </form>
-    <div class="error" id="error"></div>
-    <button class="link" id="reset">清除已保存的服务器</button>
-    <p class="hint">尚未部署服务器？在服务器上运行 InfoSphere 单文件二进制后，<br/>使用此处地址即可接入，数据始终保存在你自己的服务器上。</p>
-  </div>
-
-  <script>
-    const invoke = window.__TAURI__ ? window.__TAURI__.core.invoke : null
-    const urlInput = document.getElementById('url')
-    const errorBox = document.getElementById('error')
-
-    // 启动时读取已保存地址与连接失败原因：预填输入框、回显错误
-    if (invoke) {
-      invoke('get_server_info').then((info) => {
-        if (info && info.url) urlInput.value = info.url
-        if (info && info.error) {
-          errorBox.textContent = '上次连接失败：' + info.error
-          errorBox.style.display = 'block'
-        }
-      }).catch(() => {})
-    }
-
-    document.getElementById('form').addEventListener('submit', async (e) => {
-      e.preventDefault()
-      const btn = document.getElementById('btn')
-      errorBox.style.display = 'none'
-      btn.disabled = true
-      btn.textContent = '连接中…'
-      try {
-        await invoke('save_server_url', { url: urlInput.value })
-      } catch (err) {
-        errorBox.textContent = String(err)
-        errorBox.style.display = 'block'
-      } finally {
-        btn.disabled = false
-        btn.textContent = '连 接'
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>连接 InfoSphere 服务器</title>
+    <style>
+      :root {
+        --primary: #4169e1;
+        --primary-600: #2f54c9;
+        --bg: #f7f6f2;
+        --card: #ffffff;
+        --border: #e6e4dd;
+        --text: #1e293b;
+        --muted: #94a3b8;
+        --danger: #dc2626;
+        --radius: 14px;
       }
-    })
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex; align-items: center; justify-content: center;
+        background: var(--bg); color: var(--text);
+        font: 15px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card {
+        width: 420px; max-width: calc(100vw - 48px);
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 36px 32px 30px;
+        box-shadow: 0 12px 40px rgba(15, 31, 63, 0.08);
+      }
+      .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+      .logo {
+        width: 40px; height: 40px; border-radius: 11px;
+        background: linear-gradient(135deg, var(--primary), #6d8cff);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-weight: 700; font-size: 18px;
+      }
+      .brand h1 { font-size: 19px; margin: 0; font-weight: 700; }
+      .sub { color: var(--muted); font-size: 13px; margin: 4px 0 24px; }
+      label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+      .field { display: flex; gap: 8px; }
+      input {
+        flex: 1; height: 44px; padding: 0 14px;
+        border: 1px solid var(--border); border-radius: 10px;
+        font-size: 15px; color: var(--text); outline: none; background: #fff;
+      }
+      input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.14); }
+      button {
+        border: none; cursor: pointer; font-size: 15px; font-weight: 600;
+        border-radius: 10px; transition: background 0.15s, opacity 0.15s;
+      }
+      .btn-primary {
+        height: 44px; padding: 0 20px; color: #fff; background: var(--primary);
+      }
+      .btn-primary:hover { background: var(--primary-600); }
+      .btn-primary:disabled { opacity: 0.55; cursor: default; }
+      .hint { font-size: 12px; color: var(--muted); margin-top: 12px; }
+      .error {
+        display: none; margin-top: 14px; padding: 10px 12px;
+        background: #fef2f2; border: 1px solid #fecaca; color: var(--danger);
+        border-radius: 10px; font-size: 13px;
+      }
+      .error.show { display: block; }
+      .saved { margin-top: 26px; }
+      .saved-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: none; margin-bottom: 10px; }
+      .server {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+        margin-bottom: 8px; cursor: pointer; background: #fff;
+      }
+      .server:hover { border-color: var(--primary); background: #f8faff; }
+      .server .info { flex: 1; min-width: 0; }
+      .server .url { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .server .meta { font-size: 12px; color: var(--muted); }
+      .badge { font-size: 11px; color: var(--primary-600); background: #eef2ff; padding: 2px 8px; border-radius: 999px; }
+      .remove {
+        background: transparent; color: var(--muted); font-size: 18px; line-height: 1;
+        width: 28px; height: 28px; border-radius: 8px; flex: 0 0 auto;
+      }
+      .remove:hover { background: #fef2f2; color: var(--danger); }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="brand">
+        <div class="logo">IS</div>
+        <h1>InfoSphere 桌面客户端</h1>
+      </div>
+      <p class="sub">连接你自托管的 InfoSphere 服务器</p>
 
-    document.getElementById('reset').addEventListener('click', () => invoke('reset_server'))
-  </script>
-</body>
+      <label for="url">服务器地址</label>
+      <div class="field">
+        <input id="url" type="text" placeholder="例如 https://info.example.com" autocomplete="off" spellcheck="false" />
+        <button id="connect" class="btn-primary">连接</button>
+      </div>
+      <p class="hint">不带协议时默认使用 http://；连接前会校验该地址是否为 InfoSphere 服务。</p>
+      <div id="error" class="error"></div>
+
+      <div id="saved" class="saved" hidden>
+        <div class="saved-title">已保存的服务器</div>
+        <div id="server-list"></div>
+      </div>
+    </div>
+
+    <script>
+      const invoke = window.__TAURI__?.core?.invoke;
+      const $ = (id) => document.getElementById(id);
+      const urlInput = $('url');
+      const connectBtn = $('connect');
+      const errorBox = $('error');
+
+      function showError(msg) {
+        errorBox.textContent = msg || '连接失败';
+        errorBox.classList.add('show');
+      }
+      function clearError() {
+        errorBox.classList.remove('show');
+        errorBox.textContent = '';
+      }
+      function fmtDate(ts) {
+        if (!ts) return '';
+        const d = new Date(ts * 1000);
+        const p = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+      }
+
+      async function connect(url) {
+        if (!invoke) return showError('运行环境异常：未找到 Tauri 接口');
+        clearError();
+        connectBtn.disabled = true;
+        connectBtn.textContent = '连接中…';
+        try {
+          await invoke('save_server_url', { url });
+          // 成功后 Rust 会把 webview 导航到服务器页面，这里无需处理
+        } catch (e) {
+          showError(typeof e === 'string' ? e : (e?.message || '连接失败'));
+        } finally {
+          connectBtn.disabled = false;
+          connectBtn.textContent = '连接';
+        }
+      }
+
+      async function quickConnect(url) {
+        if (!invoke) return;
+        clearError();
+        try {
+          await invoke('switch_server', { url });
+        } catch (e) {
+          showError(typeof e === 'string' ? e : (e?.message || '连接失败'));
+        }
+      }
+
+      async function removeServer(url) {
+        if (!invoke) return;
+        try {
+          await invoke('remove_server', { url });
+          await renderSaved();
+        } catch (e) {
+          showError(typeof e === 'string' ? e : (e?.message || '删除失败'));
+        }
+      }
+
+      async function renderSaved() {
+        if (!invoke) return;
+        let servers = [];
+        try {
+          servers = (await invoke('list_servers')) || [];
+        } catch { /* 忽略 */ }
+        const wrap = $('saved');
+        const list = $('server-list');
+        list.innerHTML = '';
+        if (!servers.length) {
+          wrap.hidden = true;
+          return;
+        }
+        wrap.hidden = false;
+        for (const s of servers) {
+          const row = document.createElement('div');
+          row.className = 'server';
+          const info = document.createElement('div');
+          info.className = 'info';
+          const url = document.createElement('div');
+          url.className = 'url';
+          url.textContent = s.url;
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          meta.textContent = (s.has_token ? '已登录 · ' : '') + '更新于 ' + fmtDate(s.updated_at);
+          info.appendChild(url);
+          info.appendChild(meta);
+          row.appendChild(info);
+          if (s.has_token) {
+            const badge = document.createElement('span');
+            badge.className = 'badge';
+            badge.textContent = '已登录';
+            row.appendChild(badge);
+          }
+          const del = document.createElement('button');
+          del.className = 'remove';
+          del.title = '删除';
+          del.textContent = '×';
+          del.addEventListener('click', (ev) => { ev.stopPropagation(); removeServer(s.url); });
+          row.appendChild(del);
+          row.addEventListener('click', () => quickConnect(s.url));
+          list.appendChild(row);
+        }
+      }
+
+      async function init() {
+        if (!invoke) return showError('运行环境异常：未找到 Tauri 接口');
+        try {
+          const info = await invoke('get_server_info');
+          if (info?.url) urlInput.value = info.url;
+          if (info?.error) showError('上次连接的服务器不可用：' + info.error);
+        } catch { /* 忽略 */ }
+        await renderSaved();
+      }
+
+      connectBtn.addEventListener('click', () => connect(urlInput.value));
+      urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(urlInput.value); });
+      init();
+    </script>
+  </body>
 </html>

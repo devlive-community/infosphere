@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "remote-bridge",
+  "description": "允许用户配置的远程服务器页面通过 IPC 调用桌面端桥命令，用于把登录令牌回写本地 SQLite。webview 只加载用户自己配置的服务器，外站导航已被转交系统浏览器，暴露面受限。",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://*", "https://*"]
+  },
+  "permissions": ["core:default"]
+}

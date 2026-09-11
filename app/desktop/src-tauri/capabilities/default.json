@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "本地设置页（tauri://localhost）的核心权限。应用自定义命令不受 ACL 限制，始终可用。",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
