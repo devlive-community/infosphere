@@ -134,6 +134,22 @@ func buildMessage(from, to, subject, htmlBody string) []byte {
 	return []byte(headers + "\r\n\r\n" + wrapped.String())
 }
 
+// VerifyEmailHTML 生成邮箱激活邮件正文
+func VerifyEmailHTML(link, siteName string, expireMinutes int) string {
+	if strings.TrimSpace(siteName) == "" {
+		siteName = "InfoSphere"
+	}
+	safeLink := html.EscapeString(link)
+	safeSiteName := html.EscapeString(siteName)
+	return fmt.Sprintf(`<div style="max-width:480px;margin:0 auto;font-family:sans-serif">
+<p>你好，</p>
+<p>感谢注册 %s。点击下面的链接激活你的邮箱：</p>
+<p><a href="%s">%s</a></p>
+<p>链接 %d 分钟内有效，且只能使用一次。激活后即可创建书籍、发表评论等。如果不是你本人操作，请忽略这封邮件。</p>
+<p>%s</p>
+</div>`, safeSiteName, safeLink, safeLink, expireMinutes, safeSiteName)
+}
+
 // ResetPasswordHTML 生成找回密码邮件正文
 func ResetPasswordHTML(link, siteName string, expireMinutes int) string {
 	if strings.TrimSpace(siteName) == "" {

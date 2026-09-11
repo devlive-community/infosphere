@@ -157,9 +157,14 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| POST | `/auth/register` | 注册，返回 token + user | 匿名 |
+| GET | `/auth/registration` | 注册页读取注册方式：`{mode: open\|open_invite\|invite\|closed, require_email}` | 匿名 |
+| POST | `/auth/register` | 注册，返回 token + user；受注册方式门禁：`closed` 拒绝、`invite`/`open_invite` 需 `invite_code`（他人专属邀请码）、`require_email` 时邮箱必填；开启激活时新用户 `email_verified=false` 并发激活邮件 | 匿名 |
 | POST | `/auth/login` | 登录（用户名或邮箱），返回 token + user | 匿名 |
-| GET | `/auth/me` | 当前用户信息 | 登录 |
+| POST | `/auth/email/verify` | 匿名凭令牌激活邮箱：`{token}`（一次性、24h 有效） | 匿名 |
+| POST | `/auth/email/resend` | 登录用户重发激活邮件 | 登录 |
+| GET/POST/DELETE | `/auth/invite-code` | 邀请码 opt-in：GET 返回 `{invite_code}`（未开启为空）；POST 开启并生成；DELETE 关闭（清空） | 登录 |
+| GET/PUT | `/registration` | 管理员读取/保存注册设置：`{mode, require_email, require_activation}` | `site:update` |
+| GET | `/auth/me` | 当前用户信息（含 `email_verified`、`invite_code`） | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |
 | GET/PUT | `/auth/export-settings` | 当前用户 PDF 导出样式偏好：`page_size`(A4\|Letter)、`include_cover`、`include_toc`、`font_size`(12–20)、`code_theme`(light\|dark)、`margin`(narrow\|normal\|wide)、`footer`（每页页脚 Powered by 文案，≤100 字，留空用默认 `Powered by <站点名>`） | `user:read` / `user:update` |

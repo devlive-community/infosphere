@@ -56,7 +56,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   const router = useRouter()
   const { user, login, site } = useApp()
   const siteName = site.site_name?.trim() || ''
-  const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '', inviteCode: '' })
+  const [regInfo, setRegInfo] = useState<{ mode: string; require_email: boolean } | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const isLogin = mode === 'login'
@@ -64,6 +65,13 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   const nextQuery = nextPath === '/' ? '' : `?next=${encodeURIComponent(nextPath)}`
 
   useEffect(() => setError(''), [mode])
+
+  // 注册方式/邮箱要求：决定是否显示邀请码、邮箱是否必填、是否关闭注册
+  useEffect(() => {
+    api<{ mode: string; require_email: boolean }>('/auth/registration')
+      .then(setRegInfo)
+      .catch(() => setRegInfo({ mode: 'open', require_email: false }))
+  }, [])
 
   useEffect(() => {
     if (user && router.isReady) router.replace(safeNextPath(router.query.next))
@@ -92,7 +100,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
         })
         : await api<{ token: string; user: User }>('/auth/register', {
           method: 'POST',
-          body: { username: form.username, email: form.email, password: form.password },
+          body: { username: form.username, email: form.email, password: form.password, invite_code: form.inviteCode },
         })
       login(data.token, data.user)
       router.replace(nextPath)
@@ -102,6 +110,11 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
       setLoading(false)
     }
   }
+
+  const inviteRequired = regInfo?.mode === 'invite' || regInfo?.mode === 'open_invite'
+  const emailRequired = !!regInfo?.require_email
+  const registrationClosed = !isLogin && regInfo?.mode === 'closed'
+  const showInvite = !isLogin && regInfo != null && regInfo.mode !== 'closed'
 
   const pageTitle = siteName
     ? `${isLogin ? '登录' : '注册'} - ${siteName}`
@@ -184,6 +197,14 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
               </div>
             )}
 
+            {registrationClosed ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm leading-6 text-slate-500">
+                <i className="fa-solid fa-lock mb-3 block text-2xl text-slate-300" aria-hidden="true" />
+                本站当前已关闭注册。如已有账户，请
+                <Link href={`/login${nextQuery}`} className="text-primary-600 hover:underline">登录</Link>。
+              </div>
+            ) : (
+            <>
             <form onSubmit={submit} className="space-y-4">
               <Field label={isLogin ? '用户名或邮箱' : '用户名'}>
                 <Input value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })}
@@ -192,9 +213,9 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
               </Field>
 
               {!isLogin && (
-                <Field label="邮箱" hint="选填，用于找回密码与接收账户通知">
+                <Field label="邮箱" hint={emailRequired ? '本站要求绑定邮箱，用于激活账户与找回密码' : '选填，用于找回密码与接收账户通知'}>
                   <Input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })}
-                    autoComplete="email" placeholder="name@example.com" leading={<FieldIcon name="envelope" />} />
+                    autoComplete="email" placeholder="name@example.com" required={emailRequired} leading={<FieldIcon name="envelope" />} />
                 </Field>
               )}
 
@@ -209,6 +230,14 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
                 </Field>
               )}
 
+              {showInvite && (
+                <Field label="邀请码" hint={inviteRequired ? '本站需邀请码注册' : '选填，填写他人的邀请码'}>
+                  <Input value={form.inviteCode} onChange={(event) => setForm({ ...form, inviteCode: event.target.value.toUpperCase() })}
+                    autoComplete="off" placeholder="请输入邀请码" required={inviteRequired}
+                    leading={<i className="fa-solid fa-ticket w-4 text-center text-xs" aria-hidden="true" />} />
+                </Field>
+              )}
+
               {isLogin && (
                 <div className="flex justify-end">
                   <Link href="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">忘记密码？</Link>
@@ -219,6 +248,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
             </form>
 
             <div className="mt-5"><OAuthButtons label={isLogin ? '登录' : '注册'} /></div>
+            </>
+            )}
 
             <p className="mt-6 text-center text-xs leading-5 text-slate-400">
               {isLogin ? '登录即表示你同意遵守本站的使用规范' : '注册即表示你同意遵守本站的使用规范'}

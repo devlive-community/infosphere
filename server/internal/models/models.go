@@ -17,6 +17,12 @@ type User struct {
 	Bio             string               `gorm:"size:1000" json:"bio"`
 	GithubURL       string               `gorm:"size:255;column:github_url" json:"github_url"`
 	IsActive        bool                 `gorm:"default:true" json:"is_active"`
+	// EmailVerified 邮箱是否已激活；开启「注册后必须激活邮箱」时，未激活用户只读
+	EmailVerified bool `gorm:"default:false" json:"email_verified"`
+	// InviteCode 用户专属邀请码（referral），注册可用他人邀请码；应用层保证唯一
+	InviteCode string `gorm:"size:20;index" json:"invite_code"`
+	// InvitedBy 邀请人用户 ID（0 表示无）
+	InvitedBy       uint                 `gorm:"index;default:0" json:"invited_by,omitempty"`
 	LastLoginAt     *time.Time           `json:"last_login_at"`
 	CreatedAt       time.Time            `json:"created_at"`
 	UpdatedAt       time.Time            `json:"updated_at"`
@@ -91,6 +97,16 @@ type BookCollaborator struct {
 
 // PasswordResetToken 找回密码一次性令牌（M15；只存哈希，明文仅出现在邮件链接里）
 type PasswordResetToken struct {
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	UserID    uint       `gorm:"index;not null" json:"user_id"`
+	TokenHash string     `gorm:"size:64;uniqueIndex;not null" json:"-"`
+	ExpiresAt time.Time  `gorm:"index" json:"expires_at"`
+	UsedAt    *time.Time `json:"used_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
+// EmailVerificationToken 邮箱激活令牌：一次性、有有效期，数据库只存 SHA-256 哈希。
+type EmailVerificationToken struct {
 	ID        uint       `gorm:"primaryKey" json:"id"`
 	UserID    uint       `gorm:"index;not null" json:"user_id"`
 	TokenHash string     `gorm:"size:64;uniqueIndex;not null" json:"-"`
@@ -405,6 +421,7 @@ func All(db *gorm.DB) error {
 		&Plugin{},
 		&UserExportSetting{},
 		&UserReadingGoal{},
+		&EmailVerificationToken{},
 		&BookExportSetting{},
 		&UserThemeSetting{},
 		&Comment{},

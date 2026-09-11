@@ -58,6 +58,8 @@ func New(cfg *config.Config) (*App, error) {
 			return nil, fmt.Errorf("数据库迁移失败: %w", err)
 		}
 		a.DB = db
+		// 首次引入注册功能：已有用户视为已激活并补发专属邀请码（内部只跑一次）
+		a.migrateRegistrationDefaults()
 		a.search = configureSearchBackend(db)
 		if err := a.configureJobQueue(); err != nil {
 			return nil, fmt.Errorf("初始化异步任务队列失败: %w", err)

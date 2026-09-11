@@ -12,6 +12,8 @@ export interface User {
   bio: string
   github_url: string
   is_active: boolean
+  email_verified?: boolean
+  invite_code?: string
   last_login_at: string | null
   created_at: string
   updated_at: string

@@ -256,13 +256,24 @@ func (a *App) OAuthCallback(c *gin.Context) {
 	}
 
 	// 5. 全新用户：注册（无本地密码，可在资料页补设）
+	// 受注册方式门禁：关闭注册禁止新号；邀请制无邀请码输入渠道，同样禁止 OAuth 新注册。
+	switch a.registrationMode() {
+	case "closed":
+		failRedirect("registration_closed")
+		return
+	case "invite", "open_invite":
+		failRedirect("registration_invite_required")
+		return
+	}
 	username := oauthUsername(a, gh.Login)
 	if email == "" {
 		email = fmt.Sprintf("%d@users.noreply.github.com", gh.ID)
 	}
 	u = models.User{
 		Username: username, Email: email, Password: "", Role: "user", IsActive: true,
-		Avatar: gh.AvatarURL, GithubURL: "https://github.com/" + gh.Login,
+		// GitHub 登录视为可信身份，直接标记邮箱已激活（不再要求二次激活）
+		EmailVerified: true,
+		Avatar:        gh.AvatarURL, GithubURL: "https://github.com/" + gh.Login,
 	}
 	if err := a.DB.Create(&u).Error; err != nil {
 		failRedirect("register_failed")

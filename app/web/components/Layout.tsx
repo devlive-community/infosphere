@@ -5,8 +5,8 @@ import { useRouter } from 'next/router'
 import Container from '@/components/Container'
 import { ListBulletIcon, BookIcon, TrashIcon, UserCircleIcon, GridIcon, LogOutIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
-import { API_BASE } from '@/lib/api'
-import { ButtonLink, Input, Modal } from '@/components/ui'
+import { API_BASE, api } from '@/lib/api'
+import { Button, ButtonLink, Input, Modal, useFeedback } from '@/components/ui'
 import NotificationBell from '@/components/NotificationBell'
 import { SearchIcon } from '@/components/icons'
 
@@ -97,6 +97,32 @@ function MobileNav() {
   )
 }
 
+// ActivationBanner 未激活邮箱提示：仅当「注册后必须激活邮箱」开启且用户未激活时出现（email_verified=false）
+function ActivationBanner() {
+  const { showToast } = useFeedback()
+  const [sending, setSending] = useState(false)
+  async function resend() {
+    setSending(true)
+    try {
+      const r = await api<{ message: string }>('/auth/email/resend', { method: 'POST' })
+      showToast({ message: r.message || '激活邮件已发送', tone: 'success' })
+    } catch (e) {
+      showToast({ message: (e as Error).message || '发送失败', tone: 'error' })
+    } finally {
+      setSending(false)
+    }
+  }
+  return (
+    <div className="border-b border-amber-200 bg-amber-50 text-amber-800">
+      <div className="mx-auto flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm" style={{ maxWidth: 'var(--content-max-width)' }}>
+        <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+        <span>你的邮箱尚未激活，激活前只能浏览，无法创建书籍或发表评论。</span>
+        <Button variant="ghost" size="sm" loading={sending} onClick={resend} className="text-amber-900 hover:bg-amber-100">重新发送激活邮件</Button>
+      </div>
+    </div>
+  )
+}
+
 export default function Layout({ title, children }: { title?: string; children: ReactNode }) {
   const { site, user } = useApp()
   const siteName = site.site_name || 'InfoSphere'
@@ -130,6 +156,8 @@ export default function Layout({ title, children }: { title?: string; children: 
           </div>
         </div>
       </header>
+
+      {user && user.email_verified === false && <ActivationBanner />}
 
       <main className="w-full flex-1">{children}</main>
 

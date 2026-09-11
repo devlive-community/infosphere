@@ -62,12 +62,16 @@ func (a *App) Router() *gin.Engine {
 		// ── 认证与会话 ──
 		authGroup := api.Group("/auth")
 		{
+			authGroup.GET("/registration", a.PublicRegistrationInfo) // 注册页读取注册方式/邮箱要求
 			authGroup.POST("/register", a.RateLimit(registerRateLimit), a.Register)
 			authGroup.POST("/login", a.RateLimit(loginRateLimit), a.Login)
 
 			// ── 找回密码（auth:password-reset 匿名语义） ──
 			authGroup.POST("/password/forgot", a.RateLimit(passwordForgotRateLimit), a.ForgotPassword)
 			authGroup.POST("/password/reset", a.RateLimit(passwordResetRateLimit), a.ResetPassword)
+
+			// ── 邮箱激活（verify 匿名凭令牌；resend 需登录） ──
+			authGroup.POST("/email/verify", a.RateLimit(passwordResetRateLimit), a.VerifyEmail)
 
 			// ── 第三方登录（auth:oauth；start/callback 匿名，绑定管理需登录） ──
 			authGroup.GET("/oauth/providers", a.OAuthProviders)
@@ -83,6 +87,10 @@ func (a *App) Router() *gin.Engine {
 			{
 				authed.GET("/me", a.Me)
 				authed.GET("/permissions", a.CurrentPermissions) // 当前用户权限列表
+				authed.GET("/invite-code", a.MyInviteCode)          // 我的邀请码（未开启为空）
+				authed.POST("/invite-code", a.EnableInviteCode)     // 开启专属邀请码
+				authed.DELETE("/invite-code", a.DisableInviteCode)  // 关闭邀请码
+				authed.POST("/email/resend", a.ResendActivation)    // 重新发送激活邮件
 				authed.PUT("/profile", a.RequirePermission(authz.UserUpdate), a.UpdateProfile)
 				authed.PUT("/password", a.RequirePermission(authz.UserUpdate), a.ChangePassword)
 				// 导出样式偏好（PDF 导出用）
@@ -126,7 +134,7 @@ func (a *App) Router() *gin.Engine {
 		// ── 书籍管理（book:*，归属校验在 handler 内） ──
 		books := api.Group("/books", a.RequireAuth())
 		{
-			books.POST("", a.RequirePermission(authz.BookCreate), a.CreateBook)
+			books.POST("", a.RequireEmailVerified(), a.RequirePermission(authz.BookCreate), a.CreateBook)
 			books.GET("/status-counts", a.RequirePermission(authz.BookRead), a.MyBookCounts)
 			books.GET("/slug/:slug/access", a.RequirePermission(authz.BookRead), a.GetBookAccess)
 			books.PUT("/:id", a.RequirePermission(authz.BookUpdate), a.UpdateBook)
@@ -157,7 +165,7 @@ func (a *App) Router() *gin.Engine {
 		// ── 文档管理（document:*，归属校验在 handler 内） ──
 		docs := api.Group("", a.RequireAuth())
 		{
-			docs.POST("/books/:id/documents", a.RequirePermission(authz.DocumentCreate), a.CreateDocument)
+			docs.POST("/books/:id/documents", a.RequireEmailVerified(), a.RequirePermission(authz.DocumentCreate), a.CreateDocument)
 			docs.POST("/books/:id/documents/import-web", a.RequirePermission(authz.DocumentCreate), a.ImportWebDocument)
 			docs.PUT("/documents/:id", a.RequirePermission(authz.DocumentUpdate), a.UpdateDocument)
 			docs.DELETE("/documents/:id", a.RequirePermission(authz.DocumentDelete), a.DeleteDocument)
@@ -195,7 +203,7 @@ func (a *App) Router() *gin.Engine {
 
 		// ── 评论（comment:*） ──
 		api.GET("/documents/:id/comments", a.OptionalAuth(), a.ListComments)
-		api.POST("/documents/:id/comments", a.RequireAuth(), a.RequirePermission(authz.CommentCreate), a.RateLimit(commentRateLimit), a.CreateComment)
+		api.POST("/documents/:id/comments", a.RequireAuth(), a.RequireEmailVerified(), a.RequirePermission(authz.CommentCreate), a.RateLimit(commentRateLimit), a.CreateComment)
 		api.PUT("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentUpdate), a.UpdateComment)
 		api.DELETE("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentDelete), a.DeleteComment)
 
@@ -234,7 +242,7 @@ func (a *App) Router() *gin.Engine {
 		}
 
 		// ── 上传 ──
-		api.POST("/upload", a.RequireAuth(), a.RequirePermission(authz.UploadCreate), a.RateLimit(uploadRateLimit), a.Upload)
+		api.POST("/upload", a.RequireAuth(), a.RequireEmailVerified(), a.RequirePermission(authz.UploadCreate), a.RateLimit(uploadRateLimit), a.Upload)
 
 		// ── 标签管理（tag:*；登录用户可创建，删除仅管理员） ──
 		tags := api.Group("/tags", a.RequireAuth())
@@ -253,6 +261,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminSaveMail)
 			admin.GET("/storage", a.RequirePermission(authz.SiteUpdate), a.AdminGetStorage)
 			admin.PUT("/storage", a.RequirePermission(authz.SiteUpdate), a.AdminSaveStorage)
+			admin.GET("/registration", a.RequirePermission(authz.SiteUpdate), a.GetRegistrationSettings)
+			admin.PUT("/registration", a.RequirePermission(authz.SiteUpdate), a.UpdateRegistrationSettings)
 			admin.GET("/system/version", a.RequirePermission(authz.SystemRead), a.SystemVersion)
 			admin.POST("/system/upgrade", a.RequirePermission(authz.SystemUpgrade), a.SystemUpgrade)
 

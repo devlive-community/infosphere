@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"strings"
 
 	"infosphere/server/internal/auth"
 	"infosphere/server/internal/models"
@@ -22,9 +23,10 @@ func (a *App) issueToken(c *gin.Context, u *models.User) {
 }
 
 type registerRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username   string `json:"username"`
+	Email      string `json:"email"`
+	Password   string `json:"password"`
+	InviteCode string `json:"invite_code"`
 }
 
 // Register POST /auth/register
@@ -34,6 +36,32 @@ func (a *App) Register(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+
+	// 注册方式门禁：关闭注册直接拒绝；邀请制校验邀请码
+	mode := a.registrationMode()
+	if mode == "closed" {
+		fail(c, http.StatusForbidden, "站点当前已关闭注册")
+		return
+	}
+	inviteRequired := mode == "invite" || mode == "open_invite"
+	code := strings.TrimSpace(req.InviteCode)
+	if inviteRequired && code == "" {
+		fail(c, http.StatusBadRequest, "请输入邀请码")
+		return
+	}
+	var inviter *models.User
+	if code != "" {
+		if inviter = a.inviterByCode(code); inviter == nil {
+			fail(c, http.StatusBadRequest, "邀请码无效")
+			return
+		}
+	}
+	// 必须绑定邮箱时校验
+	if a.regRequireEmail() && strings.TrimSpace(req.Email) == "" {
+		fail(c, http.StatusBadRequest, "请绑定邮箱后再注册")
+		return
+	}
+
 	if !usernameRegex.MatchString(req.Username) {
 		fail(c, http.StatusBadRequest, "用户名需为 3-50 位字母、数字、下划线或中划线")
 		return
@@ -72,10 +100,19 @@ func (a *App) Register(c *gin.Context) {
 		Password: string(hash),
 		Role:     "user",
 		IsActive: true,
+		// 需要激活邮箱时，注册后未激活（只读）；否则视为已激活
+		EmailVerified: !a.regRequireActivation(),
+	}
+	if inviter != nil {
+		u.InvitedBy = inviter.ID
 	}
 	if err := a.DB.Create(&u).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "注册失败: "+err.Error())
 		return
+	}
+	// 邀请码为用户自主开启（opt-in），注册时不自动生成
+	if a.regRequireActivation() {
+		a.sendActivationEmail(c, &u)
 	}
 	a.issueToken(c, &u)
 }
