@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Container from '@/components/Container'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Button, ButtonLink, EmptyState, Loading, Pagination, useFeedback } from '@/components/ui'
+import { Button, ButtonLink, EmptyState, Input, Loading, Pagination, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import Seo from '@/components/Seo'
 import { BookIcon } from '@/components/icons'
@@ -98,17 +98,18 @@ function CheckinCalendar() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-700">阅读打卡</h2>
-          <p className="mt-0.5 text-xs text-slate-400">
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-slate-400">
             连续打卡 <span className="font-semibold text-primary-600">{data.current_streak}</span> 天 · 最长 {data.longest_streak} 天 ·
-            今日 {data.today_count}/{goal} 章{data.today_met ? ' ✓' : ''}
+            今日 {data.today_count}/{goal} 章
+            {data.today_met && <i className="fa-solid fa-circle-check text-emerald-500" aria-label="已达标" />}
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>每日目标</span>
-          <input
-            type="number" min={1} max={100} value={goalInput}
+          <Input
+            type="number" min={1} max={100} size="sm" value={goalInput}
             onChange={(e) => setGoalInput(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
-            className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-center outline-none focus:border-primary-500"
+            className="w-16 text-center"
             aria-label="每日目标章节数"
           />
           <span>章</span>
