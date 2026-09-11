@@ -1730,7 +1730,7 @@ dependencies = [
 
 [[package]]
 name = "infosphere-desktop"
-version = "2026.0.0"
+version = "2026.0.1"
 dependencies = [
  "serde",
  "serde_json",
