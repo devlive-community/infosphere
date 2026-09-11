@@ -28,6 +28,14 @@ interface SourceItem {
   percentage: number
 }
 
+interface ChapterReach {
+  id: number
+  title: string
+  slug: string
+  sort_order: number
+  readers: number
+}
+
 interface AnalyticsResult {
   days: number
   retention_days: number
@@ -41,6 +49,7 @@ interface AnalyticsResult {
   trend: TrendPoint[]
   popular_chapters: PopularChapter[]
   sources: SourceItem[]
+  chapter_funnel: ChapterReach[]
 }
 
 const PERIODS = [
@@ -189,6 +198,36 @@ export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<
                 )}
               </Card>
             </div>
+
+            <Card className="overflow-hidden">
+              <div className="border-b border-slate-100 px-6 py-5">
+                <h3 className="font-bold text-slate-900">章节到达漏斗</h3>
+                <p className="mt-1 text-xs text-slate-400">按章节顺序展示读过该章的去重读者数，条形与百分比相对首章，直观看出读者在哪一章流失</p>
+              </div>
+              {data.chapter_funnel.length === 0 ? <EmptyState>暂无章节阅读记录</EmptyState> : (
+                <ol className="divide-y divide-slate-100">
+                  {data.chapter_funnel.map((chapter, index) => {
+                    const first = data.chapter_funnel[0]?.readers || 0
+                    const ratio = first > 0 ? (chapter.readers / first) * 100 : 0
+                    return (
+                      <li key={chapter.id} className="px-6 py-3.5">
+                        <div className="mb-1.5 flex items-center gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-500">{index + 1}</span>
+                          <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${encodeURIComponent(chapter.slug)}`}
+                            className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700 hover:text-primary-600">{chapter.title}</Link>
+                          <span className="shrink-0 text-sm text-slate-400">
+                            {formatNumber(chapter.readers)} 人{first > 0 && index > 0 ? ` · ${Math.round(ratio)}%` : ''}
+                          </span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-full rounded-full bg-primary-400" style={{ width: `${ratio}%` }} />
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
+              )}
+            </Card>
           </>
         )}
       </div>

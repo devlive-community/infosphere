@@ -220,7 +220,7 @@ Authorization: Bearer <token>
 | DELETE | `/books/:id` | 将书籍及当前章节移入 30 天回收站 | `book:delete` |
 | GET | `/books/status-counts?scope=owned\|collaborating` | 当前用户创建或已接受协作书籍的状态统计 | `book:read` |
 | POST | `/books/:id/view` | 可见书籍浏览计数 +1，并写入按日、来源聚合桶；可选 JSON `{referrer}`，只保存来源类别，不保存原始网址；不可见资源统一返回 404 | `book:read` |
-| GET | `/books/:id/analytics?days=7\|30\|90\|180` | 书籍聚合分析：累计/周期浏览、上一周期增长、每日趋势、热门章节、来源类别、登录读者完成率；仅 owner/admin，日聚合最多保留 180 天 | `book-analytics:read` |
+| GET | `/books/:id/analytics?days=7\|30\|90\|180` | 书籍聚合分析：累计/周期浏览、上一周期增长、每日趋势、热门章节、来源类别、登录读者完成率、章节到达漏斗（`chapter_funnel`：按章节顺序的去重读者数）；仅 owner/admin，日聚合最多保留 180 天 | `book-analytics:read` |
 
 书籍字段：`id, title, description, cover_image, slug, status(draft|in_progress|published|completed|archived), is_public, login_required, view_count, order_col(created_at|updated_at|title|view_count), order_dir(asc|desc), chapter_prefix, watermark_enabled, watermark_text, user, tags, created_at, updated_at`
 

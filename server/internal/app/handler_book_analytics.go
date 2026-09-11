@@ -34,6 +34,15 @@ type analyticsSource struct {
 	Percentage float64 `json:"percentage"`
 }
 
+// analyticsChapterReach 章节到达漏斗：按章节顺序统计读过该章的去重读者数。
+type analyticsChapterReach struct {
+	ID        uint   `json:"id"`
+	Title     string `json:"title"`
+	Slug      string `json:"slug"`
+	SortOrder int    `json:"sort_order"`
+	Readers   int64  `json:"readers"`
+}
+
 type bookAnalyticsResult struct {
 	Days              int                   `json:"days"`
 	RetentionDays     int                   `json:"retention_days"`
@@ -44,9 +53,10 @@ type bookAnalyticsResult struct {
 	RegisteredReaders int64                 `json:"registered_readers"`
 	CompletedReaders  int64                 `json:"completed_readers"`
 	CompletionRate    float64               `json:"completion_rate"`
-	Trend             []analyticsTrendPoint `json:"trend"`
-	PopularChapters   []analyticsChapter    `json:"popular_chapters"`
-	Sources           []analyticsSource     `json:"sources"`
+	Trend             []analyticsTrendPoint   `json:"trend"`
+	PopularChapters   []analyticsChapter      `json:"popular_chapters"`
+	Sources           []analyticsSource       `json:"sources"`
+	ChapterFunnel     []analyticsChapterReach `json:"chapter_funnel"`
 }
 
 // GetBookAnalytics GET /books/:id/analytics 聚合书籍访问分析，仅 owner/admin 可见。
@@ -166,11 +176,24 @@ func (a *App) GetBookAnalytics(c *gin.Context) {
 		completionRate = math.Round((float64(completedReaders)/float64(registeredReaders)*100)*10) / 10
 	}
 
+	// 章节到达漏斗：已发布章节按顺序，各自的去重读者数（读到哪一章、在哪流失）
+	funnel := []analyticsChapterReach{}
+	if err := a.DB.Model(&models.Document{}).
+		Select("documents.id, documents.title, documents.slug, documents.sort_order, COUNT(DISTINCT read_chapters.user_id) AS readers").
+		Joins("LEFT JOIN read_chapters ON read_chapters.doc_id = documents.id").
+		Where("documents.book_id = ? AND documents.deleted_at IS NULL AND documents.status = ?", book.ID, "published").
+		Group("documents.id, documents.title, documents.slug, documents.sort_order").
+		Order("documents.sort_order ASC, documents.id ASC").
+		Scan(&funnel).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "查询章节漏斗失败")
+		return
+	}
+
 	ok(c, bookAnalyticsResult{
 		Days: days, RetentionDays: bookAnalyticsRetentionDays, LifetimeViews: book.ViewCount,
 		PeriodViews: periodViews, PreviousViews: previousViews, GrowthPercent: growth,
 		RegisteredReaders: registeredReaders, CompletedReaders: completedReaders, CompletionRate: completionRate,
-		Trend: trend, PopularChapters: popular, Sources: sources,
+		Trend: trend, PopularChapters: popular, Sources: sources, ChapterFunnel: funnel,
 	})
 }
 
