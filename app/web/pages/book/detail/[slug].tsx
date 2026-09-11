@@ -131,7 +131,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
     }).then((result) => setBookViews(result.view_count)).catch(() => { /* 计数失败不影响详情页 */ })
   }, [book])
   // 阅读进度仅存在于本地，客户端挂载后读取（避免水合不一致）
-  const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string } | null>(null)
+  const [progress, setProgress] = useState<{ docSlug: string; docTitle: string; chapterPrefix?: string; readSeconds?: number } | null>(null)
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState<number | null>(null)
   const [favorited, setFavorited] = useState(false)
@@ -465,7 +465,10 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
                 <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                   <span className="font-medium text-slate-700">我的阅读进度</span>
-                  <span className="text-slate-500">已读 {readCount} / {totalChapters} 章 · {progressPct}%</span>
+                  <span className="text-slate-500">
+                    已读 {readCount} / {totalChapters} 章 · {progressPct}%
+                    {progress?.readSeconds ? <span className="text-slate-400"> · 阅读 {fmtReadTime(progress.readSeconds)}</span> : null}
+                  </span>
                 </div>
                 <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                   <span className="block h-full rounded-full bg-primary-500 transition-all duration-300" style={{ width: `${progressPct}%` }} />
@@ -550,6 +553,13 @@ function statusName(status: string): string {
 function fmtDate(input: string | null | undefined): string {
   if (!input) return '-'
   return input.slice(0, 10)
+}
+
+// fmtReadTime 累计阅读秒数格式化为「N 分钟 / N.N 小时」
+function fmtReadTime(seconds: number | undefined): string {
+  if (!seconds || seconds < 60) return '不足 1 分钟'
+  const minutes = Math.round(seconds / 60)
+  return minutes < 60 ? `${minutes} 分钟` : `${(minutes / 60).toFixed(1)} 小时`
 }
 
 function flatFirst(docs: Document[]): Document | null {
