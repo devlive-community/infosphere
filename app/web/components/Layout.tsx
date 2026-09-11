@@ -33,6 +33,7 @@ function UserMenu() {
   }
   const items = [
     { label: '我的书籍', href: '/books', icon: BookIcon },
+    { label: '我在读', href: '/user/reading', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-book-open-reader ${className || ''}`} aria-hidden="true" /> },
     { label: '我的笔记', href: '/user/notes', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-note-sticky ${className || ''}`} aria-hidden="true" /> },
     { label: '个人资料', href: '/user/profile', icon: UserCircleIcon },
     // 控制台仅对管理员开放

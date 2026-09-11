@@ -209,6 +209,7 @@ func (a *App) Router() *gin.Engine {
 		api.GET("/users/me/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyReactions)
 
 		// ── 阅读进度（user 语义，读自己写自己） ──
+		api.GET("/users/me/reading", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReading)
 		progress := api.Group("/reading-progress", a.RequireAuth())
 		{
 			progress.GET("/:bookId", a.RequirePermission(authz.ReadingProgressRead), a.GetReadingProgress)
