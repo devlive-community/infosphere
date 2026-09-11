@@ -124,19 +124,23 @@ function CheckinCalendar() {
       </div>
 
       <div className="mt-3 overflow-x-auto pb-1">
-        <div className="flex gap-1">
-          {/* 星期标签列（一/三/五） */}
-          <div className="grid shrink-0 gap-1 pr-1 text-[9px] leading-none text-slate-300" style={{ gridTemplateRows: 'repeat(7, 14px)' }}>
-            {weekdayLabels.map((w, i) => <span key={i} className="flex items-center">{w}</span>)}
+        <div className="flex gap-1" style={{ minWidth: `${weeks.length * 10 + 24}px` }}>
+          {/* 星期标签列（一/三/五），高度随格子自适应 */}
+          <div className="flex shrink-0 flex-col gap-1 pr-1 text-[9px] leading-none text-slate-300">
+            {weekdayLabels.map((w, i) => <span key={i} className="flex flex-1 items-center">{w}</span>)}
           </div>
-          {/* 每周一列，从旧到新 */}
+          {/* 每周一列（从旧到新）：flex-1 平分宽度撑满卡片，格子 aspect-square 保持方形 */}
           {weeks.map((week, wi) => (
-            <div key={wi} className="grid shrink-0 gap-1" style={{ gridTemplateRows: 'repeat(7, 14px)' }}>
-              {week.map((d, di) => d ? (
-                <Tooltip key={d.date} content={`${d.date} · 读 ${d.count} 章${d.met ? ' · 已达标' : ''}`} className="h-3.5 w-3.5">
-                  <span className={`h-3.5 w-3.5 rounded-sm ${cellColor(d)}`} />
-                </Tooltip>
-              ) : <span key={`e-${di}`} className="h-3.5 w-3.5" />)}
+            <div key={wi} className="flex flex-1 flex-col gap-1">
+              {week.map((d, di) => (
+                <div key={di} className="aspect-square w-full">
+                  {d && (
+                    <Tooltip content={`${d.date} · 读 ${d.count} 章${d.met ? ' · 已达标' : ''}`} className="h-full w-full">
+                      <span className={`block h-full w-full rounded-sm ${cellColor(d)}`} />
+                    </Tooltip>
+                  )}
+                </div>
+              ))}
             </div>
           ))}
         </div>
