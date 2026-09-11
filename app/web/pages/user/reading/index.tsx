@@ -93,9 +93,11 @@ function CheckinCalendar() {
   // 首日之前用空格补齐，使第一格落在其星期几所在行（周日=0 在最上）
   const leadPad = data.days.length ? new Date(data.days[0].date + 'T00:00:00').getDay() : 0
 
+  const weekdays = ['', '一', '', '三', '', '五', '']
+
   return (
     <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-slate-700">阅读打卡</h2>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-slate-400">
@@ -104,25 +106,32 @@ function CheckinCalendar() {
             {data.today_met && <i className="fa-solid fa-circle-check text-emerald-500" aria-label="已达标" />}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span>每日目标</span>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span className="shrink-0">每日目标</span>
           <Input
             type="number" min={1} max={100} size="sm" value={goalInput}
             onChange={(e) => setGoalInput(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
             className="w-16 text-center"
             aria-label="每日目标章节数"
           />
-          <span>章</span>
+          <span className="shrink-0">章</span>
           <Button variant="ghost" size="sm" loading={saving} disabled={goalInput === goal} onClick={saveGoal}>保存</Button>
         </div>
       </div>
 
       <div className="mt-3 overflow-x-auto">
-        <div className="grid grid-flow-col gap-1" style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }}>
-          {Array.from({ length: leadPad }).map((_, i) => <span key={`pad-${i}`} className="h-3 w-3" />)}
-          {data.days.map((d) => (
-            <span key={d.date} className={`h-3 w-3 rounded-sm ${cellColor(d)}`} aria-label={`${d.date}：${d.count} 章`} />
-          ))}
+        <div className="flex gap-1">
+          <div className="grid shrink-0 gap-1" style={{ gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px' }}>
+            {weekdays.map((d, i) => (
+              <span key={i} className="text-[9px] leading-none text-slate-300">{d}</span>
+            ))}
+          </div>
+          <div className="grid grid-flow-col gap-1" style={{ gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px' }}>
+            {Array.from({ length: leadPad }).map((_, i) => <span key={`pad-${i}`} />)}
+            {data.days.map((d) => (
+              <span key={d.date} className={`rounded-sm ${cellColor(d)}`} style={{ width: 12, height: 12 }} aria-label={`${d.date}：${d.count} 章`} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
