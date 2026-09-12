@@ -162,7 +162,7 @@ Authorization: Bearer <token>
 | POST | `/auth/login` | 登录（用户名或邮箱），返回 token + user | 匿名 |
 | POST | `/auth/email/verify` | 匿名凭令牌激活邮箱：`{token}`（一次性、24h 有效） | 匿名 |
 | POST | `/auth/email/resend` | 登录用户重发激活邮件 | 登录 |
-| GET/POST/DELETE | `/auth/invite-code` | 邀请码 opt-in：GET 返回 `{invite_code}`（未开启为空）；POST 开启并生成；DELETE 关闭（清空） | 登录 |
+| GET/POST/DELETE | `/auth/invite-code` | 邀请码 opt-in：GET 返回 `{invite_code, enabled}`；POST 开启（首次可选自定义 `{code}`，4-20 位字母数字、全站唯一、只能设置一次，不传则自动生成）；DELETE 停用（保留邀请码，再开启仍是同一个）。仅启用中的邀请码可用于注册 | 登录 |
 | GET | `/auth/invited` | 我邀请的用户列表 `{items:[{username,avatar,created_at}],total}`（关闭邀请码后仍可查看） | 登录 |
 | GET | `/auth/2fa` | 二次认证状态 `{enabled, operations:[login\|credentials\|delete\|unbind_export]}` | 登录 |
 | POST | `/auth/2fa/setup` | 预配置 TOTP：返回 `{secret, otpauth_url, qr(data-uri)}`（尚未开启） | 登录 |

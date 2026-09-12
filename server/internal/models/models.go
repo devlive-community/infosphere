@@ -19,8 +19,10 @@ type User struct {
 	IsActive        bool                 `gorm:"default:true" json:"is_active"`
 	// EmailVerified 邮箱是否已激活；开启「注册后必须激活邮箱」时，未激活用户只读
 	EmailVerified bool `gorm:"default:false" json:"email_verified"`
-	// InviteCode 用户专属邀请码（referral），注册可用他人邀请码；应用层保证唯一
+	// InviteCode 用户专属邀请码（referral），一经设置不再变化；应用层保证唯一
 	InviteCode string `gorm:"size:20;index" json:"invite_code"`
+	// InviteCodeEnabled 邀请码是否启用；关闭只是停用，不清除 InviteCode（再开启仍是同一个）
+	InviteCodeEnabled bool `gorm:"default:false" json:"invite_code_enabled"`
 	// InvitedBy 邀请人用户 ID（0 表示无）
 	InvitedBy uint `gorm:"index;default:0" json:"invited_by,omitempty"`
 	// TwoFactorEnabled 是否开启二次认证（TOTP）

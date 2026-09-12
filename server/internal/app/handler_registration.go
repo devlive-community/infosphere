@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -82,18 +83,21 @@ func (a *App) ensureInviteCode(u *models.User) string {
 	return u.InviteCode
 }
 
-// inviterByCode 按邀请码找邀请人；返回 nil 表示无效码。
+// inviterByCode 按邀请码找邀请人；仅匹配已启用的邀请码，返回 nil 表示无效码。
 func (a *App) inviterByCode(code string) *models.User {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" {
 		return nil
 	}
 	var owner models.User
-	if err := a.DB.Where("invite_code = ?", code).First(&owner).Error; err != nil {
+	if err := a.DB.Where("invite_code = ? AND invite_code_enabled = ?", code, true).First(&owner).Error; err != nil {
 		return nil
 	}
 	return &owner
 }
+
+// inviteCodePattern 自定义邀请码：字母数字 4-20 位
+var inviteCodePattern = regexp.MustCompile(`^[A-Za-z0-9]{4,20}$`)
 
 // ---- 管理员：注册设置 ----
 
@@ -142,16 +146,51 @@ func (a *App) UpdateRegistrationSettings(c *gin.Context) {
 
 // ---- 用户：我的邀请码 ----
 
-// MyInviteCode GET /auth/invite-code 返回当前用户的邀请码；未开启则为空字符串（不自动生成）。
+// MyInviteCode GET /auth/invite-code 返回当前用户的邀请码与启用状态。
 func (a *App) MyInviteCode(c *gin.Context) {
 	u := currentUser(c)
-	ok(c, gin.H{"invite_code": u.InviteCode})
+	ok(c, gin.H{"invite_code": u.InviteCode, "enabled": u.InviteCodeEnabled})
 }
 
-// EnableInviteCode POST /auth/invite-code 用户开启专属邀请码（无则生成，已开启则原样返回）。
+// EnableInviteCode POST /auth/invite-code 开启邀请码。
+// 首次可选自定义 {code}（字母数字 4-20，全站唯一，只能设置一次）；不传则自动生成。
+// 已有邀请码时忽略 code、原样启用（一经设置不再变化）。
 func (a *App) EnableInviteCode(c *gin.Context) {
 	u := currentUser(c)
-	ok(c, gin.H{"invite_code": a.ensureInviteCode(u)})
+	var req struct {
+		Code string `json:"code"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	custom := strings.ToUpper(strings.TrimSpace(req.Code))
+
+	if u.InviteCode == "" {
+		if custom != "" {
+			if !inviteCodePattern.MatchString(custom) {
+				fail(c, http.StatusBadRequest, "邀请码需为 4-20 位字母或数字")
+				return
+			}
+			var n int64
+			a.DB.Model(&models.User{}).Where("invite_code = ?", custom).Count(&n)
+			if n > 0 {
+				fail(c, http.StatusConflict, "该邀请码已被占用")
+				return
+			}
+			if err := a.DB.Model(u).Update("invite_code", custom).Error; err != nil {
+				fail(c, http.StatusInternalServerError, "设置失败")
+				return
+			}
+			u.InviteCode = custom
+		} else {
+			a.ensureInviteCode(u)
+		}
+	} else if custom != "" && custom != u.InviteCode {
+		fail(c, http.StatusBadRequest, "邀请码只能设置一次，无法修改")
+		return
+	}
+
+	a.DB.Model(u).Update("invite_code_enabled", true)
+	u.InviteCodeEnabled = true
+	ok(c, gin.H{"invite_code": u.InviteCode, "enabled": true})
 }
 
 // MyInvitedUsers GET /auth/invited 我邀请的用户列表（referral），关闭邀请码也可查看。
@@ -166,14 +205,14 @@ func (a *App) MyInvitedUsers(c *gin.Context) {
 	ok(c, gin.H{"items": items, "total": len(items)})
 }
 
-// DisableInviteCode DELETE /auth/invite-code 用户关闭邀请码（清空，之后不能再用它注册）。
+// DisableInviteCode DELETE /auth/invite-code 停用邀请码（保留 InviteCode，再开启仍是同一个）。
 func (a *App) DisableInviteCode(c *gin.Context) {
 	u := currentUser(c)
-	if err := a.DB.Model(&models.User{}).Where("id = ?", u.ID).Update("invite_code", "").Error; err != nil {
+	if err := a.DB.Model(&models.User{}).Where("id = ?", u.ID).Update("invite_code_enabled", false).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "关闭失败")
 		return
 	}
-	ok(c, gin.H{"invite_code": ""})
+	ok(c, gin.H{"invite_code": u.InviteCode, "enabled": false})
 }
 
 // ---- 邮箱激活 ----
@@ -271,4 +310,13 @@ func (a *App) migrateRegistrationDefaults() {
 	}
 	a.DB.Model(&models.User{}).Where("email_verified = ?", false).Update("email_verified", true)
 	_ = a.setSetting(registrationMigratedKey, "true", "注册功能数据迁移标记（已有用户视为已激活）")
+}
+
+// migrateInviteEnabled 引入邀请码启用状态后：已有邀请码的用户视为已启用（只跑一次）。
+func (a *App) migrateInviteEnabled() {
+	if a.DB == nil || a.getSetting("invite_enabled_migrated") == "true" {
+		return
+	}
+	a.DB.Model(&models.User{}).Where("invite_code <> ?", "").Update("invite_code_enabled", true)
+	_ = a.setSetting("invite_enabled_migrated", "true", "邀请码启用状态迁移标记")
 }

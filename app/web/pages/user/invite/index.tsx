@@ -20,12 +20,15 @@ export default function InvitePage() {
   const user = useRequireAuth()
   const { showToast } = useFeedback()
   const [code, setCode] = useState('')
+  const [enabled, setEnabled] = useState(false)
+  const [customCode, setCustomCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [invited, setInvited] = useState<InvitedUser[] | null>(null)
 
   useEffect(() => {
     if (!user) return
-    api<{ invite_code: string }>('/auth/invite-code').then((d) => setCode(d.invite_code || '')).catch(() => {})
+    api<{ invite_code: string; enabled: boolean }>('/auth/invite-code')
+      .then((d) => { setCode(d.invite_code || ''); setEnabled(!!d.enabled) }).catch(() => {})
     api<{ items: InvitedUser[] }>('/auth/invited').then((d) => setInvited(d.items || [])).catch(() => setInvited([]))
   }, [user])
 
@@ -34,8 +37,10 @@ export default function InvitePage() {
   async function enable() {
     setBusy(true)
     try {
-      const d = await api<{ invite_code: string }>('/auth/invite-code', { method: 'POST' })
+      const d = await api<{ invite_code: string; enabled: boolean }>('/auth/invite-code', { method: 'POST', body: { code: customCode.trim() } })
       setCode(d.invite_code || '')
+      setEnabled(!!d.enabled)
+      setCustomCode('')
     } catch (e) {
       showToast({ message: (e as Error).message || '开启失败', tone: 'error' })
     } finally {
@@ -45,8 +50,8 @@ export default function InvitePage() {
   async function disable() {
     setBusy(true)
     try {
-      await api('/auth/invite-code', { method: 'DELETE' })
-      setCode('')
+      const d = await api<{ enabled: boolean }>('/auth/invite-code', { method: 'DELETE' })
+      setEnabled(!!d.enabled)
     } catch (e) {
       showToast({ message: (e as Error).message || '关闭失败', tone: 'error' })
     } finally {
@@ -81,19 +86,33 @@ export default function InvitePage() {
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="p-6 pb-4">
               <h2 className="text-xl font-bold text-slate-900">我的邀请码</h2>
-              <p className="mt-1 text-sm text-slate-500">默认不开启。开启后会生成你的专属邀请码，分享给朋友即可用于注册。</p>
+              <p className="mt-1 text-sm text-slate-500">默认不开启。邀请码一经设置不再变化，关闭只是停用，重新开启仍是同一个。</p>
             </div>
             <div className="px-6 pb-6">
               {code ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="min-w-0 flex-1">
-                    <Input value={code} readOnly className="font-mono text-base tracking-[0.3em]" aria-label="我的邀请码" />
-                  </span>
-                  <Button type="button" variant="outline" className="shrink-0 whitespace-nowrap" onClick={copy}>复制</Button>
-                  <Button type="button" variant="ghost" loading={busy} className="shrink-0 whitespace-nowrap text-rose-600 hover:bg-rose-50" onClick={disable}>关闭</Button>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 flex-1">
+                      <Input value={code} readOnly aria-label="我的邀请码"
+                        className={`font-mono text-base tracking-[0.3em] ${enabled ? '' : 'text-slate-400'}`} />
+                    </span>
+                    <Button type="button" variant="outline" className="shrink-0 whitespace-nowrap" onClick={copy}>复制</Button>
+                    {enabled ? (
+                      <Button type="button" variant="ghost" loading={busy} className="shrink-0 whitespace-nowrap text-rose-600 hover:bg-rose-50" onClick={disable}>关闭</Button>
+                    ) : (
+                      <Button type="button" variant="outline" loading={busy} className="shrink-0 whitespace-nowrap" onClick={enable}>开启</Button>
+                    )}
+                  </div>
+                  {!enabled && <p className="mt-2 text-sm text-amber-600">邀请码已关闭，他人暂时无法用它注册。</p>}
                 </div>
               ) : (
-                <Button type="button" variant="outline" loading={busy} onClick={enable}>开启邀请码</Button>
+                <div className="flex flex-wrap items-end gap-2">
+                  <span className="min-w-0 flex-1">
+                    <label className="mb-1 block text-xs text-slate-500">自定义邀请码（可选，4-20 位字母或数字，只能设置一次）</label>
+                    <Input value={customCode} onChange={(e) => setCustomCode(e.target.value)} placeholder="留空则自动生成" maxLength={20} aria-label="自定义邀请码" />
+                  </span>
+                  <Button type="button" variant="outline" loading={busy} className="shrink-0 whitespace-nowrap" onClick={enable}>开启邀请码</Button>
+                </div>
               )}
             </div>
           </div>
