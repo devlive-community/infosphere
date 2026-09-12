@@ -58,7 +58,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   const { user, login, site } = useApp()
   const siteName = site.site_name?.trim() || ''
   const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '', inviteCode: '' })
-  const [regInfo, setRegInfo] = useState<{ mode: string; require_email: boolean } | null>(null)
+  const [regInfo, setRegInfo] = useState<{ mode: string; require_email: boolean; password_min_length?: number; password_require_mixed?: boolean } | null>(null)
   const [captcha, setCaptcha] = useState<CaptchaValue>({ id: '', answer: '', required: false })
   const [captchaRefresh, setCaptchaRefresh] = useState(0)
   const [twoFactorNeeded, setTwoFactorNeeded] = useState(false)
@@ -73,7 +73,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 
   // 注册方式/邮箱要求：决定是否显示邀请码、邮箱是否必填、是否关闭注册
   useEffect(() => {
-    api<{ mode: string; require_email: boolean }>('/auth/registration')
+    api<{ mode: string; require_email: boolean; password_min_length?: number; password_require_mixed?: boolean }>('/auth/registration')
       .then(setRegInfo)
       .catch(() => setRegInfo({ mode: 'open', require_email: false }))
   }, [])
@@ -230,7 +230,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
                 </Field>
               )}
 
-              <Field label="密码" hint={!isLogin ? '至少 6 位字符' : undefined}>
+              <Field label="密码" hint={!isLogin ? `至少 ${regInfo?.password_min_length ?? 6} 位${regInfo?.password_require_mixed ? '，需同时包含字母和数字' : '字符'}` : undefined}>
                 <PasswordInput value={form.password} onChange={(password) => setForm({ ...form, password })}
                   autoComplete={isLogin ? 'current-password' : 'new-password'} />
               </Field>

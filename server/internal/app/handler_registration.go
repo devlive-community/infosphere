@@ -107,9 +107,14 @@ type registrationSettings struct {
 	RequireActivation bool   `json:"require_activation"`
 }
 
-// PublicRegistrationInfo GET /auth/registration 注册/登录页据此决定是否显示邀请码、是否必填邮箱、是否关闭注册。
+// PublicRegistrationInfo GET /auth/registration 注册/登录页据此决定是否显示邀请码、是否必填邮箱、是否关闭注册、密码策略。
 func (a *App) PublicRegistrationInfo(c *gin.Context) {
-	ok(c, gin.H{"mode": a.registrationMode(), "require_email": a.regRequireEmail()})
+	ok(c, gin.H{
+		"mode":                   a.registrationMode(),
+		"require_email":          a.regRequireEmail(),
+		"password_min_length":    a.passwordMinLength(),
+		"password_require_mixed": a.passwordRequireMixed(),
+	})
 }
 
 // GetRegistrationSettings GET /registration（管理员）

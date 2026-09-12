@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -76,8 +77,8 @@ func (a *App) Register(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "邮箱格式不正确")
 		return
 	}
-	if len(req.Password) < 6 {
-		fail(c, http.StatusBadRequest, "密码至少 6 位")
+	if err := a.validatePassword(req.Password); err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -152,10 +153,17 @@ func (a *App) Login(c *gin.Context) {
 		fail(c, http.StatusUnauthorized, "用户名或密码错误")
 		return
 	}
+	// 登录失败锁定：账户锁定期内直接拒绝
+	if rem := a.loginLockRemaining(u.Username); rem > 0 {
+		fail(c, http.StatusTooManyRequests, fmt.Sprintf("登录失败次数过多，账户已锁定，请 %d 分钟后再试", int(rem.Minutes())+1))
+		return
+	}
 	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(req.Password)) != nil {
+		a.recordLoginFailure(u.Username)
 		fail(c, http.StatusUnauthorized, "用户名或密码错误")
 		return
 	}
+	a.clearLoginFailures(u.Username)
 	if !u.IsActive {
 		fail(c, http.StatusForbidden, "账户已被禁用")
 		return
@@ -248,8 +256,8 @@ func (a *App) ChangePassword(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
-	if len(req.NewPassword) < 6 {
-		fail(c, http.StatusBadRequest, "新密码至少 6 位")
+	if err := a.validatePassword(req.NewPassword); err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	u := currentUser(c)

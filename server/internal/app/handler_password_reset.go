@@ -130,8 +130,8 @@ func (a *App) ResetPassword(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "缺少重置令牌")
 		return
 	}
-	if len(req.Password) < 6 {
-		fail(c, http.StatusBadRequest, "密码至少 6 位")
+	if err := a.validatePassword(req.Password); err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 

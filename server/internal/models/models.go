@@ -127,6 +127,14 @@ type TwoFactorStepUp struct {
 	ExpiresAt time.Time `gorm:"index" json:"expires_at"`
 }
 
+// LoginLockout 登录失败锁定计数（每账户一条，多实例共享）。
+type LoginLockout struct {
+	Username    string    `gorm:"primaryKey;size:100" json:"username"`
+	Fails       int       `json:"fails"`
+	WindowStart time.Time `json:"window_start"`
+	LockedUntil time.Time `json:"locked_until"`
+}
+
 // TwoFactorBackupCode 二次认证备用码：一次性，数据库只存哈希，供丢失验证器时恢复。
 type TwoFactorBackupCode struct {
 	ID        uint       `gorm:"primaryKey" json:"id"`
@@ -456,6 +464,7 @@ func All(db *gorm.DB) error {
 		&TwoFactorBackupCode{},
 		&CaptchaChallenge{},
 		&TwoFactorStepUp{},
+		&LoginLockout{},
 		&BookExportSetting{},
 		&UserThemeSetting{},
 		&Comment{},

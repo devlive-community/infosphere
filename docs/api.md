@@ -174,6 +174,7 @@ Authorization: Bearer <token>
 | GET/PUT | `/registration` | 管理员读取/保存注册设置：`{mode, require_email, require_activation}` | `site:update` |
 | GET | `/captcha?scene=register\|login\|comment` | 场景验证码：未开启返回 `{required:false}`；开启返回 `{required:true, id, type, image(data-uri)/question}`；提交对应操作时带 `captcha_id`+`captcha_answer` | 匿名 |
 | GET/PUT | `/captcha-settings` | 管理员读取/保存验证码设置：`{type(image\|arithmetic), length, charset(digit\|alnum), noise(0-3), arith_hard, on_register, on_login, on_comment}` | `site:update` |
+| GET/PUT | `/login-security` | 管理员读取/保存登录安全：`{lockout_enabled, lockout_threshold, lockout_window(分钟), lockout_duration(分钟), password_min_length(≥6), password_require_mixed}`。登录连续失败达阈值临时锁定账户（429）；密码策略作用于注册/改密/找回 | `site:update` |
 | GET | `/auth/me` | 当前用户信息（含 `email_verified`、`invite_code`） | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |
