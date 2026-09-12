@@ -277,6 +277,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/captcha-settings", a.RequirePermission(authz.SiteUpdate), a.UpdateCaptchaSettings)
 			admin.GET("/login-security", a.RequirePermission(authz.SiteUpdate), a.GetLoginSecurity)
 			admin.PUT("/login-security", a.RequirePermission(authz.SiteUpdate), a.UpdateLoginSecurity)
+			admin.GET("/content-settings", a.RequirePermission(authz.SiteUpdate), a.GetContentSettings)
+			admin.PUT("/content-settings", a.RequirePermission(authz.SiteUpdate), a.UpdateContentSettings)
 			admin.GET("/system/version", a.RequirePermission(authz.SystemRead), a.SystemVersion)
 			admin.POST("/system/upgrade", a.RequirePermission(authz.SystemUpgrade), a.SystemUpgrade)
 

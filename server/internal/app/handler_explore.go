@@ -75,7 +75,7 @@ func (a *App) SiteStats(c *gin.Context) {
 // GetSiteConfig GET /site 公开站点配置
 func (a *App) GetSiteConfig(c *gin.Context) {
 	var rows []models.SiteConfig
-	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "version", "installation_date"}).Find(&rows)
+	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "version", "installation_date", "comments_enabled"}).Find(&rows)
 	cfg := gin.H{}
 	for _, r := range rows {
 		cfg[r.ConfigKey] = r.ConfigValue

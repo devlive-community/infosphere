@@ -95,6 +95,10 @@ func (a *App) ListComments(c *gin.Context) {
 
 // CreateComment POST /documents/:docId/comments
 func (a *App) CreateComment(c *gin.Context) {
+	if !a.commentsEnabled() {
+		fail(c, http.StatusForbidden, "站点已关闭评论")
+		return
+	}
 	u := currentUser(c)
 	docID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

@@ -21,7 +21,8 @@ interface CommentItem {
 // Comments 章节评论区（两级）
 export default function Comments({ docId, allowComments = true }: { docId: number; allowComments?: boolean }) {
   const { confirmAction, showToast } = useFeedback()
-  const { user } = useApp()
+  const { user, site } = useApp()
+  const commentsOff = site.comments_enabled === 'false'
   const [comments, setComments] = useState<CommentItem[] | null>(null)
   const [content, setContent] = useState('')
   const [replyTo, setReplyTo] = useState<number | null>(null)
@@ -117,7 +118,9 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
     <section className="border-t border-slate-200 pt-8">
       <h2 className="text-xl font-bold text-slate-900">评论</h2>
 
-      {user && allowComments ? (
+      {commentsOff ? (
+        <p className="py-4 text-sm text-slate-400">站点已关闭评论</p>
+      ) : user && allowComments ? (
         <form onSubmit={(e) => submit(e, replyTo ?? undefined)} className="mt-4">
           {replyTo && (
             <p className="mb-2 text-xs text-slate-400">

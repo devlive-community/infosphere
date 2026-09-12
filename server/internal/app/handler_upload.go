@@ -17,11 +17,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// allowedImageExts 内置默认允许的图片类型（管理员未自定义时使用）
 var allowedImageExts = map[string]bool{
 	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".svg": true, ".ico": true,
 }
-
-const maxUploadSize = 10 << 20 // 10MB
 
 // Upload POST /upload 上传图片到本地数据目录
 func (a *App) Upload(c *gin.Context) {
@@ -32,13 +31,13 @@ func (a *App) Upload(c *gin.Context) {
 	}
 	defer file.Close()
 
-	if header.Size > maxUploadSize {
-		fail(c, http.StatusBadRequest, "文件不能超过 10MB")
+	if header.Size > a.uploadMaxBytes() {
+		fail(c, http.StatusBadRequest, fmt.Sprintf("文件不能超过 %d MB", a.uploadMaxMB()))
 		return
 	}
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if !allowedImageExts[ext] {
-		fail(c, http.StatusBadRequest, "仅支持 png/jpg/jpeg/gif/webp/svg/ico 图片")
+	if !a.uploadAllowedExts()[ext] {
+		fail(c, http.StatusBadRequest, "不支持的文件类型："+ext)
 		return
 	}
 
