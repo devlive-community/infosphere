@@ -385,6 +385,7 @@ Authorization: Bearer <token>
 | GET | `/users/me/reading-activity?days=N` | 打卡日历：近 N 天（7-366，默认 84）每日新读章节数与是否达标 `days:[{date,count,met}]`，含 `goal.daily_chapters`、`current_streak`、`longest_streak`、`today_count`、`today_met` | `reading-progress:read` |
 | GET | `/users/me/reading-goal` | 每日阅读目标 `{daily_chapters}`（无记录默认 1） | `reading-progress:read` |
 | PUT | `/users/me/reading-goal` | 设置每日阅读目标（`daily_chapters`，1-100 章） | `reading-progress:update` |
+| GET | `/users/me/author-analytics?days=N` | 作者仪表盘：本人全部书籍的横向对比。`days` 仅支持 7/30/90/180（默认 30）。返回 `total_books/published_books/total_lifetime_views/total_period_views/total_previous_views/total_growth_percent/total_readers` 及 `books[]`，每项含 `id, title, slug, status, is_public, lifetime_views, period_views, previous_views, growth_percent, chapters, registered_readers, completed_readers, completion_rate, updated_at`（仅统计本人拥有的书籍，浏览量来自最多保留 180 天的每日聚合） | `book-analytics:read` |
 
 ## 阅读标注与私人笔记（登录用户）
 

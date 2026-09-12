@@ -232,6 +232,7 @@ func (a *App) Router() *gin.Engine {
 		api.GET("/users/me/reading", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReading)
 		api.GET("/users/me/reading-stats", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReadingStats)
 		api.GET("/users/me/reading-activity", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.ReadingActivity)
+		api.GET("/users/me/author-analytics", a.RequireAuth(), a.RequirePermission(authz.BookAnalyticsRead), a.MyAuthorAnalytics)
 		api.GET("/users/me/reading-goal", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.GetReadingGoal)
 		api.PUT("/users/me/reading-goal", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressUpdate), a.SaveReadingGoal)
 		progress := api.Group("/reading-progress", a.RequireAuth())
