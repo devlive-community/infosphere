@@ -10,13 +10,13 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pquerna/otp/totp"
+	"gorm.io/gorm/clause"
 )
 
 // 二次认证（TOTP）：用户开启后，可逐操作要求二次验证（step-up）。
@@ -47,31 +47,25 @@ func tfOpSet(csv string) map[string]bool {
 
 func tfOpEnabled(csv, op string) bool { return tfOpSet(csv)[op] }
 
-// ---- step-up 授权窗口（进程内存，5 分钟）----
-type stepUpStore struct {
-	mu sync.Mutex
-	m  map[uint]time.Time
+// ---- step-up 授权窗口（数据库，多实例共享，5 分钟）----
+
+func (a *App) grantStepUp(uid uint) {
+	a.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"expires_at"}),
+	}).Create(&models.TwoFactorStepUp{UserID: uid, ExpiresAt: time.Now().Add(stepUpTTL)})
 }
 
-var stepUps = &stepUpStore{m: make(map[uint]time.Time)}
-
-func (s *stepUpStore) grant(uid uint) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.m[uid] = time.Now().Add(stepUpTTL)
+func (a *App) stepUpValid(uid uint) bool {
+	var s models.TwoFactorStepUp
+	if err := a.DB.Where("user_id = ?", uid).First(&s).Error; err != nil {
+		return false
+	}
+	return time.Now().Before(s.ExpiresAt)
 }
 
-func (s *stepUpStore) valid(uid uint) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	exp, ok := s.m[uid]
-	return ok && time.Now().Before(exp)
-}
-
-func (s *stepUpStore) clear(uid uint) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.m, uid)
+func (a *App) clearStepUp(uid uint) {
+	a.DB.Where("user_id = ?", uid).Delete(&models.TwoFactorStepUp{})
 }
 
 // ---- 校验 ----
@@ -106,7 +100,7 @@ func (a *App) requireStepUp(c *gin.Context, op string) bool {
 	if u == nil || !u.TwoFactorEnabled || !tfOpEnabled(u.TwoFactorOps, op) {
 		return true
 	}
-	if stepUps.valid(u.ID) {
+	if a.stepUpValid(u.ID) {
 		return true
 	}
 	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
@@ -207,7 +201,7 @@ func (a *App) EnableTwoFactor(c *gin.Context) {
 		"two_factor_enabled": true,
 		"two_factor_ops":     strings.Join([]string{tfOpLogin, tfOpCredentials, tfOpDelete, tfOpUnbindExport}, ","),
 	})
-	stepUps.grant(u.ID)
+	a.grantStepUp(u.ID)
 	ok(c, gin.H{"enabled": true, "backup_codes": a.issueBackupCodes(u.ID)})
 }
 
@@ -225,7 +219,7 @@ func (a *App) DisableTwoFactor(c *gin.Context) {
 	}
 	a.DB.Model(u).Updates(map[string]any{"two_factor_enabled": false, "two_factor_secret": "", "two_factor_ops": ""})
 	a.DB.Where("user_id = ?", u.ID).Delete(&models.TwoFactorBackupCode{})
-	stepUps.clear(u.ID)
+	a.clearStepUp(u.ID)
 	ok(c, gin.H{"enabled": false})
 }
 
@@ -269,7 +263,7 @@ func (a *App) VerifyTwoFactor(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "验证码错误或已失效")
 		return
 	}
-	stepUps.grant(u.ID)
+	a.grantStepUp(u.ID)
 	ok(c, gin.H{"verified": true})
 }
 

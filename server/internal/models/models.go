@@ -113,6 +113,20 @@ type PasswordResetToken struct {
 	CreatedAt time.Time  `json:"created_at"`
 }
 
+// CaptchaChallenge 验证码挑战：存数据库以支持多实例部署；只存答案哈希，一次性、有有效期。
+type CaptchaChallenge struct {
+	ID         string    `gorm:"primaryKey;size:64" json:"id"`
+	AnswerHash string    `gorm:"size:64;not null" json:"-"`
+	ExpiresAt  time.Time `gorm:"index" json:"-"`
+	CreatedAt  time.Time `json:"-"`
+}
+
+// TwoFactorStepUp 二次认证 step-up 授权窗口：存数据库以支持多实例部署，每用户一条。
+type TwoFactorStepUp struct {
+	UserID    uint      `gorm:"primaryKey" json:"user_id"`
+	ExpiresAt time.Time `gorm:"index" json:"expires_at"`
+}
+
 // TwoFactorBackupCode 二次认证备用码：一次性，数据库只存哈希，供丢失验证器时恢复。
 type TwoFactorBackupCode struct {
 	ID        uint       `gorm:"primaryKey" json:"id"`
@@ -440,6 +454,8 @@ func All(db *gorm.DB) error {
 		&UserReadingGoal{},
 		&EmailVerificationToken{},
 		&TwoFactorBackupCode{},
+		&CaptchaChallenge{},
+		&TwoFactorStepUp{},
 		&BookExportSetting{},
 		&UserThemeSetting{},
 		&Comment{},

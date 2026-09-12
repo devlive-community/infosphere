@@ -2,6 +2,7 @@ package app
 
 import (
 	crand "crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -12,14 +13,15 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 // 内置验证码：图形（SVG）或算术两种，可配复杂度，可在注册/登录/评论等场景分别开启。
-// 挑战答案存进程内存（单二进制部署），一次性、5 分钟有效。
+// 挑战答案存数据库（多实例共享），只存哈希，一次性、5 分钟有效。
 const (
 	cfgCaptchaType       = "captcha_type"    // image | arithmetic
 	cfgCaptchaLength     = "captcha_length"  // 图形字符数 4-6
@@ -33,44 +35,28 @@ const (
 
 const captchaTTL = 5 * time.Minute
 
-type captchaEntry struct {
-	answer  string
-	expires time.Time
+func captchaHash(answer string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(answer))))
+	return hex.EncodeToString(sum[:])
 }
 
-type captchaStore struct {
-	mu sync.Mutex
-	m  map[string]captchaEntry
+// storeCaptcha 存挑战答案哈希（多实例共享），顺带清理过期行。
+func (a *App) storeCaptcha(id, answer string) {
+	a.DB.Where("expires_at < ?", time.Now()).Delete(&models.CaptchaChallenge{})
+	a.DB.Create(&models.CaptchaChallenge{ID: id, AnswerHash: captchaHash(answer), ExpiresAt: time.Now().Add(captchaTTL)})
 }
 
-var captchas = &captchaStore{m: make(map[string]captchaEntry)}
-
-func (s *captchaStore) put(id, answer string, ttl time.Duration) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(s.m) > 5000 {
-		now := time.Now()
-		for k, v := range s.m {
-			if now.After(v.expires) {
-				delete(s.m, k)
-			}
-		}
+// consumeCaptcha 取出并删除挑战（一次性），校验未过期且答案哈希匹配（不区分大小写）。
+func (a *App) consumeCaptcha(id, answer string) bool {
+	var ch models.CaptchaChallenge
+	if err := a.DB.Where("id = ?", id).First(&ch).Error; err != nil {
+		return false
 	}
-	s.m[id] = captchaEntry{answer: answer, expires: time.Now().Add(ttl)}
-}
-
-// take 取出并删除（一次性）；过期视为无效。
-func (s *captchaStore) take(id string) (string, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	e, ok := s.m[id]
-	if ok {
-		delete(s.m, id)
+	a.DB.Delete(&models.CaptchaChallenge{}, "id = ?", id)
+	if time.Now().After(ch.ExpiresAt) {
+		return false
 	}
-	if !ok || time.Now().After(e.expires) {
-		return "", false
-	}
-	return e.answer, true
+	return captchaHash(answer) == ch.AnswerHash
 }
 
 // ---- 配置读取 ----
@@ -175,7 +161,7 @@ func (a *App) buildCaptcha() gin.H {
 	id := newCaptchaID()
 	if a.captchaType() == "arithmetic" {
 		question, answer := genArithmetic(a.getSetting(cfgCaptchaArithHard) == "true")
-		captchas.put(id, answer, captchaTTL)
+		a.storeCaptcha(id, answer)
 		return gin.H{"required": true, "id": id, "type": "arithmetic", "question": question}
 	}
 	length := atoiDefault(a.getSetting(cfgCaptchaLength), 4)
@@ -191,7 +177,7 @@ func (a *App) buildCaptcha() gin.H {
 		noise = 3
 	}
 	text := genCaptchaText(length, a.getSetting(cfgCaptchaCharset))
-	captchas.put(id, strings.ToLower(text), captchaTTL)
+	a.storeCaptcha(id, text)
 	svg := renderCaptchaSVG(text, noise)
 	image := "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(svg))
 	return gin.H{"required": true, "id": id, "type": "image", "image": image}
@@ -205,8 +191,7 @@ func (a *App) checkCaptcha(scene, id, answer string) error {
 	if strings.TrimSpace(id) == "" || strings.TrimSpace(answer) == "" {
 		return errors.New("请输入验证码")
 	}
-	stored, ok := captchas.take(id)
-	if !ok || !strings.EqualFold(strings.TrimSpace(answer), stored) {
+	if !a.consumeCaptcha(id, answer) {
 		return errors.New("验证码错误或已过期")
 	}
 	return nil
