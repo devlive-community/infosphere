@@ -82,14 +82,18 @@ func TestOAuthFlow(t *testing.T) {
 		t.Fatalf("未登录读取 OAuth 配置应 401: %d", status)
 	}
 	status, _, _ = request(http.MethodPut, "/api/v1/oauth", map[string]any{
-		"client_id": "test-client-id", "client_secret": "test-secret", "enabled": true,
+		"provider": "github", "client_id": "test-client-id", "client_secret": "test-secret", "enabled": true,
 	}, adminToken)
 	if status != 200 {
 		t.Fatalf("保存 OAuth 配置失败: %d", status)
 	}
 	status, saved, _ := request(http.MethodGet, "/api/v1/oauth", nil, adminToken)
-	if status != 200 || saved["data"].(map[string]any)["client_id"] != "test-client-id" {
-		t.Fatalf("读取 OAuth 配置异常: %d %v", status, saved)
+	if status != 200 {
+		t.Fatalf("读取 OAuth 配置失败: %d", status)
+	}
+	savedProviders := saved["data"].(map[string]any)["providers"].([]any)
+	if savedProviders[0].(map[string]any)["client_id"] != "test-client-id" {
+		t.Fatalf("读取 OAuth 配置异常: %v", saved)
 	}
 
 	// 4. 配置后 providers 标记启用，发起跳转 302 到 GitHub 授权页并携带 state
@@ -110,8 +114,8 @@ func TestOAuthFlow(t *testing.T) {
 	if status != 302 || !strings.Contains(header.Get("Location"), "oauth_error=invalid_state") {
 		t.Fatalf("伪造 state 应被拒绝: %d %s", status, header.Get("Location"))
 	}
-	// 不支持的 provider
-	status, _, header = request(http.MethodGet, "/api/v1/auth/oauth/gitlab?origin=http://localhost:3002", nil, "")
+	// 不支持的 provider（facebook 未接入）
+	status, _, header = request(http.MethodGet, "/api/v1/auth/oauth/facebook?origin=http://localhost:3002", nil, "")
 	if status != 302 || !strings.Contains(header.Get("Location"), "oauth_error=unsupported_provider") {
 		t.Fatalf("不支持的 provider 应回跳错误: %d %s", status, header.Get("Location"))
 	}

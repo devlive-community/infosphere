@@ -185,7 +185,7 @@ Authorization: Bearer <token>
 | POST | `/auth/password/forgot` | 匿名申请找回：`{email}`；响应不泄露邮箱是否存在，令牌邮件 60 分钟有效、一次性、只保留最新一条；邮件写入持久化异步队列，失败自动退避重试；`mail_driver=log` 时执行任务后把链接输出到后端日志 | `auth:password-reset`（匿名语义） |
 | POST | `/auth/password/reset` | 匿名重置：`{token, password}`（≥6 位）；成功后旧密码立即失效，该用户其余令牌作废 | `auth:password-reset`（匿名语义） |
 
-## 第三方登录（OAuth，当前支持 github）
+## 第三方登录（OAuth，支持 github / google / gitlab）
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
@@ -194,7 +194,7 @@ Authorization: Bearer <token>
 | GET | `/auth/oauth/:provider/callback` | 授权回调：换取用户 → 已绑定直接登录 / 已验证邮箱自动关联 / 自动注册；签发 token + Cookie 后回到可信站点地址 | 匿名 |
 | GET | `/auth/oauth/bindings` | 当前用户绑定列表 `[{provider,provider_username,provider_email,created_at}]` | `auth:oauth` |
 | DELETE | `/auth/oauth/:provider` | 解绑；未设置本地密码时拒绝（防止锁死） | `auth:oauth` |
-| GET/PUT | `/oauth` | 管理员读取/保存 GitHub 凭据（client_id/client_secret/enabled），存站点配置表，不出现在公开 `/site` | `site:update` |
+| GET/PUT | `/oauth` | 管理员读取/保存各 provider 凭据：GET 返回 `{providers:[{provider,label,client_id,client_secret,enabled}]}`；PUT 保存单个 `{provider,client_id,client_secret,enabled}`（存 `oauth_<provider>_*` 键，不出现在公开 `/site`） | `site:update` |
 | GET/PUT | `/mail` | 管理员读取/保存邮件配置（driver log\|smtp、host/port/username/password/from）、`site_url`（邮件链接前缀）与 `notifications_enabled`（站内通知是否同时发邮件的总开关） | `site:update` |
 | GET/PUT | `/storage` | 管理员读取/保存存储驱动配置：`driver` local\|qiniu + 七牛凭据（access_key/secret_key/bucket/domain/upload_host，域名须含协议） | `site:update` |
 

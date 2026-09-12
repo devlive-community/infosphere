@@ -20,10 +20,12 @@ export interface HealthInfo {
   node: string
 }
 
-export interface OAuthConfig {
+export interface OAuthProviderConfig {
   provider: string
+  label: string
   client_id: string
   client_secret: string
+  enabled: boolean
 }
 
 export interface MailConfig {

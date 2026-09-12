@@ -86,14 +86,6 @@ func (a *App) setSetting(key, value, description string) error {
 	return a.DB.Save(&cfg).Error
 }
 
-// oauthGitHubConfig 读取 GitHub OAuth 凭据；ClientID 与 Secret 均非空视为已启用
-func (a *App) oauthGitHubConfig() (clientID, clientSecret string, enabled bool) {
-	clientID = a.getSetting("oauth_github_client_id")
-	clientSecret = a.getSetting("oauth_github_client_secret")
-	enabled = a.getSetting("oauth_github_enabled") != "false" && clientID != "" && clientSecret != ""
-	return
-}
-
 // safeOrigin 仅接受 http(s) 站点根地址，防止 open redirect
 func safeOrigin(raw string) string {
 	u, err := url.Parse(raw)
@@ -122,30 +114,39 @@ func (a *App) frontendOrigin(c *gin.Context) string {
 
 // OAuthProviders GET /auth/oauth/providers 公开：各第三方登录是否启用
 func (a *App) OAuthProviders(c *gin.Context) {
-	_, _, githubEnabled := a.oauthGitHubConfig()
-	ok(c, gin.H{"providers": []gin.H{
-		{"provider": "github", "enabled": githubEnabled},
-	}})
+	list := make([]gin.H, 0, len(oauthProviderOrder))
+	for _, key := range oauthProviderOrder {
+		_, _, enabled := a.oauthProviderConfig(key)
+		list = append(list, gin.H{"provider": key, "enabled": enabled})
+	}
+	ok(c, gin.H{"providers": list})
+}
+
+// oauthRedirectURI 某 provider 的回调地址（须与授权时一致）
+func (a *App) oauthRedirectURI(c *gin.Context, provider string) string {
+	return schemeHost(c) + "/api/v1/auth/oauth/" + provider + "/callback"
 }
 
 // OAuthStart GET /auth/oauth/:provider 发起第三方登录，302 到授权页
 func (a *App) OAuthStart(c *gin.Context) {
 	provider := c.Param("provider")
 	origin := a.frontendOrigin(c)
-	if provider != "github" {
+	def, defOK := oauthProviderRegistry[provider]
+	if !defOK {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=unsupported_provider")
 		return
 	}
-	clientID, _, enabled := a.oauthGitHubConfig()
+	clientID, _, enabled := a.oauthProviderConfig(provider)
 	if !enabled {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=not_configured")
 		return
 	}
 	state := oauthStateSave(origin)
-	redirect := "https://github.com/login/oauth/authorize" +
+	redirect := def.AuthURL +
 		"?client_id=" + url.QueryEscape(clientID) +
-		"&redirect_uri=" + url.QueryEscape(schemeHost(c)+"/api/v1/auth/oauth/github/callback") +
-		"&scope=" + url.QueryEscape("read:user user:email") +
+		"&redirect_uri=" + url.QueryEscape(a.oauthRedirectURI(c, provider)) +
+		"&response_type=code" +
+		"&scope=" + url.QueryEscape(def.Scopes) +
 		"&state=" + state
 	c.Redirect(http.StatusFound, redirect)
 }
@@ -171,7 +172,8 @@ type ghEmail struct {
 func (a *App) OAuthCallback(c *gin.Context) {
 	provider := c.Param("provider")
 	origin := a.frontendOrigin(c)
-	if provider != "github" {
+	def, defOK := oauthProviderRegistry[provider]
+	if !defOK {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=unsupported_provider")
 		return
 	}
@@ -186,7 +188,7 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error="+code)
 	}
 
-	clientID, clientSecret, enabled := a.oauthGitHubConfig()
+	clientID, clientSecret, enabled := a.oauthProviderConfig(provider)
 	if !enabled {
 		failRedirect("not_configured")
 		return
@@ -197,9 +199,12 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// 1. 换取 access token
-	form := url.Values{"client_id": {clientID}, "client_secret": {clientSecret}, "code": {code}}
-	req, _ := http.NewRequest(http.MethodPost, "https://github.com/login/oauth/access_token", strings.NewReader(form.Encode()))
+	// 1. 换取 access token（Google/GitLab 需 grant_type + redirect_uri，GitHub 也兼容）
+	form := url.Values{
+		"client_id": {clientID}, "client_secret": {clientSecret}, "code": {code},
+		"grant_type": {"authorization_code"}, "redirect_uri": {a.oauthRedirectURI(c, provider)},
+	}
+	req, _ := http.NewRequest(http.MethodPost, def.TokenURL, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	resp, err := oauthHTTPClient.Do(req)
@@ -215,17 +220,17 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// 2. 读取 GitHub 用户资料与邮箱
-	gh, err := ghFetchUser(tokenResp.AccessToken)
-	if err != nil {
+	// 2. 读取归一化用户资料
+	info, err := def.FetchUser(tokenResp.AccessToken)
+	if err != nil || info == nil {
 		failRedirect("profile_fetch_failed")
 		return
 	}
-	email := ghPrimaryEmail(tokenResp.AccessToken, gh.Email)
+	email := info.Email
 
 	// 3. 已绑定 → 直接登录
 	var binding models.UserAuthentication
-	if err := a.DB.Where("provider = ? AND provider_id = ?", provider, fmt.Sprintf("%d", gh.ID)).First(&binding).Error; err == nil {
+	if err := a.DB.Where("provider = ? AND provider_id = ?", provider, info.ID).First(&binding).Error; err == nil {
 		var u models.User
 		if err := a.DB.First(&u, binding.UserID).Error; err != nil || !u.IsActive {
 			failRedirect("account_disabled")
@@ -233,14 +238,14 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		}
 		a.DB.Model(&u).Update("last_login_at", currentTime())
 		a.DB.Model(&binding).Updates(map[string]any{
-			"provider_username": gh.Login, "provider_email": email,
+			"provider_username": info.Login, "provider_email": email,
 			"access_token": tokenResp.AccessToken,
 		})
 		a.oauthFinish(c, origin, &u)
 		return
 	}
 
-	// 4. 未绑定：GitHub 已验证邮箱命中本地账号 → 自动关联
+	// 4. 未绑定：已验证邮箱命中本地账号 → 自动关联
 	var u models.User
 	if email != "" {
 		if err := a.DB.Where("email = ?", email).First(&u).Error; err == nil {
@@ -248,7 +253,7 @@ func (a *App) OAuthCallback(c *gin.Context) {
 				failRedirect("account_disabled")
 				return
 			}
-			a.createBinding(u.ID, provider, gh, email, tokenResp.AccessToken)
+			a.createBinding(u.ID, provider, info, tokenResp.AccessToken)
 			a.DB.Model(&u).Update("last_login_at", currentTime())
 			a.oauthFinish(c, origin, &u)
 			return
@@ -265,21 +270,24 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		failRedirect("registration_invite_required")
 		return
 	}
-	username := oauthUsername(a, gh.Login)
+	username := oauthUsername(a, info.Login)
 	if email == "" {
-		email = fmt.Sprintf("%d@users.noreply.github.com", gh.ID)
+		email = fmt.Sprintf("%s-%s@users.noreply.local", info.ID, provider)
 	}
 	u = models.User{
 		Username: username, Email: email, Password: "", Role: "user", IsActive: true,
-		// GitHub 登录视为可信身份，直接标记邮箱已激活（不再要求二次激活）
+		// 第三方登录视为可信身份，直接标记邮箱已激活（不再要求二次激活）
 		EmailVerified: true,
-		Avatar:        gh.AvatarURL, GithubURL: "https://github.com/" + gh.Login,
+		Avatar:        info.AvatarURL,
+	}
+	if provider == "github" {
+		u.GithubURL = info.ProfileURL
 	}
 	if err := a.DB.Create(&u).Error; err != nil {
 		failRedirect("register_failed")
 		return
 	}
-	a.createBinding(u.ID, provider, gh, email, tokenResp.AccessToken)
+	a.createBinding(u.ID, provider, info, tokenResp.AccessToken)
 	a.DB.Model(&u).Update("last_login_at", currentTime())
 	a.oauthFinish(c, origin, &u)
 }
@@ -339,7 +347,7 @@ func ghPrimaryEmail(accessToken, fallback string) string {
 
 var oauthUsernamePattern = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
 
-// oauthUsername 由 GitHub login 生成合规且唯一的本地用户名
+// oauthUsername 由第三方登录名生成合规且唯一的本地用户名
 func oauthUsername(a *App, login string) string {
 	clean := oauthUsernamePattern.ReplaceAllString(login, "-")
 	clean = strings.Trim(clean, "-_")
@@ -356,16 +364,15 @@ func oauthUsername(a *App, login string) string {
 		if count == 0 {
 			return clean
 		}
-		clean = fmt.Sprintf("%s-gh%d", base, i)
+		clean = fmt.Sprintf("%s-%d", base, i)
 	}
 }
 
-func (a *App) createBinding(userID uint, provider string, gh ghUser, email, accessToken string) {
-	binding := models.UserAuthentication{
-		UserID: userID, Provider: provider, ProviderID: fmt.Sprintf("%d", gh.ID),
-		ProviderUsername: gh.Login, ProviderEmail: email, AccessToken: accessToken,
-	}
-	a.DB.Create(&binding)
+func (a *App) createBinding(userID uint, provider string, info *oauthUserInfo, accessToken string) {
+	a.DB.Create(&models.UserAuthentication{
+		UserID: userID, Provider: provider, ProviderID: info.ID,
+		ProviderUsername: info.Login, ProviderEmail: info.Email, AccessToken: accessToken,
+	})
 }
 
 // oauthFinish 签发令牌（含 Cookie）并回跳前端落地页
@@ -411,39 +418,51 @@ func (a *App) OAuthUnbind(c *gin.Context) {
 }
 
 type oauthConfigUpdate struct {
+	Provider     string  `json:"provider"`
 	ClientID     *string `json:"client_id"`
 	ClientSecret *string `json:"client_secret"`
 	Enabled      *bool   `json:"enabled"`
 }
 
-// AdminGetOAuth GET /admin/oauth 管理员读取 GitHub OAuth 配置
+// AdminGetOAuth GET /admin/oauth 管理员读取各 provider 的 OAuth 配置
 func (a *App) AdminGetOAuth(c *gin.Context) {
-	clientID, clientSecret, _ := a.oauthGitHubConfig()
-	ok(c, gin.H{
-		"provider":      "github",
-		"client_id":     clientID,
-		"client_secret": clientSecret,
-	})
+	list := make([]gin.H, 0, len(oauthProviderOrder))
+	for _, key := range oauthProviderOrder {
+		id, secret, _ := a.oauthProviderConfig(key)
+		list = append(list, gin.H{
+			"provider":      key,
+			"label":         oauthProviderRegistry[key].Label,
+			"client_id":     id,
+			"client_secret": secret,
+			"enabled":       a.getSetting("oauth_"+key+"_enabled") != "false",
+		})
+	}
+	ok(c, gin.H{"providers": list})
 }
 
-// AdminSaveOAuth PUT /admin/oauth 管理员保存 GitHub OAuth 配置
+// AdminSaveOAuth PUT /admin/oauth 管理员保存单个 provider 的 OAuth 配置
 func (a *App) AdminSaveOAuth(c *gin.Context) {
 	var req oauthConfigUpdate
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	def, ok2 := oauthProviderRegistry[req.Provider]
+	if !ok2 {
+		fail(c, http.StatusBadRequest, "不支持的第三方登录")
+		return
+	}
 	fields := []string{}
 	if req.ClientID != nil {
 		fields = append(fields, "client_id")
-		if err := a.setSetting("oauth_github_client_id", *req.ClientID, "GitHub OAuth Client ID"); err != nil {
+		if err := a.setSetting("oauth_"+req.Provider+"_client_id", *req.ClientID, def.Label+" OAuth Client ID"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
 	if req.ClientSecret != nil {
 		fields = append(fields, "client_secret")
-		if err := a.setSetting("oauth_github_client_secret", *req.ClientSecret, "GitHub OAuth Client Secret"); err != nil {
+		if err := a.setSetting("oauth_"+req.Provider+"_client_secret", *req.ClientSecret, def.Label+" OAuth Client Secret"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
@@ -454,11 +473,11 @@ func (a *App) AdminSaveOAuth(c *gin.Context) {
 		if *req.Enabled {
 			value = "true"
 		}
-		if err := a.setSetting("oauth_github_enabled", value, "GitHub OAuth 启用开关"); err != nil {
+		if err := a.setSetting("oauth_"+req.Provider+"_enabled", value, def.Label+" OAuth 启用开关"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
 	}
-	a.recordAudit(c, "oauth.updated", "config", "oauth/github", "GitHub OAuth", map[string]any{"changed_fields": fields})
-	ok(c, gin.H{"message": "已保存"})
+	a.recordAudit(c, "oauth.updated", "config", "oauth/"+req.Provider, def.Label+" OAuth", map[string]any{"changed_fields": fields})
+	a.AdminGetOAuth(c)
 }

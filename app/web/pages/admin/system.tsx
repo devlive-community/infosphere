@@ -10,7 +10,7 @@ import {
   BookIcon, FileTextIcon, EyeIcon, ClockIcon, GearIcon,
 } from '@/components/icons'
 import {
-  SystemVersion, HealthInfo, MailConfig, StorageConfig, OAuthConfig,
+  SystemVersion, HealthInfo, MailConfig, StorageConfig, OAuthProviderConfig,
   AdminActivity, ActivityUser, ActivityBook,
   fetchHealth, measure,
 } from '@/lib/admin'
@@ -37,7 +37,7 @@ export default function AdminSystem() {
   const [services, setServices] = useState<Service[] | null>(null)
   const [storage, setStorage] = useState<StorageConfig | null>(null)
   const [mail, setMail] = useState<MailConfig | null>(null)
-  const [oauth, setOauth] = useState<OAuthConfig | null>(null)
+  const [oauthProviders, setOauthProviders] = useState<OAuthProviderConfig[] | null>(null)
   const [userCount, setUserCount] = useState<number | null>(null)
   const [bookCount, setBookCount] = useState<number | null>(null)
   const [docCount, setDocCount] = useState<number | null>(null)
@@ -72,7 +72,7 @@ export default function AdminSystem() {
       api<{ db_type?: string }>('/setup/status').then((s) => setDbType(s.db_type || '')),
       api<StorageConfig>('/storage').then(setStorage),
       api<MailConfig>('/mail').then(setMail),
-      api<OAuthConfig>('/oauth').then(setOauth),
+      api<{ providers: OAuthProviderConfig[] }>('/oauth').then((d) => setOauthProviders(d.providers || [])),
       statsRequest,
       api<AdminActivity>('/admin/activity').then(setActivity),
       api<{ items?: unknown[] }>('/admin/configs').then((c) => setConfigCount(c?.items?.length ?? 0)),
@@ -227,8 +227,12 @@ export default function AdminSystem() {
           status={storage ? (storage.driver === 'qiniu' ? '七牛云 · 已启用' : '本地磁盘 · 运行正常') : '加载中…'} ok />
         <ConfigCard icon={MailIcon} tone="amber" title="邮件服务" href="/admin/settings/mail"
           status={mail ? (mail.driver === 'smtp' ? 'SMTP · 已配置' : '日志驱动 · 待配置') : '加载中…'} ok={mail?.driver === 'smtp'} />
-        <ConfigCard icon={GithubIcon} tone="emerald" title="GitHub OAuth" href="/admin/settings/oauth"
-          status={oauth ? (oauth.client_id && oauth.client_secret ? '已启用' : '未配置') : '加载中…'} ok={!!(oauth?.client_id && oauth?.client_secret)} />
+        <ConfigCard icon={GithubIcon} tone="emerald" title="第三方登录" href="/admin/settings/oauth"
+          status={oauthProviders === null ? '加载中…' : (() => {
+            const on = oauthProviders.filter((p) => p.enabled && p.client_id && p.client_secret)
+            return on.length > 0 ? `已启用 ${on.length} 个` : '未配置'
+          })()}
+          ok={!!oauthProviders?.some((p) => p.enabled && p.client_id && p.client_secret)} />
         <ConfigCard icon={TagIcon} tone="violet" title="标签分类" href="/explore"
           status={tagCount !== null ? `${tagCount} 个标签` : '前往发现页'} ok />
         <ConfigCard icon={GearIcon} tone="primary" title="系统配置" href="/admin/settings/config"

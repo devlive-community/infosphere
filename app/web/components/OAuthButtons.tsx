@@ -1,33 +1,45 @@
 import { useEffect, useState } from 'react'
 import { API_BASE, api } from '@/lib/api'
-import { GithubIcon } from '@/components/icons'
 import { Button, Loading } from '@/components/ui'
+
+const PROVIDER_META: Record<string, { label: string; icon: string }> = {
+  github: { label: 'GitHub', icon: 'fa-github' },
+  google: { label: 'Google', icon: 'fa-google' },
+  gitlab: { label: 'GitLab', icon: 'fa-gitlab' },
+}
 
 // OAuthButtons 第三方登录入口：拉取启用中的 provider，渲染对应按钮（登录/注册页共用）
 export default function OAuthButtons({ label }: { label: string }) {
-  const [githubEnabled, setGithubEnabled] = useState(false)
+  const [enabled, setEnabled] = useState<string[]>([])
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     api<{ providers: { provider: string; enabled: boolean }[] }>('/auth/oauth/providers')
-      .then((d) => setGithubEnabled(!!d.providers?.some((p) => p.provider === 'github' && p.enabled)))
+      .then((d) => setEnabled((d.providers || []).filter((p) => p.enabled).map((p) => p.provider)))
       .catch(() => { /* providers 拉取失败时不展示入口 */ })
       .finally(() => setLoaded(true))
   }, [])
 
   if (!loaded) return <Loading className="py-4" label="正在加载登录方式…" />
-  if (!githubEnabled) return null
+  if (enabled.length === 0) return null
   return (
     <>
       <div className="flex items-center gap-3 py-1 text-xs text-slate-400">
         <span className="h-px flex-1 bg-slate-200" />或<span className="h-px flex-1 bg-slate-200" />
       </div>
-      <Button variant="outline" type="button" className="w-full"
-        onClick={() => {
-          window.location.href = `${API_BASE}/api/v1/auth/oauth/github?origin=${encodeURIComponent(window.location.origin)}`
-        }}>
-        <GithubIcon className="h-4 w-4" />使用 GitHub {label}
-      </Button>
+      <div className="space-y-2">
+        {enabled.map((p) => {
+          const meta = PROVIDER_META[p] || { label: p, icon: 'fa-right-to-bracket' }
+          return (
+            <Button key={p} variant="outline" type="button" className="w-full"
+              onClick={() => {
+                window.location.href = `${API_BASE}/api/v1/auth/oauth/${p}?origin=${encodeURIComponent(window.location.origin)}`
+              }}>
+              <i className={`fa-brands ${meta.icon}`} aria-hidden="true" />使用 {meta.label} {label}
+            </Button>
+          )
+        })}
+      </div>
     </>
   )
 }
