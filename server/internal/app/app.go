@@ -66,6 +66,11 @@ func New(cfg *config.Config) (*App, error) {
 		}
 		// 版本变化时向管理员发送升级完成通知（首次安装时 version 刚写入，不会触发）
 		a.NotifyAdminsOnUpgrade()
+		// 通知后把存储的版本号同步为当前运行的二进制版本：
+		// 否则 /site 与页脚长期停留在安装时的版本，且每次重启都会重复升级通知
+		if a.getSetting("version") != Version {
+			_ = a.setSetting("version", Version, "系统版本")
+		}
 	}
 	return a, nil
 }
