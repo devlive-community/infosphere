@@ -40,6 +40,7 @@ type searchOptions struct {
 	Type        string
 	Author      string
 	Tag         string
+	BookSlug    string // 限定在某本书内搜索章节
 	UpdatedFrom *time.Time
 	UpdatedTo   *time.Time
 	Page        int
@@ -62,10 +63,15 @@ func (a *App) GlobalSearch(c *gin.Context) {
 		return
 	}
 
-	books, bookTotal, err := a.searchBooks(c, options)
-	if err != nil {
-		fail(c, http.StatusInternalServerError, "搜索失败")
-		return
+	var books []models.Book
+	var bookTotal int64
+	var err error
+	if options.BookSlug == "" { // 本书内搜索不检索书籍本身
+		books, bookTotal, err = a.searchBooks(c, options)
+		if err != nil {
+			fail(c, http.StatusInternalServerError, "搜索失败")
+			return
+		}
 	}
 	documents, documentTotal, err := a.searchDocuments(c, options)
 	if err != nil {
@@ -94,6 +100,13 @@ func parseSearchOptions(c *gin.Context) (searchOptions, string) {
 	options := searchOptions{
 		Query: strings.TrimSpace(c.Query("q")), Type: strings.TrimSpace(c.DefaultQuery("type", "all")),
 		Author: strings.TrimSpace(c.Query("author")), Tag: strings.TrimSpace(c.Query("tag")), Page: page, PageSize: pageSize,
+	}
+	options.BookSlug = strings.TrimSpace(c.Query("book"))
+	if options.BookSlug != "" {
+		options.Type = "document" // 本书内搜索只搜章节
+	}
+	if len(options.BookSlug) > 255 {
+		return options, "书籍标识过长"
 	}
 	if utf8.RuneCountInString(options.Query) > 100 {
 		return options, "搜索关键词最多 100 个字符"
@@ -244,6 +257,9 @@ func (a *App) documentSearchQuery(c *gin.Context, options searchOptions) *gorm.D
 	} else {
 		// 未登录游客看不到「仅登录可读」书籍
 		query = query.Where("b.is_public = ? AND b.status IN ? AND documents.status = ? AND b.login_required = ?", true, publiclyReadableBookStatuses, "published", false)
+	}
+	if options.BookSlug != "" {
+		query = query.Where("b.slug = ?", options.BookSlug)
 	}
 	if options.Author != "" {
 		query = query.Where("EXISTS (SELECT 1 FROM users su WHERE su.id = b.user_id AND su.username = ?)", options.Author)

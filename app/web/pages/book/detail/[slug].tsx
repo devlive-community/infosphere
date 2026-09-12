@@ -14,6 +14,7 @@ import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
 import BookExportButton from '@/components/BookExportButton'
+import BookSearch from '@/components/BookSearch'
 import ReportButton from '@/components/ReportButton'
 import Seo from '@/components/Seo'
 import {
@@ -529,6 +530,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 </div>
               </div>
             )}
+
+            {tree.length > 0 && <BookSearch bookSlug={book.slug} />}
 
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               {tree.length === 0 ? (
