@@ -6,7 +6,7 @@ import Container from '@/components/Container'
 import { ListBulletIcon, BookIcon, TrashIcon, UserCircleIcon, GridIcon, LogOutIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
 import { API_BASE, api } from '@/lib/api'
-import { Button, ButtonLink, Input, Modal, useFeedback } from '@/components/ui'
+import { Button, ButtonLink, Input, Modal, Tooltip, useFeedback } from '@/components/ui'
 import NotificationBell from '@/components/NotificationBell'
 import { SearchIcon } from '@/components/icons'
 
@@ -123,6 +123,36 @@ function ActivationBanner() {
   )
 }
 
+// AnnouncementBanner 全站公告：管理员在站点设置配置；可关闭，公告内容变化后重新出现。
+function AnnouncementBanner() {
+  const { site } = useApp()
+  const text = (site.announcement_text || '').trim()
+  const enabled = site.announcement_enabled === 'true'
+  const warning = site.announcement_tone === 'warning'
+  const [dismissed, setDismissed] = useState(true)
+  useEffect(() => {
+    try { setDismissed(localStorage.getItem('infosphere_announcement') === text) } catch { setDismissed(false) }
+  }, [text])
+  if (!enabled || !text || dismissed) return null
+  function dismiss() {
+    try { localStorage.setItem('infosphere_announcement', text) } catch { /* 忽略 */ }
+    setDismissed(true)
+  }
+  return (
+    <div className={`border-b ${warning ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-sky-200 bg-sky-50 text-sky-800'}`}>
+      <div className="mx-auto flex items-start gap-3 px-4 py-2.5 text-sm" style={{ maxWidth: 'var(--content-max-width)' }}>
+        <i className={`fa-solid ${warning ? 'fa-triangle-exclamation' : 'fa-bullhorn'} mt-0.5 shrink-0`} aria-hidden="true" />
+        <span className="min-w-0 flex-1 whitespace-pre-wrap">{text}</span>
+        <Tooltip content="关闭公告">
+          <button type="button" onClick={dismiss} aria-label="关闭公告" className="shrink-0 opacity-60 transition-opacity hover:opacity-100">
+            <i className="fa-solid fa-xmark" aria-hidden="true" />
+          </button>
+        </Tooltip>
+      </div>
+    </div>
+  )
+}
+
 export default function Layout({ title, children }: { title?: string; children: ReactNode }) {
   const { site, user } = useApp()
   const siteName = site.site_name || 'InfoSphere'
@@ -134,6 +164,8 @@ export default function Layout({ title, children }: { title?: string; children: 
         <title>{title ? `${title} - ${siteName}` : siteName}</title>
         <meta name="description" content={site.site_description || 'InfoSphere 知识管理系统'} />
       </Head>
+
+      <AnnouncementBanner />
 
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex items-center gap-4 px-4" style={{ height: 'var(--nav-height)', maxWidth: 'var(--content-max-width)' }}>

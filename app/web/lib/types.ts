@@ -117,6 +117,9 @@ export interface SiteConfig {
   version?: string
   installation_date?: string
   comments_enabled?: string
+  announcement_enabled?: string
+  announcement_text?: string
+  announcement_tone?: string
 }
 
 export interface SetupStatus {

@@ -203,8 +203,8 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 说明 | 语义权限 |
 | --- | --- | --- | --- |
-| GET | `/site` | 站点公开配置（site_name/site_description/version） | `site:read` |
-| PUT | `/site` | 更新站点配置 | `site:update` |
+| GET | `/site` | 站点公开配置（site_name/site_description/version/comments_enabled/announcement_*） | `site:read` |
+| PUT | `/site` | 更新站点配置：`site_name`、`site_description`，以及全站公告 `announcement_enabled`/`announcement_text`/`announcement_tone`(info\|warning) | `site:update` |
 | GET | `/stats` | 公开站点统计；书籍、章节、标签和浏览量仅统计公开且处于可阅读状态（进行中/已发布/已完成）的内容 | `stats:read` |
 
 ## 发现（公开）
