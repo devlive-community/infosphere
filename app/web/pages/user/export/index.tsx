@@ -2,10 +2,112 @@ import { useEffect, useState } from 'react'
 import Seo from '@/components/Seo'
 import Link from 'next/link'
 import Container from '@/components/Container'
-import { api } from '@/lib/api'
+import { api, API_BASE, getToken } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Button, Field, Select, Switch, Input, Loading, useFeedback } from '@/components/ui'
+import { Button, Field, Select, Switch, Input, Loading, Checkbox, EmptyState, useFeedback } from '@/components/ui'
 import AccountSettingsLayout from '@/components/AccountSettingsLayout'
+import { DownloadIcon } from '@/components/icons'
+import type { Book, PageResult } from '@/lib/types'
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
+}
+
+// BatchExportPanel 批量导出：勾选自有书籍，一次下载为外层 zip（内含每本自包含的 markdown zip）。
+function BatchExportPanel() {
+  const { showToast } = useFeedback()
+  const [books, setBooks] = useState<Book[] | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    api<PageResult<Book>>('/books', { params: { scope: 'owned', page_size: 100 } })
+      .then((d) => {
+        const items = d.items || []
+        setBooks(items)
+        setSelected(new Set(items.map((b) => b.id)))
+      })
+      .catch(() => setBooks([]))
+  }, [])
+
+  const allSelected = books !== null && books.length > 0 && selected.size === books.length
+
+  function toggle(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function download() {
+    if (selected.size === 0) return
+    setBusy(true)
+    try {
+      const ids = Array.from(selected).join(',')
+      const token = getToken()
+      const res = await fetch(`${API_BASE}/api/v1/users/me/export/books?ids=${ids}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
+      if (!res.ok) {
+        const msg = await res.json().then((p) => p.message).catch(() => '')
+        throw new Error(msg || '导出失败，请稍后重试')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `books-export-${new Date().toISOString().slice(0, 10)}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      showToast({ title: '导出失败', message: (e as Error).message, tone: 'error' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mb-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 p-6">
+        <h2 className="text-xl font-bold text-slate-900">批量导出</h2>
+        <p className="mt-1 text-sm text-slate-500">选择你的书籍一次性下载。压缩包内每本书是独立的 Markdown zip，可单独重新导入。</p>
+      </div>
+      {books === null ? (
+        <Loading className="py-16" label="正在加载书籍…" />
+      ) : books.length === 0 ? (
+        <EmptyState>你还没有创建书籍</EmptyState>
+      ) : (
+        <>
+          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-3">
+            <button type="button" onClick={() => setSelected(allSelected ? new Set() : new Set(books.map((b) => b.id)))}
+              className="text-sm text-primary-600 hover:underline">
+              {allSelected ? '清空选择' : '全选'}
+            </button>
+            <span className="text-xs text-slate-400">已选 {selected.size} / {books.length}</span>
+          </div>
+          <ul className="max-h-72 divide-y divide-slate-50 overflow-y-auto">
+            {books.map((book) => (
+              <li key={book.id}>
+                <label className="flex cursor-pointer items-center gap-3 px-6 py-3 hover:bg-slate-50">
+                  <Checkbox checked={selected.has(book.id)} onChange={() => toggle(book.id)} ariaLabel={`选择 ${book.title}`} />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">{book.title}</span>
+                  <span className="shrink-0 rounded px-1.5 py-0.5 text-xs text-slate-400">{STATUS_LABELS[book.status] || book.status}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-end border-t border-slate-100 px-6 py-4">
+            <Button loading={busy} disabled={selected.size === 0} onClick={download}>
+              <DownloadIcon className="h-4 w-4" /> 导出所选（{selected.size}）
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 interface ExportSettings {
   page_size: string
@@ -62,6 +164,7 @@ export default function ExportSettingsPage() {
         </div>
 
         <AccountSettingsLayout user={user} active="export">
+          <BatchExportPanel />
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 p-6">
               <h2 className="text-xl font-bold text-slate-900">导出设置</h2>

@@ -88,6 +88,21 @@ func (a *App) ExportBook(c *gin.Context) {
 
 // writeBookMarkdownZip 打包书籍为 markdown zip 并写入响应（鉴权由调用方负责）
 func (a *App) writeBookMarkdownZip(c *gin.Context, book *models.Book) {
+	data, err := a.buildBookMarkdownZip(book)
+	if err != nil {
+		fail(c, http.StatusInternalServerError, "打包失败: "+err.Error())
+		return
+	}
+	filename := book.Slug
+	if filename == "" {
+		filename = fmt.Sprintf("book-%d", book.ID)
+	}
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", filename))
+	c.Data(http.StatusOK, "application/zip", data)
+}
+
+// buildBookMarkdownZip 将书籍打包为 markdown zip 字节（book.md + chapters/ + images/），供单本与批量导出复用。
+func (a *App) buildBookMarkdownZip(book *models.Book) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	w := zip.NewWriter(buf)
 
@@ -111,16 +126,14 @@ func (a *App) writeBookMarkdownZip(c *gin.Context, book *models.Book) {
 		tagNames = append(tagNames, t.Name)
 	}
 	if err := writeMarkdown(w, "book.md", bookFields, map[string][]string{"tags": tagNames}, ""); err != nil {
-		fail(c, http.StatusInternalServerError, "打包失败: "+err.Error())
-		return
+		return nil, err
 	}
 	images := coverFiles
 
 	// 2. 章节（按 sort_order 稳定排序后带编号，便于人工阅读）
 	docs := []models.Document{}
 	if err := a.DB.Where("book_id = ?", book.ID).Order("sort_order ASC, id ASC").Find(&docs).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "查询章节失败")
-		return
+		return nil, err
 	}
 	for i, doc := range docs {
 		content, docImages := a.rewriteUploadsToLocal(doc.Content)
@@ -150,8 +163,7 @@ func (a *App) writeBookMarkdownZip(c *gin.Context, book *models.Book) {
 		}
 		filename := fmt.Sprintf("chapters/%02d-%s.md", i+1, name)
 		if err := writeMarkdown(w, filename, fields, nil, content); err != nil {
-			fail(c, http.StatusInternalServerError, "打包失败: "+err.Error())
-			return
+			return nil, err
 		}
 	}
 
@@ -159,26 +171,17 @@ func (a *App) writeBookMarkdownZip(c *gin.Context, book *models.Book) {
 	for name, data := range images {
 		f, err := w.Create("images/" + name)
 		if err != nil {
-			fail(c, http.StatusInternalServerError, "打包失败: "+err.Error())
-			return
+			return nil, err
 		}
 		if _, err := f.Write(data); err != nil {
-			fail(c, http.StatusInternalServerError, "打包失败: "+err.Error())
-			return
+			return nil, err
 		}
 	}
 
 	if err := w.Close(); err != nil {
-		fail(c, http.StatusInternalServerError, "打包失败: "+err.Error())
-		return
+		return nil, err
 	}
-
-	filename := book.Slug
-	if filename == "" {
-		filename = fmt.Sprintf("book-%d", book.ID)
-	}
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", filename))
-	c.Data(http.StatusOK, "application/zip", buf.Bytes())
+	return buf.Bytes(), nil
 }
 
 // orderedFields 保序 front-matter 字段，输出格式稳定
