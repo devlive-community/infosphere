@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Container from '@/components/Container'
 import { api, formatNumber } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
-import { Card, EmptyState, Loading, SegmentedTabs } from '@/components/ui'
+import { Card, EmptyState, Loading, SegmentedTabs, Tooltip } from '@/components/ui'
 import Seo from '@/components/Seo'
 import { BookIcon, EyeIcon, UsersIcon, CheckCircleSmallIcon } from '@/components/icons'
 
@@ -34,6 +34,18 @@ interface AuthorAnalytics {
   total_growth_percent: number | null
   total_readers: number
   books: AuthorBookRow[]
+}
+
+interface RetentionCohort {
+  week: string
+  size: number
+  retention: number[]
+}
+
+interface ReaderRetention {
+  weeks: number
+  cohorts: RetentionCohort[]
+  curve: (number | null)[]
 }
 
 const PERIODS = [
@@ -81,6 +93,108 @@ function GrowthTag({ value }: { value: number | null }) {
       <i className={`fa-solid ${up ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}`} aria-hidden="true" />
       {up ? '+' : ''}{value}%
     </span>
+  )
+}
+
+// retentionCellClass 按留存比例分档着色（相对本队列人数）。
+function retentionCellClass(ratio: number): string {
+  if (ratio <= 0) return 'bg-slate-50 text-slate-300'
+  if (ratio < 0.25) return 'bg-primary-100 text-primary-700'
+  if (ratio < 0.5) return 'bg-primary-200 text-primary-800'
+  if (ratio < 0.75) return 'bg-primary-400 text-white'
+  return 'bg-primary-600 text-white'
+}
+
+// RetentionSection 读者留存：按「首次阅读周」分组的队列三角矩阵 + 加权聚合曲线。
+function RetentionSection() {
+  const [data, setData] = useState<ReaderRetention | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api<ReaderRetention>('/users/me/reader-retention')
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const rows = useMemo(() => (data?.cohorts || []).filter((c) => c.size > 0), [data])
+  const curvePoints = useMemo(() => (data?.curve || []).map((v, i) => ({ offset: i, value: v })).filter((p) => p.value !== null), [data])
+
+  return (
+    <Card className="mt-5 overflow-hidden">
+      <div className="border-b border-slate-100 px-6 py-5">
+        <h2 className="font-bold text-slate-900">读者留存</h2>
+        <p className="mt-1 text-xs text-slate-400">以读者「首次阅读周」分组，跟踪其后续各周仍有阅读的比例（近 {data?.weeks || 12} 周）</p>
+      </div>
+
+      {loading ? (
+        <Loading label="正在计算读者留存…" />
+      ) : !data || rows.length === 0 ? (
+        <EmptyState>近 {data?.weeks || 12} 周内还没有新读者的留存数据</EmptyState>
+      ) : (
+        <div className="space-y-6 p-6">
+          {/* 加权聚合曲线 */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">整体留存曲线</h3>
+            <div className="flex h-32 items-end gap-1.5 border-b border-slate-200" role="img" aria-label="整体留存曲线">
+              {curvePoints.map((p) => (
+                <div key={p.offset} className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: '100%' }}>
+                  <span className="mb-1 text-[10px] tabular-nums text-slate-400">{p.value}%</span>
+                  <span className="w-full max-w-[40px] rounded-t bg-primary-400" style={{ height: `${Math.max(2, p.value as number)}%` }}
+                    aria-label={`第 ${p.offset} 周留存 ${p.value}%`} />
+                </div>
+              ))}
+            </div>
+            <div className="mt-1.5 flex gap-1.5">
+              {curvePoints.map((p) => (
+                <span key={p.offset} className="min-w-0 flex-1 text-center text-[10px] text-slate-400">{p.offset}周</span>
+              ))}
+            </div>
+          </div>
+
+          {/* 队列三角矩阵 */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">队列明细</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-[560px] border-separate" style={{ borderSpacing: '3px' }}>
+                <thead>
+                  <tr className="text-[10px] text-slate-400">
+                    <th className="px-2 text-left font-medium">首读周</th>
+                    <th className="px-2 text-right font-medium">新读者</th>
+                    {Array.from({ length: data.weeks }, (_, i) => (
+                      <th key={i} className="w-10 text-center font-medium">{i}周</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((cohort) => (
+                    <tr key={cohort.week}>
+                      <td className="whitespace-nowrap px-2 text-xs tabular-nums text-slate-500">{cohort.week.slice(5)}</td>
+                      <td className="px-2 text-right text-xs font-medium tabular-nums text-slate-700">{cohort.size}</td>
+                      {Array.from({ length: data.weeks }, (_, offset) => {
+                        const count = cohort.retention[offset]
+                        if (count === undefined) return <td key={offset} className="h-9 w-10" />
+                        const ratio = cohort.size > 0 ? count / cohort.size : 0
+                        return (
+                          <td key={offset} className="h-9 w-10">
+                            <Tooltip content={`${cohort.week} 起第 ${offset} 周 · ${count}/${cohort.size} 人 · ${Math.round(ratio * 100)}%`} className="block h-full w-full">
+                              <span className={`flex h-9 w-full items-center justify-center rounded text-[11px] font-medium tabular-nums ${retentionCellClass(ratio)}`}>
+                                {Math.round(ratio * 100)}
+                              </span>
+                            </Tooltip>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[10px] text-slate-400">数字为该周仍有阅读的读者占本队列的百分比；越靠右代表首读后越久</p>
+          </div>
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -200,6 +314,8 @@ export default function AuthorAnalyticsPage() {
                 </table>
               </div>
             </Card>
+
+            <RetentionSection />
 
             <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
               <span className="inline-flex items-center gap-1"><EyeIcon className="h-3.5 w-3.5" /> 浏览含书籍详情与章节</span>

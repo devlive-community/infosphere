@@ -386,6 +386,7 @@ Authorization: Bearer <token>
 | GET | `/users/me/reading-goal` | 每日阅读目标 `{daily_chapters}`（无记录默认 1） | `reading-progress:read` |
 | PUT | `/users/me/reading-goal` | 设置每日阅读目标（`daily_chapters`，1-100 章） | `reading-progress:update` |
 | GET | `/users/me/author-analytics?days=N` | 作者仪表盘：本人全部书籍的横向对比。`days` 仅支持 7/30/90/180（默认 30）。返回 `total_books/published_books/total_lifetime_views/total_period_views/total_previous_views/total_growth_percent/total_readers` 及 `books[]`，每项含 `id, title, slug, status, is_public, lifetime_views, period_views, previous_views, growth_percent, chapters, registered_readers, completed_readers, completion_rate, updated_at`（仅统计本人拥有的书籍，浏览量来自最多保留 180 天的每日聚合） | `book-analytics:read` |
+| GET | `/users/me/reader-retention` | 读者留存：本人全部书籍以读者「首次阅读周」分组的近 12 周队列。返回 `weeks`、`cohorts[]`（每项 `week` 周一日期、`size` 新读者数、`retention[]` 各周偏移仍活跃的去重读者数，偏移 0 恒等于 size）与 `curve[]`（各周偏移的加权平均留存率百分比，无可观测队列为 null） | `book-analytics:read` |
 
 ## 阅读标注与私人笔记（登录用户）
 
