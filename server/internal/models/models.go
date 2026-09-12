@@ -127,6 +127,16 @@ type TwoFactorStepUp struct {
 	ExpiresAt time.Time `gorm:"index" json:"expires_at"`
 }
 
+// UserNotificationPref 用户邮件通知偏好（每用户一条，缺省全部开启）。
+type UserNotificationPref struct {
+	UserID        uint `gorm:"primaryKey" json:"user_id"`
+	Comment       bool `gorm:"default:true" json:"comment"`
+	Reaction      bool `gorm:"default:true" json:"reaction"`
+	Collaboration bool `gorm:"default:true" json:"collaboration"`
+	Moderation    bool `gorm:"default:true" json:"moderation"`
+	System        bool `gorm:"default:true" json:"system"`
+}
+
 // LoginLockout 登录失败锁定计数（每账户一条，多实例共享）。
 type LoginLockout struct {
 	Username    string    `gorm:"primaryKey;size:100" json:"username"`
@@ -465,6 +475,7 @@ func All(db *gorm.DB) error {
 		&CaptchaChallenge{},
 		&TwoFactorStepUp{},
 		&LoginLockout{},
+		&UserNotificationPref{},
 		&BookExportSetting{},
 		&UserThemeSetting{},
 		&Comment{},

@@ -8,7 +8,7 @@ import { useFeedback } from '@/components/ui'
 
 interface AccountSettingsLayoutProps {
   user: User
-  active: 'profile' | 'security' | 'invite' | 'export' | 'oauth' | 'theme'
+  active: 'profile' | 'security' | 'invite' | 'notify' | 'export' | 'oauth' | 'theme'
   /** 头像上传后回调（个人资料页用） */
   onAvatarChange?: (url: string) => void
   children: ReactNode
@@ -46,6 +46,7 @@ export default function AccountSettingsLayout({ user, active, onAvatarChange, ch
     { key: 'security' as const, label: '账户安全', icon: <ShieldIcon className="h-4 w-4" />, href: '/user/security' },
     { key: 'oauth' as const, label: '第三方账号', icon: <LinkIcon className="h-4 w-4" />, href: '/user/oauth' },
     { key: 'invite' as const, label: '邀请码', icon: <i className="fa-solid fa-user-plus w-4 text-center text-[13px]" aria-hidden="true" />, href: '/user/invite' },
+    { key: 'notify' as const, label: '通知设置', icon: <i className="fa-solid fa-bell w-4 text-center text-[13px]" aria-hidden="true" />, href: '/user/notify' },
     { key: 'theme' as const, label: '主题设置', icon: <PaletteIcon className="h-4 w-4" />, href: '/user/theme' },
     { key: 'export' as const, label: '导出设置', icon: <DownloadIcon className="h-4 w-4" />, href: '/user/export' },
   ]

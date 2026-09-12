@@ -75,6 +75,8 @@ func (a *App) Notify(userID uint, ntype, title string, payload map[string]any) {
 	}
 	a.Notifications.broadcast(userID, fmt.Sprintf(`{"notification":{"id":%d,"type":%q,"title":%q,"payload":%s,"read_at":null,"created_at":%q}}`,
 		n.ID, n.Type, n.Title, string(raw), n.CreatedAt.Format(time.RFC3339)))
+	// 站内通知同时按用户偏好发邮件（总开关关闭或未绑定邮箱时静默跳过）
+	a.maybeSendNotificationEmail(userID, ntype, title, payload)
 }
 
 type notificationItem struct {

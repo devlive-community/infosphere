@@ -164,6 +164,7 @@ Authorization: Bearer <token>
 | POST | `/auth/email/resend` | 登录用户重发激活邮件 | 登录 |
 | GET/POST/DELETE | `/auth/invite-code` | 邀请码 opt-in：GET 返回 `{invite_code, enabled}`；POST 开启（首次可选自定义 `{code}`，4-20 位字母数字、全站唯一、只能设置一次，不传则自动生成）；DELETE 停用（保留邀请码，再开启仍是同一个）。仅启用中的邀请码可用于注册 | 登录 |
 | GET | `/auth/invited` | 我邀请的用户列表 `{items:[{username,avatar,created_at}],total}`（关闭邀请码后仍可查看） | 登录 |
+| GET/PUT | `/auth/notification-prefs` | 邮件通知偏好：GET 返回 `{email_enabled(站点总开关), prefs:{comment,reaction,collaboration,moderation,system}}`；PUT 保存 `prefs`（缺省全开） | 登录 |
 | GET | `/auth/2fa` | 二次认证状态 `{enabled, operations:[login\|credentials\|delete\|unbind_export]}` | 登录 |
 | POST | `/auth/2fa/setup` | 预配置 TOTP：返回 `{secret, otpauth_url, qr(data-uri)}`（尚未开启） | 登录 |
 | POST | `/auth/2fa/enable` | 校验 `{code}` 后开启，默认勾选全部敏感操作，返回一次性 `backup_codes` | 登录 |
@@ -194,7 +195,7 @@ Authorization: Bearer <token>
 | GET | `/auth/oauth/bindings` | 当前用户绑定列表 `[{provider,provider_username,provider_email,created_at}]` | `auth:oauth` |
 | DELETE | `/auth/oauth/:provider` | 解绑；未设置本地密码时拒绝（防止锁死） | `auth:oauth` |
 | GET/PUT | `/oauth` | 管理员读取/保存 GitHub 凭据（client_id/client_secret/enabled），存站点配置表，不出现在公开 `/site` | `site:update` |
-| GET/PUT | `/mail` | 管理员读取/保存邮件配置（driver log\|smtp、host/port/username/password/from）与 `site_url`（找回邮件链接前缀） | `site:update` |
+| GET/PUT | `/mail` | 管理员读取/保存邮件配置（driver log\|smtp、host/port/username/password/from）、`site_url`（邮件链接前缀）与 `notifications_enabled`（站内通知是否同时发邮件的总开关） | `site:update` |
 | GET/PUT | `/storage` | 管理员读取/保存存储驱动配置：`driver` local\|qiniu + 七牛凭据（access_key/secret_key/bucket/domain/upload_host，域名须含协议） | `site:update` |
 
 > 凭据存于站点配置（`oauth_github_*` 键）；state 防 CSRF 为内存态（10 分钟 TTL），适配当前单实例部署架构。

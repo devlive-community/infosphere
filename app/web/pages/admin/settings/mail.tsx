@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
-import { Button, Input, Field, Select, Loading } from '@/components/ui'
+import { Button, Input, Field, Select, Switch, Loading } from '@/components/ui'
 import { MailConfig, emptyMail } from '@/lib/admin'
 
 // 系统设置 · 邮件服务：SMTP 配置与找回密码发信（仅管理员）
@@ -70,6 +70,11 @@ export default function SettingsMail() {
             <Input value={mail.from || ''} onChange={(e) => setMail({ ...mail, from: e.target.value })}
               placeholder="noreply@example.com" />
           </Field>
+          <div className="border-t border-slate-100 pt-4">
+            <Field label="邮件通知总开关" hint="开启后，站内通知（评论/点赞/协作邀请等）会同时给已绑定邮箱的用户发邮件；用户可在账户设置里逐类型关闭。需先配置好 SMTP。">
+              <Switch ariaLabel="邮件通知总开关" checked={!!mail.notifications_enabled} onChange={(v) => setMail({ ...mail, notifications_enabled: v })} />
+            </Field>
+          </div>
         </div>
         {message && <div className="mt-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
         <div className="mt-5 flex justify-end">

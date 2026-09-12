@@ -34,6 +34,7 @@ export interface MailConfig {
   password: string
   from: string
   site_url: string
+  notifications_enabled?: boolean
 }
 
 export interface StorageConfig {

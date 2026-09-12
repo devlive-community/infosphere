@@ -12,13 +12,14 @@ import (
 var mailDrivers = map[string]bool{"log": true, "smtp": true}
 
 type mailConfigUpdate struct {
-	Driver   *string `json:"driver"`
-	Host     *string `json:"host"`
-	Port     *int    `json:"port"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	From     *string `json:"from"`
-	SiteURL  *string `json:"site_url"`
+	Driver               *string `json:"driver"`
+	Host                 *string `json:"host"`
+	Port                 *int    `json:"port"`
+	Username             *string `json:"username"`
+	Password             *string `json:"password"`
+	From                 *string `json:"from"`
+	SiteURL              *string `json:"site_url"`
+	NotificationsEnabled *bool   `json:"notifications_enabled"`
 }
 
 // AdminGetMail GET /admin/mail 管理员读取邮件配置
@@ -30,8 +31,9 @@ func (a *App) AdminGetMail(c *gin.Context) {
 		"port":     port,
 		"username": a.getSetting("smtp_username"),
 		"password": a.getSetting("smtp_password"),
-		"from":     a.getSetting("smtp_from"),
-		"site_url": a.getSetting("site_url"),
+		"from":                  a.getSetting("smtp_from"),
+		"site_url":              a.getSetting("site_url"),
+		"notifications_enabled": a.getSetting("mail_notifications_enabled") == "true",
 	})
 }
 
@@ -97,6 +99,17 @@ func (a *App) AdminSaveMail(c *gin.Context) {
 	if req.SiteURL != nil {
 		fields = append(fields, "site_url")
 		if err := a.setSetting("site_url", *req.SiteURL, "站点访问地址（用于邮件中的链接）"); err != nil {
+			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
+			return
+		}
+	}
+	if req.NotificationsEnabled != nil {
+		fields = append(fields, "notifications_enabled")
+		v := "false"
+		if *req.NotificationsEnabled {
+			v = "true"
+		}
+		if err := a.setSetting("mail_notifications_enabled", v, "站内通知同时发邮件的总开关"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}

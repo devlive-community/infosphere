@@ -134,6 +134,26 @@ func buildMessage(from, to, subject, htmlBody string) []byte {
 	return []byte(headers + "\r\n\r\n" + wrapped.String())
 }
 
+// NotificationHTML 生成站内通知的邮件正文
+func NotificationHTML(title, link, siteName string) string {
+	if strings.TrimSpace(siteName) == "" {
+		siteName = "InfoSphere"
+	}
+	safeTitle := html.EscapeString(title)
+	safeSite := html.EscapeString(siteName)
+	action := ""
+	if strings.TrimSpace(link) != "" {
+		safeLink := html.EscapeString(link)
+		action = fmt.Sprintf(`<p><a href="%s">查看详情</a></p>`, safeLink)
+	}
+	return fmt.Sprintf(`<div style="max-width:480px;margin:0 auto;font-family:sans-serif">
+<p>你好，</p>
+<p>%s</p>
+%s
+<p style="color:#888;font-size:12px">这是来自 %s 的通知邮件。如需关闭，可在账户设置的通知设置中调整。</p>
+</div>`, safeTitle, action, safeSite)
+}
+
 // VerifyEmailHTML 生成邮箱激活邮件正文
 func VerifyEmailHTML(link, siteName string, expireMinutes int) string {
 	if strings.TrimSpace(siteName) == "" {
