@@ -8,6 +8,7 @@ import { isQueuedTask, waitForTask, type QueuedTask } from '@/lib/background-tas
 import { useRequireAuth , useApp} from '@/lib/auth'
 import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
+import BookCopyDialog from '@/components/BookCopyDialog'
 import PDFReimportPanel from '@/components/PDFReimportPanel'
 import {
   CalendarIcon, CloseIcon, EyeIcon, FileTextIcon, GearIcon, GlobeIcon, GridIcon,
@@ -72,6 +73,7 @@ export default function MyBooks() {
   const [loading, setLoading] = useState(true)
   const [importOpen, setImportOpen] = useState(false)
   const [pdfImportBook, setPDFImportBook] = useState<Book | null>(null)
+  const [copyBook, setCopyBook] = useState<Book | null>(null)
 
   async function load() {
     if (!user) return
@@ -215,7 +217,7 @@ export default function MyBooks() {
             <BookCardMine key={book.id} book={book} view={view} collaborating={scope === 'collaborating'}
               menuOpen={menuFor === book.id} setMenuOpen={(open) => setMenuFor(open ? book.id : null)}
               onCopy={() => copyLink(book)} onImportPDF={() => setPDFImportBook(book)} onDelete={() => remove(book)}
-              onLeave={() => leaveCollaboration(book)} />
+              onCopyBook={() => setCopyBook(book)} onLeave={() => leaveCollaboration(book)} />
           ))}
         </div>
       ) : (
@@ -231,6 +233,9 @@ export default function MyBooks() {
       {importOpen && <BookImportDialog onClose={() => setImportOpen(false)} onImported={load} />}
       {pdfImportBook && (
         <PDFImportDialog book={pdfImportBook} onClose={() => setPDFImportBook(null)} onImported={load} />
+      )}
+      {copyBook && (
+        <BookCopyDialog book={copyBook} open onClose={() => setCopyBook(null)} />
       )}
 
     </Container>
@@ -410,7 +415,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
 
 /* ── 单本书卡片（网格 / 列表两种视图） ── */
 
-function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy, onImportPDF, onDelete, onLeave }: {
+function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy, onImportPDF, onDelete, onCopyBook, onLeave }: {
   book: Book
   view: 'grid' | 'list'
   collaborating: boolean
@@ -419,6 +424,7 @@ function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy
   onCopy: () => void
   onImportPDF: () => void
   onDelete: () => void
+  onCopyBook: () => void
   onLeave: () => void
 }) {
   const detailUrl = `/book/detail/${encodeURIComponent(book.slug)}`
@@ -450,6 +456,10 @@ function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy
       <button role="menuitem" onClick={onCopy}
         className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
         <LinkIcon2 className="h-4 w-4 text-slate-400" /> 复制访问链接
+      </button>
+      <button role="menuitem" onClick={() => { setMenuOpen(false); onCopyBook() }}
+        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+        <i className="fa-regular fa-copy w-4 text-center text-slate-400" aria-hidden="true" /> 复制书籍
       </button>
       <div className="my-1 border-t border-slate-100" />
       <button role="menuitem" onClick={() => { setMenuOpen(false); collaborating ? onLeave() : onDelete() }}

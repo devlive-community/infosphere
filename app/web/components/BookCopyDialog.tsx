@@ -16,12 +16,14 @@ function flatten(docs: Document[], level = 0, out: FlatDoc[] = []): FlatDoc[] {
 }
 
 // BookCopyDialog 复制书籍：完整复制（按原结构）或自定义复制（拖拽重排 / 移除章节）。
-export default function BookCopyDialog({ book, tree, open, onClose }: { book: Book; tree: Document[]; open: boolean; onClose: () => void }) {
+// 传入 tree 时直接用；未传入时打开后自行拉取该书章节树（供书籍列表等无 tree 的场景复用）。
+export default function BookCopyDialog({ book, tree, open, onClose }: { book: Book; tree?: Document[]; open: boolean; onClose: () => void }) {
   const router = useRouter()
   const { showToast } = useFeedback()
   const [title, setTitle] = useState('')
   const [mode, setMode] = useState<'full' | 'custom'>('full')
   const [items, setItems] = useState<FlatDoc[]>([])
+  const [total, setTotal] = useState(0)
   const [busy, setBusy] = useState(false)
   const dragIdx = useRef<number | null>(null)
 
@@ -29,10 +31,18 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
     if (!open) return
     setTitle(`${book.title} 副本`)
     setMode('full')
-    setItems(flatten(tree))
-  }, [open, book.title, tree])
-
-  const total = flatten(tree).length
+    if (tree) {
+      const flat = flatten(tree)
+      setItems(flat)
+      setTotal(flat.length)
+      return
+    }
+    api<Document[]>(`/books/${book.id}/documents`).then((docs) => {
+      const flat = flatten(docs || [])
+      setItems(flat)
+      setTotal(flat.length)
+    }).catch(() => { setItems([]); setTotal(0) })
+  }, [open, book.id, book.title, tree])
 
   function onDrop(i: number) {
     const from = dragIdx.current
