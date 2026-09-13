@@ -201,7 +201,7 @@ func (a *App) EnableTwoFactor(c *gin.Context) {
 		"two_factor_enabled": true,
 		"two_factor_ops":     strings.Join([]string{tfOpLogin, tfOpCredentials, tfOpDelete, tfOpUnbindExport}, ","),
 	})
-	a.grantStepUp(u.ID)
+	// 不再授予 step-up 宽限窗口：开启后所有勾选的操作立即要求二次认证，避免“只有登录生效”的错觉。
 	ok(c, gin.H{"enabled": true, "backup_codes": a.issueBackupCodes(u.ID)})
 }
 
