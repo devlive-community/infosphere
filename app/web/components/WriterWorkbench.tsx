@@ -534,6 +534,50 @@ export default function Writer({ user }: WriterProps) {
     if (url) wrapSelection('![', `](${url})`)
   }
 
+  // lineOffset 计算行数组中第 idx 行起始的字符偏移（含各行后的换行符）。
+  function lineOffset(arr: string[], idx: number) {
+    return arr.slice(0, idx).reduce((n, l) => n + l.length + 1, 0)
+  }
+
+  // moveLines 将选区所跨的整行上/下移动一行，并保持这些行处于选中态。
+  function moveLines(dir: -1 | 1) {
+    const el = textareaRef.current
+    if (!el) return
+    const value = el.value
+    const startLine = value.slice(0, el.selectionStart).split('\n').length - 1
+    const endLine = value.slice(0, el.selectionEnd).split('\n').length - 1
+    const lines = value.split('\n')
+    if (dir === -1 && startLine === 0) return
+    if (dir === 1 && endLine === lines.length - 1) return
+    const block = lines.slice(startLine, endLine + 1)
+    lines.splice(startLine, block.length)
+    lines.splice(startLine + dir, 0, ...block)
+    setContent(lines.join('\n'))
+    const newStart = startLine + dir
+    const lastIdx = newStart + block.length - 1
+    const startOff = lineOffset(lines, newStart)
+    const endOff = lineOffset(lines, lastIdx) + lines[lastIdx].length
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(startOff, endOff) })
+  }
+
+  // duplicateLines 在选区所跨整行下方复制一份，并选中副本。
+  function duplicateLines() {
+    const el = textareaRef.current
+    if (!el) return
+    const value = el.value
+    const startLine = value.slice(0, el.selectionStart).split('\n').length - 1
+    const endLine = value.slice(0, el.selectionEnd).split('\n').length - 1
+    const lines = value.split('\n')
+    const block = lines.slice(startLine, endLine + 1)
+    lines.splice(endLine + 1, 0, ...block)
+    setContent(lines.join('\n'))
+    const dupStart = endLine + 1
+    const lastIdx = dupStart + block.length - 1
+    const startOff = lineOffset(lines, dupStart)
+    const endOff = lineOffset(lines, lastIdx) + lines[lastIdx].length
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(startOff, endOff) })
+  }
+
   // insertText 在光标处替换选区插入文本，并把光标移到插入内容之后。
   function insertText(text: string) {
     const el = textareaRef.current
@@ -735,6 +779,14 @@ export default function Writer({ user }: WriterProps) {
     if (files.length > 0) {
       e.preventDefault() // 有图片时拦截默认粘贴，避免同时插入图片的文本表示
       void uploadImages(files)
+      return
+    }
+    // 选中文本时粘贴 URL：包成 [选中文本](url)
+    const el = textareaRef.current
+    const text = (e.clipboardData?.getData('text/plain') || '').trim()
+    if (el && el.selectionStart !== el.selectionEnd && /^https?:\/\/\S+$/.test(text)) {
+      e.preventDefault()
+      wrapSelection('[', `](${text})`)
     }
   }
 
@@ -757,11 +809,18 @@ export default function Writer({ user }: WriterProps) {
       if (e.key === 'Escape') { e.preventDefault(); closeSlash(); return }
     }
     if (e.key === 'Escape' && focusMode && !findOpen) { e.preventDefault(); setFocusMode(false); return }
+    // Alt+↑/↓ 移动整行
+    if (e.altKey && !e.metaKey && !e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault()
+      moveLines(e.key === 'ArrowUp' ? -1 : 1)
+      return
+    }
     if (e.metaKey || e.ctrlKey) {
       const k = e.key.toLowerCase()
       if (k === 'b') { e.preventDefault(); wrapSelection('**'); return }
       if (k === 'i') { e.preventDefault(); wrapSelection('*'); return }
       if (k === 'k') { e.preventDefault(); void insertLink(); return }
+      if (k === 'd' && e.shiftKey) { e.preventDefault(); duplicateLines(); return }
       if (k === 'f') {
         e.preventDefault()
         const sel = el.value.slice(el.selectionStart, el.selectionEnd)
