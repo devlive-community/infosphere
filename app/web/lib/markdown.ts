@@ -114,6 +114,18 @@ export interface Heading {
   id: string
 }
 
+// headingPlainText 把标题里的行内 Markdown 归约为纯文本，供目录/大纲展示。
+// 例如 `[](url)3. Executing the task` → `3. Executing the task`；`**加粗**` → `加粗`。
+export function headingPlainText(md: string): string {
+  return md
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // 链接/图片取其文本（空文本即移除）
+    .replace(/`([^`]+)`/g, '$1')               // 行内代码
+    .replace(/(\*\*|\*|__|_|~~)/g, '')         // 加粗/斜体/删除线标记
+    .replace(/<[^>]+>/g, '')                    // 残留 HTML 标签
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 // extractHeadings 提取 H2/H3 目录（id 与 renderMarkdown 生成的标题 id 一致）
 export function extractHeadings(source: string | null | undefined): Heading[] {
   if (!source) return []
@@ -124,7 +136,7 @@ export function extractHeadings(source: string | null | undefined): Heading[] {
     if (/^```/.test(line.trim())) inCode = !inCode
     if (inCode) return
     const m = /^(#{2,3})\s+(.+)$/.exec(line)
-    if (m) headings.push({ level: m[1].length, text: m[2].trim(), id: `h-${++seq}` })
+    if (m) headings.push({ level: m[1].length, text: headingPlainText(m[2].trim()), id: `h-${++seq}` })
   })
   return headings
 }

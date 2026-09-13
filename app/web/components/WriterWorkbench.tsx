@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { api, formatDate, API_BASE, getToken } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
-import { renderMarkdown, bindMarkdownInteractivity } from '@/lib/markdown'
+import { renderMarkdown, bindMarkdownInteractivity, headingPlainText } from '@/lib/markdown'
 import Seo from '@/components/Seo'
 import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Tooltip, Modal, useFeedback } from '@/components/ui'
 import {
@@ -176,7 +176,7 @@ export default function Writer({ user }: WriterProps) {
         inFence = !inFence
       } else if (!inFence) {
         const m = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/)
-        if (m) items.push({ level: m[1].length, text: m[2].trim(), offset })
+        if (m) items.push({ level: m[1].length, text: headingPlainText(m[2].trim()) || m[2].trim(), offset })
       }
       offset += line.length + 1 // +1 补回被 split 去掉的换行符
     }
