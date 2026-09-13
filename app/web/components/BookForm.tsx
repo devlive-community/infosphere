@@ -56,6 +56,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [chapterPrefix, setChapterPrefix] = useState(initial?.chapter_prefix || '')
   const [language, setLanguage] = useState(initial?.language || '')
   const [transGroup, setTransGroup] = useState(initial?.trans_group || '')
+  const [version, setVersion] = useState(initial?.version || '')
+  const [versionGroup, setVersionGroup] = useState(initial?.version_group || '')
   const [watermarkEnabled, setWatermarkEnabled] = useState(initial?.watermark_enabled || false)
   const [watermarkText, setWatermarkText] = useState(initial?.watermark_text || '')
   const [tags, setTags] = useState<string[]>((initial?.tags || []).map((t) => t.name))
@@ -122,6 +124,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
         chapter_prefix: chapterPrefix,
         language: language.trim(),
         trans_group: transGroup.trim(),
+        version: version.trim(),
+        version_group: versionGroup.trim(),
         watermark_enabled: watermarkEnabled,
         watermark_text: watermarkText.trim(),
         tags,
@@ -243,6 +247,16 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">翻译分组</label>
                 <Input value={transGroup} onChange={(e) => setTransGroup(e.target.value)} placeholder="如 my-book-i18n" maxLength={64} />
                 <p className="mt-1.5 text-xs text-slate-400">填写相同标识的书籍互为翻译，阅读页可切换语言</p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">版本</label>
+                <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="如 v1 / 第一版" maxLength={32} />
+                <p className="mt-1.5 text-xs text-slate-400">多版本书组时，用于标注本书版本</p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">版本分组</label>
+                <Input value={versionGroup} onChange={(e) => setVersionGroup(e.target.value)} placeholder="如 my-book-editions" maxLength={64} />
+                <p className="mt-1.5 text-xs text-slate-400">填写相同标识的书籍互为不同版本，阅读页可切换版本</p>
               </div>
             </div>
           </Section>

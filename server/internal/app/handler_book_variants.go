@@ -14,6 +14,7 @@ type bookVariant struct {
 	Slug     string `json:"slug"`
 	Title    string `json:"title"`
 	Language string `json:"language"`
+	Version  string `json:"version"`
 	Current  bool   `json:"current"`
 }
 
@@ -30,7 +31,7 @@ func (a *App) bookGroupSiblings(u *models.User, book *models.Book, column, value
 		if !a.canReadBook(u, b) {
 			continue
 		}
-		out = append(out, bookVariant{Slug: b.Slug, Title: b.Title, Language: b.Language, Current: b.ID == book.ID})
+		out = append(out, bookVariant{Slug: b.Slug, Title: b.Title, Language: b.Language, Version: b.Version, Current: b.ID == book.ID})
 	}
 	// 单独一本（只有自身）时不构成分组，返回空
 	if len(out) <= 1 {
@@ -52,4 +53,19 @@ func (a *App) GetBookTranslations(c *gin.Context) {
 		return
 	}
 	ok(c, gin.H{"items": a.bookGroupSiblings(u, book, "trans_group", book.TransGroup)})
+}
+
+// GetBookVersions GET /books/:id/versions 同一版本组内、对当前用户可见的书籍（含自身），供阅读页版本切换。
+func (a *App) GetBookVersions(c *gin.Context) {
+	book, status := a.findBook(c)
+	if book == nil {
+		fail(c, status, "书籍不存在")
+		return
+	}
+	u := currentUser(c)
+	if !a.canReadBook(u, book) {
+		fail(c, http.StatusNotFound, "书籍不存在")
+		return
+	}
+	ok(c, gin.H{"items": a.bookGroupSiblings(u, book, "version_group", book.VersionGroup)})
 }

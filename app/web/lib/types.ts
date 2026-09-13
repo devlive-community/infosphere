@@ -43,6 +43,8 @@ export interface Book {
   chapter_prefix: string
   language?: string
   trans_group?: string
+  version?: string
+  version_group?: string
   chapter_count?: number
   collaborator_role?: 'editor' | 'viewer'
   watermark_enabled: boolean

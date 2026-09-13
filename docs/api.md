@@ -254,7 +254,8 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/books/:id/documents` | 可见书籍的文档树（不含正文）；未授权统一 404，普通读者/viewer 仅含已发布章节 | `document:read` |
-| GET | `/books/:id/translations` | 同一翻译组（书籍 `trans_group` 相同且非空）内对当前用户可见的书籍 `items:[{slug,title,language,current}]`（少于两本返回空），供阅读页语言切换 | `book:read` |
+| GET | `/books/:id/translations` | 同一翻译组（书籍 `trans_group` 相同且非空）内对当前用户可见的书籍 `items:[{slug,title,language,version,current}]`（少于两本返回空），供阅读页语言切换 | `book:read` |
+| GET | `/books/:id/versions` | 同一版本组（书籍 `version_group` 相同且非空）内对当前用户可见的书籍 `items:[{slug,title,language,version,current}]`（少于两本返回空），供阅读页版本切换 | `book:read` |
 | POST | `/books/:id/documents` | 创建文档（title 必填；slug 留空自动生成；parent_id 归属校验；成功后生成初始版本） | `document:create` |
 | GET | `/books/:id/documents/slug/:slug` | 按 slug 查文档（含正文） | `document:read` |
 | GET | `/documents/:id` | 文档详情（含正文） | `document:read` |

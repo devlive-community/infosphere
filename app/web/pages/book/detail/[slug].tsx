@@ -16,6 +16,7 @@ import BookCard from '@/components/BookCard'
 import BookExportButton from '@/components/BookExportButton'
 import BookSearch from '@/components/BookSearch'
 import BookTranslations from '@/components/BookTranslations'
+import BookVersions from '@/components/BookVersions'
 import ReportButton from '@/components/ReportButton'
 import Seo from '@/components/Seo'
 import {
@@ -381,7 +382,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               ))}
             </div>
 
-            <div className="mt-4"><BookTranslations bookId={book.id} /></div>
+            <div className="mt-4 flex flex-col gap-2"><BookTranslations bookId={book.id} /><BookVersions bookId={book.id} /></div>
 
             {author && (
               <div className="mt-6 flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
