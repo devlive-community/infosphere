@@ -11,8 +11,8 @@ interface ExportOptions {
   pdf_available: boolean
 }
 
-const FORMAT_LABEL: Record<string, string> = { pdf: 'PDF', epub: 'EPUB (电子书)', markdown: 'Markdown (zip)' }
-const FORMAT_EXT: Record<string, string> = { pdf: 'pdf', epub: 'epub', markdown: 'zip' }
+const FORMAT_LABEL: Record<string, string> = { pdf: 'PDF', epub: 'EPUB (电子书)', docx: 'Word (docx)', markdown: 'Markdown (zip)' }
+const FORMAT_EXT: Record<string, string> = { pdf: 'pdf', epub: 'epub', docx: 'docx', markdown: 'zip' }
 
 // BookExportButton 书籍详情页导出入口：按后端返回的可用格式与样式选项渲染下拉菜单。
 // 仅在当前用户对该书具备导出能力时显示（作者/协作者，或公开且作者开启导出）。

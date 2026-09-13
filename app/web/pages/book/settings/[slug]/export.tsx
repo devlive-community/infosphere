@@ -22,6 +22,7 @@ const DEFAULT_STYLE: BookStyle = { page_size: 'A4', include_cover: true, include
 const ALL_FORMATS: { key: string; label: string; hint: string }[] = [
   { key: 'pdf', label: 'PDF', hint: '带排版的文档，适合打印与离线阅读' },
   { key: 'epub', label: 'EPUB (电子书)', hint: '通用电子书格式，含封面与目录，适配手机 / 电纸书阅读器' },
+  { key: 'docx', label: 'Word (docx)', hint: '可编辑的 Word 文档，含标题样式、表格、代码块与图片' },
   { key: 'markdown', label: 'Markdown (zip)', hint: '章节 Markdown 与图片打包，可再次导入编辑' },
 ]
 
