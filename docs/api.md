@@ -192,6 +192,7 @@ Authorization: Bearer <token>
 | GET | `/auth/oauth/providers` | 各 provider 启用状态：`{providers:[{provider,enabled}]}` | 匿名 |
 | GET | `/auth/oauth/:provider` | 发起登录：302 到授权页；回跳地址固定使用管理员配置的 `site_url`，未配置时使用当前服务地址 | 匿名 |
 | GET | `/auth/oauth/:provider/callback` | 授权回调：换取用户 → 已绑定直接登录 / 已验证邮箱自动关联 / 自动注册；签发 token + Cookie 后回到可信站点地址 | 匿名 |
+| POST | `/auth/oauth/:provider/link` | 已登录用户绑定第三方账号：用带当前用户 id 的 state 走授权流程，回调按当前账号绑定（不依赖邮箱匹配），返回 `{redirect}` 供前端跳转；该第三方账号已被他人绑定时回跳 `?oauth_error=already_bound` | `auth:oauth` |
 | GET | `/auth/oauth/bindings` | 当前用户绑定列表 `[{provider,provider_username,provider_email,created_at}]` | `auth:oauth` |
 | DELETE | `/auth/oauth/:provider` | 解绑；未设置本地密码时拒绝（防止锁死） | `auth:oauth` |
 | GET/PUT | `/oauth` | 管理员读取/保存各 provider 凭据：GET 返回 `{providers:[{provider,label,client_id,client_secret,enabled}]}`；PUT 保存单个 `{provider,client_id,client_secret,enabled}`（存 `oauth_<provider>_*` 键，不出现在公开 `/site`） | `site:update` |

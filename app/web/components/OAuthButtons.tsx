@@ -59,6 +59,7 @@ export function oauthErrorText(code: string): string {
     unsupported_provider: '不支持的第三方登录方式',
     registration_closed: '本站当前已关闭注册，无法通过第三方登录创建新账户',
     registration_invite_required: '本站仅限邀请注册，第三方登录无法创建新账户',
+    already_bound: '该第三方账号已被其他账号绑定，无法重复绑定',
   }
   return messages[code] || `第三方登录失败（${code}）`
 }

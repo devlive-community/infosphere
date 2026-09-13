@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
-import { API_BASE, api } from '@/lib/api'
+import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { oauthErrorText } from '@/components/OAuthButtons'
 import { Button, Loading, useFeedback } from '@/components/ui'
 
 interface Binding {
@@ -40,6 +41,20 @@ export default function OAuthBindings() {
 
   useEffect(() => { load() }, [load])
 
+  // 绑定回跳：读取 ?linked / ?oauth_error 提示并清理地址
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const linked = params.get('linked')
+    const err = params.get('oauth_error')
+    if (!linked && !err) return
+    if (linked) setMessage(`${PROVIDER_META[linked]?.label || linked} 账号已绑定`)
+    if (err) setError(oauthErrorText(err))
+    params.delete('linked')
+    params.delete('oauth_error')
+    const qs = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+  }, [])
+
   if (!user) return null
   if (!loaded) {
     return (
@@ -71,8 +86,16 @@ export default function OAuthBindings() {
     }
   }
 
-  function bind(provider: string) {
-    window.location.href = `${API_BASE}/api/v1/auth/oauth/${provider}?origin=${encodeURIComponent(window.location.origin)}`
+  async function bind(provider: string) {
+    setMessage('')
+    setError('')
+    try {
+      // 绑定走带当前用户身份的链接流程：回调时按当前账号绑定，不依赖邮箱是否与该第三方一致。
+      const d = await api<{ redirect: string }>(`/auth/oauth/${provider}/link`, { method: 'POST' })
+      if (d.redirect) window.location.href = d.redirect
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
 
   return (

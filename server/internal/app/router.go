@@ -81,6 +81,7 @@ func (a *App) Router() *gin.Engine {
 			authed2 := authGroup.Group("", a.RequireAuth())
 			{
 				authed2.GET("/oauth/bindings", a.RequirePermission(authz.AuthOauth), a.OAuthBindings)
+				authed2.POST("/oauth/:provider/link", a.RequirePermission(authz.AuthOauth), a.OAuthLinkStart)
 				authed2.DELETE("/oauth/:provider", a.RequirePermission(authz.AuthOauth), a.OAuthUnbind)
 			}
 

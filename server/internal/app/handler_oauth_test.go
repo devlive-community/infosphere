@@ -166,31 +166,36 @@ func TestOAuthStateDBBacked(t *testing.T) {
 	}
 
 	origin := "https://app.example.com"
-	state := a.oauthStateSave(origin)
+	state := a.oauthStateSave(origin, 0)
 	if state == "" {
 		t.Fatalf("应返回非空 state")
 	}
 
 	// 首次取用成功并返回来源
-	got, ok := a.oauthStateTake(state)
+	got, _, ok := a.oauthStateTake(state)
 	if !ok || got != origin {
 		t.Fatalf("首次取用应成功且来源匹配，got=%q ok=%v", got, ok)
 	}
 	// 一次性：再次取用失败
-	if _, ok := a.oauthStateTake(state); ok {
+	if _, _, ok := a.oauthStateTake(state); ok {
 		t.Fatalf("state 应一次性，二次取用须失败")
 	}
 	// 未知 state 失败
-	if _, ok := a.oauthStateTake("deadbeef"); ok {
+	if _, _, ok := a.oauthStateTake("deadbeef"); ok {
 		t.Fatalf("未知 state 应失败")
 	}
 	// 空 state 失败
-	if _, ok := a.oauthStateTake(""); ok {
+	if _, _, ok := a.oauthStateTake(""); ok {
 		t.Fatalf("空 state 应失败")
+	}
+	// 绑定模式：userID 随 state 往返
+	linkState := a.oauthStateSave(origin, 42)
+	if _, uid, ok := a.oauthStateTake(linkState); !ok || uid != 42 {
+		t.Fatalf("绑定模式应带回 userID=42，实际 %d ok=%v", uid, ok)
 	}
 	// 明文不落库：只存哈希
 	var row models.OAuthState
-	a.oauthStateSave(origin) // 再存一条用于检查
+	a.oauthStateSave(origin, 0) // 再存一条用于检查
 	if err := a.DB.Last(&row).Error; err != nil {
 		t.Fatalf("查询 state 行失败: %v", err)
 	}

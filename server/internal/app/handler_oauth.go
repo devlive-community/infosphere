@@ -33,29 +33,30 @@ func oauthStateHash(state string) string {
 }
 
 // oauthStateSave 生成一次性 state 并入库（存哈希，多实例共享），顺带清理过期行。
-func (a *App) oauthStateSave(origin string) string {
+// oauthStateSave 生成一次性 state 并入库。userID 非 0 表示「为该已登录用户绑定」模式。
+func (a *App) oauthStateSave(origin string, userID uint) string {
 	buf := make([]byte, 16)
 	_, _ = rand.Read(buf)
 	state := hex.EncodeToString(buf)
 	a.DB.Where("expires_at < ?", time.Now()).Delete(&models.OAuthState{})
-	a.DB.Create(&models.OAuthState{StateHash: oauthStateHash(state), Origin: origin, ExpiresAt: time.Now().Add(oauthStateTTL)})
+	a.DB.Create(&models.OAuthState{StateHash: oauthStateHash(state), Origin: origin, UserID: userID, ExpiresAt: time.Now().Add(oauthStateTTL)})
 	return state
 }
 
-// oauthStateTake 取出并删除 state（一次性），校验未过期，返回关联的前端来源。
-func (a *App) oauthStateTake(state string) (string, bool) {
+// oauthStateTake 取出并删除 state（一次性），校验未过期，返回来源与绑定用户 id（0 为登录/注册）。
+func (a *App) oauthStateTake(state string) (origin string, userID uint, ok bool) {
 	if state == "" {
-		return "", false
+		return "", 0, false
 	}
 	var row models.OAuthState
 	if err := a.DB.Where("state_hash = ?", oauthStateHash(state)).First(&row).Error; err != nil {
-		return "", false
+		return "", 0, false
 	}
 	a.DB.Delete(&models.OAuthState{}, "id = ?", row.ID)
 	if time.Now().After(row.ExpiresAt) {
-		return "", false
+		return "", 0, false
 	}
-	return row.Origin, true
+	return row.Origin, row.UserID, true
 }
 
 func (a *App) getSetting(key string) string {
@@ -130,14 +131,37 @@ func (a *App) OAuthStart(c *gin.Context) {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=not_configured")
 		return
 	}
-	state := a.oauthStateSave(origin)
-	redirect := def.AuthURL +
+	state := a.oauthStateSave(origin, 0)
+	c.Redirect(http.StatusFound, a.oauthAuthorizeURL(c, def, clientID, provider, state))
+}
+
+// oauthAuthorizeURL 拼接第三方授权页地址（登录与绑定复用）。
+func (a *App) oauthAuthorizeURL(c *gin.Context, def oauthProviderDef, clientID, provider, state string) string {
+	return def.AuthURL +
 		"?client_id=" + url.QueryEscape(clientID) +
 		"&redirect_uri=" + url.QueryEscape(a.oauthRedirectURI(c, provider)) +
 		"&response_type=code" +
 		"&scope=" + url.QueryEscape(def.Scopes) +
 		"&state=" + state
-	c.Redirect(http.StatusFound, redirect)
+}
+
+// OAuthLinkStart POST /auth/oauth/:provider/link 已登录用户绑定第三方账号：
+// 用带当前用户 id 的 state 走授权流程，回调时按该 id 绑定（不依赖邮箱匹配），返回授权地址供前端跳转。
+func (a *App) OAuthLinkStart(c *gin.Context) {
+	provider := c.Param("provider")
+	def, defOK := oauthProviderRegistry[provider]
+	if !defOK {
+		fail(c, http.StatusBadRequest, "不支持的第三方登录方式")
+		return
+	}
+	clientID, _, enabled := a.oauthProviderConfig(provider)
+	if !enabled {
+		fail(c, http.StatusBadRequest, "该第三方登录未启用")
+		return
+	}
+	u := currentUser(c)
+	state := a.oauthStateSave(a.frontendOrigin(c), u.ID)
+	ok(c, gin.H{"redirect": a.oauthAuthorizeURL(c, def, clientID, provider, state)})
 }
 
 type ghTokenResponse struct {
@@ -166,14 +190,19 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=unsupported_provider")
 		return
 	}
-	stateOrigin, valid := a.oauthStateTake(c.Query("state"))
+	stateOrigin, linkUserID, valid := a.oauthStateTake(c.Query("state"))
 	if !valid {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=invalid_state")
 		return
 	}
 	// state 里记录的来源才是可信回跳地址
 	origin = stateOrigin
+	// 绑定模式（已登录用户）失败回跳账户页，登录/注册模式失败回跳登录页
 	failRedirect := func(code string) {
+		if linkUserID != 0 {
+			c.Redirect(http.StatusFound, origin+"/user/oauth?oauth_error="+code)
+			return
+		}
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error="+code)
 	}
 
@@ -216,6 +245,27 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		return
 	}
 	email := info.Email
+
+	// 绑定模式：为已登录用户显式绑定该第三方账号（不依赖邮箱匹配）
+	if linkUserID != 0 {
+		var linkUser models.User
+		if err := a.DB.First(&linkUser, linkUserID).Error; err != nil || !linkUser.IsActive {
+			failRedirect("account_disabled")
+			return
+		}
+		var exist models.UserAuthentication
+		if err := a.DB.Where("provider = ? AND provider_id = ?", provider, info.ID).First(&exist).Error; err == nil {
+			if exist.UserID == linkUserID {
+				c.Redirect(http.StatusFound, origin+"/user/oauth?linked="+provider) // 已绑定到本账号
+				return
+			}
+			failRedirect("already_bound") // 该第三方账号已被其他账号绑定
+			return
+		}
+		a.createBinding(linkUserID, provider, info, tokenResp.AccessToken)
+		c.Redirect(http.StatusFound, origin+"/user/oauth?linked="+provider)
+		return
+	}
 
 	// 3. 已绑定 → 直接登录
 	var binding models.UserAuthentication

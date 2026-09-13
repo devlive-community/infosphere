@@ -127,6 +127,7 @@ type OAuthState struct {
 	ID        uint      `gorm:"primaryKey" json:"-"`
 	StateHash string    `gorm:"size:64;uniqueIndex;not null" json:"-"`
 	Origin    string    `gorm:"size:512" json:"-"`
+	UserID    uint      `gorm:"default:0" json:"-"` // 非 0 表示「为该已登录用户绑定」模式（否则为登录/注册）
 	ExpiresAt time.Time `gorm:"index" json:"-"`
 	CreatedAt time.Time `json:"-"`
 }
