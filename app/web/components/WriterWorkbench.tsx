@@ -10,7 +10,7 @@ import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
   ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
-  TableIcon, StrikethroughIcon, CodeBlockIcon, CheckSquareIcon, ColumnsIcon,
+  TableIcon, StrikethroughIcon, CodeBlockIcon, CheckSquareIcon, ColumnsIcon, OutlineIcon,
 } from '@/components/icons'
 import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, DocumentStatus, PageResult } from '@/lib/types'
 
@@ -97,6 +97,23 @@ export default function Writer({ user }: WriterProps) {
   const didInitExpand = useRef(false)
 
   const flatDocs = useMemo(() => flatten(tree), [tree])
+  // 当前章节的标题大纲（跳过围栏代码块内的 # 行）；offset 为该标题行在正文中的字符偏移。
+  const outline = useMemo(() => {
+    const items: { level: number; text: string; offset: number }[] = []
+    let inFence = false
+    let offset = 0
+    for (const line of content.split('\n')) {
+      const trimmed = line.trimStart()
+      if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+        inFence = !inFence
+      } else if (!inFence) {
+        const m = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/)
+        if (m) items.push({ level: m[1].length, text: m[2].trim(), offset })
+      }
+      offset += line.length + 1 // +1 补回被 split 去掉的换行符
+    }
+    return items
+  }, [content])
   const previewRef = useRef<HTMLDivElement>(null)
   // 预览内容防抖：输入时避免每键全量重渲染 Markdown
   const [previewHtml, setPreviewHtml] = useState('')
@@ -522,6 +539,19 @@ export default function Writer({ user }: WriterProps) {
     return out
   }
 
+  // jumpToHeading 将编辑区光标定位到某标题行并按行比例滚动到该处（分栏时预览随 onScroll 同步）。
+  function jumpToHeading(offset: number) {
+    const el = textareaRef.current
+    if (!el) return
+    const linesBefore = content.slice(0, offset).split('\n').length - 1
+    const totalLines = content.split('\n').length
+    el.focus()
+    el.setSelectionRange(offset, offset)
+    const ratio = totalLines > 1 ? linesBefore / totalLines : 0
+    el.scrollTop = ratio * (el.scrollHeight - el.clientHeight)
+    syncPreviewScroll()
+  }
+
   // syncPreviewScroll 分栏模式下按比例把编辑区滚动同步到预览区。
   function syncPreviewScroll() {
     if (!splitPreview) return
@@ -816,6 +846,7 @@ export default function Writer({ user }: WriterProps) {
               {!preview && (
                 <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-slate-200 px-2 py-1.5">
                   <ToolbarSelect onPick={(prefix) => insertAtLineStart(prefix)} />
+                  <ToolbarOutline outline={outline} onJump={jumpToHeading} />
                   <ToolbarDivider />
                   <ToolbarButton title="加粗 (Ctrl/⌘+B)" onClick={() => wrapSelection('**')}><span className="font-bold">B</span></ToolbarButton>
                   <ToolbarButton title="斜体 (Ctrl/⌘+I)" onClick={() => wrapSelection('*')}><span className="italic">I</span></ToolbarButton>
@@ -1329,6 +1360,35 @@ function ToolbarSelect({ onPick }: { onPick: (prefix: string) => void }) {
           {[['## ', '标题 2'], ['### ', '标题 3'], ['#### ', '标题 4']].map(([prefix, label]) => (
             <button key={label} onClick={() => { onPick(prefix); setOpen(false) }}
               className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">{label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 大纲 ▾ 当前章节标题跳转
+function ToolbarOutline({ outline, onJump }: { outline: { level: number; text: string; offset: number }[]; onJump: (offset: number) => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <Tooltip content="大纲">
+        <button type="button" aria-label="大纲" onClick={() => setOpen(!open)}
+          className="flex items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
+          <OutlineIcon className="h-4 w-4" />
+        </button>
+      </Tooltip>
+      {open && (
+        <div className="absolute left-0 top-9 z-20 max-h-80 w-64 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          {outline.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-slate-400">暂无标题</p>
+          ) : outline.map((h, i) => (
+            <button key={`${h.offset}-${i}`} type="button" onClick={() => { onJump(h.offset); setOpen(false) }}
+              className="block w-full truncate text-left text-sm text-slate-700 hover:bg-slate-50"
+              style={{ paddingLeft: `${(h.level - 1) * 12 + 12}px`, paddingRight: '12px', paddingTop: '6px', paddingBottom: '6px' }}>
+              {h.text}
+            </button>
           ))}
         </div>
       )}
