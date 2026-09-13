@@ -44,38 +44,56 @@ interface ReadingStats {
 interface ActivityDay {
   date: string
   count: number
+  minutes: number
   met: boolean
 }
+interface ReadingGoalCfg {
+  goal_type: 'chapters' | 'minutes'
+  daily_chapters: number
+  daily_minutes: number
+}
 interface ActivityData {
-  goal: { daily_chapters: number }
+  goal: ReadingGoalCfg
   days: ActivityDay[]
   current_streak: number
   longest_streak: number
   today_count: number
+  today_minutes: number
   today_met: boolean
 }
 
-// CheckinCalendar 打卡日历：可配置每日目标（新读章节数）+ 近 12 周活动热力图 + 连续打卡。
+// CheckinCalendar 打卡日历：可配置每日目标（章节数 / 阅读分钟）+ 近 12 周活动热力图 + 连续打卡。
 function CheckinCalendar() {
   const { showToast } = useFeedback()
   const [data, setData] = useState<ActivityData | null>(null)
-  const [goalInput, setGoalInput] = useState(1)
+  const [goalType, setGoalType] = useState<'chapters' | 'minutes'>('chapters')
+  const [chaptersInput, setChaptersInput] = useState(1)
+  const [minutesInput, setMinutesInput] = useState(15)
   const [saving, setSaving] = useState(false)
 
   const load = () => {
     api<ActivityData>('/users/me/reading-activity', { params: { days: 364 } })
-      .then((d) => { setData(d); setGoalInput(d.goal.daily_chapters) })
+      .then((d) => {
+        setData(d)
+        setGoalType(d.goal.goal_type)
+        setChaptersInput(d.goal.daily_chapters)
+        setMinutesInput(d.goal.daily_minutes)
+      })
       .catch(() => { /* 忽略 */ })
   }
   useEffect(() => { load() }, [])
 
   if (!data) return null
-  const goal = data.goal.daily_chapters
+  const isMinutes = data.goal.goal_type === 'minutes'
+  const target = isMinutes ? data.goal.daily_minutes : data.goal.daily_chapters
+  const todayVal = isMinutes ? data.today_minutes : data.today_count
+  const unit = isMinutes ? '分钟' : '章'
+  const dirty = goalType !== data.goal.goal_type || chaptersInput !== data.goal.daily_chapters || minutesInput !== data.goal.daily_minutes
 
   const saveGoal = async () => {
     setSaving(true)
     try {
-      await api('/users/me/reading-goal', { method: 'PUT', body: { daily_chapters: goalInput } })
+      await api('/users/me/reading-goal', { method: 'PUT', body: { goal_type: goalType, daily_chapters: chaptersInput, daily_minutes: minutesInput } })
       load()
       showToast({ message: '每日目标已更新', tone: 'success' })
     } catch (e) {
@@ -86,9 +104,10 @@ function CheckinCalendar() {
   }
 
   const cellColor = (d: ActivityDay) => {
-    if (d.count === 0) return 'bg-slate-100'
+    const val = isMinutes ? d.minutes : d.count
+    if (val === 0) return 'bg-slate-100'
     if (!d.met) return 'bg-primary-200'
-    return d.count >= goal * 2 ? 'bg-primary-600' : 'bg-primary-500'
+    return val >= target * 2 ? 'bg-primary-600' : 'bg-primary-500'
   }
   // 组织成「周列」（周日在最上）：首日之前补空，使第一格落在其星期几行
   const leadPad = data.days.length ? new Date(data.days[0].date + 'T00:00:00').getDay() : 0
@@ -104,22 +123,35 @@ function CheckinCalendar() {
           <h2 className="text-sm font-semibold text-slate-700">阅读打卡</h2>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-slate-400">
             连续打卡 <span className="font-semibold text-primary-600">{data.current_streak}</span> 天 · 最长 {data.longest_streak} 天 ·
-            今日 {data.today_count}/{goal} 章
+            今日 {todayVal}/{target} {unit}
             {data.today_met && <i className="fa-solid fa-circle-check text-emerald-500" aria-label="已达标" />}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs text-slate-500">
           <span>每日目标</span>
-          <span className="inline-block w-16 shrink-0">
-            <Input
-              type="number" min={1} max={100} size="sm" value={goalInput}
-              onChange={(e) => setGoalInput(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
-              className="text-center"
-              aria-label="每日目标章节数"
-            />
+          <span className="inline-flex overflow-hidden rounded-lg border border-slate-200">
+            {(['chapters', 'minutes'] as const).map((t) => (
+              <button key={t} type="button" onClick={() => setGoalType(t)}
+                className={`px-2.5 py-1 transition-colors ${goalType === t ? 'bg-primary-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+                {t === 'chapters' ? '章节' : '时长'}
+              </button>
+            ))}
           </span>
-          <span>章</span>
-          <Button variant="ghost" size="sm" loading={saving} disabled={goalInput === goal} onClick={saveGoal}>保存</Button>
+          {goalType === 'chapters' ? (
+            <span className="inline-block w-14 shrink-0">
+              <Input type="number" min={1} max={100} size="sm" value={chaptersInput}
+                onChange={(e) => setChaptersInput(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+                className="text-center" aria-label="每日目标章节数" />
+            </span>
+          ) : (
+            <span className="inline-block w-16 shrink-0">
+              <Input type="number" min={1} max={600} size="sm" value={minutesInput}
+                onChange={(e) => setMinutesInput(Math.max(1, Math.min(600, Number(e.target.value) || 1)))}
+                className="text-center" aria-label="每日目标分钟数" />
+            </span>
+          )}
+          <span>{goalType === 'chapters' ? '章' : '分钟'}</span>
+          <Button variant="ghost" size="sm" loading={saving} disabled={!dirty} onClick={saveGoal}>保存</Button>
         </div>
       </div>
 
@@ -135,7 +167,7 @@ function CheckinCalendar() {
               {week.map((d, di) => (
                 <div key={di} className="aspect-square w-full">
                   {d && (
-                    <Tooltip content={`${d.date} · 读 ${d.count} 章${d.met ? ' · 已达标' : ''}`} className="h-full w-full">
+                    <Tooltip content={`${d.date} · 读 ${d.count} 章 · ${d.minutes} 分钟${d.met ? ' · 已达标' : ''}`} className="h-full w-full">
                       <span className={`block h-full w-full rounded-sm ${cellColor(d)}`} />
                     </Tooltip>
                   )}

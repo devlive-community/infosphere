@@ -375,13 +375,24 @@ type UserExportSetting struct {
 }
 
 // UserReadingGoal 用户每日阅读目标（打卡日历用），每用户一条。
-// 指标为「每日新读章节数」，达到 DailyChapters 即当日打卡成功。
+// GoalType 决定达标指标：chapters=每日新读章节数≥DailyChapters；minutes=每日阅读时长≥DailyMinutes。
 type UserReadingGoal struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	UserID        uint      `gorm:"uniqueIndex;not null" json:"user_id"`
+	GoalType      string    `gorm:"size:16;default:chapters" json:"goal_type"` // chapters | minutes
 	DailyChapters int       `gorm:"default:1" json:"daily_chapters"`
+	DailyMinutes  int       `gorm:"default:15" json:"daily_minutes"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// ReadingDailyTime 用户每日累计阅读时长（秒），每用户每天一条，支撑「分钟制」每日目标与打卡。
+type ReadingDailyTime struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"uniqueIndex:uk_reading_day;not null" json:"user_id"`
+	Day       string    `gorm:"size:10;uniqueIndex:uk_reading_day;not null" json:"day"` // YYYY-MM-DD（服务器时区）
+	Seconds   int       `gorm:"default:0" json:"seconds"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // UserThemeSetting 用户主题设置，每用户一条
@@ -470,6 +481,7 @@ func All(db *gorm.DB) error {
 		&Plugin{},
 		&UserExportSetting{},
 		&UserReadingGoal{},
+	&ReadingDailyTime{},
 		&EmailVerificationToken{},
 		&TwoFactorBackupCode{},
 		&CaptchaChallenge{},

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // SaveReadingProgress PUT /reading-progress/:bookId 记录当前用户在书籍中读到的章节
@@ -65,6 +66,7 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 		}
 		updates["scroll_percent"] = sp
 	}
+	dailyDelta := 0
 	if req.ReadSecondsDelta != nil {
 		d := *req.ReadSecondsDelta
 		if d > 3600 {
@@ -72,11 +74,15 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 		}
 		if d > 0 {
 			updates["read_seconds"] = gorm.Expr("read_seconds + ?", d)
+			dailyDelta = d
 		}
 	}
 	if err := a.DB.Model(&progress).Updates(updates).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
+	}
+	if dailyDelta > 0 {
+		a.addDailyReadingSeconds(u.ID, dailyDelta)
 	}
 	a.DB.First(&progress, progress.ID) // 回读增量后的最新值
 
@@ -318,43 +324,83 @@ func (a *App) MarkBookRead(c *gin.Context) {
 	ok(c, gin.H{"read": len(docs)})
 }
 
-// readingGoalChapters 读取当前用户的每日目标章节数（无记录默认 1）。
-func (a *App) readingGoalChapters(userID uint) int {
-	var g models.UserReadingGoal
-	if err := a.DB.Where("user_id = ?", userID).First(&g).Error; err == nil && g.DailyChapters > 0 {
-		return g.DailyChapters
+// addDailyReadingSeconds 累加当前用户「今天」的阅读秒数（多实例安全：OnConflict 原子自增）。
+func (a *App) addDailyReadingSeconds(userID uint, delta int) {
+	day := analyticsDayStart(currentTime()).Format("2006-01-02")
+	row := models.ReadingDailyTime{UserID: userID, Day: day, Seconds: delta}
+	inc := "seconds + ?"
+	if a.DB.Dialector.Name() == "postgres" {
+		inc = "reading_daily_times.seconds + ?"
 	}
-	return 1
+	a.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}, {Name: "day"}},
+		DoUpdates: clause.Assignments(map[string]any{"seconds": gorm.Expr(inc, delta)}),
+	}).Create(&row)
+}
+
+// readingGoal 读取当前用户的每日阅读目标（无记录返回默认：章节制、每日 1 章 / 15 分钟）。
+func (a *App) readingGoal(userID uint) models.UserReadingGoal {
+	g := models.UserReadingGoal{UserID: userID, GoalType: "chapters", DailyChapters: 1, DailyMinutes: 15}
+	var stored models.UserReadingGoal
+	if err := a.DB.Where("user_id = ?", userID).First(&stored).Error; err == nil {
+		if stored.GoalType != "minutes" {
+			stored.GoalType = "chapters"
+		}
+		if stored.DailyChapters < 1 {
+			stored.DailyChapters = 1
+		}
+		if stored.DailyMinutes < 1 {
+			stored.DailyMinutes = 15
+		}
+		return stored
+	}
+	return g
+}
+
+func readingGoalPayload(g models.UserReadingGoal) gin.H {
+	return gin.H{"goal_type": g.GoalType, "daily_chapters": g.DailyChapters, "daily_minutes": g.DailyMinutes}
 }
 
 // GetReadingGoal GET /users/me/reading-goal 当前用户每日阅读目标。
 func (a *App) GetReadingGoal(c *gin.Context) {
 	u := currentUser(c)
-	ok(c, gin.H{"daily_chapters": a.readingGoalChapters(u.ID)})
+	ok(c, readingGoalPayload(a.readingGoal(u.ID)))
 }
 
-// SaveReadingGoal PUT /users/me/reading-goal 设置每日阅读目标（1-100 章）。
+// SaveReadingGoal PUT /users/me/reading-goal 设置每日阅读目标（章节制 1-100 章 / 分钟制 1-600 分钟）。
 func (a *App) SaveReadingGoal(c *gin.Context) {
 	u := currentUser(c)
 	var req struct {
-		DailyChapters int `json:"daily_chapters"`
+		GoalType      string `json:"goal_type"`
+		DailyChapters int    `json:"daily_chapters"`
+		DailyMinutes  int    `json:"daily_minutes"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
+	}
+	if req.GoalType != "minutes" {
+		req.GoalType = "chapters"
 	}
 	if req.DailyChapters < 1 {
 		req.DailyChapters = 1
 	} else if req.DailyChapters > 100 {
 		req.DailyChapters = 100
 	}
+	if req.DailyMinutes < 1 {
+		req.DailyMinutes = 15
+	} else if req.DailyMinutes > 600 {
+		req.DailyMinutes = 600
+	}
 	goal := models.UserReadingGoal{UserID: u.ID}
 	a.DB.Where("user_id = ?", u.ID).FirstOrCreate(&goal)
-	if err := a.DB.Model(&goal).Update("daily_chapters", req.DailyChapters).Error; err != nil {
+	if err := a.DB.Model(&goal).Updates(map[string]any{
+		"goal_type": req.GoalType, "daily_chapters": req.DailyChapters, "daily_minutes": req.DailyMinutes,
+	}).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败")
 		return
 	}
-	ok(c, gin.H{"daily_chapters": req.DailyChapters})
+	ok(c, gin.H{"goal_type": req.GoalType, "daily_chapters": req.DailyChapters, "daily_minutes": req.DailyMinutes})
 }
 
 // ReadingActivity GET /users/me/reading-activity?days=N 打卡日历：近 N 天每日新读章节数与达标情况 + 连续打卡。
@@ -366,7 +412,7 @@ func (a *App) ReadingActivity(c *gin.Context) {
 	} else if days > 366 {
 		days = 366
 	}
-	goal := a.readingGoalChapters(u.ID)
+	goal := a.readingGoal(u.ID)
 
 	const layout = "2006-01-02"
 	today := analyticsDayStart(currentTime())
@@ -381,10 +427,28 @@ func (a *App) ReadingActivity(c *gin.Context) {
 		counts[analyticsDayStart(t).Format(layout)]++
 	}
 
+	// 每日阅读时长（秒）
+	startDay := start.Format(layout)
+	var timeRows []models.ReadingDailyTime
+	a.DB.Where("user_id = ? AND day >= ?", u.ID, startDay).Find(&timeRows)
+	secondsByDay := make(map[string]int, len(timeRows))
+	for _, r := range timeRows {
+		secondsByDay[r.Day] = r.Seconds
+	}
+
+	// dayMet 按当前目标类型判定某天是否达标
+	dayMet := func(count, seconds int) bool {
+		if goal.GoalType == "minutes" {
+			return seconds >= goal.DailyMinutes*60
+		}
+		return count >= goal.DailyChapters
+	}
+
 	type dayCell struct {
-		Date  string `json:"date"`
-		Count int    `json:"count"`
-		Met   bool   `json:"met"`
+		Date    string `json:"date"`
+		Count   int    `json:"count"`
+		Minutes int    `json:"minutes"`
+		Met     bool   `json:"met"`
 	}
 	cells := make([]dayCell, 0, days)
 	met := make(map[string]bool, days)
@@ -392,8 +456,9 @@ func (a *App) ReadingActivity(c *gin.Context) {
 	for i := 0; i < days; i++ {
 		d := start.AddDate(0, 0, i).Format(layout)
 		ct := counts[d]
-		isMet := ct >= goal
-		cells = append(cells, dayCell{Date: d, Count: ct, Met: isMet})
+		mins := (secondsByDay[d] + 30) / 60 // 四舍五入到分钟
+		isMet := dayMet(ct, secondsByDay[d])
+		cells = append(cells, dayCell{Date: d, Count: ct, Minutes: mins, Met: isMet})
 		met[d] = isMet
 		if isMet {
 			run++
@@ -418,11 +483,12 @@ func (a *App) ReadingActivity(c *gin.Context) {
 
 	todayStr := today.Format(layout)
 	ok(c, gin.H{
-		"goal":           gin.H{"daily_chapters": goal},
+		"goal":           readingGoalPayload(goal),
 		"days":           cells,
 		"current_streak": current,
 		"longest_streak": longest,
 		"today_count":    counts[todayStr],
-		"today_met":      counts[todayStr] >= goal,
+		"today_minutes":  (secondsByDay[todayStr] + 30) / 60,
+		"today_met":      dayMet(counts[todayStr], secondsByDay[todayStr]),
 	})
 }

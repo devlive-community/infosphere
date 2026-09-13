@@ -384,9 +384,9 @@ Authorization: Bearer <token>
 | GET | `/books/:id/read-chapters` | 当前用户在该书已读的章节 ID 列表 `{doc_ids:[]}`，用于详情页进度标记 | `user:read` |
 | GET | `/users/me/reading?page=&page_size=` | 「我在读」列表：跨书聚合进度，按最近阅读倒序分页；每项含 `book`、`read_count`、`total_chapters`、`percentage`、`last_doc_slug`、`last_doc_title`、`last_read_at`、`read_seconds` | `reading-progress:read` |
 | GET | `/users/me/reading-stats` | 阅读数据概览：`reading_books`（在读）、`completed_books`（已读完）、`chapters_read`（累计已读章节）、`streak_days`（连续阅读天数） | `reading-progress:read` |
-| GET | `/users/me/reading-activity?days=N` | 打卡日历：近 N 天（7-366，默认 84）每日新读章节数与是否达标 `days:[{date,count,met}]`，含 `goal.daily_chapters`、`current_streak`、`longest_streak`、`today_count`、`today_met` | `reading-progress:read` |
-| GET | `/users/me/reading-goal` | 每日阅读目标 `{daily_chapters}`（无记录默认 1） | `reading-progress:read` |
-| PUT | `/users/me/reading-goal` | 设置每日阅读目标（`daily_chapters`，1-100 章） | `reading-progress:update` |
+| GET | `/users/me/reading-activity?days=N` | 打卡日历：近 N 天（7-366，默认 84）`days:[{date,count,minutes,met}]`（`met` 按当前目标类型判定）+ `current_streak/longest_streak/today_count/today_minutes/today_met` 及 `goal{goal_type,daily_chapters,daily_minutes}`。每日阅读分钟来自阅读器上报的 `read_seconds_delta` 按天累计（`reading_daily_times` 表） | `reading-progress:read` |
+| GET | `/users/me/reading-goal` | 每日阅读目标 `{goal_type(chapters\|minutes), daily_chapters, daily_minutes}`（无记录默认章节制 1 章 / 15 分钟） | `reading-progress:read` |
+| PUT | `/users/me/reading-goal` | 设置每日阅读目标：`{goal_type, daily_chapters(1-100), daily_minutes(1-600)}`，达标指标随 `goal_type` 切换 | `reading-progress:update` |
 | GET | `/users/me/author-analytics?days=N` | 作者仪表盘：本人全部书籍的横向对比。`days` 仅支持 7/30/90/180（默认 30）。返回 `total_books/published_books/total_lifetime_views/total_period_views/total_previous_views/total_growth_percent/total_readers` 及 `books[]`，每项含 `id, title, slug, status, is_public, lifetime_views, period_views, previous_views, growth_percent, chapters, registered_readers, completed_readers, completion_rate, updated_at`（仅统计本人拥有的书籍，浏览量来自最多保留 180 天的每日聚合） | `book-analytics:read` |
 | GET | `/users/me/reader-retention` | 读者留存：本人全部书籍以读者「首次阅读周」分组的近 12 周队列。返回 `weeks`、`cohorts[]`（每项 `week` 周一日期、`size` 新读者数、`retention[]` 各周偏移仍活跃的去重读者数，偏移 0 恒等于 size）与 `curve[]`（各周偏移的加权平均留存率百分比，无可观测队列为 null） | `book-analytics:read` |
 
