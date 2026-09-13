@@ -130,6 +130,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/books/:id", a.GetBook)
 			public.GET("/books/slug/:slug", a.GetBookBySlug)
 			public.GET("/books/:id/documents", a.ListDocumentTree)
+			public.GET("/books/:id/translations", a.GetBookTranslations)
 			public.GET("/books/:id/documents/slug/:slug", a.GetDocumentBySlug)
 			public.GET("/documents/:id", a.GetDocument)
 			public.GET("/tags", a.ListTags)

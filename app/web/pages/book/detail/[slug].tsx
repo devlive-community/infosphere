@@ -15,6 +15,7 @@ import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
 import BookExportButton from '@/components/BookExportButton'
 import BookSearch from '@/components/BookSearch'
+import BookTranslations from '@/components/BookTranslations'
 import ReportButton from '@/components/ReportButton'
 import Seo from '@/components/Seo'
 import {
@@ -379,6 +380,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 <span key={t.id} className="inline-flex max-w-full items-center truncate rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t.name}</span>
               ))}
             </div>
+
+            <div className="mt-4"><BookTranslations bookId={book.id} /></div>
 
             {author && (
               <div className="mt-6 flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">

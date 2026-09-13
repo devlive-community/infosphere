@@ -41,6 +41,8 @@ export interface Book {
   order_col: string
   order_dir: 'asc' | 'desc'
   chapter_prefix: string
+  language?: string
+  trans_group?: string
   chapter_count?: number
   collaborator_role?: 'editor' | 'viewer'
   watermark_enabled: boolean

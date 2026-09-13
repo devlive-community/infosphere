@@ -224,6 +224,8 @@ type bookPayload struct {
 	OrderCol           *string  `json:"order_col"`
 	OrderDir           *string  `json:"order_dir"`
 	ChapterPrefix      *string  `json:"chapter_prefix"`
+	Language           *string  `json:"language"`
+	TransGroup         *string  `json:"trans_group"`
 	WatermarkEnabled   *bool    `json:"watermark_enabled"`
 	WatermarkText      *string  `json:"watermark_text"`
 	ExportEnabled      *bool    `json:"export_enabled"`
@@ -321,6 +323,12 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 	if req.ChapterPrefix != nil {
 		book.ChapterPrefix = *req.ChapterPrefix
+	}
+	if req.Language != nil {
+		book.Language = truncateText(strings.TrimSpace(*req.Language), 32)
+	}
+	if req.TransGroup != nil {
+		book.TransGroup = truncateText(strings.TrimSpace(*req.TransGroup), 64)
 	}
 	if req.WatermarkText != nil {
 		watermarkText, valid := normalizeWatermark(*req.WatermarkText)
@@ -462,6 +470,12 @@ func (a *App) UpdateBook(c *gin.Context) {
 	}
 	if req.ChapterPrefix != nil {
 		book.ChapterPrefix = *req.ChapterPrefix
+	}
+	if req.Language != nil {
+		book.Language = truncateText(strings.TrimSpace(*req.Language), 32)
+	}
+	if req.TransGroup != nil {
+		book.TransGroup = truncateText(strings.TrimSpace(*req.TransGroup), 64)
 	}
 	if req.WatermarkText != nil {
 		watermarkText, valid := normalizeWatermark(*req.WatermarkText)

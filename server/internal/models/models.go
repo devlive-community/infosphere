@@ -227,7 +227,11 @@ type Book struct {
 	ViewCount        int    `gorm:"default:0" json:"view_count"`
 	OrderCol         string `gorm:"size:50;default:created_at" json:"order_col"`
 	OrderDir         string `gorm:"size:10;default:desc" json:"order_dir"`
-	ChapterPrefix    string `gorm:"size:20;default:''" json:"chapter_prefix"`
+	ChapterPrefix string `gorm:"size:20;default:''" json:"chapter_prefix"`
+	// Language 书籍语言标签（如「中文」/「English」），配合 TransGroup 组成多语言互译组
+	Language string `gorm:"size:32;default:''" json:"language"`
+	// TransGroup 翻译分组标识：填相同非空标识的书籍互为翻译，阅读页可切换语言
+	TransGroup       string `gorm:"size:64;default:'';index" json:"trans_group"`
 	WatermarkEnabled bool   `gorm:"default:false" json:"watermark_enabled"`
 	WatermarkText    string `gorm:"size:255;default:''" json:"watermark_text"`
 	// ExportEnabled 作者是否允许他人导出本书（公开书籍生效；作者/协作者不受限）

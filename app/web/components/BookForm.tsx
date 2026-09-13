@@ -54,6 +54,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [isPublic, setIsPublic] = useState(initial?.is_public || false)
   const [loginRequired, setLoginRequired] = useState(initial?.login_required || false)
   const [chapterPrefix, setChapterPrefix] = useState(initial?.chapter_prefix || '')
+  const [language, setLanguage] = useState(initial?.language || '')
+  const [transGroup, setTransGroup] = useState(initial?.trans_group || '')
   const [watermarkEnabled, setWatermarkEnabled] = useState(initial?.watermark_enabled || false)
   const [watermarkText, setWatermarkText] = useState(initial?.watermark_text || '')
   const [tags, setTags] = useState<string[]>((initial?.tags || []).map((t) => t.name))
@@ -118,6 +120,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
         is_public: isPublic,
         login_required: isPublic && loginRequired,
         chapter_prefix: chapterPrefix,
+        language: language.trim(),
+        trans_group: transGroup.trim(),
         watermark_enabled: watermarkEnabled,
         watermark_text: watermarkText.trim(),
         tags,
@@ -229,6 +233,16 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">章节前缀</label>
                 <Select value={chapterPrefix} onChange={setChapterPrefix} options={prefixOptions} />
                 <p className="mt-1.5 text-xs text-slate-400">用于章节标题前的统一前缀</p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">语言</label>
+                <Input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="如 中文 / English" maxLength={32} />
+                <p className="mt-1.5 text-xs text-slate-400">多语言互译时，用于标注本书语言</p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">翻译分组</label>
+                <Input value={transGroup} onChange={(e) => setTransGroup(e.target.value)} placeholder="如 my-book-i18n" maxLength={64} />
+                <p className="mt-1.5 text-xs text-slate-400">填写相同标识的书籍互为翻译，阅读页可切换语言</p>
               </div>
             </div>
           </Section>
