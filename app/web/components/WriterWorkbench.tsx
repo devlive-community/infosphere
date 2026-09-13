@@ -584,6 +584,23 @@ export default function Writer({ user }: WriterProps) {
     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(startOff, endOff) })
   }
 
+  // indentSelection 对选区所跨的每一行整体缩进（+2 空格）或反缩进（去掉行首至多 2 空格）。
+  function indentSelection(dir: 1 | -1) {
+    const el = textareaRef.current
+    if (!el) return
+    const value = el.value
+    const startLine = value.slice(0, el.selectionStart).split('\n').length - 1
+    const endLine = value.slice(0, el.selectionEnd).split('\n').length - 1
+    const lines = value.split('\n')
+    for (let i = startLine; i <= endLine; i++) {
+      lines[i] = dir === 1 ? '  ' + lines[i] : lines[i].replace(/^ {1,2}/, '')
+    }
+    setContent(lines.join('\n'))
+    const startOff = lineOffset(lines, startLine)
+    const endOff = lineOffset(lines, endLine) + lines[endLine].length
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(startOff, endOff) })
+  }
+
   // insertText 在光标处替换选区插入文本，并把光标移到插入内容之后。
   function insertText(text: string) {
     const el = textareaRef.current
@@ -848,6 +865,13 @@ export default function Writer({ user }: WriterProps) {
     const lineEnd = value.indexOf('\n', el.selectionStart)
     const line = value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd)
     const listMatch = line.match(/^(\s*)([-*+]|\d+\.|- \[[ x]\]|>)(\s+)(.*)$/)
+
+    // 多行选区按 Tab 整体缩进 / Shift+Tab 反缩进
+    if (e.key === 'Tab' && el.selectionStart !== el.selectionEnd && value.slice(el.selectionStart, el.selectionEnd).includes('\n')) {
+      e.preventDefault()
+      indentSelection(e.shiftKey ? -1 : 1)
+      return
+    }
 
     if (e.key === 'Enter' && !e.shiftKey && listMatch && el.selectionStart === el.selectionEnd) {
       const [, indent, marker, gap, rest] = listMatch
