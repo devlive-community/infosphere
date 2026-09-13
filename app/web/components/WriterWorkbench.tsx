@@ -151,6 +151,7 @@ export default function Writer({ user }: WriterProps) {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const scrollLock = useRef<'edit' | 'preview' | null>(null) // 分栏滚动同步防抖锁
   const [uploading, setUploading] = useState(false)
   const snapshot = useRef('') // 已保存/已加载表单的快照，用于脏状态判断
   const loadedDocId = useRef<number | null>(null) // 当前表单对应的文档，防止切换章节时误触发自动保存
@@ -693,7 +694,8 @@ export default function Writer({ user }: WriterProps) {
     const totalLines = content.split('\n').length
     const ratio = totalLines > 1 ? linesBefore / totalLines : 0
     el.scrollTop = ratio * (el.scrollHeight - el.clientHeight)
-    syncPreviewScroll()
+    scrollLock.current = 'edit'
+    syncScroll('edit')
   }
 
   function jumpToHeading(offset: number) {
@@ -787,14 +789,18 @@ export default function Writer({ user }: WriterProps) {
     })
   }
 
-  // syncPreviewScroll 分栏模式下按比例把编辑区滚动同步到预览区。
-  function syncPreviewScroll() {
+  // syncScroll 分栏模式下按比例双向同步编辑区与预览区滚动；scrollLock 防止两边互相触发导致抖动。
+  function syncScroll(from: 'edit' | 'preview' = 'edit') {
     if (!splitPreview) return
     const el = textareaRef.current, pv = previewRef.current
     if (!el || !pv) return
-    const denom = el.scrollHeight - el.clientHeight
-    const ratio = denom > 0 ? el.scrollTop / denom : 0
-    pv.scrollTop = ratio * (pv.scrollHeight - pv.clientHeight)
+    if (scrollLock.current && scrollLock.current !== from) { scrollLock.current = null; return }
+    scrollLock.current = from
+    const src = from === 'edit' ? el : pv
+    const dst = from === 'edit' ? pv : el
+    const denom = src.scrollHeight - src.clientHeight
+    const ratio = denom > 0 ? src.scrollTop / denom : 0
+    dst.scrollTop = ratio * (dst.scrollHeight - dst.clientHeight)
   }
 
   function onEditorPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
@@ -1198,9 +1204,9 @@ export default function Writer({ user }: WriterProps) {
                     onKeyDown={onEditorKeyDown}
                     onPaste={onEditorPaste}
                     onDrop={onEditorDrop}
-                    onScroll={() => { syncPreviewScroll(); closeSlash() }}
+                    onScroll={() => { syncScroll('edit'); closeSlash() }}
                     onBlur={closeSlash} />
-                  <div ref={previewRef}
+                  <div ref={previewRef} onScroll={() => syncScroll('preview')}
                     className="markdown-body min-h-0 w-full flex-1 overflow-y-auto px-6 py-5 md:w-1/2"
                     dangerouslySetInnerHTML={{ __html: previewHtml }} />
                 </div>
