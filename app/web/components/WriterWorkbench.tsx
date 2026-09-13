@@ -72,6 +72,11 @@ function caretCoordinates(el: HTMLTextAreaElement, pos: number): { top: number; 
   return { top, left, lineHeight }
 }
 
+// 有选区时按下配对符包裹选中文本（open -> close）。
+const WRAP_PAIRS: Record<string, string> = {
+  '(': ')', '[': ']', '{': '}', '`': '`', '*': '*', '_': '_', '~': '~', '"': '"', "'": "'",
+}
+
 // 斜杠命令元数据（label 展示，kw 供拉丁关键词过滤）；动作在 selectSlash 里按 key 分派。
 const SLASH_COMMANDS: { key: string; label: string; kw: string }[] = [
   { key: 'h2', label: '标题 2', kw: 'h2 heading title' },
@@ -813,6 +818,13 @@ export default function Writer({ user }: WriterProps) {
     if (e.altKey && !e.metaKey && !e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       e.preventDefault()
       moveLines(e.key === 'ArrowUp' ? -1 : 1)
+      return
+    }
+    // 有选区时按配对符包裹选中文本（非组合键、非 IME 输入中）
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.nativeEvent.isComposing &&
+        el.selectionStart !== el.selectionEnd && e.key.length === 1 && WRAP_PAIRS[e.key]) {
+      e.preventDefault()
+      wrapSelection(e.key, WRAP_PAIRS[e.key])
       return
     }
     if (e.metaKey || e.ctrlKey) {
