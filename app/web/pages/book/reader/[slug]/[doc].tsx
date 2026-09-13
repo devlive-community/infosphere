@@ -121,6 +121,17 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
     }
   })
 
+  // 阅读字号本地记忆（读一次 + 变化写入；try/catch 防隐私模式抛错）
+  useEffect(() => {
+    try {
+      const saved = parseInt(localStorage.getItem('reader:font-idx') || '', 10)
+      if (saved >= 0 && saved < FONT_SIZES.length) setFontIdx(saved)
+    } catch { /* 忽略 */ }
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem('reader:font-idx', String(fontIdx)) } catch { /* 忽略 */ }
+  }, [fontIdx])
+
   const flat = useMemo(() => flatten(tree), [tree])
   const headings = useMemo(() => extractHeadings(doc?.content), [doc])
 
