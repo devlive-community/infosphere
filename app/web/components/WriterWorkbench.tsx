@@ -120,6 +120,7 @@ export default function Writer({ user }: WriterProps) {
   // 斜杠命令菜单
   const [slash, setSlash] = useState({ open: false, start: 0, query: '', top: 0, left: 0, index: 0 })
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [fontSize, setFontSize] = useState(14) // 编辑区字号（px），本地记忆
   // 查找替换
   const [findOpen, setFindOpen] = useState(false)
   const [findText, setFindText] = useState('')
@@ -192,6 +193,17 @@ export default function Writer({ user }: WriterProps) {
   }, [content, findText, caseSensitive])
 
   useEffect(() => { if (findOpen) findInputRef.current?.focus() }, [findOpen])
+
+  // 编辑区字号本地记忆（读一次 + 变化时写入；try/catch 防隐私模式抛错）
+  useEffect(() => {
+    try {
+      const saved = parseInt(localStorage.getItem('writer:font-size') || '', 10)
+      if (saved >= 12 && saved <= 22) setFontSize(saved)
+    } catch { /* 忽略 */ }
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem('writer:font-size', String(fontSize)) } catch { /* 忽略 */ }
+  }, [fontSize])
 
   const filteredSlash = useMemo(() => {
     const q = slash.query.toLowerCase()
@@ -1198,7 +1210,8 @@ export default function Writer({ user }: WriterProps) {
               ) : splitPreview ? (
                 <div className="flex min-h-0 flex-1 flex-col md:flex-row">
                   <textarea ref={textareaRef}
-                    className="min-h-0 w-full flex-1 resize-none border-b border-slate-200 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 md:w-1/2 md:border-b-0 md:border-r"
+                    className="min-h-0 w-full flex-1 resize-none border-b border-slate-200 bg-transparent px-6 py-5 font-mono leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 md:w-1/2 md:border-b-0 md:border-r"
+                    style={{ fontSize }}
                     placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片，输入 / 唤起命令）" value={content}
                     onChange={(e) => { setContent(e.target.value); refreshSlash() }}
                     onKeyDown={onEditorKeyDown}
@@ -1212,7 +1225,8 @@ export default function Writer({ user }: WriterProps) {
                 </div>
               ) : (
                 <textarea ref={textareaRef}
-                  className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                  className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-6 py-5 font-mono leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                  style={{ fontSize }}
                   placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片，输入 / 唤起命令）" value={content}
                   onChange={(e) => { setContent(e.target.value); refreshSlash() }}
                   onKeyDown={onEditorKeyDown}
@@ -1233,6 +1247,13 @@ export default function Writer({ user }: WriterProps) {
                     className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-[10px] font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
                     ?
                   </button>
+                  <span className="flex items-center overflow-hidden rounded border border-slate-200">
+                    <button type="button" onClick={() => setFontSize((s) => Math.max(12, s - 1))} disabled={fontSize <= 12}
+                      aria-label="减小字号" className="px-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40">A-</button>
+                    <span className="px-1 tabular-nums text-slate-400">{fontSize}</span>
+                    <button type="button" onClick={() => setFontSize((s) => Math.min(22, s + 1))} disabled={fontSize >= 22}
+                      aria-label="增大字号" className="px-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40">A+</button>
+                  </span>
                 </span>
                 <span className="flex items-center gap-2">
                   {uploading && <span className="flex items-center gap-1 text-primary-500"><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" /> 上传中…</span>}
