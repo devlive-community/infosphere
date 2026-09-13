@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, ReactNode } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
 import { renderMarkdown, extractHeadings, bindMarkdownInteractivity } from '@/lib/markdown'
@@ -105,6 +106,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
+  const router = useRouter()
   const [fontIdx, setFontIdx] = useState(1)
   const [focus, setFocus] = useState(false)
   const [activeHeading, setActiveHeading] = useState('')
@@ -230,6 +232,23 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
     els.forEach((el) => obs.observe(el))
     return () => obs.disconnect()
   }, [headings, doc?.id])
+
+  // 键盘 ← / → 翻章（忽略输入框内与组合键）
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (!book || !doc) return
+      const i = flat.findIndex((d) => d.id === doc.id)
+      if (i < 0) return
+      if (e.key === 'ArrowLeft' && i > 0) router.push(`/book/reader/${encodeURIComponent(book.slug)}/${flat[i - 1].slug}`)
+      else if (e.key === 'ArrowRight' && i < flat.length - 1) router.push(`/book/reader/${encodeURIComponent(book.slug)}/${flat[i + 1].slug}`)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [flat, doc, book, router])
 
   if (!book || !doc) {
     return (
