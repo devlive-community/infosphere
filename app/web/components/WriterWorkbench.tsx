@@ -11,6 +11,7 @@ import {
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
   ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
   TableIcon, StrikethroughIcon, CodeBlockIcon, CheckSquareIcon, ColumnsIcon, OutlineIcon,
+  MaximizeIcon, MinimizeIcon,
 } from '@/components/icons'
 import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, DocumentStatus, PageResult } from '@/lib/types'
 
@@ -66,6 +67,7 @@ export default function Writer({ user }: WriterProps) {
   const [creatingUnder, setCreatingUnder] = useState<number | null>(null) // 新建期间保持高亮的父章节
   const [preview, setPreview] = useState(false)
   const [splitPreview, setSplitPreview] = useState(false)
+  const [focusMode, setFocusMode] = useState(false)
   // 查找替换
   const [findOpen, setFindOpen] = useState(false)
   const [findText, setFindText] = useState('')
@@ -644,6 +646,7 @@ export default function Writer({ user }: WriterProps) {
   function onEditorKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     const el = textareaRef.current
     if (!el) return
+    if (e.key === 'Escape' && focusMode && !findOpen) { e.preventDefault(); setFocusMode(false); return }
     if (e.metaKey || e.ctrlKey) {
       const k = e.key.toLowerCase()
       if (k === 'b') { e.preventDefault(); wrapSelection('**'); return }
@@ -910,8 +913,10 @@ export default function Writer({ user }: WriterProps) {
               className="w-full shrink-0 border-0 bg-transparent p-0 text-3xl font-bold text-ink placeholder:text-slate-300 focus:outline-none focus:ring-0"
               placeholder="章节标题" value={title} onChange={(e) => setTitle(e.target.value)} />
 
-            {/* 编辑卡片：工具条 + 正文 + 底栏合为一个圆角边框，宽高跟随中列 */}
-            <div className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+            {/* 编辑卡片：工具条 + 正文 + 底栏合为一个圆角边框，宽高跟随中列；专注模式下 fixed 覆盖全屏 */}
+            <div className={focusMode
+              ? 'fixed inset-0 z-50 flex flex-col overflow-hidden bg-white'
+              : 'mt-5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white'}>
               {!preview && (
                 <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-slate-200 px-2 py-1.5">
                   <ToolbarSelect onPick={(prefix) => insertAtLineStart(prefix)} />
@@ -1002,7 +1007,14 @@ export default function Writer({ user }: WriterProps) {
               )}
 
               <div className="flex shrink-0 items-center justify-between border-t border-slate-200 px-4 py-2.5 text-xs text-slate-400">
-                <span className="flex items-center gap-1">Markdown <ChevronDownIcon className="h-3.5 w-3.5" /></span>
+                <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-1">Markdown <ChevronDownIcon className="h-3.5 w-3.5" /></span>
+                  <button type="button" onClick={() => setFocusMode((v) => !v)} aria-label={focusMode ? '退出专注模式' : '专注模式'}
+                    className="flex items-center gap-1 rounded px-1.5 py-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+                    {focusMode ? <MinimizeIcon className="h-3.5 w-3.5" /> : <MaximizeIcon className="h-3.5 w-3.5" />}
+                    {focusMode ? '退出专注' : '专注'}
+                  </button>
+                </span>
                 <span className="flex items-center gap-2">
                   {uploading && <span className="flex items-center gap-1 text-primary-500"><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" /> 上传中…</span>}
                   <span>{wordCount} 字</span>
