@@ -159,6 +159,29 @@ export default function Layout({ title, children }: { title?: string; children: 
   const siteName = site.site_name || 'InfoSphere'
   const year = new Date().getFullYear()
   const [showReleaseModal, setShowReleaseModal] = useState(false)
+  const [release, setRelease] = useState<{ loading: boolean; body: string; url: string } | null>(null)
+
+  // 打开版本弹窗时按当前版本号拉取 GitHub 对应 release 的发布说明（先试 v<版本> 再试 <版本>）。
+  useEffect(() => {
+    if (!showReleaseModal || !site.version || release) return
+    const v = site.version
+    setRelease({ loading: true, body: '', url: '' })
+    const base = 'https://api.github.com/repos/devlive-community/infosphere/releases/tags/'
+    ;(async () => {
+      for (const tag of [`v${v}`, v]) {
+        try {
+          const res = await fetch(base + encodeURIComponent(tag), { headers: { Accept: 'application/vnd.github+json' } })
+          if (res.ok) {
+            const data = await res.json()
+            setRelease({ loading: false, body: (data.body || '').trim(), url: data.html_url || '' })
+            return
+          }
+        } catch { /* 网络/CSP 失败时回退到静态文案 */ }
+      }
+      setRelease({ loading: false, body: '', url: '' })
+    })()
+  }, [showReleaseModal, site.version, release])
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip">
       <Head>
@@ -241,10 +264,16 @@ export default function Layout({ title, children }: { title?: string; children: 
           </div>
           <div className="bg-slate-50 px-4 py-3" style={{ borderRadius: 'var(--radius)' }}>
             <p className="mb-2 text-sm font-medium text-slate-700">发布日志</p>
-            <p className="text-sm text-slate-500">暂无详细发布日志。</p>
+            {release?.loading ? (
+              <p className="text-sm text-slate-400">正在加载发布日志…</p>
+            ) : release?.body ? (
+              <div className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{release.body}</div>
+            ) : (
+              <p className="text-sm text-slate-500">暂无该版本的详细发布日志，可点击下方查看完整发布日志。</p>
+            )}
           </div>
           <a
-            href="https://github.com/devlive-community/infosphere/releases"
+            href={release?.url || 'https://github.com/devlive-community/infosphere/releases'}
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full border border-slate-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
