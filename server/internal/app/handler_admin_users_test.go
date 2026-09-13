@@ -197,3 +197,65 @@ func TestAdminUsers(t *testing.T) {
 		t.Fatalf("删除后应剩 3 个用户: %v", list["data"].(map[string]any)["total"])
 	}
 }
+
+// TestAdminDeleteUserWithRelatedData 覆盖：用户存在关联数据（如第三方绑定、阅读进度）时仍能成功删除（不因外键失败）。
+func TestAdminDeleteUserWithRelatedData(t *testing.T) {
+	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("加载配置失败: %v", err)
+	}
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatalf("创建应用失败: %v", err)
+	}
+	server := httptest.NewServer(a.Router())
+	defer server.Close()
+	client := &http.Client{Timeout: 10e9}
+	req := func(method, path string, body any, token string) (int, map[string]any) {
+		t.Helper()
+		var raw []byte
+		if body != nil {
+			raw, _ = json.Marshal(body)
+		}
+		r, _ := http.NewRequest(method, server.URL+path, bytes.NewReader(raw))
+		r.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			r.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := client.Do(r)
+		if err != nil {
+			t.Fatalf("%s %s: %v", method, path, err)
+		}
+		defer resp.Body.Close()
+		p := map[string]any{}
+		_ = json.NewDecoder(resp.Body).Decode(&p)
+		return resp.StatusCode, p
+	}
+
+	_, installed := req(http.MethodPost, "/api/v1/setup/install", map[string]any{
+		"database": map[string]any{"type": "sqlite"},
+		"site":     map[string]any{"name": "删除测试"},
+		"admin":    map[string]any{"username": "admin", "email": "admin@test.local", "password": "secret123"},
+	}, "")
+	adminToken := installed["data"].(map[string]any)["token"].(string)
+	_, reg := req(http.MethodPost, "/api/v1/auth/register", map[string]any{
+		"username": "victim", "email": "victim@test.local", "password": "secret123",
+	}, "")
+	uidVal := uint(reg["data"].(map[string]any)["user"].(map[string]any)["id"].(float64))
+
+	// 关联数据：第三方绑定（外键来源）+ 阅读进度
+	a.DB.Exec("INSERT INTO user_authentications (user_id, provider, provider_id) VALUES (?,?,?)", uidVal, "github", "gh-123")
+	a.DB.Exec("INSERT INTO reading_progresses (user_id, book_id, doc_id) VALUES (?,?,?)", uidVal, 1, 1)
+
+	status, resp := req(http.MethodDelete, "/api/v1/admin/users/"+fmtUID(uint64(uidVal)), nil, adminToken)
+	if status != http.StatusOK {
+		t.Fatalf("有关联数据的用户应能删除，实际 %d %v", status, resp)
+	}
+	var authCount, userCount int64
+	a.DB.Table("user_authentications").Where("user_id = ?", uidVal).Count(&authCount)
+	a.DB.Table("users").Where("id = ?", uidVal).Count(&userCount)
+	if authCount != 0 || userCount != 0 {
+		t.Fatalf("删除后用户与其绑定应清空，authCount=%d userCount=%d", authCount, userCount)
+	}
+}

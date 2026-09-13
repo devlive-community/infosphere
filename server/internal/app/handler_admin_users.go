@@ -7,6 +7,7 @@ import (
 	"infosphere/server/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // adminUserSorts 用户排序白名单：sort 值 → ORDER BY 子句。
@@ -154,8 +155,25 @@ func (a *App) AdminDeleteUser(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "该用户仍拥有书籍，请先删除其书籍或改为停用账户")
 		return
 	}
-	if err := a.DB.Delete(u).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "删除失败")
+	// 先清理该用户的关联数据，再删用户：既避免外键约束（如 user_authentications）导致删除失败，
+	// 也确保不残留孤立的个人数据。用户已无自有书籍，故不涉及书籍/章节本身。
+	if err := a.DB.Transaction(func(tx *gorm.DB) error {
+		related := []any{
+			&models.UserAuthentication{}, &models.Notification{}, &models.BookCollaborator{},
+			&models.PasswordResetToken{}, &models.LoginChallenge{}, &models.TwoFactorStepUp{},
+			&models.UserNotificationPref{}, &models.TwoFactorBackupCode{}, &models.EmailVerificationToken{},
+			&models.Comment{}, &models.Reaction{}, &models.ReadingProgress{}, &models.ReadChapter{},
+			&models.ReadingAnnotation{}, &models.UserExportSetting{}, &models.UserReadingGoal{},
+			&models.ReadingDailyTime{}, &models.UserThemeSetting{},
+		}
+		for _, m := range related {
+			if err := tx.Unscoped().Where("user_id = ?", u.ID).Delete(m).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Delete(u).Error
+	}); err != nil {
+		fail(c, http.StatusInternalServerError, "删除失败: "+err.Error())
 		return
 	}
 	a.recordAudit(c, "user.deleted", "user", auditID(u.ID), u.Username, changedFields("account_deleted"))
