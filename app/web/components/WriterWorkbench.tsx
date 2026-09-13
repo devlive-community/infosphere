@@ -66,6 +66,13 @@ export default function Writer({ user }: WriterProps) {
   const [creatingUnder, setCreatingUnder] = useState<number | null>(null) // 新建期间保持高亮的父章节
   const [preview, setPreview] = useState(false)
   const [splitPreview, setSplitPreview] = useState(false)
+  // 查找替换
+  const [findOpen, setFindOpen] = useState(false)
+  const [findText, setFindText] = useState('')
+  const [replaceText, setReplaceText] = useState('')
+  const [caseSensitive, setCaseSensitive] = useState(false)
+  const [activeMatch, setActiveMatch] = useState(0)
+  const findInputRef = useRef<HTMLInputElement>(null)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [message, setMessage] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -114,6 +121,22 @@ export default function Writer({ user }: WriterProps) {
     }
     return items
   }, [content])
+
+  // 查找命中的起始偏移列表（纯子串匹配，可选区分大小写）。
+  const matches = useMemo(() => {
+    if (!findText) return []
+    const hay = caseSensitive ? content : content.toLowerCase()
+    const needle = caseSensitive ? findText : findText.toLowerCase()
+    const out: number[] = []
+    let i = hay.indexOf(needle)
+    while (i !== -1) {
+      out.push(i)
+      i = hay.indexOf(needle, i + Math.max(1, needle.length))
+    }
+    return out
+  }, [content, findText, caseSensitive])
+
+  useEffect(() => { if (findOpen) findInputRef.current?.focus() }, [findOpen])
   const previewRef = useRef<HTMLDivElement>(null)
   // 预览内容防抖：输入时避免每键全量重渲染 Markdown
   const [previewHtml, setPreviewHtml] = useState('')
@@ -539,17 +562,56 @@ export default function Writer({ user }: WriterProps) {
     return out
   }
 
-  // jumpToHeading 将编辑区光标定位到某标题行并按行比例滚动到该处（分栏时预览随 onScroll 同步）。
-  function jumpToHeading(offset: number) {
+  // selectRange 选中编辑区某区间并按行比例滚动到该处（分栏时预览随之同步）。
+  function selectRange(start: number, end: number) {
     const el = textareaRef.current
     if (!el) return
-    const linesBefore = content.slice(0, offset).split('\n').length - 1
-    const totalLines = content.split('\n').length
     el.focus()
-    el.setSelectionRange(offset, offset)
+    el.setSelectionRange(start, end)
+    const linesBefore = content.slice(0, start).split('\n').length - 1
+    const totalLines = content.split('\n').length
     const ratio = totalLines > 1 ? linesBefore / totalLines : 0
     el.scrollTop = ratio * (el.scrollHeight - el.clientHeight)
     syncPreviewScroll()
+  }
+
+  function jumpToHeading(offset: number) {
+    selectRange(offset, offset)
+  }
+
+  function selectMatch(idx: number) {
+    if (matches.length === 0) return
+    const i = ((idx % matches.length) + matches.length) % matches.length
+    setActiveMatch(i)
+    selectRange(matches[i], matches[i] + findText.length)
+  }
+  function findNext() { selectMatch(activeMatch + 1) }
+  function findPrev() { selectMatch(activeMatch - 1) }
+
+  function replaceCurrent() {
+    if (matches.length === 0) return
+    const i = Math.min(activeMatch, matches.length - 1)
+    const off = matches[i]
+    setContent(content.slice(0, off) + replaceText + content.slice(off + findText.length))
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (el) { const pos = off + replaceText.length; el.focus(); el.setSelectionRange(pos, pos) }
+    })
+  }
+
+  function replaceAll() {
+    if (!findText || matches.length === 0) return
+    const next = caseSensitive
+      ? content.split(findText).join(replaceText)
+      : content.replace(new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), () => replaceText)
+    setContent(next)
+    setActiveMatch(0)
+    showToast({ message: `已替换 ${matches.length} 处`, tone: 'success' })
+  }
+
+  function closeFind() {
+    setFindOpen(false)
+    requestAnimationFrame(() => textareaRef.current?.focus())
   }
 
   // syncPreviewScroll 分栏模式下按比例把编辑区滚动同步到预览区。
@@ -587,6 +649,13 @@ export default function Writer({ user }: WriterProps) {
       if (k === 'b') { e.preventDefault(); wrapSelection('**'); return }
       if (k === 'i') { e.preventDefault(); wrapSelection('*'); return }
       if (k === 'k') { e.preventDefault(); void insertLink(); return }
+      if (k === 'f') {
+        e.preventDefault()
+        const sel = el.value.slice(el.selectionStart, el.selectionEnd)
+        if (sel && !sel.includes('\n')) setFindText(sel)
+        setFindOpen(true)
+        return
+      }
       return
     }
     const value = el.value
@@ -862,10 +931,44 @@ export default function Writer({ user }: WriterProps) {
                   <ToolbarButton title="任务列表" onClick={() => insertAtLineStart('- [ ] ')}><CheckSquareIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="表格" onClick={insertTable}><TableIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
+                  <ToolbarButton title="查找替换 (Ctrl/⌘+F)" onClick={() => setFindOpen((v) => !v)}><SearchIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarDivider />
                   <ToolbarButton title="上传图片" onClick={() => fileInputRef.current?.click()}><UploadIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="图片链接" onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
                   <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
                     onChange={(e) => { if (e.target.files?.length) void uploadImages(e.target.files); e.target.value = '' }} />
+                </div>
+              )}
+
+              {findOpen && !preview && (
+                <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                  <input ref={findInputRef} value={findText} onChange={(e) => setFindText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? findPrev() : findNext() }
+                      else if (e.key === 'Escape') { e.preventDefault(); closeFind() }
+                    }}
+                    placeholder="查找" aria-label="查找"
+                    className="h-8 w-36 rounded-md border border-slate-200 bg-white px-2 focus:outline-none focus:ring-1 focus:ring-primary-400" />
+                  <span className="w-14 shrink-0 text-center text-xs tabular-nums text-slate-400">
+                    {matches.length ? `${Math.min(activeMatch + 1, matches.length)}/${matches.length}` : '无结果'}
+                  </span>
+                  <FindBtn onClick={findPrev} disabled={matches.length === 0}>上一个</FindBtn>
+                  <FindBtn onClick={findNext} disabled={matches.length === 0}>下一个</FindBtn>
+                  <button type="button" onClick={() => setCaseSensitive((v) => !v)} aria-pressed={caseSensitive}
+                    className={`h-8 rounded-md border px-2 text-xs transition-colors ${caseSensitive ? 'border-primary-500 bg-primary-50 text-primary-600' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100'}`}>
+                    Aa
+                  </button>
+                  <span className="mx-1 h-5 w-px bg-slate-200" />
+                  <input value={replaceText} onChange={(e) => setReplaceText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); closeFind() } }}
+                    placeholder="替换为" aria-label="替换为"
+                    className="h-8 w-36 rounded-md border border-slate-200 bg-white px-2 focus:outline-none focus:ring-1 focus:ring-primary-400" />
+                  <FindBtn onClick={replaceCurrent} disabled={matches.length === 0}>替换</FindBtn>
+                  <FindBtn onClick={replaceAll} disabled={matches.length === 0}>全部替换</FindBtn>
+                  <button type="button" onClick={closeFind} aria-label="关闭查找"
+                    className="ml-auto flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                    <CloseIcon className="h-4 w-4" />
+                  </button>
                 </div>
               )}
 
@@ -1343,6 +1446,16 @@ function ToolbarButton({ title, onClick, children }: { title: string; onClick: (
 
 function ToolbarDivider() {
   return <span className="mx-1 h-5 w-px bg-slate-200" />
+}
+
+// FindBtn 查找替换栏里的紧凑按钮
+function FindBtn({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
+      {children}
+    </button>
+  )
 }
 
 // H ▾ 标题级别下拉
