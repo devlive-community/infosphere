@@ -231,3 +231,8 @@ export const CheckSquareIcon = svg(<>
   <path d="M9 11l3 3L22 4" />
   <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
 </>)
+
+export const ColumnsIcon = svg(<>
+  <rect x="3" y="4" width="18" height="16" rx="2" />
+  <line x1="12" y1="4" x2="12" y2="20" />
+</>)

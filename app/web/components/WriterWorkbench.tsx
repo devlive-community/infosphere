@@ -10,7 +10,7 @@ import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
   ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
-  TableIcon, StrikethroughIcon, CodeBlockIcon, CheckSquareIcon,
+  TableIcon, StrikethroughIcon, CodeBlockIcon, CheckSquareIcon, ColumnsIcon,
 } from '@/components/icons'
 import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, DocumentStatus, PageResult } from '@/lib/types'
 
@@ -65,6 +65,7 @@ export default function Writer({ user }: WriterProps) {
   const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'inside' | 'after' } | null>(null)
   const [creatingUnder, setCreatingUnder] = useState<number | null>(null) // 新建期间保持高亮的父章节
   const [preview, setPreview] = useState(false)
+  const [splitPreview, setSplitPreview] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [message, setMessage] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -100,13 +101,13 @@ export default function Writer({ user }: WriterProps) {
   // 预览内容防抖：输入时避免每键全量重渲染 Markdown
   const [previewHtml, setPreviewHtml] = useState('')
   useEffect(() => {
-    if (!preview) return
+    if (!preview && !splitPreview) return
     const timer = setTimeout(() => {
       setPreviewHtml(renderMarkdown(content))
       if (previewRef.current) bindMarkdownInteractivity(previewRef.current)
     }, 300)
     return () => clearTimeout(timer)
-  }, [content, preview])
+  }, [content, preview, splitPreview])
 
   const loadTree = useCallback(async (b: Book) => {
     setTree((await api<Document[]>(`/books/${b.id}/documents`)) || [])
@@ -521,6 +522,16 @@ export default function Writer({ user }: WriterProps) {
     return out
   }
 
+  // syncPreviewScroll 分栏模式下按比例把编辑区滚动同步到预览区。
+  function syncPreviewScroll() {
+    if (!splitPreview) return
+    const el = textareaRef.current, pv = previewRef.current
+    if (!el || !pv) return
+    const denom = el.scrollHeight - el.clientHeight
+    const ratio = denom > 0 ? el.scrollTop / denom : 0
+    pv.scrollTop = ratio * (pv.scrollHeight - pv.clientHeight)
+  }
+
   function onEditorPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     const files = collectImageFiles(e.clipboardData)
     if (files.length > 0) {
@@ -652,7 +663,10 @@ export default function Writer({ user }: WriterProps) {
           <Button variant="ghost" onClick={() => setHistoryOpen(true)} disabled={!current}>
             <HistoryIcon className="h-4 w-4" /> 历史
           </Button>
-          <Button variant="ghost" onClick={() => setPreview(!preview)}>
+          <Button variant="ghost" className="hidden md:inline-flex" onClick={() => { setSplitPreview((v) => !v); setPreview(false) }}>
+            <ColumnsIcon className="h-4 w-4" /> {splitPreview ? '退出分栏' : '分栏'}
+          </Button>
+          <Button variant="ghost" onClick={() => { setPreview((p) => !p); setSplitPreview(false) }}>
             <EyeIcon className="h-4 w-4" /> {preview ? '编辑' : '预览'}
           </Button>
           <Button variant="outline" onClick={() => saveRef.current()} disabled={saveState === 'saving'}>
@@ -824,11 +838,25 @@ export default function Writer({ user }: WriterProps) {
                 </div>
               )}
 
-              {/* 正文：铺满剩余高度，内部滚动 */}
+              {/* 正文：铺满剩余高度，内部滚动。三态：全屏预览 / 分栏（编辑+预览）/ 纯编辑 */}
               {preview ? (
                 <div ref={previewRef}
                   className="markdown-body min-h-0 flex-1 overflow-y-auto px-6 py-5"
                   dangerouslySetInnerHTML={{ __html: previewHtml }} />
+              ) : splitPreview ? (
+                <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+                  <textarea ref={textareaRef}
+                    className="min-h-0 w-full flex-1 resize-none border-b border-slate-200 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 md:w-1/2 md:border-b-0 md:border-r"
+                    placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片）" value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    onKeyDown={onEditorKeyDown}
+                    onPaste={onEditorPaste}
+                    onDrop={onEditorDrop}
+                    onScroll={syncPreviewScroll} />
+                  <div ref={previewRef}
+                    className="markdown-body min-h-0 w-full flex-1 overflow-y-auto px-6 py-5 md:w-1/2"
+                    dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                </div>
               ) : (
                 <textarea ref={textareaRef}
                   className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
