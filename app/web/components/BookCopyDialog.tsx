@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { Button, Input, Modal, useFeedback } from '@/components/ui'
@@ -25,7 +25,8 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
   const [items, setItems] = useState<FlatDoc[]>([])
   const [total, setTotal] = useState(0)
   const [busy, setBusy] = useState(false)
-  const dragIdx = useRef<number | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null) // 落点位置：在该索引行之前插入；等于长度表示末尾
 
   useEffect(() => {
     if (!open) return
@@ -44,16 +45,36 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
     }).catch(() => { setItems([]); setTotal(0) })
   }, [open, book.id, book.title, tree])
 
-  function onDrop(i: number) {
-    const from = dragIdx.current
-    dragIdx.current = null
-    if (from === null || from === i) return
-    setItems((prev) => {
-      const next = [...prev]
-      const [moved] = next.splice(from, 1)
-      next.splice(i, 0, moved)
-      return next
-    })
+  // subtreeRange 返回从 i 起、其后所有更深层级子节点构成的连续区间 [i, end)。
+  function subtreeRange(list: FlatDoc[], i: number): [number, number] {
+    let end = i + 1
+    while (end < list.length && list[end].level > list[i].level) end++
+    return [i, end]
+  }
+
+  // dragInsideSelf 落点是否落在被拖拽节点自身的子树内（拖父节点整体移动，不能拖进自身）。
+  function dragInsideSelf(to: number): boolean {
+    if (dragIndex === null) return false
+    const [s, e] = subtreeRange(items, dragIndex)
+    return to > s && to < e
+  }
+
+  function endDrag() { setDragIndex(null); setDropIndex(null) }
+
+  function drop() {
+    if (dragIndex === null || dropIndex === null || dragInsideSelf(dropIndex)) { endDrag(); return }
+    const [s, e] = subtreeRange(items, dragIndex)
+    const block = items.slice(s, e)
+    const rest = [...items.slice(0, s), ...items.slice(e)]
+    const insertAt = Math.max(0, Math.min(rest.length, dropIndex <= s ? dropIndex : dropIndex - block.length))
+    rest.splice(insertAt, 0, ...block)
+    setItems(rest)
+    endDrag()
+  }
+
+  function removeSubtree(i: number) {
+    const [s, e] = subtreeRange(items, i)
+    setItems((prev) => [...prev.slice(0, s), ...prev.slice(e)])
   }
 
   async function submit() {
@@ -103,21 +124,32 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
           items.length === 0 ? (
             <p className="rounded-lg border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400">已移除全部章节，请至少保留一章</p>
           ) : (
-            <ul className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
-              {items.map((it, i) => (
-                <li key={it.id} draggable
-                  onDragStart={() => { dragIdx.current = i }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => onDrop(i)}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50">
-                  <GripIcon className="h-4 w-4 shrink-0 cursor-grab text-slate-300" />
-                  <span className="min-w-0 flex-1 truncate text-sm text-slate-700" style={{ paddingLeft: `${it.level * 14}px` }}>{it.title}</span>
-                  <button type="button" onClick={() => setItems((prev) => prev.filter((x) => x.id !== it.id))}
-                    aria-label="移除章节" className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-500">
-                    <CloseIcon className="h-4 w-4" />
-                  </button>
-                </li>
-              ))}
+            <ul className="max-h-72 overflow-y-auto rounded-lg border border-slate-200" onDragOver={(e) => e.preventDefault()} onDrop={drop}>
+              {items.map((it, i) => {
+                const [s, e] = dragIndex !== null ? subtreeRange(items, dragIndex) : [-1, -1]
+                const dragging = dragIndex !== null && i >= s && i < e
+                const showBar = dropIndex === i && !dragInsideSelf(i)
+                return (
+                  <li key={it.id} draggable
+                    onDragStart={() => setDragIndex(i)}
+                    onDragEnd={endDrag}
+                    onDragOver={(ev) => { ev.preventDefault(); if (dragIndex !== null) setDropIndex(i) }}
+                    className={`relative flex items-center gap-2 border-b border-slate-100 px-3 py-2 hover:bg-slate-50 ${dragging ? 'opacity-40' : ''}`}>
+                    {showBar && <span className="pointer-events-none absolute inset-x-0 -top-px h-0.5 bg-primary-500" />}
+                    <GripIcon className="h-4 w-4 shrink-0 cursor-grab text-slate-300" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-700" style={{ paddingLeft: `${it.level * 14}px` }}>{it.title}</span>
+                    <button type="button" onClick={() => removeSubtree(i)}
+                      aria-label="移除章节（含子章节）" className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-500">
+                      <CloseIcon className="h-4 w-4" />
+                    </button>
+                  </li>
+                )
+              })}
+              {/* 末尾落点区：拖到列表底部时插到最后 */}
+              <li onDragOver={(ev) => { ev.preventDefault(); if (dragIndex !== null) setDropIndex(items.length) }}
+                className="relative h-3">
+                {dropIndex === items.length && !dragInsideSelf(items.length) && <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-primary-500" />}
+              </li>
             </ul>
           )
         )}
