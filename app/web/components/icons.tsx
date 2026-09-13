@@ -206,3 +206,28 @@ export const LogOutIcon = svg(<>
   <polyline points="16 17 21 12 16 7" />
   <line x1="21" y1="12" x2="9" y2="12" />
 </>)
+
+export const TableIcon = svg(<>
+  <rect x="3" y="4" width="18" height="16" rx="1" />
+  <line x1="3" y1="10" x2="21" y2="10" />
+  <line x1="3" y1="15" x2="21" y2="15" />
+  <line x1="9" y1="4" x2="9" y2="20" />
+  <line x1="15" y1="4" x2="15" y2="20" />
+</>)
+
+export const StrikethroughIcon = svg(<>
+  <path d="M16 4H9a3 3 0 0 0-2.83 4" />
+  <path d="M14 12a4 4 0 0 1 0 8H8" />
+  <line x1="4" y1="12" x2="20" y2="12" />
+</>)
+
+export const CodeBlockIcon = svg(<>
+  <rect x="3" y="4" width="18" height="16" rx="2" />
+  <path d="m9 9-2 3 2 3" />
+  <path d="m15 9 2 3-2 3" />
+</>)
+
+export const CheckSquareIcon = svg(<>
+  <path d="M9 11l3 3L22 4" />
+  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+</>)

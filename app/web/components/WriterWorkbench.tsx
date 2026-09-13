@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, ReactNode } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { api, formatDate } from '@/lib/api'
+import { api, formatDate, API_BASE, getToken } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown, bindMarkdownInteractivity } from '@/lib/markdown'
 import Seo from '@/components/Seo'
@@ -10,6 +10,7 @@ import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
   ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
+  TableIcon, StrikethroughIcon, CodeBlockIcon, CheckSquareIcon,
 } from '@/components/icons'
 import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, DocumentStatus, PageResult } from '@/lib/types'
 
@@ -87,6 +88,8 @@ export default function Writer({ user }: WriterProps) {
   const [tagInput, setTagInput] = useState('')
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
   const snapshot = useRef('') // 已保存/已加载表单的快照，用于脏状态判断
   const loadedDocId = useRef<number | null>(null) // 当前表单对应的文档，防止切换章节时误触发自动保存
   const saveRef = useRef<(opts?: { status?: DocumentStatus }) => Promise<void>>(async () => {})
@@ -436,6 +439,141 @@ export default function Writer({ user }: WriterProps) {
     if (url) wrapSelection('![', `](${url})`)
   }
 
+  // insertText 在光标处替换选区插入文本，并把光标移到插入内容之后。
+  function insertText(text: string) {
+    const el = textareaRef.current
+    if (!el) return
+    const s = el.selectionStart, e = el.selectionEnd
+    const next = el.value.slice(0, s) + text + el.value.slice(e)
+    setContent(next)
+    const pos = s + text.length
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(pos, pos) })
+  }
+
+  function insertTable() {
+    insertText('\n| 列 1 | 列 2 |\n| --- | --- |\n| 单元格 | 单元格 |\n')
+  }
+
+  function insertCodeBlock() {
+    const el = textareaRef.current
+    if (!el) return
+    const s = el.selectionStart, e = el.selectionEnd
+    const selected = el.value.slice(s, e)
+    const block = '```\n' + (selected || '') + '\n```\n'
+    const next = el.value.slice(0, s) + block + el.value.slice(e)
+    setContent(next)
+    const pos = s + 4 // 光标落在 ``` 之后的空行（语言标识可选补写）
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(pos, pos) })
+  }
+
+  // 上传图片文件并在光标处插入 Markdown；先插占位符，成功后替换、失败后移除。
+  async function uploadAndInsertImage(file: File) {
+    if (!file.type.startsWith('image/')) {
+      showToast({ title: '仅支持图片', message: '请选择图片文件', tone: 'error' })
+      return
+    }
+    const token = `uploading-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const placeholder = `![上传中…](${token})`
+    insertText(placeholder)
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`${API_BASE}/api/v1/upload`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
+      const alt = file.name.replace(/\.[^.]+$/, '') || '图片'
+      setContent((prev) => prev.replace(placeholder, `![${alt}](${payload.data.url})`))
+    } catch (err) {
+      setContent((prev) => prev.replace(placeholder, ''))
+      showToast({ title: '图片上传失败', message: (err as Error).message, tone: 'error' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function uploadImages(files: FileList | File[]) {
+    const images = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    for (const file of images) {
+      // 顺序上传，保证插入顺序与占位符替换稳定
+      // eslint-disable-next-line no-await-in-loop
+      await uploadAndInsertImage(file)
+    }
+  }
+
+  function onEditorPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.clipboardData?.files || []).filter((f) => f.type.startsWith('image/'))
+    if (files.length > 0) {
+      e.preventDefault()
+      void uploadImages(files)
+    }
+  }
+
+  function onEditorDrop(e: React.DragEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.dataTransfer?.files || []).filter((f) => f.type.startsWith('image/'))
+    if (files.length > 0) {
+      e.preventDefault()
+      void uploadImages(files)
+    }
+  }
+
+  // 编辑器按键增强：加粗/斜体/链接快捷键、列表/引用回车续行、Tab 缩进列表。
+  function onEditorKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    const el = textareaRef.current
+    if (!el) return
+    if (e.metaKey || e.ctrlKey) {
+      const k = e.key.toLowerCase()
+      if (k === 'b') { e.preventDefault(); wrapSelection('**'); return }
+      if (k === 'i') { e.preventDefault(); wrapSelection('*'); return }
+      if (k === 'k') { e.preventDefault(); void insertLink(); return }
+      return
+    }
+    const value = el.value
+    const lineStart = value.lastIndexOf('\n', el.selectionStart - 1) + 1
+    const lineEnd = value.indexOf('\n', el.selectionStart)
+    const line = value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd)
+    const listMatch = line.match(/^(\s*)([-*+]|\d+\.|- \[[ x]\]|>)(\s+)(.*)$/)
+
+    if (e.key === 'Enter' && !e.shiftKey && listMatch && el.selectionStart === el.selectionEnd) {
+      const [, indent, marker, gap, rest] = listMatch
+      // 空列表项按回车：退出列表（清空该行）
+      if (rest.trim() === '') {
+        e.preventDefault()
+        const next = value.slice(0, lineStart) + value.slice(lineEnd === -1 ? value.length : lineEnd)
+        setContent(next)
+        requestAnimationFrame(() => { el.focus(); el.setSelectionRange(lineStart, lineStart) })
+        return
+      }
+      // 续行：有序列表自增序号，任务列表新建未勾选项
+      let nextMarker = marker
+      const ordered = /^\d+\.$/.test(marker)
+      if (ordered) nextMarker = `${parseInt(marker, 10) + 1}.`
+      else if (/^- \[[ x]\]$/.test(marker)) nextMarker = '- [ ]'
+      const insert = `\n${indent}${nextMarker}${gap}`
+      e.preventDefault()
+      insertText(insert)
+      return
+    }
+
+    if (e.key === 'Tab' && listMatch) {
+      e.preventDefault()
+      if (e.shiftKey) {
+        // 退格缩进：去掉行首两个空格
+        if (line.startsWith('  ')) {
+          const next = value.slice(0, lineStart) + line.slice(2) + value.slice(lineEnd === -1 ? value.length : lineEnd)
+          setContent(next)
+          const pos = Math.max(lineStart, el.selectionStart - 2)
+          requestAnimationFrame(() => { el.focus(); el.setSelectionRange(pos, pos) })
+        }
+      } else {
+        const next = value.slice(0, lineStart) + '  ' + value.slice(lineStart)
+        setContent(next)
+        const pos = el.selectionStart + 2
+        requestAnimationFrame(() => { el.focus(); el.setSelectionRange(pos, pos) })
+      }
+    }
+  }
+
   async function navigateAway(href: string) {
     if (!await confirmDiscard()) return
     await router.push(href)
@@ -645,17 +783,24 @@ export default function Writer({ user }: WriterProps) {
                 <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-slate-200 px-2 py-1.5">
                   <ToolbarSelect onPick={(prefix) => insertAtLineStart(prefix)} />
                   <ToolbarDivider />
-                  <ToolbarButton title="加粗" onClick={() => wrapSelection('**')}><span className="font-bold">B</span></ToolbarButton>
-                  <ToolbarButton title="斜体" onClick={() => wrapSelection('*')}><span className="italic">I</span></ToolbarButton>
+                  <ToolbarButton title="加粗 (Ctrl/⌘+B)" onClick={() => wrapSelection('**')}><span className="font-bold">B</span></ToolbarButton>
+                  <ToolbarButton title="斜体 (Ctrl/⌘+I)" onClick={() => wrapSelection('*')}><span className="italic">I</span></ToolbarButton>
+                  <ToolbarButton title="删除线" onClick={() => wrapSelection('~~')}><StrikethroughIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="链接" onClick={insertLink}><LinkIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="链接 (Ctrl/⌘+K)" onClick={insertLink}><LinkIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="引用" onClick={() => insertAtLineStart('> ')}><QuoteIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="行内代码" onClick={() => wrapSelection('`')}><CodeIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="代码块" onClick={insertCodeBlock}><CodeBlockIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
                   <ToolbarButton title="无序列表" onClick={() => insertAtLineStart('- ')}><ListBulletIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="有序列表" onClick={() => insertAtLineStart('1. ')}><ListOrderedIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="任务列表" onClick={() => insertAtLineStart('- [ ] ')}><CheckSquareIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="表格" onClick={insertTable}><TableIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="图片" onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="上传图片" onClick={() => fileInputRef.current?.click()}><UploadIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title="图片链接" onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
+                  <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
+                    onChange={(e) => { if (e.target.files?.length) void uploadImages(e.target.files); e.target.value = '' }} />
                 </div>
               )}
 
@@ -667,12 +812,19 @@ export default function Writer({ user }: WriterProps) {
               ) : (
                 <textarea ref={textareaRef}
                   className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
-                  placeholder="使用 Markdown 编写章节内容…" value={content} onChange={(e) => setContent(e.target.value)} />
+                  placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片）" value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  onKeyDown={onEditorKeyDown}
+                  onPaste={onEditorPaste}
+                  onDrop={onEditorDrop} />
               )}
 
               <div className="flex shrink-0 items-center justify-between border-t border-slate-200 px-4 py-2.5 text-xs text-slate-400">
                 <span className="flex items-center gap-1">Markdown <ChevronDownIcon className="h-3.5 w-3.5" /></span>
-                <span>{wordCount} 字</span>
+                <span className="flex items-center gap-2">
+                  {uploading && <span className="flex items-center gap-1 text-primary-500"><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" /> 上传中…</span>}
+                  <span>{wordCount} 字</span>
+                </span>
                 {current ? <span>更新于 {formatDate(current.updated_at).slice(11)}</span> : <span />}
               </div>
             </div>
