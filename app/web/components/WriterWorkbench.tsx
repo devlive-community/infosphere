@@ -43,6 +43,50 @@ interface WriterProps {
   user: import('@/lib/types').User | null
 }
 
+// caretCoordinates 用镜像 div 复刻 textarea 样式，测量指定字符位置的视口坐标（斜杠菜单定位用）。
+function caretCoordinates(el: HTMLTextAreaElement, pos: number): { top: number; left: number; lineHeight: number } {
+  const cs = getComputedStyle(el)
+  const div = document.createElement('div')
+  const props = [
+    'boxSizing', 'width', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight',
+    'textTransform', 'wordSpacing', 'textIndent',
+  ] as const
+  props.forEach((p) => { (div.style as unknown as Record<string, string>)[p] = (cs as unknown as Record<string, string>)[p] })
+  div.style.position = 'absolute'
+  div.style.visibility = 'hidden'
+  div.style.whiteSpace = 'pre-wrap'
+  div.style.wordWrap = 'break-word'
+  div.style.overflow = 'hidden'
+  div.textContent = el.value.slice(0, pos)
+  const span = document.createElement('span')
+  span.textContent = el.value.slice(pos) || '.'
+  div.appendChild(span)
+  document.body.appendChild(div)
+  const rect = el.getBoundingClientRect()
+  const lineHeight = parseInt(cs.lineHeight, 10) || (parseInt(cs.fontSize, 10) || 14) * 1.5
+  const top = rect.top + span.offsetTop - el.scrollTop
+  const left = rect.left + span.offsetLeft - el.scrollLeft
+  document.body.removeChild(div)
+  return { top, left, lineHeight }
+}
+
+// 斜杠命令元数据（label 展示，kw 供拉丁关键词过滤）；动作在 selectSlash 里按 key 分派。
+const SLASH_COMMANDS: { key: string; label: string; kw: string }[] = [
+  { key: 'h2', label: '标题 2', kw: 'h2 heading title' },
+  { key: 'h3', label: '标题 3', kw: 'h3 heading title' },
+  { key: 'ul', label: '无序列表', kw: 'ul list bullet' },
+  { key: 'ol', label: '有序列表', kw: 'ol list ordered number' },
+  { key: 'task', label: '任务列表', kw: 'task todo check' },
+  { key: 'quote', label: '引用', kw: 'quote blockquote' },
+  { key: 'code', label: '代码块', kw: 'code block pre' },
+  { key: 'table', label: '表格', kw: 'table grid' },
+  { key: 'hr', label: '分隔线', kw: 'hr rule divider' },
+  { key: 'image', label: '上传图片', kw: 'image img upload photo' },
+  { key: 'link', label: '链接', kw: 'link url href' },
+]
+
 // Writer：书籍与章节编辑器（三栏工作台布局）
 export default function Writer({ user }: WriterProps) {
   const { confirmAction, requestInput, showToast } = useFeedback()
@@ -68,6 +112,8 @@ export default function Writer({ user }: WriterProps) {
   const [preview, setPreview] = useState(false)
   const [splitPreview, setSplitPreview] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
+  // 斜杠命令菜单
+  const [slash, setSlash] = useState({ open: false, start: 0, query: '', top: 0, left: 0, index: 0 })
   // 查找替换
   const [findOpen, setFindOpen] = useState(false)
   const [findText, setFindText] = useState('')
@@ -139,6 +185,12 @@ export default function Writer({ user }: WriterProps) {
   }, [content, findText, caseSensitive])
 
   useEffect(() => { if (findOpen) findInputRef.current?.focus() }, [findOpen])
+
+  const filteredSlash = useMemo(() => {
+    const q = slash.query.toLowerCase()
+    if (!q) return SLASH_COMMANDS
+    return SLASH_COMMANDS.filter((c) => c.label.includes(slash.query) || c.kw.includes(q) || c.key.includes(q))
+  }, [slash.query])
   const previewRef = useRef<HTMLDivElement>(null)
   // 预览内容防抖：输入时避免每键全量重渲染 Markdown
   const [previewHtml, setPreviewHtml] = useState('')
@@ -616,6 +668,58 @@ export default function Writer({ user }: WriterProps) {
     requestAnimationFrame(() => textareaRef.current?.focus())
   }
 
+  // refreshSlash 根据光标处的 "/查询" 上下文开/关斜杠菜单并更新位置（在编辑区 onChange 时调用）。
+  function refreshSlash() {
+    const el = textareaRef.current
+    if (!el || el.selectionStart !== el.selectionEnd) {
+      setSlash((s) => (s.open ? { ...s, open: false } : s))
+      return
+    }
+    const pos = el.selectionStart
+    const value = el.value
+    const lineStart = value.lastIndexOf('\n', pos - 1) + 1
+    const before = value.slice(lineStart, pos)
+    const m = before.match(/(^|\s)\/([^\s/]*)$/) // 行首或空白后的 "/查询"（查询内无空格）
+    if (!m) {
+      setSlash((s) => (s.open ? { ...s, open: false } : s))
+      return
+    }
+    const slashOffset = lineStart + (m.index ?? 0) + m[1].length
+    const c = caretCoordinates(el, slashOffset)
+    setSlash({ open: true, start: slashOffset, query: m[2], top: c.top + c.lineHeight, left: c.left, index: 0 })
+  }
+
+  function closeSlash() {
+    setSlash((s) => (s.open ? { ...s, open: false } : s))
+  }
+
+  // selectSlash 删除已输入的 "/查询" 再执行对应插入动作。
+  function selectSlash(cmd: { key: string }) {
+    const el = textareaRef.current
+    if (!el) return
+    const value = el.value
+    const end = el.selectionStart
+    setContent(value.slice(0, slash.start) + value.slice(end))
+    setSlash((s) => ({ ...s, open: false }))
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(slash.start, slash.start)
+      switch (cmd.key) {
+        case 'h2': insertAtLineStart('## '); break
+        case 'h3': insertAtLineStart('### '); break
+        case 'ul': insertAtLineStart('- '); break
+        case 'ol': insertAtLineStart('1. '); break
+        case 'task': insertAtLineStart('- [ ] '); break
+        case 'quote': insertAtLineStart('> '); break
+        case 'code': insertCodeBlock(); break
+        case 'table': insertTable(); break
+        case 'hr': insertText('---\n'); break
+        case 'image': fileInputRef.current?.click(); break
+        case 'link': void insertLink(); break
+      }
+    })
+  }
+
   // syncPreviewScroll 分栏模式下按比例把编辑区滚动同步到预览区。
   function syncPreviewScroll() {
     if (!splitPreview) return
@@ -646,6 +750,12 @@ export default function Writer({ user }: WriterProps) {
   function onEditorKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     const el = textareaRef.current
     if (!el) return
+    if (slash.open && filteredSlash.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSlash((s) => ({ ...s, index: Math.min(s.index + 1, filteredSlash.length - 1) })); return }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setSlash((s) => ({ ...s, index: Math.max(0, s.index - 1) })); return }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); selectSlash(filteredSlash[Math.min(slash.index, filteredSlash.length - 1)]); return }
+      if (e.key === 'Escape') { e.preventDefault(); closeSlash(); return }
+    }
     if (e.key === 'Escape' && focusMode && !findOpen) { e.preventDefault(); setFocusMode(false); return }
     if (e.metaKey || e.ctrlKey) {
       const k = e.key.toLowerCase()
@@ -986,12 +1096,13 @@ export default function Writer({ user }: WriterProps) {
                 <div className="flex min-h-0 flex-1 flex-col md:flex-row">
                   <textarea ref={textareaRef}
                     className="min-h-0 w-full flex-1 resize-none border-b border-slate-200 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 md:w-1/2 md:border-b-0 md:border-r"
-                    placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片）" value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片，输入 / 唤起命令）" value={content}
+                    onChange={(e) => { setContent(e.target.value); refreshSlash() }}
                     onKeyDown={onEditorKeyDown}
                     onPaste={onEditorPaste}
                     onDrop={onEditorDrop}
-                    onScroll={syncPreviewScroll} />
+                    onScroll={() => { syncPreviewScroll(); closeSlash() }}
+                    onBlur={closeSlash} />
                   <div ref={previewRef}
                     className="markdown-body min-h-0 w-full flex-1 overflow-y-auto px-6 py-5 md:w-1/2"
                     dangerouslySetInnerHTML={{ __html: previewHtml }} />
@@ -999,11 +1110,12 @@ export default function Writer({ user }: WriterProps) {
               ) : (
                 <textarea ref={textareaRef}
                   className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-6 py-5 font-mono text-sm leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
-                  placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片）" value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片，输入 / 唤起命令）" value={content}
+                  onChange={(e) => { setContent(e.target.value); refreshSlash() }}
                   onKeyDown={onEditorKeyDown}
                   onPaste={onEditorPaste}
-                  onDrop={onEditorDrop} />
+                  onDrop={onEditorDrop}
+                  onBlur={closeSlash} />
               )}
 
               <div className="flex shrink-0 items-center justify-between border-t border-slate-200 px-4 py-2.5 text-xs text-slate-400">
@@ -1023,6 +1135,20 @@ export default function Writer({ user }: WriterProps) {
               </div>
             </div>
           </div>
+
+          {/* 斜杠命令菜单：fixed 定位于光标处，不受编辑卡片 overflow-hidden 裁剪 */}
+          {slash.open && filteredSlash.length > 0 && (
+            <div className="fixed z-[60] max-h-72 w-52 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg"
+              style={{ top: slash.top, left: Math.min(slash.left, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 220) }}>
+              {filteredSlash.map((c, i) => (
+                <button key={c.key} type="button"
+                  onMouseDown={(e) => { e.preventDefault(); selectSlash(c) }}
+                  className={`block w-full px-3 py-1.5 text-left ${i === Math.min(slash.index, filteredSlash.length - 1) ? 'bg-primary-50 text-primary-700' : 'text-slate-700 hover:bg-slate-50'}`}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
         </main>
 
         {/* 右栏：章节设置 */}
