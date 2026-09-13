@@ -159,7 +159,7 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
                 查看全部 <ChevronRightIcon className="h-4 w-4" />
               </Link>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {(hot || []).slice(0, 5).map((b, i) => <HotRankCard key={b.id} rank={i + 1} book={b} />)}
             </div>
           </Container>

@@ -75,7 +75,7 @@ export function HotRankCard({ rank, book }: { rank: number; book: Book }) {
   const cover = resolveMediaUrl(book.cover_image)
   return (
     <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
-      className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
+      className="flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
       <span className={`w-6 shrink-0 text-center text-2xl font-bold ${rankColors[rank - 1] || 'text-slate-400'}`}>{rank}</span>
       <div className={`h-16 w-12 shrink-0 overflow-hidden rounded-md ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
         {cover && <img src={cover} alt="" onError={(e) => { e.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" />}
