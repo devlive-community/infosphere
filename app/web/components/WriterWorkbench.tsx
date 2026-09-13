@@ -72,6 +72,9 @@ function caretCoordinates(el: HTMLTextAreaElement, pos: number): { top: number; 
   return { top, left, lineHeight }
 }
 
+// 本地草稿备份的 localStorage 键（按章节 id）。
+const draftKey = (id: number) => `writer:draft:doc:${id}`
+
 // 有选区时按下配对符包裹选中文本（open -> close）。
 const WRAP_PAIRS: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '`': '`', '*': '*', '_': '_', '~': '~', '"': '"', "'": "'",
@@ -121,6 +124,7 @@ export default function Writer({ user }: WriterProps) {
   const [slash, setSlash] = useState({ open: false, start: 0, query: '', top: 0, left: 0, index: 0 })
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [fontSize, setFontSize] = useState(14) // 编辑区字号（px），本地记忆
+  const [draftRecovery, setDraftRecovery] = useState<{ content: string; ts: number } | null>(null)
   // 查找替换
   const [findOpen, setFindOpen] = useState(false)
   const [findText, setFindText] = useState('')
@@ -312,6 +316,7 @@ export default function Writer({ user }: WriterProps) {
       setDocumentLoading(true)
       setCurrent(doc)
       setCreatingUnder(null)
+      setDraftRecovery(null)
       api<Document>(`/documents/${doc.id}`).then((full) => {
         setTitle(full.title)
         setContent(full.content || '')
@@ -322,6 +327,15 @@ export default function Writer({ user }: WriterProps) {
         snapshot.current = JSON.stringify([full.title, full.content || '', full.status, full.parent_id ? String(full.parent_id) : '', full.sort_order, full.allow_comments !== false])
         loadedDocId.current = full.id
         setSaveState('saved')
+        // 本地草稿恢复：若上次离开时有未保存内容且与服务端不同，提示恢复
+        try {
+          const raw = localStorage.getItem(draftKey(full.id))
+          if (raw) {
+            const d = JSON.parse(raw)
+            if (d && typeof d.content === 'string' && d.content !== (full.content || '')) setDraftRecovery({ content: d.content, ts: d.ts })
+            else localStorage.removeItem(draftKey(full.id))
+          }
+        } catch { /* 忽略 */ }
       }).catch((e) => showToast({ title: '章节加载失败', message: (e as Error).message, tone: 'error' }))
         .finally(() => setDocumentLoading(false))
     } else if (!docSlug) {
@@ -347,6 +361,8 @@ export default function Writer({ user }: WriterProps) {
         const updated = await api<Document>(`/documents/${current.id}`, { method: 'PUT', body: payload })
         snapshot.current = JSON.stringify([updated.title, updated.content || '', updated.status, updated.parent_id ? String(updated.parent_id) : '', updated.sort_order, updated.allow_comments !== false])
         loadedDocId.current = updated.id
+        try { localStorage.removeItem(draftKey(updated.id)) } catch { /* 忽略 */ }
+        setDraftRecovery(null)
         setCurrent(updated)
         if (opts?.status) setStatus(opts.status)
         await loadTree(book)
@@ -382,6 +398,21 @@ export default function Writer({ user }: WriterProps) {
     const timer = setTimeout(() => { saveRef.current() }, 1500)
     return () => clearTimeout(timer)
   }, [book, title, content, status, parentId, sortOrder, allowComments, current])
+
+  // 本地草稿备份：脏内容防抖写入 localStorage（服务端自动保存关闭时的兜底），保存后清除。
+  useEffect(() => {
+    const id = current?.id
+    if (!id || loadedDocId.current !== id) return
+    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments])
+    if (key === snapshot.current) {
+      try { localStorage.removeItem(draftKey(id)) } catch { /* 忽略 */ }
+      return
+    }
+    const timer = setTimeout(() => {
+      try { localStorage.setItem(draftKey(id), JSON.stringify({ content, title, ts: Date.now() })) } catch { /* 忽略 */ }
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [title, content, status, parentId, sortOrder, allowComments, current])
 
   // Ctrl/Cmd + S 手动保存
   useEffect(() => {
@@ -1162,6 +1193,14 @@ export default function Writer({ user }: WriterProps) {
             <input
               className="w-full shrink-0 border-0 bg-transparent p-0 text-3xl font-bold text-ink placeholder:text-slate-300 focus:outline-none focus:ring-0"
               placeholder="章节标题" value={title} onChange={(e) => setTitle(e.target.value)} />
+
+            {draftRecovery && (
+              <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+                <span className="flex-1">发现本地未保存的草稿（{formatDate(new Date(draftRecovery.ts).toISOString()).slice(5)}），是否恢复？</span>
+                <Button size="sm" variant="outline" onClick={() => { setContent(draftRecovery.content); setDraftRecovery(null) }}>恢复草稿</Button>
+                <Button size="sm" variant="ghost" onClick={() => { if (current) { try { localStorage.removeItem(draftKey(current.id)) } catch { /* 忽略 */ } } setDraftRecovery(null) }}>丢弃</Button>
+              </div>
+            )}
 
             {/* 编辑卡片：工具条 + 正文 + 底栏合为一个圆角边框，宽高跟随中列；专注模式下 fixed 覆盖全屏 */}
             <div className={focusMode
