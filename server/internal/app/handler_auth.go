@@ -130,6 +130,7 @@ type loginRequest struct {
 	CaptchaID     string `json:"captcha_id"`
 	CaptchaAnswer string `json:"captcha_answer"`
 	TwoFactorCode string `json:"two_factor_code"`
+	LoginToken    string `json:"login_token"` // 两步登录第二步：凭挑战 token 提交动态码，不再校验验证码/密码
 }
 
 // Login POST /auth/login
@@ -139,6 +140,34 @@ func (a *App) Login(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+
+	// 第二步：凭 login_token + 动态码完成登录（第一步已校验验证码与密码，此处不再重复，避免验证码被消费后报错）。
+	if strings.TrimSpace(req.LoginToken) != "" {
+		lc, valid := a.findLoginChallenge(req.LoginToken)
+		if !valid {
+			fail(c, http.StatusUnauthorized, "登录会话已过期，请重新登录")
+			return
+		}
+		var u models.User
+		if err := a.DB.First(&u, lc.UserID).Error; err != nil {
+			fail(c, http.StatusUnauthorized, "用户名或密码错误")
+			return
+		}
+		if !u.IsActive {
+			fail(c, http.StatusForbidden, "账户已被禁用")
+			return
+		}
+		if !a.validateUserTOTP(&u, req.TwoFactorCode) {
+			fail(c, http.StatusUnauthorized, "二次认证码错误") // 挑战未删除，可重试
+			return
+		}
+		a.DB.Delete(&models.LoginChallenge{}, "id = ?", lc.ID)
+		a.DB.Model(&u).Update("last_login_at", currentTime())
+		a.issueToken(c, &u)
+		return
+	}
+
+	// 第一步：用户名 + 密码 + 验证码
 	if req.Username == "" || req.Password == "" {
 		fail(c, http.StatusBadRequest, "请输入用户名和密码")
 		return
@@ -169,20 +198,13 @@ func (a *App) Login(c *gin.Context) {
 		return
 	}
 
-	// 登录二次认证：开启且勾选「登录」时，密码正确后还需 TOTP 动态码/备用码
+	// 登录二次认证：开启且勾选「登录」时，验证码与密码通过后下发挑战，前端弹层输入动态码走第二步。
 	if u.TwoFactorEnabled && tfOpEnabled(u.TwoFactorOps, tfOpLogin) {
-		if strings.TrimSpace(req.TwoFactorCode) == "" {
-			ok(c, gin.H{"two_factor_required": true})
-			return
-		}
-		if !a.validateUserTOTP(&u, req.TwoFactorCode) {
-			fail(c, http.StatusUnauthorized, "二次认证码错误")
-			return
-		}
+		ok(c, gin.H{"two_factor_required": true, "login_token": a.createLoginChallenge(u.ID)})
+		return
 	}
 
-	now := currentTime()
-	a.DB.Model(&u).Update("last_login_at", now)
+	a.DB.Model(&u).Update("last_login_at", currentTime())
 	a.issueToken(c, &u)
 }
 

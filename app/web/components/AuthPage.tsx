@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import { FormEvent, useEffect, useState } from 'react'
 import OAuthButtons, { oauthErrorText } from '@/components/OAuthButtons'
 import CaptchaField, { CaptchaValue } from '@/components/CaptchaField'
-import { Button, Field, Input, SegmentedTabs, Tooltip } from '@/components/ui'
+import { Button, Field, Input, SegmentedTabs, Tooltip, Modal } from '@/components/ui'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import type { User } from '@/lib/types'
@@ -63,13 +63,16 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   const [captchaRefresh, setCaptchaRefresh] = useState(0)
   const [twoFactorNeeded, setTwoFactorNeeded] = useState(false)
   const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [twoFactorError, setTwoFactorError] = useState('')
+  const [twoFactorBusy, setTwoFactorBusy] = useState(false)
+  const [loginToken, setLoginToken] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const isLogin = mode === 'login'
   const nextPath = safeNextPath(router.query.next)
   const nextQuery = nextPath === '/' ? '' : `?next=${encodeURIComponent(nextPath)}`
 
-  useEffect(() => { setError(''); setTwoFactorNeeded(false); setTwoFactorCode('') }, [mode])
+  useEffect(() => { setError(''); setTwoFactorNeeded(false); setTwoFactorCode(''); setLoginToken('') }, [mode])
 
   // 注册方式/邮箱要求：决定是否显示邀请码、邮箱是否必填、是否关闭注册
   useEffect(() => {
@@ -99,15 +102,19 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
     setLoading(true)
     try {
       const data = isLogin
-        ? await api<{ token?: string; user?: User; two_factor_required?: boolean }>('/auth/login', {
+        ? await api<{ token?: string; user?: User; two_factor_required?: boolean; login_token?: string }>('/auth/login', {
           method: 'POST',
-          body: { username: form.username, password: form.password, captcha_id: captcha.id, captcha_answer: captcha.answer, two_factor_code: twoFactorCode },
+          body: { username: form.username, password: form.password, captcha_id: captcha.id, captcha_answer: captcha.answer },
         })
         : await api<{ token: string; user: User }>('/auth/register', {
           method: 'POST',
           body: { username: form.username, email: form.email, password: form.password, invite_code: form.inviteCode, captcha_id: captcha.id, captcha_answer: captcha.answer },
         })
       if (isLogin && (data as { two_factor_required?: boolean }).two_factor_required) {
+        // 验证码与密码已通过，弹层输入动态码走第二步（不再携带验证码）
+        setLoginToken((data as { login_token?: string }).login_token || '')
+        setTwoFactorCode('')
+        setTwoFactorError('')
         setTwoFactorNeeded(true)
         setError('')
         return
@@ -119,6 +126,26 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
       if (captcha.required) setCaptchaRefresh((n) => n + 1) // 验证码一次性，失败后换新
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 两步登录第二步：仅凭挑战 token + 动态码，不再校验验证码
+  async function verifyTwoFactor(event: FormEvent) {
+    event.preventDefault()
+    setTwoFactorBusy(true)
+    setTwoFactorError('')
+    try {
+      const data = await api<{ token: string; user: User }>('/auth/login', {
+        method: 'POST',
+        body: { login_token: loginToken, two_factor_code: twoFactorCode.trim() },
+      })
+      setTwoFactorNeeded(false)
+      login(data.token, data.user)
+      router.replace(nextPath)
+    } catch (e) {
+      setTwoFactorError((e as Error).message)
+    } finally {
+      setTwoFactorBusy(false)
     }
   }
 
@@ -257,16 +284,22 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 
               <CaptchaField scene={isLogin ? 'login' : 'register'} onChange={setCaptcha} refreshSignal={captchaRefresh} />
 
-              {isLogin && twoFactorNeeded && (
-                <Field label="二次认证" hint="请输入身份验证器 App 中的 6 位动态码，或一条备用码">
-                  <Input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)}
-                    autoComplete="one-time-code" autoFocus placeholder="6 位动态码 / 备用码"
-                    leading={<i className="fa-solid fa-shield-halved w-4 text-center text-xs" aria-hidden="true" />} />
-                </Field>
-              )}
-
-              <Button type="submit" className="w-full" loading={loading}>{isLogin ? (twoFactorNeeded ? '验证并登录' : '登录') : '创建账户'}</Button>
+              <Button type="submit" className="w-full" loading={loading}>{isLogin ? '登录' : '创建账户'}</Button>
             </form>
+
+            <Modal open={isLogin && twoFactorNeeded} onClose={() => setTwoFactorNeeded(false)} title="二次认证">
+              <form onSubmit={verifyTwoFactor} className="space-y-3">
+                <p className="text-sm text-slate-500">请输入身份验证器 App 中的 6 位动态码，或一条备用码。</p>
+                <Input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)}
+                  autoComplete="one-time-code" autoFocus placeholder="6 位动态码 / 备用码"
+                  leading={<i className="fa-solid fa-shield-halved w-4 text-center text-xs" aria-hidden="true" />} />
+                {twoFactorError && <p className="text-sm text-rose-600">{twoFactorError}</p>}
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button type="button" variant="ghost" onClick={() => setTwoFactorNeeded(false)}>取消</Button>
+                  <Button type="submit" loading={twoFactorBusy} disabled={!twoFactorCode.trim()}>验证并登录</Button>
+                </div>
+              </form>
+            </Modal>
 
             <div className="mt-5"><OAuthButtons label={isLogin ? '登录' : '注册'} /></div>
             </>

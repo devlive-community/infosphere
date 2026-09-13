@@ -68,6 +68,35 @@ func (a *App) clearStepUp(uid uint) {
 	a.DB.Where("user_id = ?", uid).Delete(&models.TwoFactorStepUp{})
 }
 
+// ---- 登录二次认证挑战（两步登录：密码+验证码通过后下发，第二步只验 TOTP）----
+
+func (a *App) createLoginChallenge(uid uint) string {
+	buf := make([]byte, 16)
+	_, _ = crand.Read(buf)
+	token := hex.EncodeToString(buf)
+	a.DB.Where("expires_at < ?", time.Now()).Delete(&models.LoginChallenge{})
+	sum := sha256.Sum256([]byte(token))
+	a.DB.Create(&models.LoginChallenge{TokenHash: hex.EncodeToString(sum[:]), UserID: uid, ExpiresAt: time.Now().Add(stepUpTTL)})
+	return token
+}
+
+// findLoginChallenge 校验挑战 token（未过期即返回，不删除；成功登录后由调用方删除，便于错误码可重试）。
+func (a *App) findLoginChallenge(token string) (*models.LoginChallenge, bool) {
+	if strings.TrimSpace(token) == "" {
+		return nil, false
+	}
+	sum := sha256.Sum256([]byte(token))
+	var lc models.LoginChallenge
+	if err := a.DB.Where("token_hash = ?", hex.EncodeToString(sum[:])).First(&lc).Error; err != nil {
+		return nil, false
+	}
+	if time.Now().After(lc.ExpiresAt) {
+		a.DB.Delete(&models.LoginChallenge{}, "id = ?", lc.ID)
+		return nil, false
+	}
+	return &lc, true
+}
+
 // ---- 校验 ----
 
 // validateUserTOTP 校验 TOTP 动态码或一次性备用码。

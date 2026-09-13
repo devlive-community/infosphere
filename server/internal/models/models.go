@@ -131,6 +131,16 @@ type OAuthState struct {
 	CreatedAt time.Time `json:"-"`
 }
 
+// LoginChallenge 登录二次认证的中间态：密码+验证码通过但还需 TOTP 时下发，
+// 只存 token 哈希，一次性、有有效期。存数据库以支持多实例（第二步可能落到另一实例）。
+type LoginChallenge struct {
+	ID        uint      `gorm:"primaryKey" json:"-"`
+	TokenHash string    `gorm:"size:64;uniqueIndex;not null" json:"-"`
+	UserID    uint      `gorm:"index;not null" json:"-"`
+	ExpiresAt time.Time `gorm:"index" json:"-"`
+	CreatedAt time.Time `json:"-"`
+}
+
 // RateLimitCounter 限流计数：存数据库以支持多实例部署（跨实例共享固定窗口计数）。
 // RateKey 已是脱敏哈希（policy 名 + 主体的 sha256），不含明文；ResetAt 为窗口结束时间。
 type RateLimitCounter struct {
@@ -504,6 +514,7 @@ func All(db *gorm.DB) error {
 		&TwoFactorBackupCode{},
 		&CaptchaChallenge{},
 	&OAuthState{},
+	&LoginChallenge{},
 	&RateLimitCounter{},
 		&TwoFactorStepUp{},
 		&LoginLockout{},
