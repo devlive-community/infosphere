@@ -8,6 +8,8 @@ interface Props {
   slug: string
 }
 
+// 写作工作台：`/book/writer/:slug` 与 `/book/writer/:slug/:doc` 走同一页面（可选 catch-all），
+// 这样选中/取消选中章节可用浅路由（shallow），不再整页重挂载刷新。
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, params, resolvedUrl }) => {
   if (!(await isInstalled())) {
     return { redirect: { destination: '/install', permanent: false } }
@@ -24,12 +26,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, param
   } catch {
     return { notFound: true }
   }
-  return {
-    props: {
-      user,
-      slug,
-    },
-  }
+  return { props: { user, slug } }
 }
 
 export default function WriterPage(props: Props) {
