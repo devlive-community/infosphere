@@ -222,6 +222,31 @@ export default function Writer({ user }: WriterProps) {
     return () => clearTimeout(timer)
   }, [content, preview, splitPreview])
 
+  // 预览里的任务复选框可点击：点击第 idx 个复选框即翻转正文里第 idx 个任务项标记。
+  useEffect(() => {
+    const root = previewRef.current
+    if (!root || (!preview && !splitPreview)) return
+    const boxes = Array.from(root.querySelectorAll('li input[type="checkbox"]')) as HTMLInputElement[]
+    const cleanups: Array<() => void> = []
+    boxes.forEach((box, idx) => {
+      box.disabled = false
+      box.style.cursor = 'pointer'
+      const handler = (e: Event) => {
+        e.preventDefault()
+        setContent((prev) => {
+          let count = -1
+          return prev.replace(/^(\s*(?:[-*+]|\d+\.)\s+)\[([ xX])\]/gm, (m, prefix, mark) => {
+            count += 1
+            return count === idx ? `${prefix}[${mark === ' ' ? 'x' : ' '}]` : m
+          })
+        })
+      }
+      box.addEventListener('click', handler)
+      cleanups.push(() => box.removeEventListener('click', handler))
+    })
+    return () => cleanups.forEach((fn) => fn())
+  }, [previewHtml, preview, splitPreview])
+
   const loadTree = useCallback(async (b: Book) => {
     setTree((await api<Document[]>(`/books/${b.id}/documents`)) || [])
   }, [])
