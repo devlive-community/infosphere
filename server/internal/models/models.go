@@ -121,6 +121,16 @@ type CaptchaChallenge struct {
 	CreatedAt  time.Time `json:"-"`
 }
 
+// OAuthState 第三方登录 CSRF state：存数据库以支持多实例部署（回调可能落到另一实例）；
+// 只存 state 的哈希（敏感值不落库明文），一次性、有有效期。
+type OAuthState struct {
+	ID        uint      `gorm:"primaryKey" json:"-"`
+	StateHash string    `gorm:"size:64;uniqueIndex;not null" json:"-"`
+	Origin    string    `gorm:"size:512" json:"-"`
+	ExpiresAt time.Time `gorm:"index" json:"-"`
+	CreatedAt time.Time `json:"-"`
+}
+
 // TwoFactorStepUp 二次认证 step-up 授权窗口：存数据库以支持多实例部署，每用户一条。
 type TwoFactorStepUp struct {
 	UserID    uint      `gorm:"primaryKey" json:"user_id"`
@@ -485,6 +495,7 @@ func All(db *gorm.DB) error {
 		&EmailVerificationToken{},
 		&TwoFactorBackupCode{},
 		&CaptchaChallenge{},
+	&OAuthState{},
 		&TwoFactorStepUp{},
 		&LoginLockout{},
 		&UserNotificationPref{},

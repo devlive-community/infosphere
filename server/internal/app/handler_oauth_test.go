@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"infosphere/server/internal/config"
+	"infosphere/server/internal/models"
 )
 
 // OAuth 模块集成测试：不访问 GitHub 外网，覆盖
@@ -139,5 +140,61 @@ func TestOAuthFlow(t *testing.T) {
 	status, _, _ = request(http.MethodDelete, "/api/v1/auth/oauth/github", nil, "")
 	if status != 401 {
 		t.Fatalf("未登录解绑应 401: %d", status)
+	}
+}
+
+// TestOAuthStateDBBacked 覆盖入库 state 的一次性与失效语义（多实例：不依赖进程内存）。
+func TestOAuthStateDBBacked(t *testing.T) {
+	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("加载配置失败: %v", err)
+	}
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatalf("创建应用失败: %v", err)
+	}
+	ts := httptest.NewServer(a.Router())
+	defer ts.Close()
+	install := `{"database":{"type":"sqlite"},"site":{"name":"t"},"admin":{"username":"admin","email":"a@b.c","password":"secret123"}}`
+	ir, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/setup/install", strings.NewReader(install))
+	ir.Header.Set("Content-Type", "application/json")
+	if resp, err := http.DefaultClient.Do(ir); err != nil {
+		t.Fatalf("安装失败: %v", err)
+	} else {
+		resp.Body.Close()
+	}
+
+	origin := "https://app.example.com"
+	state := a.oauthStateSave(origin)
+	if state == "" {
+		t.Fatalf("应返回非空 state")
+	}
+
+	// 首次取用成功并返回来源
+	got, ok := a.oauthStateTake(state)
+	if !ok || got != origin {
+		t.Fatalf("首次取用应成功且来源匹配，got=%q ok=%v", got, ok)
+	}
+	// 一次性：再次取用失败
+	if _, ok := a.oauthStateTake(state); ok {
+		t.Fatalf("state 应一次性，二次取用须失败")
+	}
+	// 未知 state 失败
+	if _, ok := a.oauthStateTake("deadbeef"); ok {
+		t.Fatalf("未知 state 应失败")
+	}
+	// 空 state 失败
+	if _, ok := a.oauthStateTake(""); ok {
+		t.Fatalf("空 state 应失败")
+	}
+	// 明文不落库：只存哈希
+	var row models.OAuthState
+	a.oauthStateSave(origin) // 再存一条用于检查
+	if err := a.DB.Last(&row).Error; err != nil {
+		t.Fatalf("查询 state 行失败: %v", err)
+	}
+	if row.StateHash == "" || len(row.StateHash) != 64 {
+		t.Fatalf("应存 sha256 十六进制哈希，实际 %q", row.StateHash)
 	}
 }

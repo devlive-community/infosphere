@@ -2,6 +2,7 @@ package app
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"infosphere/server/internal/auth"
@@ -18,55 +18,44 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// M12 第三方登录（GitHub OAuth）：
-//   - 凭据存站点配置表（oauth_github_client_id/secret/enabled），管理员通过 /admin/oauth 维护
-//   - state 防 CSRF：内存态 + 10 分钟 TTL（当前为单实例部署架构，多实例时需外置存储）
-//   - 绑定关系存 user_authentications；回调按 GitHub 已验证邮箱自动关联本地账号
+// M12 第三方登录（GitHub / Google / GitLab OAuth）：
+//   - 凭据存站点配置表（oauth_<provider>_client_id/secret/enabled），管理员通过 /admin/oauth 维护
+//   - state 防 CSRF：入库共享存储（oauth_states 表）+ 10 分钟 TTL，支持多实例部署（回调可能落到另一实例）；只存 state 哈希
+//   - 绑定关系存 user_authentications；回调按已验证邮箱自动关联本地账号
 
 const oauthStateTTL = 10 * time.Minute
 
 var oauthHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
-type oauthStateEntry struct {
-	Origin    string
-	CreatedAt time.Time
+func oauthStateHash(state string) string {
+	sum := sha256.Sum256([]byte(state))
+	return hex.EncodeToString(sum[:])
 }
 
-var oauthStates = struct {
-	sync.Mutex
-	m map[string]oauthStateEntry
-}{m: map[string]oauthStateEntry{}}
-
-func oauthStateSave(origin string) string {
+// oauthStateSave 生成一次性 state 并入库（存哈希，多实例共享），顺带清理过期行。
+func (a *App) oauthStateSave(origin string) string {
 	buf := make([]byte, 16)
 	_, _ = rand.Read(buf)
 	state := hex.EncodeToString(buf)
-	oauthStates.Lock()
-	// 顺带清理过期 state，避免长期运行下累积
-	now := time.Now()
-	for k, v := range oauthStates.m {
-		if now.Sub(v.CreatedAt) > oauthStateTTL {
-			delete(oauthStates.m, k)
-		}
-	}
-	oauthStates.m[state] = oauthStateEntry{Origin: origin, CreatedAt: now}
-	oauthStates.Unlock()
+	a.DB.Where("expires_at < ?", time.Now()).Delete(&models.OAuthState{})
+	a.DB.Create(&models.OAuthState{StateHash: oauthStateHash(state), Origin: origin, ExpiresAt: time.Now().Add(oauthStateTTL)})
 	return state
 }
 
-// oauthStateTake 取出并删除 state（一次性），返回关联的前端来源
-func oauthStateTake(state string) (string, bool) {
-	oauthStates.Lock()
-	defer oauthStates.Unlock()
-	entry, ok := oauthStates.m[state]
-	if !ok {
+// oauthStateTake 取出并删除 state（一次性），校验未过期，返回关联的前端来源。
+func (a *App) oauthStateTake(state string) (string, bool) {
+	if state == "" {
 		return "", false
 	}
-	delete(oauthStates.m, state)
-	if time.Since(entry.CreatedAt) > oauthStateTTL {
+	var row models.OAuthState
+	if err := a.DB.Where("state_hash = ?", oauthStateHash(state)).First(&row).Error; err != nil {
 		return "", false
 	}
-	return entry.Origin, true
+	a.DB.Delete(&models.OAuthState{}, "id = ?", row.ID)
+	if time.Now().After(row.ExpiresAt) {
+		return "", false
+	}
+	return row.Origin, true
 }
 
 func (a *App) getSetting(key string) string {
@@ -141,7 +130,7 @@ func (a *App) OAuthStart(c *gin.Context) {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=not_configured")
 		return
 	}
-	state := oauthStateSave(origin)
+	state := a.oauthStateSave(origin)
 	redirect := def.AuthURL +
 		"?client_id=" + url.QueryEscape(clientID) +
 		"&redirect_uri=" + url.QueryEscape(a.oauthRedirectURI(c, provider)) +
@@ -177,7 +166,7 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=unsupported_provider")
 		return
 	}
-	stateOrigin, valid := oauthStateTake(c.Query("state"))
+	stateOrigin, valid := a.oauthStateTake(c.Query("state"))
 	if !valid {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=invalid_state")
 		return
