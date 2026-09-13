@@ -92,6 +92,7 @@ const SLASH_COMMANDS: { key: string; label: string; kw: string }[] = [
   { key: 'table', label: '表格', kw: 'table grid' },
   { key: 'hr', label: '分隔线', kw: 'hr rule divider' },
   { key: 'image', label: '上传图片', kw: 'image img upload photo' },
+  { key: 'collect', label: '采集网页', kw: 'collect web fetch import scrape 采集 网页' },
   { key: 'link', label: '链接', kw: 'link url href' },
 ]
 
@@ -159,6 +160,7 @@ export default function Writer({ user }: WriterProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollLock = useRef<'edit' | 'preview' | null>(null) // 分栏滚动同步防抖锁
   const [uploading, setUploading] = useState(false)
+  const [collecting, setCollecting] = useState(false)
   const snapshot = useRef('') // 已保存/已加载表单的快照，用于脏状态判断
   const loadedDocId = useRef<number | null>(null) // 当前表单对应的文档，防止切换章节时误触发自动保存
   const saveRef = useRef<(opts?: { status?: DocumentStatus }) => Promise<void>>(async () => {})
@@ -610,6 +612,24 @@ export default function Writer({ user }: WriterProps) {
     if (url) wrapSelection('![', `](${url})`)
   }
 
+  // collectWebContent 采集网页正文并以 Markdown 插入到光标处（不建新章节）。
+  async function collectWebContent() {
+    const url = await requestInput({ title: '采集网页内容', message: '输入网页地址，自动抓取正文并以 Markdown 插入到光标处。', label: '网页地址', defaultValue: 'https://', placeholder: 'https://example.com/article', confirmLabel: '采集' })
+    const target = (url || '').trim()
+    if (!target || !/^https?:\/\//.test(target)) return
+    setCollecting(true)
+    try {
+      const d = await api<{ title: string; markdown: string; source_url: string }>('/import/web-content', { method: 'POST', body: { url: target, render_mode: 'auto' } })
+      const block = (d.title ? `## ${d.title}\n\n` : '') + d.markdown + `\n\n> 来源：[原始网页](${d.source_url})\n`
+      insertText('\n' + block)
+      showToast({ message: '已采集网页内容', tone: 'success' })
+    } catch (e) {
+      showToast({ title: '采集失败', message: (e as Error).message, tone: 'error' })
+    } finally {
+      setCollecting(false)
+    }
+  }
+
   // lineOffset 计算行数组中第 idx 行起始的字符偏移（含各行后的换行符）。
   function lineOffset(arr: string[], idx: number) {
     return arr.slice(0, idx).reduce((n, l) => n + l.length + 1, 0)
@@ -853,6 +873,7 @@ export default function Writer({ user }: WriterProps) {
         case 'table': insertTable(); break
         case 'hr': insertText('---\n'); break
         case 'image': fileInputRef.current?.click(); break
+        case 'collect': void collectWebContent(); break
         case 'link': void insertLink(); break
       }
     })
@@ -1230,6 +1251,9 @@ export default function Writer({ user }: WriterProps) {
                   <ToolbarDivider />
                   <ToolbarButton title="上传图片" onClick={() => fileInputRef.current?.click()}><UploadIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="图片链接" onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={collecting ? '采集中…' : '采集网页内容'} onClick={() => { if (!collecting) void collectWebContent() }}>
+                    {collecting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> : <GlobeIcon className="h-4 w-4" />}
+                  </ToolbarButton>
                   <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
                     onChange={(e) => { if (e.target.files?.length) void uploadImages(e.target.files); e.target.value = '' }} />
                 </div>

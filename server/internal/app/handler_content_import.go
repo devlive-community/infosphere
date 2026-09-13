@@ -419,6 +419,28 @@ func (a *App) ImportWebDocument(c *gin.Context) {
 	})
 }
 
+// CollectWebContent POST /import/web-content 抓取网页正文并返回 Markdown（不建文档），供编辑器「采集内容」插入。
+func (a *App) CollectWebContent(c *gin.Context) {
+	var req webImportPayload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
+	defer cancel()
+	article, page, usedMode, err := a.collectWebArticle(ctx, req)
+	if err != nil {
+		failWebImport(c, err)
+		return
+	}
+	ok(c, gin.H{
+		"title":       article.Title,
+		"markdown":    strings.TrimSpace(article.Markdown),
+		"source_url":  page.FinalURL.String(),
+		"render_mode": usedMode,
+	})
+}
+
 // BrowserRenderAvailable GET /import/browser-available 无头浏览器插件是否已安装（决定「浏览器渲染」采集是否可用）
 func (a *App) BrowserRenderAvailable(c *gin.Context) {
 	ok(c, gin.H{"available": a.installedChromePath() != ""})

@@ -368,6 +368,7 @@ Authorization: Bearer <token>
 | POST | `/import/web` | JSON `{url,title?,render_mode?}`，`render_mode` 为 `auto`（默认）、`static` 或 `browser`；自动模式先静态抓取，检测到 SPA 空壳或正文不足时使用无头浏览器插件执行 JavaScript；`browser` 模式及自动模式的浏览器回退均依赖已安装的无头浏览器插件，未安装时 `browser` 直接报错、`auto` 退回静态；正文转为 Markdown 并将相对链接补全；结果固定为私有草稿 | `book:import` |
 | GET | `/import/browser-available` | 无头浏览器插件是否已安装（`{available}`），供前端联动禁用「浏览器渲染」采集模式 | `book:import` |
 | POST | `/books/:id/documents/import-web` | JSON `{url,title?,render_mode?,parent_id?,sort_order?}`；复用网页正文提取与 SPA 渲染，剔除页头、页脚、导航、侧栏、广告、分享、评论、相关推荐与弹窗，直接在可编辑书籍内创建草稿章节并记录原始来源 | `document:create` |
+| POST | `/import/web-content` | JSON `{url,render_mode?}`；复用同款网页正文提取，**不建文档**，返回 `{title,markdown,source_url,render_mode}`，供写作编辑器「采集网页」插入到当前章节光标处 | `document:create` |
 
 > 安全边界：网页导入只允许 HTTP(S)，拒绝 localhost、内网、回环及链路本地地址；重定向和浏览器发起的子资源请求也执行同一校验。动态网页渲染依赖后台「无头浏览器」插件（与 PDF 导出共用同一 chrome-headless-shell），未安装则浏览器渲染不可用。所有导入章节都会生成 `create` 初始版本。PDF/ZIP 后台任务成功后立即删除源文件；最终失败任务保留源文件以供重试，超过 30 天由启动清理回收。
 
