@@ -91,6 +91,13 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
     }
   }, [router.isReady, router.query.oauth_error])
 
+  // 邀请链接：注册页带 ?invite=<码> 时预填邀请码
+  useEffect(() => {
+    if (!isLogin && router.isReady && typeof router.query.invite === 'string' && router.query.invite) {
+      setForm((f) => (f.inviteCode ? f : { ...f, inviteCode: router.query.invite as string }))
+    }
+  }, [isLogin, router.isReady, router.query.invite])
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')

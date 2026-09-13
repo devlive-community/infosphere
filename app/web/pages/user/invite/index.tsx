@@ -66,6 +66,15 @@ export default function InvitePage() {
       showToast({ message: '复制失败，请手动复制', tone: 'error' })
     }
   }
+  async function copyLink() {
+    const link = `${window.location.origin}/register?invite=${encodeURIComponent(code)}`
+    try {
+      await navigator.clipboard.writeText(link)
+      showToast({ message: '邀请链接已复制，打开即可预填邀请码注册', tone: 'success' })
+    } catch {
+      showToast({ message: '复制失败，请手动复制', tone: 'error' })
+    }
+  }
 
   return (
     <>
@@ -97,6 +106,7 @@ export default function InvitePage() {
                         className={`font-mono text-base tracking-[0.3em] ${enabled ? '' : 'text-slate-400'}`} />
                     </span>
                     <Button type="button" variant="outline" className="shrink-0 whitespace-nowrap" onClick={copy}>复制</Button>
+                    <Button type="button" variant="outline" className="shrink-0 whitespace-nowrap" disabled={!enabled} onClick={copyLink}>复制邀请链接</Button>
                     {enabled ? (
                       <Button type="button" variant="ghost" loading={busy} className="shrink-0 whitespace-nowrap text-rose-600 hover:bg-rose-50" onClick={disable}>关闭</Button>
                     ) : (
