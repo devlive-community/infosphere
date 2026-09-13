@@ -19,10 +19,11 @@ function FieldIcon({ name }: { name: 'user' | 'envelope' | 'lock' }) {
   return <i className={`fa-solid fa-${name} w-4 text-center text-xs`} aria-hidden="true" />
 }
 
-function PasswordInput({ value, onChange, autoComplete }: {
+function PasswordInput({ value, onChange, autoComplete, placeholder }: {
   value: string
   onChange: (value: string) => void
   autoComplete: string
+  placeholder?: string
 }) {
   const [visible, setVisible] = useState(false)
 
@@ -32,6 +33,7 @@ function PasswordInput({ value, onChange, autoComplete }: {
       value={value}
       onChange={(event) => onChange(event.target.value)}
       autoComplete={autoComplete}
+      placeholder={placeholder}
       minLength={6}
       required
       leading={<FieldIcon name="lock" />}
@@ -266,12 +268,12 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 
               <Field label="密码" hint={!isLogin ? `至少 ${regInfo?.password_min_length ?? 6} 位${regInfo?.password_require_mixed ? '，需同时包含字母和数字' : '字符'}` : undefined}>
                 <PasswordInput value={form.password} onChange={(password) => setForm({ ...form, password })}
-                  autoComplete={isLogin ? 'current-password' : 'new-password'} />
+                  autoComplete={isLogin ? 'current-password' : 'new-password'} placeholder="请输入密码" />
               </Field>
 
               {!isLogin && (
                 <Field label="确认密码">
-                  <PasswordInput value={form.confirm} onChange={(confirm) => setForm({ ...form, confirm })} autoComplete="new-password" />
+                  <PasswordInput value={form.confirm} onChange={(confirm) => setForm({ ...form, confirm })} autoComplete="new-password" placeholder="再次输入密码" />
                 </Field>
               )}
 

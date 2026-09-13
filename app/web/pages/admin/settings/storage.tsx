@@ -52,7 +52,7 @@ export default function SettingsStorage() {
                   <Input value={storage.qiniu_access_key || ''} onChange={(e) => setStorage({ ...storage, qiniu_access_key: e.target.value })} />
                 </Field>
                 <Field label="Secret Key">
-                  <Input type="password" value={storage.qiniu_secret_key || ''} onChange={(e) => setStorage({ ...storage, qiniu_secret_key: e.target.value })} />
+                  <Input type="password" value={storage.qiniu_secret_key || ''} onChange={(e) => setStorage({ ...storage, qiniu_secret_key: e.target.value })} placeholder="七牛 Secret Key" />
                 </Field>
               </div>
               <Field label="存储空间（Bucket）">

@@ -197,7 +197,7 @@ export default function Install() {
                   </div>
                   <div className="col-span-2">
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">密码</label>
-                    <Input type="password" value={db.password} onChange={(e) => setDb({ ...db, password: e.target.value })} />
+                    <Input type="password" value={db.password} onChange={(e) => setDb({ ...db, password: e.target.value })} placeholder="数据库密码" />
                   </div>
                 </div>
               )}
@@ -234,11 +234,11 @@ export default function Install() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">管理员密码 *</label>
-                    <Input type="password" value={admin.password} onChange={(e) => setAdmin({ ...admin, password: e.target.value })} />
+                    <Input type="password" value={admin.password} onChange={(e) => setAdmin({ ...admin, password: e.target.value })} placeholder="至少 6 位" />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">确认密码 *</label>
-                    <Input type="password" value={admin.confirm} onChange={(e) => setAdmin({ ...admin, confirm: e.target.value })} />
+                    <Input type="password" value={admin.confirm} onChange={(e) => setAdmin({ ...admin, confirm: e.target.value })} placeholder="再次输入密码" />
                   </div>
                 </div>
               </div>

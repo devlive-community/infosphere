@@ -65,10 +65,10 @@ export default function ResetPassword() {
             {error && <div className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
             <form onSubmit={submit} className="space-y-4">
               <Field label="新密码（至少 6 位）">
-                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} autoFocus />
+                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="请输入新密码" autoFocus />
               </Field>
               <Field label="确认新密码">
-                <Input type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+                <Input type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} placeholder="再次输入新密码" />
               </Field>
               <Button className="w-full" loading={loading}>重置密码</Button>
             </form>

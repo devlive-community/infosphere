@@ -63,7 +63,7 @@ export default function SettingsMail() {
               <Input value={mail.username || ''} onChange={(e) => setMail({ ...mail, username: e.target.value })} />
             </Field>
             <Field label="SMTP 密码">
-              <Input type="password" value={mail.password || ''} onChange={(e) => setMail({ ...mail, password: e.target.value })} />
+              <Input type="password" value={mail.password || ''} onChange={(e) => setMail({ ...mail, password: e.target.value })} placeholder="SMTP 授权码 / 密码" />
             </Field>
           </div>
           <Field label="发件人地址">
