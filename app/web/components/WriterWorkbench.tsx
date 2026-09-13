@@ -501,16 +501,36 @@ export default function Writer({ user }: WriterProps) {
     }
   }
 
+  // collectImageFiles 从剪贴板/拖拽数据里收集图片文件：优先 items.getAsFile()
+  // （截图、从网页复制的图片常只在 items 里，files 为空），再并入 files，按 名称+大小+类型 去重。
+  function collectImageFiles(dt: DataTransfer | null): File[] {
+    if (!dt) return []
+    const out: File[] = []
+    const seen = new Set<string>()
+    const add = (f: File | null) => {
+      if (!f || !f.type.startsWith('image/')) return
+      const key = `${f.name}:${f.size}:${f.type}`
+      if (seen.has(key)) return
+      seen.add(key)
+      out.push(f)
+    }
+    for (const item of Array.from(dt.items || [])) {
+      if (item.kind === 'file') add(item.getAsFile())
+    }
+    for (const f of Array.from(dt.files || [])) add(f)
+    return out
+  }
+
   function onEditorPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const files = Array.from(e.clipboardData?.files || []).filter((f) => f.type.startsWith('image/'))
+    const files = collectImageFiles(e.clipboardData)
     if (files.length > 0) {
-      e.preventDefault()
+      e.preventDefault() // 有图片时拦截默认粘贴，避免同时插入图片的文本表示
       void uploadImages(files)
     }
   }
 
   function onEditorDrop(e: React.DragEvent<HTMLTextAreaElement>) {
-    const files = Array.from(e.dataTransfer?.files || []).filter((f) => f.type.startsWith('image/'))
+    const files = collectImageFiles(e.dataTransfer)
     if (files.length > 0) {
       e.preventDefault()
       void uploadImages(files)
