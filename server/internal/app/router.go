@@ -155,6 +155,7 @@ func (a *App) Router() *gin.Engine {
 			books.GET("/slug/:slug/access", a.RequirePermission(authz.BookRead), a.GetBookAccess)
 			books.PUT("/:id", a.RequirePermission(authz.BookUpdate), a.UpdateBook)
 			books.DELETE("/:id", a.RequirePermission(authz.BookDelete), a.DeleteBook)
+			books.POST("/:id/copy", a.RequirePermission(authz.BookCreate), a.CopyBook)
 			books.GET("/:id/export", a.RequirePermission(authz.BookExport), a.ExportBook)
 			books.POST("/:id/import/pdf", a.RequirePermission(authz.BookImport), a.ReimportPDFBook)
 			books.GET("/:id/read-chapters", a.RequirePermission(authz.UserRead), a.ReadChapters)

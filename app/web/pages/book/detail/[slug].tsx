@@ -17,6 +17,7 @@ import BookExportButton from '@/components/BookExportButton'
 import BookSearch from '@/components/BookSearch'
 import BookTranslations from '@/components/BookTranslations'
 import BookVersions from '@/components/BookVersions'
+import BookCopyDialog from '@/components/BookCopyDialog'
 import ReportButton from '@/components/ReportButton'
 import Seo from '@/components/Seo'
 import {
@@ -108,6 +109,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
   // 私有/草稿书 SSR 无令牌取不到，挂载后携带本地令牌客户端重试（避免默认空白）
   const [book, setBook] = useState<Book | null>(ssrBook ?? null)
+  const [copyOpen, setCopyOpen] = useState(false)
   const [bookViews, setBookViews] = useState(ssrBook?.view_count || 0)
   const countedBook = useRef<number | null>(null)
   const [tree, setTree] = useState<Document[]>(ssrTree || [])
@@ -457,6 +459,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                   </Button></Tooltip>
                 <BookExportButton book={book} className="w-full sm:w-auto" />
               </div>
+              {user && (
+                <Button type="button" variant="outline" onClick={() => setCopyOpen(true)} className="w-full sm:w-auto">复制</Button>
+              )}
               {(canManage || canEdit) && (
                 <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
                   {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="w-full sm:w-auto">写作</ButtonLink>}
@@ -588,6 +593,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
           </Container>
         </section>
       )}
+
+      <BookCopyDialog book={book} tree={tree} open={copyOpen} onClose={() => setCopyOpen(false)} />
     </div>
   )
 }
