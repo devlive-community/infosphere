@@ -18,6 +18,10 @@ interface UserProfile {
   avatar: string
   bio: string
   github_url: string
+  nickname?: string
+  website?: string
+  location?: string
+  company?: string
   role: string
   created_at: string
   public_book_count: number
@@ -79,19 +83,29 @@ function AuthorProfileCard({ profile, siteUrl, share }: { profile: UserProfile; 
         <div className="min-w-0">
           <p className="text-sm text-slate-400">知识创作者</p>
           <h1 className="mt-1 flex min-w-0 flex-wrap items-center gap-2 break-words text-2xl font-bold text-ink sm:gap-3 sm:text-4xl">
-            {profile.username}
+            {profile.nickname || profile.username}
             {profile.role === 'admin' && (
               <span className="inline-flex items-center rounded-md bg-primary-50 px-2.5 py-1 text-sm font-medium text-primary-700 ring-1 ring-inset ring-primary-200">管理员</span>
             )}
           </h1>
+          {profile.nickname && <p className="mt-1 text-sm text-slate-400">@{profile.username}</p>}
           {profile.bio && <p className="mt-3 max-w-lg text-[15px] leading-7 text-slate-500">{profile.bio}</p>}
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500">
             {profile.created_at && (
               <span className="flex items-center gap-1.5"><CalendarIcon className="h-4 w-4" /> {joinYear(profile.created_at)}</span>
             )}
             <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {profile.public_book_count} 本公开书籍</span>
+            {profile.location && <span className="flex items-center gap-1.5"><i className="fa-solid fa-location-dot text-slate-400" aria-hidden="true" /> {profile.location}</span>}
+            {profile.company && <span className="flex items-center gap-1.5"><i className="fa-solid fa-building text-slate-400" aria-hidden="true" /> {profile.company}</span>}
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-3">
+            {profile.website && (
+              <a href={profile.website} target="_blank" rel="noopener noreferrer nofollow"
+                className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400"
+                style={{ height: 'var(--control-height)' }}>
+                <i className="fa-solid fa-globe text-slate-500" aria-hidden="true" /> 个人网站
+              </a>
+            )}
             {profile.github_url && (
               <a href={profile.github_url} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400"

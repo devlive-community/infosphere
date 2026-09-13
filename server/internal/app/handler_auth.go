@@ -218,6 +218,10 @@ type profileUpdate struct {
 	Avatar    *string `json:"avatar"`
 	Bio       *string `json:"bio"`
 	GithubURL *string `json:"github_url"`
+	Nickname  *string `json:"nickname"`
+	Website   *string `json:"website"`
+	Location  *string `json:"location"`
+	Company   *string `json:"company"`
 }
 
 // UpdateProfile PUT /auth/profile
@@ -255,6 +259,18 @@ func (a *App) UpdateProfile(c *gin.Context) {
 	}
 	if req.GithubURL != nil {
 		u.GithubURL = *req.GithubURL
+	}
+	if req.Nickname != nil {
+		u.Nickname = truncateText(strings.TrimSpace(*req.Nickname), 50)
+	}
+	if req.Website != nil {
+		u.Website = truncateText(strings.TrimSpace(*req.Website), 255)
+	}
+	if req.Location != nil {
+		u.Location = truncateText(strings.TrimSpace(*req.Location), 100)
+	}
+	if req.Company != nil {
+		u.Company = truncateText(strings.TrimSpace(*req.Company), 100)
 	}
 	if err := a.DB.Save(u).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())

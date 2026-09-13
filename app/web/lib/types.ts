@@ -11,6 +11,10 @@ export interface User {
   avatar: string
   bio: string
   github_url: string
+  nickname?: string
+  website?: string
+  location?: string
+  company?: string
   is_active: boolean
   email_verified?: boolean
   invite_code?: string

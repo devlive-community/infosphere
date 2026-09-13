@@ -21,6 +21,10 @@ export default function Profile() {
   const [avatar, setAvatar] = useState('')
   const [bio, setBio] = useState('')
   const [githubUrl, setGithubUrl] = useState('')
+  const [nickname, setNickname] = useState('')
+  const [website, setWebsite] = useState('')
+  const [location, setLocation] = useState('')
+  const [company, setCompany] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -31,6 +35,10 @@ export default function Profile() {
       setAvatar(user.avatar || '')
       setBio(user.bio || '')
       setGithubUrl(user.github_url || '')
+      setNickname(user.nickname || '')
+      setWebsite(user.website || '')
+      setLocation(user.location || '')
+      setCompany(user.company || '')
     }
   }, [user])
 
@@ -46,7 +54,7 @@ export default function Profile() {
     try {
       await api('/auth/profile', {
         method: 'PUT',
-        body: { email, avatar, bio, github_url: githubUrl },
+        body: { email, avatar, bio, github_url: githubUrl, nickname, website, location, company },
       })
       await refreshUser()
       setMessage('资料已更新')
@@ -118,6 +126,20 @@ export default function Profile() {
                 <div className="border-t border-slate-100 pt-6">
                   <h3 className="mb-4 text-lg font-semibold text-slate-900">公开资料</h3>
                   <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="昵称" hint="展示名，留空则显示用户名">
+                        <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="你的昵称" maxLength={50} />
+                      </Field>
+                      <Field label="所在地">
+                        <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="如 上海" maxLength={100} />
+                      </Field>
+                      <Field label="公司 / 组织">
+                        <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="如 DevLive" maxLength={100} />
+                      </Field>
+                      <Field label="个人网站">
+                        <Input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" maxLength={255} />
+                      </Field>
+                    </div>
                     <Field label="个人简介">
                       <div className="relative">
                         <Textarea maxLength={MAX_BIO} value={bio} onChange={(e) => setBio(e.target.value)}

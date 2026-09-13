@@ -149,7 +149,7 @@ func (a *App) UpdateSiteConfig(c *gin.Context) {
 // GetUserProfile GET /users/:username
 func (a *App) GetUserProfile(c *gin.Context) {
 	var u models.User
-	if err := a.DB.Select("id", "username", "avatar", "bio", "github_url", "role", "created_at").
+	if err := a.DB.Select("id", "username", "avatar", "bio", "github_url", "nickname", "website", "location", "company", "role", "created_at").
 		Where("username = ?", c.Param("username")).First(&u).Error; err != nil {
 		fail(c, http.StatusNotFound, "用户不存在")
 		return
@@ -158,7 +158,8 @@ func (a *App) GetUserProfile(c *gin.Context) {
 	a.DB.Model(&models.Book{}).Where("user_id = ? AND is_public = ? AND status IN ?", u.ID, true, publiclyReadableBookStatuses).Count(&bookCount)
 	ok(c, gin.H{
 		"id": u.ID, "username": u.Username, "avatar": u.Avatar, "bio": u.Bio,
-		"github_url": u.GithubURL, "role": u.Role, "created_at": u.CreatedAt,
+		"github_url": u.GithubURL, "nickname": u.Nickname, "website": u.Website,
+		"location": u.Location, "company": u.Company, "role": u.Role, "created_at": u.CreatedAt,
 		"public_book_count": bookCount,
 	})
 }

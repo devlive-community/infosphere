@@ -16,7 +16,12 @@ type User struct {
 	Avatar          string               `gorm:"size:500" json:"avatar"`
 	Bio             string               `gorm:"size:1000" json:"bio"`
 	GithubURL       string               `gorm:"size:255;column:github_url" json:"github_url"`
-	IsActive        bool                 `gorm:"default:true" json:"is_active"`
+	// 扩展资料
+	Nickname string `gorm:"size:50" json:"nickname"`  // 昵称/展示名
+	Website  string `gorm:"size:255" json:"website"`  // 个人网站
+	Location string `gorm:"size:100" json:"location"` // 所在地
+	Company  string `gorm:"size:100" json:"company"`  // 公司/组织
+	IsActive bool   `gorm:"default:true" json:"is_active"`
 	// EmailVerified 邮箱是否已激活；开启「注册后必须激活邮箱」时，未激活用户只读
 	EmailVerified bool `gorm:"default:false" json:"email_verified"`
 	// InviteCode 用户专属邀请码（referral），一经设置不再变化；应用层保证唯一

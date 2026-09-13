@@ -179,7 +179,7 @@ Authorization: Bearer <token>
 | GET/PUT | `/content-settings` | 管理员读取/保存内容设置：`{upload_max_mb(1-100), upload_allowed_exts(逗号分隔扩展名), comments_enabled}`。上传超限/类型不符拒绝；`comments_enabled=false` 时全站禁止发表评论（`comments_enabled` 也会出现在公开 `/site`，供前端隐藏评论框） | `site:update` |
 | GET | `/auth/me` | 当前用户信息（含 `email_verified`、`invite_code`） | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
-| PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url） | `user:update` |
+| PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url/nickname/website/location/company；改邮箱受二次认证保护） | `user:update` |
 | GET/PUT | `/auth/export-settings` | 当前用户 PDF 导出样式偏好：`page_size`(A4\|Letter)、`include_cover`、`include_toc`、`font_size`(12–20)、`code_theme`(light\|dark)、`margin`(narrow\|normal\|wide)、`footer`（每页页脚 Powered by 文案，≤100 字，留空用默认 `Powered by <站点名>`） | `user:read` / `user:update` |
 | PUT | `/auth/password` | 修改密码（old_password/new_password；OAuth 用户未设密码时免验原密码，用于首次设置） | `user:update` |
 | POST | `/auth/password/forgot` | 匿名申请找回：`{email}`；响应不泄露邮箱是否存在，令牌邮件 60 分钟有效、一次性、只保留最新一条；邮件写入持久化异步队列，失败自动退避重试；`mail_driver=log` 时执行任务后把链接输出到后端日志 | `auth:password-reset`（匿名语义） |
@@ -223,7 +223,7 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 说明 | 语义权限 |
 | --- | --- | --- | --- |
-| GET | `/users/:username` | 用户公开资料与公开书籍数 | `user:read` |
+| GET | `/users/:username` | 用户公开资料（含 nickname/website/location/company/github_url/bio）与公开书籍数 | `user:read` |
 | GET | `/users/:username/books?page=` | 该用户的公开书籍（分页） | `user:read` |
 
 ## 书籍
