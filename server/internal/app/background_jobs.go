@@ -83,6 +83,9 @@ func (a *App) runMaintenanceCleanup(ctx context.Context, _ json.RawMessage) erro
 	if err := cleanupExpiredImportSources(now); err != nil {
 		return fmt.Errorf("清理过期导入源文件失败: %w", err)
 	}
+	if err := purgeExpiredRateLimits(a.DB.WithContext(ctx), now); err != nil {
+		return fmt.Errorf("清理过期限流计数失败: %w", err)
+	}
 	return nil
 }
 

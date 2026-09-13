@@ -58,6 +58,7 @@ func New(cfg *config.Config) (*App, error) {
 			return nil, fmt.Errorf("数据库迁移失败: %w", err)
 		}
 		a.DB = db
+		a.RateLimits = newDBRateLimitStore(db) // 多实例共享限流计数（已安装才有数据库）
 		// 首次引入注册功能：已有用户视为已激活并补发专属邀请码（内部只跑一次）
 		a.migrateRegistrationDefaults()
 		a.migrateInviteEnabled()

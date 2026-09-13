@@ -174,6 +174,8 @@ func (a *App) SetupInstall(c *gin.Context) {
 		return
 	}
 	a.DB = db
+	// 限流存储不在此切换：本安装进程沿用内存实现（安装期天然单实例，无多实例竞争），
+	// 重启后走 New() 的已安装分支切到数据库共享限流。避免安装期覆盖调用方预设的存储。
 	a.search = configureSearchBackend(db)
 	if err := a.configureJobQueue(); err != nil {
 		fail(c, http.StatusInternalServerError, "初始化异步任务失败: "+err.Error())

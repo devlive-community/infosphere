@@ -131,6 +131,14 @@ type OAuthState struct {
 	CreatedAt time.Time `json:"-"`
 }
 
+// RateLimitCounter 限流计数：存数据库以支持多实例部署（跨实例共享固定窗口计数）。
+// RateKey 已是脱敏哈希（policy 名 + 主体的 sha256），不含明文；ResetAt 为窗口结束时间。
+type RateLimitCounter struct {
+	RateKey string    `gorm:"primaryKey;column:rate_key;size:128" json:"-"`
+	Count   int       `gorm:"not null;default:0" json:"-"`
+	ResetAt time.Time `gorm:"index" json:"-"`
+}
+
 // TwoFactorStepUp 二次认证 step-up 授权窗口：存数据库以支持多实例部署，每用户一条。
 type TwoFactorStepUp struct {
 	UserID    uint      `gorm:"primaryKey" json:"user_id"`
@@ -496,6 +504,7 @@ func All(db *gorm.DB) error {
 		&TwoFactorBackupCode{},
 		&CaptchaChallenge{},
 	&OAuthState{},
+	&RateLimitCounter{},
 		&TwoFactorStepUp{},
 		&LoginLockout{},
 		&UserNotificationPref{},
