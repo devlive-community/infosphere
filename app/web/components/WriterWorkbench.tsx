@@ -5,7 +5,7 @@ import { api, formatDate, API_BASE, getToken } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown, bindMarkdownInteractivity } from '@/lib/markdown'
 import Seo from '@/components/Seo'
-import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Tooltip, useFeedback } from '@/components/ui'
+import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Tooltip, Modal, useFeedback } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
@@ -119,6 +119,7 @@ export default function Writer({ user }: WriterProps) {
   const [focusMode, setFocusMode] = useState(false)
   // 斜杠命令菜单
   const [slash, setSlash] = useState({ open: false, start: 0, query: '', top: 0, left: 0, index: 0 })
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   // 查找替换
   const [findOpen, setFindOpen] = useState(false)
   const [findText, setFindText] = useState('')
@@ -1197,6 +1198,10 @@ export default function Writer({ user }: WriterProps) {
                     {focusMode ? <MinimizeIcon className="h-3.5 w-3.5" /> : <MaximizeIcon className="h-3.5 w-3.5" />}
                     {focusMode ? '退出专注' : '专注'}
                   </button>
+                  <button type="button" onClick={() => setShortcutsOpen(true)} aria-label="快捷键"
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-[10px] font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+                    ?
+                  </button>
                 </span>
                 <span className="flex items-center gap-2">
                   {uploading && <span className="flex items-center gap-1 text-primary-500"><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" /> 上传中…</span>}
@@ -1220,6 +1225,28 @@ export default function Writer({ user }: WriterProps) {
               ))}
             </div>
           )}
+
+          <Modal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} title="编辑器快捷键">
+            <dl className="space-y-2.5">
+              {[
+                ['保存', '⌘/Ctrl + S'],
+                ['加粗 / 斜体 / 链接', '⌘/Ctrl + B / I / K'],
+                ['查找替换', '⌘/Ctrl + F'],
+                ['复制整行', '⌘/Ctrl + Shift + D'],
+                ['上/下移动整行', 'Alt + ↑ / ↓'],
+                ['插入命令菜单', '/（行首或空格后）'],
+                ['包裹选中文本', '选中后按 ( [ { ` * _ ~ " \''],
+                ['列表续行 / 空项退出', 'Enter'],
+                ['列表缩进 / 反缩进', 'Tab / Shift + Tab'],
+                ['退出专注 / 关闭菜单', 'Esc'],
+              ].map(([action, keys]) => (
+                <div key={action} className="flex items-center justify-between gap-4">
+                  <dt className="text-sm text-slate-600">{action}</dt>
+                  <dd className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-xs text-slate-500">{keys}</dd>
+                </div>
+              ))}
+            </dl>
+          </Modal>
         </main>
 
         {/* 右栏：章节设置 */}
