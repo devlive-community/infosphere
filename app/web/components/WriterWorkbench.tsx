@@ -909,6 +909,7 @@ export default function Writer({ user }: WriterProps) {
   const parentCandidates = flatDocs.filter((d) => !current || (d.id !== current.id && !isDescendantOf(d, current.id)))
   const parentDoc = parentId ? flatDocs.find((d) => String(d.id) === parentId) : null
   const wordCount = content.replace(/\s/g, '').length
+  const readingMinutes = wordCount ? Math.max(1, Math.round(wordCount / 400)) : 0 // 约 400 字/分钟
   const dragBlocked = dragId != null ? subtreeIds(dragId) : null
 
   if (!book) {
@@ -1205,7 +1206,7 @@ export default function Writer({ user }: WriterProps) {
                 </span>
                 <span className="flex items-center gap-2">
                   {uploading && <span className="flex items-center gap-1 text-primary-500"><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" /> 上传中…</span>}
-                  <span>{wordCount} 字</span>
+                  <span>{wordCount} 字{readingMinutes > 0 && ` · 约 ${readingMinutes} 分钟`}</span>
                 </span>
                 {current ? <span>更新于 {formatDate(current.updated_at).slice(11)}</span> : <span />}
               </div>
