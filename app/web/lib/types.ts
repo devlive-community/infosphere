@@ -118,6 +118,7 @@ export interface DocumentRevision extends DocumentRevisionSummary {
 export interface SiteConfig {
   site_name?: string
   site_description?: string
+  site_logo?: string
   version?: string
   installation_date?: string
   comments_enabled?: string

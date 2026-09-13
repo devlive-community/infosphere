@@ -6,6 +6,7 @@ import Container from '@/components/Container'
 import { ListBulletIcon, BookIcon, TrashIcon, UserCircleIcon, GridIcon, LogOutIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
 import { API_BASE, api } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import { Button, ButtonLink, Input, Modal, Tooltip, useFeedback } from '@/components/ui'
 import NotificationBell from '@/components/NotificationBell'
 import { SearchIcon } from '@/components/icons'
@@ -157,6 +158,7 @@ function AnnouncementBanner() {
 export default function Layout({ title, children }: { title?: string; children: ReactNode }) {
   const { site, user } = useApp()
   const siteName = site.site_name || 'InfoSphere'
+  const siteLogo = site.site_logo ? resolveMediaUrl(site.site_logo) : '/logo.png'
   const year = new Date().getFullYear()
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [release, setRelease] = useState<{ loading: boolean; body: string; url: string } | null>(null)
@@ -194,7 +196,7 @@ export default function Layout({ title, children }: { title?: string; children: 
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex items-center gap-4 px-4" style={{ height: 'var(--nav-height)', maxWidth: 'var(--content-max-width)' }}>
           <Link href="/" className="flex shrink-0 items-center gap-2.5 text-lg font-bold text-slate-900">
-            <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
+            <img src={siteLogo} alt="" className="h-9 w-9 object-contain" />
             {siteName}
           </Link>
           <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
@@ -221,7 +223,7 @@ export default function Layout({ title, children }: { title?: string; children: 
         <div className="mx-auto grid gap-10 px-4 py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr]" style={{ maxWidth: 'var(--content-max-width)' }}>
           <div>
             <div className="flex items-center gap-2.5 text-lg font-bold text-white">
-              <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
+              <img src={siteLogo} alt="" className="h-9 w-9 object-contain" />
               {siteName}
             </div>
             <p className="mt-3 max-w-xs text-sm leading-6 text-slate-400">

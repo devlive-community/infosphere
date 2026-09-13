@@ -76,7 +76,7 @@ func (a *App) SiteStats(c *gin.Context) {
 // GetSiteConfig GET /site 公开站点配置
 func (a *App) GetSiteConfig(c *gin.Context) {
 	var rows []models.SiteConfig
-	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "version", "installation_date", "comments_enabled", "announcement_enabled", "announcement_text", "announcement_tone"}).Find(&rows)
+	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "site_logo", "version", "installation_date", "comments_enabled", "announcement_enabled", "announcement_text", "announcement_tone"}).Find(&rows)
 	cfg := gin.H{}
 	for _, r := range rows {
 		cfg[r.ConfigKey] = r.ConfigValue
@@ -87,6 +87,7 @@ func (a *App) GetSiteConfig(c *gin.Context) {
 type siteConfigUpdate struct {
 	SiteName            *string `json:"site_name"`
 	SiteDescription     *string `json:"site_description"`
+	SiteLogo            *string `json:"site_logo"`
 	AnnouncementEnabled *bool   `json:"announcement_enabled"`
 	AnnouncementText    *string `json:"announcement_text"`
 	AnnouncementTone    *string `json:"announcement_tone"` // info | warning
@@ -105,6 +106,9 @@ func (a *App) UpdateSiteConfig(c *gin.Context) {
 	}
 	if req.SiteDescription != nil {
 		updates["site_description"] = *req.SiteDescription
+	}
+	if req.SiteLogo != nil {
+		updates["site_logo"] = strings.TrimSpace(*req.SiteLogo)
 	}
 	if req.AnnouncementEnabled != nil {
 		v := "false"
