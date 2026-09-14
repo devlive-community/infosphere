@@ -11,6 +11,7 @@ interface LoginSecurity {
   lockout_duration: number
   password_min_length: number
   password_require_mixed: boolean
+  account_deletion_cooldown_days: number
 }
 
 // 系统设置 · 登录安全：登录失败锁定 + 密码策略（仅管理员）
@@ -19,7 +20,7 @@ export default function SettingsLoginSecurity() {
   const isAdmin = user?.role === 'admin'
   const [cfg, setCfg] = useState<LoginSecurity>({
     lockout_enabled: false, lockout_threshold: 5, lockout_window: 15, lockout_duration: 15,
-    password_min_length: 6, password_require_mixed: false,
+    password_min_length: 6, password_require_mixed: false, account_deletion_cooldown_days: 7,
   })
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
@@ -80,6 +81,20 @@ export default function SettingsLoginSecurity() {
             </Field>
             <Field label="需同时包含字母和数字" hint="开启后，弱密码（纯数字/纯字母）将被拒绝。">
               <Switch ariaLabel="需同时包含字母和数字" checked={cfg.password_require_mixed} onChange={(v) => setCfg({ ...cfg, password_require_mixed: v })} />
+            </Field>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="mb-4 font-bold text-slate-900">账号注销</h3>
+          <div className="space-y-5">
+            <Field label="注销冷静期" hint="用户申请注销后进入冷静期，到期自动永久删除账号及数据；期间用户可随时撤销。设为 0 表示确认后立即删除。">
+              <span className="inline-block w-24">
+                <Input type="number" min={0} max={90} value={cfg.account_deletion_cooldown_days}
+                  onChange={(e) => setCfg({ ...cfg, account_deletion_cooldown_days: Math.max(0, Math.min(90, Number(e.target.value) || 0)) })}
+                  className="text-center" aria-label="注销冷静期天数" />
+              </span>
+              <span className="ml-2 text-sm text-slate-500">天</span>
             </Field>
           </div>
         </div>

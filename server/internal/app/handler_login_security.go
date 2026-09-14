@@ -21,7 +21,19 @@ const (
 	cfgLockoutDuration  = "login_lockout_duration"  // 锁定时长（分钟）
 	cfgPwdMinLength     = "password_min_length"
 	cfgPwdRequireMixed  = "password_require_mixed" // 需同时含字母与数字
+	cfgAcctDelCooldown  = "account_deletion_cooldown_days" // 注销账号冷静期（天），0 表示立即删除
 )
+
+// accountDeletionCooldownDays 注销账号冷静期天数（默认 7，范围 0-90；0 表示确认即删除）。
+func (a *App) accountDeletionCooldownDays() int {
+	n := atoiDefault(a.getSetting(cfgAcctDelCooldown), 7)
+	if n < 0 {
+		n = 0
+	} else if n > 90 {
+		n = 90
+	}
+	return n
+}
 
 // ---- 密码策略 ----
 
@@ -138,6 +150,7 @@ type loginSecuritySettings struct {
 	LockoutDuration      int  `json:"lockout_duration"`
 	PasswordMinLength    int  `json:"password_min_length"`
 	PasswordRequireMixed bool `json:"password_require_mixed"`
+	AccountDeletionCooldownDays int `json:"account_deletion_cooldown_days"`
 }
 
 // GetLoginSecurity GET /login-security（管理员）
@@ -149,6 +162,7 @@ func (a *App) GetLoginSecurity(c *gin.Context) {
 		LockoutDuration:      int(a.lockoutDuration().Minutes()),
 		PasswordMinLength:    a.passwordMinLength(),
 		PasswordRequireMixed: a.passwordRequireMixed(),
+		AccountDeletionCooldownDays: a.accountDeletionCooldownDays(),
 	})
 }
 
@@ -179,5 +193,6 @@ func (a *App) UpdateLoginSecurity(c *gin.Context) {
 	_ = a.setSetting(cfgLockoutDuration, fmt.Sprintf("%d", clampi(req.LockoutDuration, 1, 1440)), "登录锁定时长（分钟）")
 	_ = a.setSetting(cfgPwdMinLength, fmt.Sprintf("%d", clampi(req.PasswordMinLength, 6, 64)), "密码最小长度")
 	_ = a.setSetting(cfgPwdRequireMixed, boolStr(req.PasswordRequireMixed), "密码需同时含字母与数字")
+	_ = a.setSetting(cfgAcctDelCooldown, fmt.Sprintf("%d", clampi(req.AccountDeletionCooldownDays, 0, 90)), "注销账号冷静期（天）")
 	a.GetLoginSecurity(c)
 }

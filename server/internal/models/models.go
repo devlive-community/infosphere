@@ -22,6 +22,8 @@ type User struct {
 	Location string `gorm:"size:100" json:"location"` // 所在地
 	Company  string `gorm:"size:100" json:"company"`  // 公司/组织
 	IsActive bool   `gorm:"default:true" json:"is_active"`
+	// DeletionRequestedAt 用户自助注销请求时间；非空表示进入冷静期，到期后由维护任务自动删除
+	DeletionRequestedAt *time.Time `gorm:"index" json:"deletion_requested_at"`
 	// EmailVerified 邮箱是否已激活；开启「注册后必须激活邮箱」时，未激活用户只读
 	EmailVerified bool `gorm:"default:false" json:"email_verified"`
 	// InviteCode 用户专属邀请码（referral），一经设置不再变化；应用层保证唯一

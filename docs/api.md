@@ -175,7 +175,7 @@ Authorization: Bearer <token>
 | GET/PUT | `/registration` | 管理员读取/保存注册设置：`{mode, require_email, require_activation}` | `site:update` |
 | GET | `/captcha?scene=register\|login\|comment` | 场景验证码：未开启返回 `{required:false}`；开启返回 `{required:true, id, type, image(data-uri)/question}`；提交对应操作时带 `captcha_id`+`captcha_answer` | 匿名 |
 | GET/PUT | `/captcha-settings` | 管理员读取/保存验证码设置：`{type(image\|arithmetic), length, charset(digit\|alnum), noise(0-3), arith_hard, on_register, on_login, on_comment}` | `site:update` |
-| GET/PUT | `/login-security` | 管理员读取/保存登录安全：`{lockout_enabled, lockout_threshold, lockout_window(分钟), lockout_duration(分钟), password_min_length(≥6), password_require_mixed}`。登录连续失败达阈值临时锁定账户（429）；密码策略作用于注册/改密/找回 | `site:update` |
+| GET/PUT | `/login-security` | 管理员读取/保存登录安全：`{lockout_enabled, lockout_threshold, lockout_window(分钟), lockout_duration(分钟), password_min_length(≥6), password_require_mixed, account_deletion_cooldown_days(0-90)}`。登录连续失败达阈值临时锁定账户（429）；密码策略作用于注册/改密/找回；`account_deletion_cooldown_days` 为自助注销冷静期（0 表示确认后立即删除） | `site:update` |
 | GET/PUT | `/content-settings` | 管理员读取/保存内容设置：`{upload_max_mb(1-100), upload_allowed_exts(逗号分隔扩展名), comments_enabled}`。上传超限/类型不符拒绝；`comments_enabled=false` 时全站禁止发表评论（`comments_enabled` 也会出现在公开 `/site`，供前端隐藏评论框） | `site:update` |
 | GET | `/auth/me` | 当前用户信息（含 `email_verified`、`invite_code`） | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
@@ -184,6 +184,9 @@ Authorization: Bearer <token>
 | PUT | `/auth/password` | 修改密码（old_password/new_password；OAuth 用户未设密码时免验原密码，用于首次设置） | `user:update` |
 | POST | `/auth/password/forgot` | 匿名申请找回：`{email}`；响应不泄露邮箱是否存在，令牌邮件 60 分钟有效、一次性、只保留最新一条；邮件写入持久化异步队列，失败自动退避重试；`mail_driver=log` 时执行任务后把链接输出到后端日志 | `auth:password-reset`（匿名语义） |
 | POST | `/auth/password/reset` | 匿名重置：`{token, password}`（≥6 位）；成功后旧密码立即失效，该用户其余令牌作废 | `auth:password-reset`（匿名语义） |
+| GET | `/auth/account/deletion` | 当前用户注销状态：`{requested, cooldown_days, deletion_requested_at?, scheduled_delete_at?}` | `user:read` |
+| POST | `/auth/account/deletion` | 申请注销账号：`{password}`（设有密码时校验）+ 二次认证；冷静期>0 进入冷静期并返回状态，冷静期=0 立即彻底删除账号及全部数据（书籍/章节/版本/互动/进度/评论/绑定/设置）返回 `{deleted:true}`；最后一位启用中的管理员不可注销 | `user:update` |
+| DELETE | `/auth/account/deletion` | 冷静期内撤销注销申请，返回最新状态 | `user:update` |
 
 ## 第三方登录（OAuth，支持 github / google / gitlab）
 

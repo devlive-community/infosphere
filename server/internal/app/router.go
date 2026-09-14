@@ -106,6 +106,10 @@ func (a *App) Router() *gin.Engine {
 				authed.POST("/2fa/backup-codes", a.RegenerateBackupCodes)
 				authed.PUT("/profile", a.RequirePermission(authz.UserUpdate), a.UpdateProfile)
 				authed.PUT("/password", a.RequirePermission(authz.UserUpdate), a.ChangePassword)
+				// 个人危险区：自助注销账号（冷静期）
+				authed.GET("/account/deletion", a.RequirePermission(authz.UserRead), a.GetAccountDeletion)
+				authed.POST("/account/deletion", a.RequirePermission(authz.UserUpdate), a.RequestAccountDeletion)
+				authed.DELETE("/account/deletion", a.RequirePermission(authz.UserUpdate), a.CancelAccountDeletion)
 				// 导出样式偏好（PDF 导出用）
 				authed.GET("/export-settings", a.RequirePermission(authz.UserRead), a.GetExportSettings)
 				authed.PUT("/export-settings", a.RequirePermission(authz.UserUpdate), a.UpdateExportSettings)

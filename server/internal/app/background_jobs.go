@@ -86,6 +86,9 @@ func (a *App) runMaintenanceCleanup(ctx context.Context, _ json.RawMessage) erro
 	if err := purgeExpiredRateLimits(a.DB.WithContext(ctx), now); err != nil {
 		return fmt.Errorf("清理过期限流计数失败: %w", err)
 	}
+	if err := a.purgeScheduledAccountDeletions(now); err != nil {
+		return fmt.Errorf("清理到期注销账号失败: %w", err)
+	}
 	return nil
 }
 
