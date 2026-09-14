@@ -223,4 +223,25 @@ export const en: Record<string, string> = {
   // Book language/version switch
   'book.variant.language': 'Language',
   'book.variant.version': 'Version',
+
+  // Home
+  'home.seo.description': 'A simple yet powerful open-source knowledge platform with multi-database and multi-device support.',
+  'home.seo.jsonldDescription': 'InfoSphere knowledge platform',
+  'home.hero.titleLine1': 'Let knowledge settle,',
+  'home.hero.titleLine2': 'let ideas flow',
+  'home.hero.subtitle': 'Your own open-source knowledge space. Writing, organizing, publishing and reading all happen in one place.',
+  'home.hero.explore': 'Explore knowledge',
+  'home.hero.createFirst': 'Create your first book',
+  'home.hero.tagOpenSource': 'Open source',
+  'home.hero.tagSelfHosted': 'Self-hosted',
+  'home.hero.tagMultiDevice': 'Multi-device sync',
+  'home.stats.users': 'Users',
+  'home.stats.books': 'Books',
+  'home.stats.chapters': 'Chapters',
+  'home.stats.views': 'Total views',
+  'home.section.latest': 'Latest',
+  'home.section.viewAll': 'View all',
+  'home.section.hot': 'Popular',
+  'home.empty.prefix': 'No public books yet—',
+  'home.empty.createLink': 'create the first one',
 }

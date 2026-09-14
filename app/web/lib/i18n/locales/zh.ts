@@ -223,4 +223,25 @@ export const zh: Record<string, string> = {
   // 书籍语言/版本切换
   'book.variant.language': '语言',
   'book.variant.version': '版本',
+
+  // 首页
+  'home.seo.description': '简单而强大的开源知识管理系统，支持多数据库与多端访问。',
+  'home.seo.jsonldDescription': 'InfoSphere 知识管理系统',
+  'home.hero.titleLine1': '让知识沉淀，',
+  'home.hero.titleLine2': '也让灵感流动',
+  'home.hero.subtitle': '一个属于你自己的开源知识空间。写作、整理、发布与阅读，在同一个地方自然发生。',
+  'home.hero.explore': '探索知识',
+  'home.hero.createFirst': '创建第一本书',
+  'home.hero.tagOpenSource': '开源',
+  'home.hero.tagSelfHosted': '自托管',
+  'home.hero.tagMultiDevice': '多端同步',
+  'home.stats.users': '注册用户',
+  'home.stats.books': '知识书籍',
+  'home.stats.chapters': '文档章节',
+  'home.stats.views': '总浏览量',
+  'home.section.latest': '最新发布',
+  'home.section.viewAll': '查看全部',
+  'home.section.hot': '热门阅读',
+  'home.empty.prefix': '还没有公开的书籍，',
+  'home.empty.createLink': '创建第一本',
 }
