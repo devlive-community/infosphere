@@ -2,11 +2,12 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { FormEvent, useEffect, useState } from 'react'
-import OAuthButtons, { oauthErrorText } from '@/components/OAuthButtons'
+import OAuthButtons, { oauthErrorKey } from '@/components/OAuthButtons'
 import CaptchaField, { CaptchaValue } from '@/components/CaptchaField'
 import { Button, Field, Input, SegmentedTabs, Tooltip, Modal } from '@/components/ui'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import type { User } from '@/lib/types'
 
 type AuthMode = 'login' | 'register'
@@ -26,6 +27,7 @@ function PasswordInput({ value, onChange, autoComplete, placeholder }: {
   placeholder?: string
 }) {
   const [visible, setVisible] = useState(false)
+  const { t } = useTranslation()
 
   return (
     <Input
@@ -38,13 +40,13 @@ function PasswordInput({ value, onChange, autoComplete, placeholder }: {
       required
       leading={<FieldIcon name="lock" />}
       trailing={(
-        <Tooltip content={visible ? '隐藏密码' : '显示密码'}>
+        <Tooltip content={visible ? t('auth.password.hide') : t('auth.password.show')}>
           <button
             type="button"
             onClick={() => setVisible((current) => !current)}
             className="flex items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none"
             style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
-            aria-label={visible ? '隐藏密码' : '显示密码'}
+            aria-label={visible ? t('auth.password.hide') : t('auth.password.show')}
             aria-pressed={visible}
           >
             <i className={`fa-solid ${visible ? 'fa-eye-slash' : 'fa-eye'} text-sm`} aria-hidden="true" />
@@ -58,6 +60,7 @@ function PasswordInput({ value, onChange, autoComplete, placeholder }: {
 export default function AuthPage({ mode }: { mode: AuthMode }) {
   const router = useRouter()
   const { user, login, site } = useApp()
+  const { t } = useTranslation()
   const siteName = site.site_name?.trim() || ''
   const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '', inviteCode: '' })
   const [regInfo, setRegInfo] = useState<{ mode: string; require_email: boolean; password_min_length?: number; password_require_mixed?: boolean } | null>(null)
@@ -89,9 +92,10 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 
   useEffect(() => {
     if (router.isReady && typeof router.query.oauth_error === 'string') {
-      setError(oauthErrorText(router.query.oauth_error))
+      const code = router.query.oauth_error
+      setError(t(oauthErrorKey(code), { code }))
     }
-  }, [router.isReady, router.query.oauth_error])
+  }, [router.isReady, router.query.oauth_error]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 邀请链接：注册页带 ?invite=<码> 时预填邀请码
   useEffect(() => {
@@ -104,7 +108,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
     event.preventDefault()
     setError('')
     if (!isLogin && form.password !== form.confirm) {
-      setError('两次输入的密码不一致')
+      setError(t('auth.register.passwordMismatch'))
       return
     }
 
@@ -163,9 +167,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   const registrationClosed = !isLogin && regInfo?.mode === 'closed'
   const showInvite = !isLogin && regInfo != null && regInfo.mode !== 'closed'
 
-  const pageTitle = siteName
-    ? `${isLogin ? '登录' : '注册'} - ${siteName}`
-    : isLogin ? '登录' : '注册'
+  const authLabel = isLogin ? t('auth.tab.login') : t('auth.tab.register')
+  const pageTitle = siteName ? `${authLabel} - ${siteName}` : authLabel
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] text-slate-900">
@@ -173,34 +176,34 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 
       <header className="border-b border-slate-200/80 bg-white/75 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3" aria-label={siteName ? `返回 ${siteName} 首页` : '返回首页'}>
+          <Link href="/" className="flex min-w-0 items-center gap-3" aria-label={siteName ? t('auth.aria.homeNamed', { site: siteName }) : t('auth.aria.home')}>
             <img src="/logo.png" alt="" className="h-9 w-9 shrink-0 object-contain" />
             {siteName && <span className="truncate text-lg font-semibold tracking-tight text-slate-900">{siteName}</span>}
           </Link>
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-primary-600">
-            返回首页
+            {t('auth.link.backHome')}
             <i className="fa-solid fa-arrow-right text-xs" aria-hidden="true" />
           </Link>
         </div>
       </header>
 
       <main className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-12 px-5 py-10 sm:px-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(400px,0.85fr)] lg:gap-20 lg:py-14">
-        <section className="relative hidden min-h-[570px] overflow-hidden rounded-2xl border border-slate-200/80 bg-[#fbfaf7] p-10 lg:flex lg:flex-col lg:justify-between" aria-label="平台介绍">
+        <section className="relative hidden min-h-[570px] overflow-hidden rounded-2xl border border-slate-200/80 bg-[#fbfaf7] p-10 lg:flex lg:flex-col lg:justify-between" aria-label={t('auth.aria.intro')}>
           <div className="relative z-10 max-w-xl">
-            <p className="mb-5 text-sm font-semibold tracking-[0.2em] text-primary-600">KNOWLEDGE, CONNECTED</p>
+            <p className="mb-5 text-sm font-semibold tracking-[0.2em] text-primary-600">{t('auth.hero.eyebrow')}</p>
             <h1 className="text-4xl font-bold leading-[1.25] tracking-tight text-[#172033] xl:text-5xl">
-              让知识沉淀，<br />也让灵感流动
+              {t('auth.hero.titleLine1')}<br />{t('auth.hero.titleLine2')}
             </h1>
             <p className="mt-6 max-w-lg text-base leading-8 text-slate-500">
-              将零散的想法整理成体系，在持续写作与阅读中，构建属于自己的知识脉络。
+              {t('auth.hero.subtitle')}
             </p>
           </div>
 
           <div className="relative z-10 grid max-w-xl grid-cols-3 gap-3">
             {[
-              ['fa-book-open', '专注创作', '沉浸式编辑体验'],
-              ['fa-diagram-project', '结构清晰', '章节与知识相连'],
-              ['fa-shield-halved', '安全可控', '精细的访问权限'],
+              ['fa-book-open', t('auth.hero.feature1Title'), t('auth.hero.feature1Desc')],
+              ['fa-diagram-project', t('auth.hero.feature2Title'), t('auth.hero.feature2Desc')],
+              ['fa-shield-halved', t('auth.hero.feature3Title'), t('auth.hero.feature3Desc')],
             ].map(([icon, title, description]) => (
               <div key={title} className="rounded-xl border border-slate-200/80 bg-white/85 p-4 backdrop-blur-sm">
                 <i className={`fa-solid ${icon} mb-4 text-primary-500`} aria-hidden="true" />
@@ -222,20 +225,20 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-md" aria-label={isLogin ? '登录账户' : '注册账户'}>
+        <section className="mx-auto w-full max-w-md" aria-label={isLogin ? t('auth.aria.loginSection') : t('auth.aria.registerSection')}>
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_55px_rgba(23,32,51,0.08)] sm:p-8">
             <div className="mb-7">
-              <h1 className="text-2xl font-bold tracking-tight text-[#172033]">{isLogin ? '欢迎回来' : '创建账户'}</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-[#172033]">{isLogin ? t('auth.form.welcomeBack') : t('auth.form.createAccount')}</h1>
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 {isLogin
-                  ? '登录后继续你的知识旅程'
-                  : siteName ? `加入 ${siteName}，开始记录与分享知识` : '创建账户，开始记录与分享知识'}
+                  ? t('auth.form.loginSubtitle')
+                  : siteName ? t('auth.form.registerSubtitleNamed', { site: siteName }) : t('auth.form.registerSubtitle')}
               </p>
             </div>
 
-            <SegmentedTabs className="mb-6" fullWidth value={mode} ariaLabel="账户入口" items={[
-              { value: 'login', label: '登录', href: `/login${nextQuery}` },
-              { value: 'register', label: '注册', href: `/register${nextQuery}` },
+            <SegmentedTabs className="mb-6" fullWidth value={mode} ariaLabel={t('auth.tab.aria')} items={[
+              { value: 'login', label: t('auth.tab.login'), href: `/login${nextQuery}` },
+              { value: 'register', label: t('auth.tab.register'), href: `/register${nextQuery}` },
             ]} />
 
             {error && (
@@ -247,89 +250,89 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
             {registrationClosed ? (
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm leading-6 text-slate-500">
                 <i className="fa-solid fa-lock mb-3 block text-2xl text-slate-300" aria-hidden="true" />
-                本站当前已关闭注册。如已有账户，请
-                <Link href={`/login${nextQuery}`} className="text-primary-600 hover:underline">登录</Link>。
+                {t('auth.closed.text')}
+                <Link href={`/login${nextQuery}`} className="text-primary-600 hover:underline">{t('auth.closed.loginLink')}</Link>{t('auth.closed.suffix')}
               </div>
             ) : (
             <>
             <form onSubmit={submit} className="space-y-4">
-              <Field label={isLogin ? '用户名或邮箱' : '用户名'}>
+              <Field label={isLogin ? t('auth.field.usernameOrEmail') : t('auth.field.username')}>
                 <Input value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })}
-                  autoComplete="username" placeholder={isLogin ? '请输入用户名或邮箱' : '3-50 位字母、数字或下划线'}
+                  autoComplete="username" placeholder={isLogin ? t('auth.field.usernameOrEmailPlaceholder') : t('auth.field.usernamePlaceholder')}
                   minLength={isLogin ? undefined : 3} maxLength={50} required autoFocus={isLogin} leading={<FieldIcon name="user" />} />
               </Field>
 
               {!isLogin && (
-                <Field label="邮箱" hint={emailRequired ? '本站要求绑定邮箱，用于激活账户与找回密码' : '选填，用于找回密码与接收账户通知'}>
+                <Field label={t('auth.field.email')} hint={emailRequired ? t('auth.field.emailHintRequired') : t('auth.field.emailHintOptional')}>
                   <Input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })}
-                    autoComplete="email" placeholder="name@example.com" required={emailRequired} leading={<FieldIcon name="envelope" />} />
+                    autoComplete="email" placeholder={t('auth.field.emailPlaceholder')} required={emailRequired} leading={<FieldIcon name="envelope" />} />
                 </Field>
               )}
 
-              <Field label="密码" hint={!isLogin ? `至少 ${regInfo?.password_min_length ?? 6} 位${regInfo?.password_require_mixed ? '，需同时包含字母和数字' : '字符'}` : undefined}>
+              <Field label={t('auth.field.password')} hint={!isLogin ? t(regInfo?.password_require_mixed ? 'auth.field.passwordHintMixed' : 'auth.field.passwordHint', { n: regInfo?.password_min_length ?? 6 }) : undefined}>
                 <PasswordInput value={form.password} onChange={(password) => setForm({ ...form, password })}
-                  autoComplete={isLogin ? 'current-password' : 'new-password'} placeholder="请输入密码" />
+                  autoComplete={isLogin ? 'current-password' : 'new-password'} placeholder={t('auth.field.passwordPlaceholder')} />
               </Field>
 
               {!isLogin && (
-                <Field label="确认密码">
-                  <PasswordInput value={form.confirm} onChange={(confirm) => setForm({ ...form, confirm })} autoComplete="new-password" placeholder="再次输入密码" />
+                <Field label={t('auth.field.confirmPassword')}>
+                  <PasswordInput value={form.confirm} onChange={(confirm) => setForm({ ...form, confirm })} autoComplete="new-password" placeholder={t('auth.field.confirmPlaceholder')} />
                 </Field>
               )}
 
               {showInvite && (
-                <Field label="邀请码" hint={inviteRequired ? '本站需邀请码注册' : '选填，填写他人的邀请码'}>
+                <Field label={t('auth.field.inviteCode')} hint={inviteRequired ? t('auth.field.inviteHintRequired') : t('auth.field.inviteHintOptional')}>
                   <Input value={form.inviteCode} onChange={(event) => setForm({ ...form, inviteCode: event.target.value.toUpperCase() })}
-                    autoComplete="off" placeholder="请输入邀请码" required={inviteRequired}
+                    autoComplete="off" placeholder={t('auth.field.invitePlaceholder')} required={inviteRequired}
                     leading={<i className="fa-solid fa-ticket w-4 text-center text-xs" aria-hidden="true" />} />
                 </Field>
               )}
 
               {isLogin && (
                 <div className="flex justify-end">
-                  <Link href="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">忘记密码？</Link>
+                  <Link href="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">{t('auth.login.forgot')}</Link>
                 </div>
               )}
 
               <CaptchaField scene={isLogin ? 'login' : 'register'} onChange={setCaptcha} refreshSignal={captchaRefresh} />
 
-              <Button type="submit" className="w-full" loading={loading}>{isLogin ? '登录' : '创建账户'}</Button>
+              <Button type="submit" className="w-full" loading={loading}>{isLogin ? t('auth.action.login') : t('auth.action.createAccount')}</Button>
             </form>
 
-            <Modal open={isLogin && twoFactorNeeded} onClose={() => setTwoFactorNeeded(false)} title="二次认证">
+            <Modal open={isLogin && twoFactorNeeded} onClose={() => setTwoFactorNeeded(false)} title={t('auth.twofactor.title')}>
               <form onSubmit={verifyTwoFactor} className="space-y-3">
-                <p className="text-sm text-slate-500">请输入身份验证器 App 中的 6 位动态码，或一条备用码。</p>
+                <p className="text-sm text-slate-500">{t('auth.twofactor.hint')}</p>
                 <Input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)}
-                  autoComplete="one-time-code" autoFocus placeholder="6 位动态码 / 备用码"
+                  autoComplete="one-time-code" autoFocus placeholder={t('auth.twofactor.placeholder')}
                   leading={<i className="fa-solid fa-shield-halved w-4 text-center text-xs" aria-hidden="true" />} />
                 {twoFactorError && <p className="text-sm text-rose-600">{twoFactorError}</p>}
                 <div className="flex justify-end gap-2 pt-1">
-                  <Button type="button" variant="ghost" onClick={() => setTwoFactorNeeded(false)}>取消</Button>
-                  <Button type="submit" loading={twoFactorBusy} disabled={!twoFactorCode.trim()}>验证并登录</Button>
+                  <Button type="button" variant="ghost" onClick={() => setTwoFactorNeeded(false)}>{t('common.actions.cancel')}</Button>
+                  <Button type="submit" loading={twoFactorBusy} disabled={!twoFactorCode.trim()}>{t('auth.twofactor.verify')}</Button>
                 </div>
               </form>
             </Modal>
 
-            <div className="mt-5"><OAuthButtons label={isLogin ? '登录' : '注册'} /></div>
+            <div className="mt-5"><OAuthButtons label={isLogin ? t('auth.tab.login') : t('auth.tab.register')} /></div>
             </>
             )}
 
             <p className="mt-6 text-center text-xs leading-5 text-slate-400">
               {isLogin ? (
-                '登录即表示你同意遵守本站的使用规范'
+                t('auth.legal.loginNotice')
               ) : site.terms_url || site.privacy_url ? (
                 <>
-                  注册即表示你已阅读并同意
+                  {t('auth.legal.registerAgreePrefix')}
                   {site.terms_url && (
-                    <a href={site.terms_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">《用户协议》</a>
+                    <a href={site.terms_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">{t('auth.legal.terms')}</a>
                   )}
-                  {site.terms_url && site.privacy_url && '与'}
+                  {site.terms_url && site.privacy_url && t('auth.legal.and')}
                   {site.privacy_url && (
-                    <a href={site.privacy_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">《隐私政策》</a>
+                    <a href={site.privacy_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">{t('auth.legal.privacy')}</a>
                   )}
                 </>
               ) : (
-                '注册即表示你同意遵守本站的使用规范'
+                t('auth.legal.registerNotice')
               )}
             </p>
           </div>
