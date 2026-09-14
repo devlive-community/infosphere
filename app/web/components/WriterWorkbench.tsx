@@ -138,6 +138,7 @@ export default function Writer({ user }: WriterProps) {
   const [message, setMessage] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [webImportOpen, setWebImportOpen] = useState(false)
+  const [webImportParent, setWebImportParent] = useState<Document | null>(null)
 
   const closeChapterMenu = useCallback(() => setChapterMenu(null), [])
   const openChapterMenu = useCallback((doc: Document, x: number, y: number, align: 'start' | 'end' = 'start', flipY?: number) => {
@@ -518,16 +519,14 @@ export default function Writer({ user }: WriterProps) {
     await loadTree(book)
   }
 
-  // 新建章节/子章节：有选中项时都建到该章节之下（子级）；无选中项时建到顶级
-  async function createNew() {
+  // startNewChapter 在指定父级下追加一个空白新章节（parent 为 null 表示顶级）
+  async function startNewChapter(parent: Document | null, siblingsCount: number) {
     if (!await confirmDiscard()) return
-    let newParent = ''
-    let newSort = 0
-    if (current) {
-      newParent = String(current.id)
-      newSort = current.children?.length || 0
-      setExpanded(new Set(expanded).add(current.id)) // 展开父级，保存后新子章节可见
-      setCreatingUnder(current.id) // 新建期间保持父章节高亮作上下文
+    const newParent = parent ? String(parent.id) : ''
+    const newSort = siblingsCount
+    if (parent) {
+      setExpanded(new Set(expanded).add(parent.id)) // 展开父级，保存后新子章节可见
+      setCreatingUnder(parent.id) // 新建期间保持父章节高亮作上下文
     } else {
       setCreatingUnder(null)
     }
@@ -540,9 +539,27 @@ export default function Writer({ user }: WriterProps) {
     setTimeout(() => textareaRef.current?.focus(), 0)
   }
 
-  async function openWebImport() {
+  // 顶部「新建章节」：有选中项时建到该章节之下（子级），无选中项时建到顶级
+  async function createNew() {
+    await startNewChapter(current, current ? current.children?.length || 0 : tree.length)
+  }
+
+  // 右键菜单「新建子章节」：在目标章节之下追加子章节
+  async function createChildOf(doc: Document) {
+    await startNewChapter(doc, doc.children?.length || 0)
+  }
+
+  // 右键菜单「新建章节」：在目标章节的同级追加一个章节
+  async function createSiblingOf(doc: Document) {
+    const parent = doc.parent_id ? flatDocs.find((d) => d.id === doc.parent_id) || null : null
+    const siblings = parent ? parent.children || [] : tree
+    await startNewChapter(parent, siblings.length)
+  }
+
+  async function openWebImport(parent: Document | null = current) {
     if (!await confirmDiscard()) return
     setNewMenuOpen(false)
+    setWebImportParent(parent)
     setWebImportOpen(true)
   }
 
@@ -1135,7 +1152,7 @@ export default function Writer({ user }: WriterProps) {
                     <div className="absolute left-0 right-0 top-11 z-20 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                       <button onClick={() => { createNew(); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> 新建章节</button>
                       <button onClick={() => { setNewMenuOpen(false); if (!current) { setMessage('请先选择一个章节作为父级'); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
-                      <button onClick={openWebImport} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> 从网页采集</button>
+                      <button onClick={() => openWebImport()} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> 从网页采集</button>
                     </div>
                   )}
                 </div>
@@ -1443,6 +1460,16 @@ export default function Writer({ user }: WriterProps) {
       </div>
       <ContextMenu open={chapterMenu !== null} x={chapterMenu?.x ?? 0} y={chapterMenu?.y ?? 0}
         align={chapterMenu?.align} flipY={chapterMenu?.flipY} onClose={closeChapterMenu} label="章节操作">
+        <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) createSiblingOf(d) }}>
+          <FileTextIcon className="h-4 w-4" /> 新建章节
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) createChildOf(d) }}>
+          <FolderIcon className="h-4 w-4" /> 新建子章节
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) openWebImport(d) }}>
+          <GlobeIcon className="h-4 w-4" /> 从网页采集
+        </ContextMenuItem>
+        <div role="separator" className="my-1 border-t border-slate-100" />
         <ContextMenuItem onClick={() => { if (chapterMenu) move(chapterMenu.doc, -1); closeChapterMenu() }}>
           <i className="fa-solid fa-arrow-up" aria-hidden="true" /> 上移
         </ContextMenuItem>
@@ -1466,7 +1493,7 @@ export default function Writer({ user }: WriterProps) {
         <WebDocumentImportDialog
           open={webImportOpen}
           bookId={book.id}
-          parent={current}
+          parent={webImportParent}
           topLevelCount={tree.length}
           onClose={() => setWebImportOpen(false)}
           onImported={handleWebImported}
