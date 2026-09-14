@@ -15,6 +15,7 @@ import {
 } from '@/components/icons'
 import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, DocumentStatus, PageResult } from '@/lib/types'
 import { diffLines, diffStats, type DiffRow } from '@/lib/text-diff'
+import { HEADING_LEVELS } from '@/lib/editor-blocks'
 
 type SaveState = 'saved' | 'dirty' | 'saving'
 type TabKey = 'toc' | 'settings'
@@ -83,8 +84,10 @@ const WRAP_PAIRS: Record<string, string> = {
 
 // 斜杠命令元数据（label 展示，kw 供拉丁关键词过滤）；动作在 selectSlash 里按 key 分派。
 const SLASH_COMMANDS: { key: string; label: string; kw: string }[] = [
+  { key: 'h1', label: '标题 1', kw: 'h1 heading title' },
   { key: 'h2', label: '标题 2', kw: 'h2 heading title' },
   { key: 'h3', label: '标题 3', kw: 'h3 heading title' },
+  { key: 'h4', label: '标题 4', kw: 'h4 heading title' },
   { key: 'ul', label: '无序列表', kw: 'ul list bullet' },
   { key: 'ol', label: '有序列表', kw: 'ol list ordered number' },
   { key: 'task', label: '任务列表', kw: 'task todo check' },
@@ -888,9 +891,11 @@ export default function Writer({ user }: WriterProps) {
     requestAnimationFrame(() => {
       el.focus()
       el.setSelectionRange(slash.start, slash.start)
+      const heading = HEADING_LEVELS.find((h) => h.prefix.trim() === '#'.repeat(Number(cmd.key.slice(1)) || 0))
       switch (cmd.key) {
-        case 'h2': insertAtLineStart('## '); break
-        case 'h3': insertAtLineStart('### '); break
+        case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6':
+          if (heading) insertAtLineStart(heading.prefix)
+          break
         case 'ul': insertAtLineStart('- '); break
         case 'ol': insertAtLineStart('1. '); break
         case 'task': insertAtLineStart('- [ ] '); break
@@ -1985,10 +1990,13 @@ function ToolbarSelect({ onPick }: { onPick: (prefix: string) => void }) {
         H <ChevronDownIcon className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div className="absolute left-0 top-9 z-20 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          {[['## ', '标题 2'], ['### ', '标题 3'], ['#### ', '标题 4']].map(([prefix, label]) => (
-            <button key={label} onClick={() => { onPick(prefix); setOpen(false) }}
-              className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">{label}</button>
+        <div className="absolute left-0 top-9 z-20 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          {HEADING_LEVELS.map(({ prefix, label, level }) => (
+            <button key={level} onClick={() => { onPick(prefix); setOpen(false) }}
+              className="flex w-full items-baseline justify-between px-3 py-1.5 text-left hover:bg-slate-50">
+              <span className="text-sm text-slate-700">{label}</span>
+              <span className="font-mono text-[11px] text-slate-400">H{level}</span>
+            </button>
           ))}
         </div>
       )}
