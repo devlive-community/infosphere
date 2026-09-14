@@ -67,6 +67,7 @@ type documentPayload struct {
 	ParentID       json.RawMessage `json:"parent_id"`
 	SortOrder      *int            `json:"sort_order"`
 	Status         *string         `json:"status"`
+	CascadeStatus  *bool           `json:"cascade_status"` // 改状态时是否同步应用到所有子章节
 	AllowComments  *bool           `json:"allow_comments"`
 	CreateRevision *bool           `json:"create_revision"`
 	RevisionReason *string         `json:"revision_reason"`
@@ -123,6 +124,10 @@ func (a *App) CreateDocument(c *gin.Context) {
 		if err := a.DB.Where("id = ? AND book_id = ?", *createParentID, book.ID).First(&parent).Error; err != nil {
 			fail(c, http.StatusBadRequest, "父文档不存在")
 			return
+		}
+		// 书籍开启「子章节状态跟随父章节」且未显式指定状态时，默认沿用父章节状态
+		if book.ChildStatusFollowParent && req.Status == nil && docStatuses[parent.Status] {
+			statusStr = parent.Status
 		}
 	}
 
@@ -323,8 +328,12 @@ func (a *App) UpdateDocument(c *gin.Context) {
 	if req.AllowComments != nil {
 		doc.AllowComments = req.AllowComments
 	}
+	cascadeStatus := ""
 	if req.Status != nil && docStatuses[*req.Status] {
 		doc.Status = *req.Status
+		if req.CascadeStatus != nil && *req.CascadeStatus {
+			cascadeStatus = *req.Status
+		}
 	}
 	if req.Slug != nil && *req.Slug != doc.Slug {
 		if !validSlug(*req.Slug) {
@@ -370,6 +379,15 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		if err := tx.Save(doc).Error; err != nil {
 			return err
 		}
+		// 级联：把该章节整棵子树的状态一并更新
+		if cascadeStatus != "" {
+			descendants := subtreeDocIDs(tx, doc.ID)
+			if len(descendants) > 0 {
+				if err := tx.Model(&models.Document{}).Where("id IN ?", descendants).Update("status", cascadeStatus).Error; err != nil {
+					return err
+				}
+			}
+		}
 		if req.CreateRevision != nil && *req.CreateRevision {
 			reason := "save"
 			if req.RevisionReason != nil && (*req.RevisionReason == "save" || *req.RevisionReason == "publish") {
@@ -384,6 +402,22 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		return
 	}
 	ok(c, doc)
+}
+
+// subtreeDocIDs 收集 rootID 的全部后代章节 id（不含 root 本身），用于状态级联。
+func subtreeDocIDs(db *gorm.DB, rootID uint) []uint {
+	var all []uint
+	frontier := []uint{rootID}
+	for len(frontier) > 0 {
+		var children []uint
+		db.Model(&models.Document{}).Where("parent_id IN ?", frontier).Pluck("id", &children)
+		if len(children) == 0 {
+			break
+		}
+		all = append(all, children...)
+		frontier = children
+	}
+	return all
 }
 
 // isDescendant 判断 candidateId 是否位于 rootId 的子树中

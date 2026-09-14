@@ -224,6 +224,7 @@ type bookPayload struct {
 	OrderCol           *string  `json:"order_col"`
 	OrderDir           *string  `json:"order_dir"`
 	ChapterPrefix      *string  `json:"chapter_prefix"`
+	ChildStatusFollowParent *bool `json:"child_status_follow_parent"`
 	Language           *string  `json:"language"`
 	TransGroup         *string  `json:"trans_group"`
 	Version            *string  `json:"version"`
@@ -325,6 +326,9 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 	if req.ChapterPrefix != nil {
 		book.ChapterPrefix = *req.ChapterPrefix
+	}
+	if req.ChildStatusFollowParent != nil {
+		book.ChildStatusFollowParent = *req.ChildStatusFollowParent
 	}
 	if req.Language != nil {
 		book.Language = truncateText(strings.TrimSpace(*req.Language), 32)
@@ -478,6 +482,9 @@ func (a *App) UpdateBook(c *gin.Context) {
 	}
 	if req.ChapterPrefix != nil {
 		book.ChapterPrefix = *req.ChapterPrefix
+	}
+	if req.ChildStatusFollowParent != nil {
+		book.ChildStatusFollowParent = *req.ChildStatusFollowParent
 	}
 	if req.Language != nil {
 		book.Language = truncateText(strings.TrimSpace(*req.Language), 32)
