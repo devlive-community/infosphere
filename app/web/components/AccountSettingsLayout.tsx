@@ -8,7 +8,7 @@ import { useFeedback } from '@/components/ui'
 
 interface AccountSettingsLayoutProps {
   user: User
-  active: 'profile' | 'security' | 'invite' | 'notify' | 'export' | 'oauth' | 'theme'
+  active: 'profile' | 'security' | 'invite' | 'notify' | 'export' | 'oauth' | 'theme' | 'danger'
   /** 头像上传后回调（个人资料页用） */
   onAvatarChange?: (url: string) => void
   children: ReactNode
@@ -49,6 +49,7 @@ export default function AccountSettingsLayout({ user, active, onAvatarChange, ch
     { key: 'notify' as const, label: '通知设置', icon: <i className="fa-solid fa-bell w-4 text-center text-[13px]" aria-hidden="true" />, href: '/user/notify' },
     { key: 'theme' as const, label: '主题设置', icon: <PaletteIcon className="h-4 w-4" />, href: '/user/theme' },
     { key: 'export' as const, label: '导出设置', icon: <DownloadIcon className="h-4 w-4" />, href: '/user/export' },
+    { key: 'danger' as const, label: '危险区', icon: <i className="fa-solid fa-triangle-exclamation w-4 text-center text-[13px]" aria-hidden="true" />, href: '/user/danger' },
   ]
 
   return (
@@ -79,11 +80,13 @@ export default function AccountSettingsLayout({ user, active, onAvatarChange, ch
         <nav className="mt-4 space-y-1 border-t border-slate-100 pt-4">
           {nav.map((item) => {
             const isActive = active === item.key
+            const isDanger = item.key === 'danger'
+            const cls = isDanger
+              ? (isActive ? 'bg-rose-50 font-medium text-rose-700 ring-1 ring-inset ring-rose-100' : 'text-rose-600 hover:bg-rose-50')
+              : (isActive ? 'bg-primary-50 font-medium text-primary-700 ring-1 ring-inset ring-primary-100' : 'text-slate-600 hover:bg-slate-50')
             return (
               <Link key={item.key} href={item.href}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                  isActive ? 'bg-primary-50 font-medium text-primary-700 ring-1 ring-inset ring-primary-100' : 'text-slate-600 hover:bg-slate-50'
-                }`}>
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${cls}`}>
                 {item.icon} {item.label}
               </Link>
             )
