@@ -24,37 +24,50 @@ jobs:
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      # Release Note 优先取自 CHANGELOG.md 中该版本的条目；缺失或仅占位时回退到提交历史
+      # Release Note = CHANGELOG.md 中该版本的整理条目 + 自上个标签以来的完整提交记录
       - name: Build release notes from CHANGELOG
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
-          # 抽取 `## [<version>]` 到下一个 `## [` 之间的正文
+          TAG="${GITHUB_REF_NAME}"
+          PREV="$(git describe --tags --match 'v*' --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          if [ -n "$PREV" ]; then RANGE="${PREV}..${TAG}"; else RANGE="${TAG}"; fi
+          # 完整提交历史（自上个 v 标签以来的全部非合并提交）
+          COMMITS="$(git log --no-merges -n 1000 --pretty=format:'- %s (%h)' "$RANGE")"
+          COUNT="$(printf '%s\n' "$COMMITS" | grep -c '^-' || true)"
+
+          # 抽取 CHANGELOG.md 中 `## [<version>]` 到下一个 `## [` 之间的整理条目
           NOTES="$(awk -v ver="$VERSION" '
             $0 ~ ("^## \\[" ver "\\]") { grab = 1; next }
             grab && /^## \[/ { exit }
             grab { print }
           ' CHANGELOG.md)"
           STRIPPED="$(printf '%s' "$NOTES" | tr -d '[:space:]')"
-          if [ -z "$STRIPPED" ] || printf '%s' "$NOTES" | grep -q '待补充'; then
-            echo "::warning::CHANGELOG.md 缺少 ${VERSION} 的有效条目，回退到提交历史生成 Release Note"
-            TAG="${GITHUB_REF_NAME}"
-            PREV="$(git describe --tags --match 'v*' --abbrev=0 "${TAG}^" 2>/dev/null || true)"
-            if [ -n "$PREV" ]; then RANGE="${PREV}..${TAG}"; else RANGE="${TAG}"; fi
-            {
-              echo "### 变更记录"
-              echo
-              git log --no-merges -n 200 --pretty=format:'- %s (%h)' "$RANGE"
-            } > release-notes.md
-          else
-            {
+
+          {
+            if [ -n "$STRIPPED" ] && ! printf '%s' "$NOTES" | grep -q '待补充'; then
+              # 有整理好的 CHANGELOG：正文在前，完整提交记录折叠在后
               printf '%s\n' "$NOTES"
               echo
               echo "---"
+              echo
+              echo "<details>"
+              echo "<summary>完整提交记录（${COUNT} 条）</summary>"
+              echo
+              printf '%s\n' "$COMMITS"
+              echo
+              echo "</details>"
+              echo
               echo "完整更新日志见 [CHANGELOG.md](CHANGELOG.md)。"
-            } > release-notes.md
-          fi
+            else
+              # CHANGELOG 缺该版本条目：直接列出完整提交记录
+              echo "::warning::CHANGELOG.md 缺少 ${VERSION} 的有效条目，Release Note 仅含完整提交记录"
+              echo "### 变更记录（${COUNT} 条）"
+              echo
+              printf '%s\n' "$COMMITS"
+            fi
+          } > release-notes.md
           echo "----- release-notes.md -----"
           cat release-notes.md
 

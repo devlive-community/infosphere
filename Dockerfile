@@ -3,19 +3,23 @@
 # 多阶段构建：builder 复刻 CI 构建流程，runtime 使用 glibc 基础镜像（内嵌 Node 为官方 glibc 版）。
 
 # ---------- 构建阶段 ----------
-FROM golang:1.25-bookworm AS builder
+# 固定在构建机原生平台（BUILDPLATFORM），对目标架构交叉编译，避免在 QEMU 模拟下跑 Go 编译器（会失败/极慢）。
+FROM --platform=$BUILDPLATFORM golang:1.25-bookworm AS builder
 
 ARG NODE_VERSION=24.20.0
+# buildx 自动注入的目标平台参数（如 TARGETOS=linux、TARGETARCH=amd64|arm64）
+ARG TARGETOS
+ARG TARGETARCH
 ENV CI=1
 WORKDIR /src
 
-# 精确安装项目锁定的 Node.js 与 pnpm（Web 构建要求精确版本）
+# 精确安装项目锁定的 Node.js 与 pnpm（Web 构建在构建机原生架构上运行，与目标架构无关）
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends curl xz-utils ca-certificates; \
     rm -rf /var/lib/apt/lists/*; \
-    arch="$(dpkg --print-architecture)"; \
-    case "$arch" in amd64) narch=x64 ;; arm64) narch=arm64 ;; *) echo "unsupported arch: $arch" >&2; exit 1 ;; esac; \
+    barch="$(dpkg --print-architecture)"; \
+    case "$barch" in amd64) narch=x64 ;; arm64) narch=arm64 ;; *) echo "unsupported build arch: $barch" >&2; exit 1 ;; esac; \
     curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${narch}.tar.xz" \
       | tar -xJ -C /usr/local --strip-components=1; \
     corepack enable && corepack prepare pnpm@9 --activate; \
@@ -25,13 +29,14 @@ RUN set -eux; \
 COPY app/web/package.json app/web/pnpm-lock.yaml app/web/
 RUN cd app/web && pnpm install --frozen-lockfile
 
-# 拷贝源码并构建：Web SSR standalone -> 打包内嵌运行时 -> 编译静态 Go 二进制
+# 拷贝源码并构建：Web SSR standalone（架构无关）-> 打包目标架构内嵌运行时 -> 交叉编译静态 Go 二进制
 COPY . .
 RUN cd app/web && NEXT_DIST_DIR=.next-build pnpm build
-RUN arch="$(dpkg --print-architecture)"; \
-    deploy/package-web-runtime.sh "${NODE_VERSION}" linux "$arch" \
+# 内嵌的 Node 运行时按目标架构下载打包（仅下载不执行，可在构建机上完成）
+RUN deploy/package-web-runtime.sh "${NODE_VERSION}" "${TARGETOS}" "${TARGETARCH}" \
       server/internal/webbundle/assets/web-runtime.tar.gz
-RUN cd server && CGO_ENABLED=0 GOOS=linux GOARCH="$(go env GOARCH)" \
+# CGO 关闭，Go 交叉编译到目标架构（无需 QEMU）
+RUN cd server && CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" \
     go build -trimpath -ldflags "-s -w" -o /out/infosphere-server .
 
 # ---------- 运行阶段 ----------
