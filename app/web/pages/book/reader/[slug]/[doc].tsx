@@ -345,7 +345,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                 </span>
                 <span className="text-xs text-slate-400">{flat.length} 个章节</span>
               </div>
-              <div className="mt-3 flex flex-col gap-2"><BookTranslations bookId={book.id} /><BookVersions bookId={book.id} /></div>
+              <div className="mt-3 flex flex-col gap-2"><BookTranslations bookId={book.id} linkTo="reader" /><BookVersions bookId={book.id} linkTo="reader" /></div>
               {canEdit && (
                 <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}/${doc ? encodeURIComponent(doc.slug) : ''}`}
                   className="mt-3 w-full">

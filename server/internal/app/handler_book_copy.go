@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"infosphere/server/internal/models"
 
@@ -59,7 +60,7 @@ func (a *App) CopyBook(c *gin.Context) {
 		}
 	}
 
-	// 元数据（副本始终为私有草稿；语言/版本标签保留，但不自动加入翻译/版本组）
+	// 元数据（副本始终为私有草稿；其余配置尽量完整复制，含语言/版本/翻译分组、导出与水印设置）
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		title = src.Title + " 副本"
@@ -68,9 +69,14 @@ func (a *App) CopyBook(c *gin.Context) {
 	newBook := models.Book{
 		Title: title, UserID: u.ID, Status: "draft", IsPublic: false,
 		Description: src.Description, CoverImage: src.CoverImage,
-		OrderCol: src.OrderCol, OrderDir: src.OrderDir, ChapterPrefix: src.ChapterPrefix,
+		LoginRequired: src.LoginRequired,
+		OrderCol:      src.OrderCol, OrderDir: src.OrderDir, ChapterPrefix: src.ChapterPrefix,
+		ChildStatusFollowParent: src.ChildStatusFollowParent,
+		Language:                src.Language, TransGroup: src.TransGroup,
+		Version: src.Version, VersionGroup: src.VersionGroup,
 		WatermarkEnabled: src.WatermarkEnabled, WatermarkText: src.WatermarkText,
-		Language: src.Language, Version: src.Version,
+		ExportEnabled: src.ExportEnabled, GuestExportEnabled: src.GuestExportEnabled,
+		ExportStyleShared: src.ExportStyleShared, ExportFormats: src.ExportFormats,
 	}
 	newBook.Slug = a.uniqueBookSlug(slugify(title))
 	if newBook.Slug == "" {
@@ -89,6 +95,17 @@ func (a *App) CopyBook(c *gin.Context) {
 			names = append(names, t.Name)
 		}
 		_ = a.syncBookTags(&newBook, names)
+	}
+
+	// 复制每本书的导出样式设置（PageSize/字号/页边距/页脚等）
+	var srcExport models.BookExportSetting
+	if a.DB.Where("book_id = ?", src.ID).First(&srcExport).Error == nil {
+		copyExport := srcExport
+		copyExport.ID = 0
+		copyExport.BookID = newBook.ID
+		copyExport.CreatedAt = time.Time{}
+		copyExport.UpdatedAt = time.Time{}
+		_ = a.DB.Create(&copyExport).Error
 	}
 
 	// 章节：第一遍建档（记录 原 id -> 新 id），第二遍重建父子关系（父章节须同在选中集合内）

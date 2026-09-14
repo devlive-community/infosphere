@@ -219,4 +219,8 @@ export const en: Record<string, string> = {
   // 404
   'error.notfound.message': 'This page does not exist or has been removed',
   'error.notfound.backHome': 'Back to home',
+
+  // Book language/version switch
+  'book.variant.language': 'Language',
+  'book.variant.version': 'Version',
 }

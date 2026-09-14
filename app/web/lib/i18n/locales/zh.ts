@@ -219,4 +219,8 @@ export const zh: Record<string, string> = {
   // 404
   'error.notfound.message': '页面不存在或已被移除',
   'error.notfound.backHome': '返回首页',
+
+  // 书籍语言/版本切换
+  'book.variant.language': '语言',
+  'book.variant.version': '版本',
 }
