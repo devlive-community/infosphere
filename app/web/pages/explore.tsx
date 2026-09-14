@@ -74,9 +74,9 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
   const activeMode = tag ? '' : rawSort === 'hot' ? 'hot' : rawSort === 'latest' ? 'latest' : 'all'
 
   const browseItems = [
-    { mode: 'all' as const, label: '全部公开书籍', icon: <BookIcon className="h-4 w-4" />, href: '/explore' },
-    { mode: 'latest' as const, label: '最新发布', icon: <ClockIcon className="h-4 w-4" />, href: '/explore?sort=latest' },
-    { mode: 'hot' as const, label: '热门阅读', icon: <i className="fa-solid fa-fire text-sm" aria-hidden="true" />, href: '/explore?sort=hot' },
+    { mode: 'all' as const, label: '全部公开书籍', shortLabel: '全部', icon: <BookIcon className="h-4 w-4" />, href: '/explore' },
+    { mode: 'latest' as const, label: '最新发布', shortLabel: '最新', icon: <ClockIcon className="h-4 w-4" />, href: '/explore?sort=latest' },
+    { mode: 'hot' as const, label: '热门阅读', shortLabel: '热门', icon: <i className="fa-solid fa-fire text-sm" aria-hidden="true" />, href: '/explore?sort=hot' },
   ]
 
   const items = [...(data.items || [])].sort((a, b) => {
@@ -145,9 +145,9 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
 
       {/* 主体：左栏浏览 + 右内容 */}
       <Container className="grid gap-5 py-6 sm:py-8 lg:grid-cols-[240px_1fr] lg:gap-8">
-        <div className="space-y-3 lg:hidden">
+        <div className="min-w-0 space-y-3 lg:hidden">
           <SegmentedTabs fullWidth value={activeMode} ariaLabel="浏览内容"
-            items={browseItems.map((item) => ({ value: item.mode, label: item.label, icon: item.icon }))}
+            items={browseItems.map((item) => ({ value: item.mode, label: item.shortLabel, icon: item.icon }))}
             onChange={(mode) => {
               const item = browseItems.find((entry) => entry.mode === mode)
               if (item) { navLoad(item.href); void router.push(item.href) }
@@ -202,7 +202,7 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
           </p>
         </aside>
 
-        <section>
+        <section className="min-w-0">
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-baseline gap-3">
               <h2 className="min-w-0 text-xl font-bold text-ink sm:text-2xl">{sectionTitle}</h2>
