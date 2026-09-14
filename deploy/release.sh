@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 发布版本：为当前版本打 v 标签并推送，触发 Release 工作流构建产物并创建 GitHub Release。
-# Release Note 默认取自上一个标签以来的提交历史（见 .github/workflows/release.yml）。
+# Release Note 优先取自 CHANGELOG.md 中该版本的条目，缺失时回退到提交历史（见 .github/workflows/release.yml）。
 #
 # 用法：
 #   deploy/release.sh            # 使用 handler_setup.go 中的当前版本
@@ -37,6 +37,17 @@ fi
 if git rev-parse "$TAG" >/dev/null 2>&1; then
   echo "标签 $TAG 已存在，请先 deploy/new-version.sh 开启新版本" >&2
   exit 1
+fi
+
+# ── CHANGELOG 预检：Release Note 取自 CHANGELOG.md 中该版本的条目 ──
+NOTES="$(awk -v ver="$VERSION" '
+  $0 ~ ("^## \\[" ver "\\]") { grab = 1; next }
+  grab && /^## \[/ { exit }
+  grab { print }
+' CHANGELOG.md)"
+if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ] || printf '%s' "$NOTES" | grep -q '待补充'; then
+  echo "⚠️  CHANGELOG.md 尚无 ${VERSION} 的有效条目（或仍为「待补充」），Release Note 将回退到提交历史。" >&2
+  echo "    建议先运行 deploy/new-version.sh 生成草稿，整理 CHANGELOG.md 后再发布。" >&2
 fi
 
 echo "将发布 ${TAG}（版本 ${VERSION}）到 $(git remote get-url origin)"
