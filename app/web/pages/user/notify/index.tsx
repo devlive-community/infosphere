@@ -75,15 +75,15 @@ export default function NotifyPrefs() {
               <p className="mt-1 text-sm text-slate-500">站内通知始终会在导航铃铛里显示；这里控制是否额外给你发邮件。</p>
             </div>
             <div className="px-6 pb-6">
-              {!emailEnabled && (
-                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                  管理员当前未开启邮件通知，以下开关暂不生效（开启后按此设置发送）。
-                </div>
-              )}
               {prefs === null ? (
                 <Loading className="py-8" label="正在加载通知设置…" />
               ) : (
                 <>
+                  {!emailEnabled && (
+                    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                      管理员当前未开启邮件通知，以下开关暂不生效（开启后按此设置发送）。
+                    </div>
+                  )}
                   <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
                     {ITEMS.map((it) => (
                       <div key={it.key} className="flex items-center justify-between gap-4 px-4 py-3">
