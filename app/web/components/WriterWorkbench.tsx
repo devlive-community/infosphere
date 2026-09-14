@@ -318,11 +318,14 @@ export default function Writer({ user }: WriterProps) {
     if (!flatDocs.length && !docSlug) { resetForm(); return }
     const doc = docSlug ? flatDocs.find((d) => d.slug === docSlug) : null
     if (doc) {
+      // active 守卫：切换章节/采集新章节会重跑本 effect，避免上一个仍在途的请求乱序返回后覆盖当前章节内容
+      let active = true
       setDocumentLoading(true)
       setCurrent(doc)
       setCreatingUnder(null)
       setDraftRecovery(null)
       api<Document>(`/documents/${doc.id}`).then((full) => {
+        if (!active) return
         setTitle(full.title)
         setContent(full.content || '')
         setStatus(full.status)
@@ -341,8 +344,9 @@ export default function Writer({ user }: WriterProps) {
             else localStorage.removeItem(draftKey(full.id))
           }
         } catch { /* 忽略 */ }
-      }).catch((e) => showToast({ title: '章节加载失败', message: (e as Error).message, tone: 'error' }))
-        .finally(() => setDocumentLoading(false))
+      }).catch((e) => { if (active) showToast({ title: '章节加载失败', message: (e as Error).message, tone: 'error' }) })
+        .finally(() => { if (active) setDocumentLoading(false) })
+      return () => { active = false }
     } else if (!docSlug) {
       setDocumentLoading(false)
       resetForm()
