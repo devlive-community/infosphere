@@ -11,11 +11,12 @@ import (
 
 // bookVariant 分组内的一本书（翻译组/版本组共用），供阅读页切换。
 type bookVariant struct {
-	Slug     string `json:"slug"`
-	Title    string `json:"title"`
-	Language string `json:"language"`
-	Version  string `json:"version"`
-	Current  bool   `json:"current"`
+	Slug         string `json:"slug"`
+	Title        string `json:"title"`
+	Language     string `json:"language"`
+	Version      string `json:"version"`
+	Current      bool   `json:"current"`
+	FirstDocSlug string `json:"first_doc_slug"` // 首个可读章节 slug，供阅读页直接跳转（无则为空）
 }
 
 // bookGroupSiblings 返回某分组列（trans_group / version_group）取相同非空值、且对当前用户可见的书籍（含自身）。
@@ -31,7 +32,10 @@ func (a *App) bookGroupSiblings(u *models.User, book *models.Book, column, value
 		if !a.canReadBook(u, b) {
 			continue
 		}
-		out = append(out, bookVariant{Slug: b.Slug, Title: b.Title, Language: b.Language, Version: b.Version, Current: b.ID == book.ID})
+		var firstDocSlug string
+		a.DB.Model(&models.Document{}).Where("book_id = ? AND status = ?", b.ID, "published").
+			Order("sort_order ASC, created_at ASC").Limit(1).Pluck("slug", &firstDocSlug)
+		out = append(out, bookVariant{Slug: b.Slug, Title: b.Title, Language: b.Language, Version: b.Version, Current: b.ID == book.ID, FirstDocSlug: firstDocSlug})
 	}
 	// 单独一本（只有自身）时不构成分组，返回空
 	if len(out) <= 1 {

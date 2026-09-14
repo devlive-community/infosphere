@@ -114,6 +114,10 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const countedBook = useRef<number | null>(null)
   const [tree, setTree] = useState<Document[]>(ssrTree || [])
   const [fetching, setFetching] = useState<boolean>(!!needsAuth && !ssrBook)
+  // 切换语言/版本会 Link 跳到另一本 slug：同一动态路由复用组件实例，需在 slug 变化时用新 SSR props 覆盖本地状态，否则不刷新不生效
+  useEffect(() => {
+    if (ssrBook) { setBook(ssrBook); setTree(ssrTree || []) }
+  }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!needsAuth || ssrBook || !slug) return
     let cancelled = false
