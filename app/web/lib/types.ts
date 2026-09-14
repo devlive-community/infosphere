@@ -128,6 +128,9 @@ export interface SiteConfig {
   site_keywords?: string
   site_footer_text?: string
   site_beian?: string
+  help_doc_url?: string
+  terms_url?: string
+  privacy_url?: string
   version?: string
   installation_date?: string
   comments_enabled?: string

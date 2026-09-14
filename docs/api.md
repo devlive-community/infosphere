@@ -208,8 +208,8 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 说明 | 语义权限 |
 | --- | --- | --- | --- |
-| GET | `/site` | 站点公开配置（site_name/site_description/site_logo/site_favicon/site_keywords/site_footer_text/site_beian/version/comments_enabled/announcement_*） | `site:read` |
-| PUT | `/site` | 更新站点配置：`site_name`、`site_description`、`site_logo`、`site_favicon`（浏览器标签图标 URL）、`site_keywords`（SEO 关键词）、`site_footer_text`（页脚介绍）、`site_beian`（ICP 备案号，页脚展示并链接工信部），以及全站公告 `announcement_enabled`/`announcement_text`/`announcement_tone`(info\|warning)。图片经 `/upload` 上传，遵循当前存储驱动（local\|qiniu） | `site:update` |
+| GET | `/site` | 站点公开配置（site_name/site_description/site_logo/site_favicon/site_keywords/site_footer_text/site_beian/help_doc_url/terms_url/privacy_url/version/comments_enabled/announcement_*） | `site:read` |
+| PUT | `/site` | 更新站点配置：`site_name`、`site_description`、`site_logo`、`site_favicon`（浏览器标签图标 URL）、`site_keywords`（SEO 关键词）、`site_footer_text`（页脚介绍）、`site_beian`（ICP 备案号）、`help_doc_url`（写作台帮助文档链接）、`terms_url`（用户协议链接）、`privacy_url`（隐私政策链接，三者通常指向某本书的某个章节 reader 链接），以及全站公告 `announcement_enabled`/`announcement_text`/`announcement_tone`(info\|warning)。图片经 `/upload` 上传，遵循当前存储驱动（local\|qiniu） | `site:update` |
 | GET | `/stats` | 公开站点统计；书籍、章节、标签和浏览量仅统计公开且处于可阅读状态（进行中/已发布/已完成）的内容 | `stats:read` |
 
 ## 发现（公开）
