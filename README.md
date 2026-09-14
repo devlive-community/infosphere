@@ -52,13 +52,19 @@ make test           # 与 CI 相同的质量门禁（vet/test/tsc/lint）
 镜像内嵌 Next.js SSR 与 Node.js，默认使用零配置的 SQLite，数据持久化在数据卷。
 
 ```bash
-# Docker Compose（推荐）
+# 使用官方发布的镜像（GitHub Packages / GHCR，随每个 v* 版本自动发布 amd64/arm64）
+docker run -d --name infosphere -p 6969:6969 -v infosphere-data:/data \
+  ghcr.io/devlive-community/infosphere:latest
+
+# 或用 Docker Compose 从源码本地构建
 docker compose up -d --build
 
-# 或直接使用 Docker
+# 或从源码直接用 Docker 构建
 docker build -t infosphere .
 docker run -d --name infosphere -p 6969:6969 -v infosphere-data:/data infosphere
 ```
+
+> 官方镜像同时提供 `latest` 与具体版本标签（如 `ghcr.io/devlive-community/infosphere:1.2.3`、`1.2`）。
 
 启动后访问 `http://<主机>:6969/install` 完成安装向导。数据（数据库、上传、配置）都在容器内 `/data`（对应数据卷 `infosphere-data`）。
 

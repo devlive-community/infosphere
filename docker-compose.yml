@@ -3,6 +3,8 @@
 # 首次启动后访问 http://<主机>:6969/install 完成安装向导。
 services:
   infosphere:
+    # 默认从源码本地构建。若想直接使用官方发布的镜像（GitHub Packages / GHCR），
+    # 删除下面的 build 段，并把 image 改为：ghcr.io/devlive-community/infosphere:latest
     build:
       context: .
       dockerfile: Dockerfile
