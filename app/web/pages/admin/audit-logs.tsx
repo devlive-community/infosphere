@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import { ActivityIcon, SearchIcon, ShieldCheckIcon } from '@/components/icons'
-import { Badge, Button, EmptyState, Input, Loading, Pagination, Select } from '@/components/ui'
+import { Badge, Button, DatePicker, EmptyState, Input, Loading, Pagination, Select } from '@/components/ui'
 import { api, formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import type { PageResult } from '@/lib/types'
@@ -150,8 +150,8 @@ export default function AdminAuditLogs() {
             onChange={(value) => { setAction(value); setPage(1) }} />
           <Select className="w-36" value={resourceType} options={resourceOptions}
             onChange={(value) => { setResourceType(value); setPage(1) }} />
-          <Input className="w-36" value={from} onChange={(event) => { setFrom(event.target.value); setPage(1) }} placeholder="开始 YYYY-MM-DD" />
-          <Input className="w-36" value={to} onChange={(event) => { setTo(event.target.value); setPage(1) }} placeholder="结束 YYYY-MM-DD" />
+          <DatePicker className="w-40" value={from} onChange={(value) => { setFrom(value); setPage(1) }} placeholder="开始日期" max={to || undefined} ariaLabel="开始日期" />
+          <DatePicker className="w-40" value={to} onChange={(value) => { setTo(value); setPage(1) }} placeholder="结束日期" min={from || undefined} ariaLabel="结束日期" />
           {hasFilters && <Button variant="ghost" onClick={clearFilters}>清除筛选</Button>}
           <span className="ml-auto text-sm text-slate-400">共 {total} 条记录</span>
         </div>

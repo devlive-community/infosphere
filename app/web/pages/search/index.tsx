@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Container from '@/components/Container'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, siteUrlFrom } from '@/lib/server-api'
-import { EmptyState, Input, Button, Select, Pagination, SegmentedTabs, LoadingOverlay } from '@/components/ui'
+import { EmptyState, Input, Button, DatePicker, Select, Pagination, SegmentedTabs, LoadingOverlay } from '@/components/ui'
 import Seo from '@/components/Seo'
 import BookCard from '@/components/BookCard'
 import HighlightText from '@/components/HighlightText'
@@ -154,10 +154,10 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
                 placeholder="作者用户名" maxLength={50} />
               <Select value={draft.tag} onChange={(tag) => setDraft({ ...draft, tag })}
                 options={[{ value: '', label: '全部标签' }, ...tags.map((tag) => ({ value: tag.slug, label: tag.name }))]} />
-              <Input value={draft.updatedFrom} onChange={(event) => setDraft({ ...draft, updatedFrom: event.target.value })}
-                placeholder="更新开始 YYYY-MM-DD" maxLength={10} inputMode="numeric" />
-              <Input value={draft.updatedTo} onChange={(event) => setDraft({ ...draft, updatedTo: event.target.value })}
-                placeholder="更新结束 YYYY-MM-DD" maxLength={10} inputMode="numeric" />
+              <DatePicker value={draft.updatedFrom} onChange={(value) => setDraft({ ...draft, updatedFrom: value })}
+                placeholder="更新开始日期" max={draft.updatedTo || undefined} ariaLabel="更新开始日期" />
+              <DatePicker value={draft.updatedTo} onChange={(value) => setDraft({ ...draft, updatedTo: value })}
+                placeholder="更新结束日期" min={draft.updatedFrom || undefined} ariaLabel="更新结束日期" />
             </div>
           </form>
           {q && <p className="mt-3 text-sm text-slate-400">「{q}」共 {result.total} 条结果</p>}
