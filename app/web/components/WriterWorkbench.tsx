@@ -163,7 +163,7 @@ export default function Writer({ user }: WriterProps) {
   const [collecting, setCollecting] = useState(false)
   const snapshot = useRef('') // 已保存/已加载表单的快照，用于脏状态判断
   const loadedDocId = useRef<number | null>(null) // 当前表单对应的文档，防止切换章节时误触发自动保存
-  const saveRef = useRef<(opts?: { status?: DocumentStatus }) => Promise<void>>(async () => {})
+  const saveRef = useRef<(opts?: { status?: DocumentStatus }) => Promise<boolean | undefined>>(async () => undefined)
   const didInitExpand = useRef(false)
 
   const flatDocs = useMemo(() => flatten(tree), [tree])
@@ -382,9 +382,11 @@ export default function Writer({ user }: WriterProps) {
       const elapsed = Date.now() - startedAt
       if (elapsed < 500) await new Promise((r) => setTimeout(r, 500 - elapsed)) // 让“保存中”至少可见片刻
       setSaveState('saved')
+      return true
     } catch (e) {
       setSaveState('dirty')
       setMessage((e as Error).message)
+      return false
     }
   }, [book, title, content, status, parentId, sortOrder, allowComments, current, loadTree]) // eslint-disable-line react-hooks/exhaustive-deps
   saveRef.current = save
@@ -437,7 +439,9 @@ export default function Writer({ user }: WriterProps) {
 
   async function publish() {
     if (!title.trim()) { setMessage('请先填写章节标题再发布'); return }
-    await save({ status: 'published' })
+    const published = await save({ status: 'published' })
+    // 发布成功后跳转到书籍详情页，让作者立即看到读者视角的成书效果。
+    if (published) router.push(`/book/detail/${encodeURIComponent(bookSlug)}`)
   }
 
   async function removeDoc(doc: Document) {
