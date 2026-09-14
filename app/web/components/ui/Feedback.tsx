@@ -96,26 +96,26 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     <FeedbackContext.Provider value={{ showToast, confirmAction, requestInput }}>
       {children}
 
-      <div className="pointer-events-none fixed inset-x-4 top-4 z-[160] flex flex-col items-end gap-2 sm:left-auto sm:w-[380px]" aria-live="polite">
+      <div className="pointer-events-none fixed inset-x-4 top-4 z-[160] flex flex-col items-end gap-2 sm:left-auto sm:w-[360px]" aria-live="polite">
         {toasts.map((toast) => {
           const tone = toast.tone === 'success'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
             : toast.tone === 'error'
-              ? 'border-rose-200 bg-rose-50 text-rose-700'
-              : 'border-primary-200 bg-primary-50 text-primary-700'
+              ? 'border-rose-200 bg-rose-50 text-rose-800'
+              : 'border-primary-200 bg-primary-50 text-primary-800'
+          const iconColor = toast.tone === 'success' ? 'text-emerald-500' : toast.tone === 'error' ? 'text-rose-500' : 'text-primary-500'
           const icon = toast.tone === 'success' ? 'fa-circle-check' : toast.tone === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info'
           return (
             <div key={toast.id} role={toast.tone === 'error' ? 'alert' : 'status'}
-              className={`pointer-events-auto flex w-full items-start gap-3 rounded-xl border px-4 py-3 shadow-lg ${tone}`}>
-              <i className={`fa-solid ${icon} mt-0.5 shrink-0`} aria-hidden="true" />
-              <div className="min-w-0 flex-1">
-                {toast.title && <p className="font-semibold">{toast.title}</p>}
-                <p className="max-h-28 overflow-y-auto break-words text-sm leading-5">{toast.message}</p>
+              className={`pointer-events-auto flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-2.5 shadow-md ${tone}`}>
+              <i className={`fa-solid ${icon} mt-0.5 shrink-0 text-[15px] ${iconColor}`} aria-hidden="true" />
+              <div className="min-w-0 flex-1 pt-px">
+                {toast.title && <p className="text-sm font-semibold leading-5">{toast.title}</p>}
+                <p className="max-h-28 overflow-y-auto break-words text-[13px] leading-5">{toast.message}</p>
               </div>
               <button type="button" aria-label="关闭提示" onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
-                className="flex shrink-0 items-center justify-center rounded-md opacity-60 transition-colors hover:bg-black/5 hover:opacity-100"
-                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
-                <i className="fa-solid fa-xmark" aria-hidden="true" />
+                className="-mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-current opacity-50 transition hover:bg-black/5 hover:opacity-90">
+                <i className="fa-solid fa-xmark text-xs" aria-hidden="true" />
               </button>
             </div>
           )
