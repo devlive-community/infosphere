@@ -2,11 +2,13 @@ import { useState, FormEvent, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
+import { useTranslation } from '@/lib/i18n'
 import { Button, ButtonLink, Input, Field, Loading } from '@/components/ui'
 
 // 重置密码：通过邮件链接进入，携带一次性令牌
 export default function ResetPassword() {
   const router = useRouter()
+  const { t } = useTranslation()
   const [form, setForm] = useState({ password: '', confirm: '' })
   const [token, setToken] = useState('')
   const [ready, setReady] = useState(false)
@@ -23,7 +25,7 @@ export default function ResetPassword() {
   async function submit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    if (form.password !== form.confirm) return setError('两次输入的密码不一致')
+    if (form.password !== form.confirm) return setError(t('auth.reset.passwordMismatch'))
     setLoading(true)
     try {
       await api('/auth/password/reset', { method: 'POST', body: { token, password: form.password } })
@@ -39,38 +41,38 @@ export default function ResetPassword() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-50 to-slate-50 px-4">
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm w-full max-w-sm p-8">
         {!ready ? (
-          <Loading className="py-6" label="正在验证重置链接…" />
+          <Loading className="py-6" label={t('auth.reset.verifying')} />
         ) : done ? (
           <>
-            <h1 className="text-center text-xl font-bold text-emerald-600">密码已重置</h1>
-            <p className="mb-6 mt-2 text-center text-sm text-slate-500">请使用新密码登录你的账户</p>
+            <h1 className="text-center text-xl font-bold text-emerald-600">{t('auth.reset.doneTitle')}</h1>
+            <p className="mb-6 mt-2 text-center text-sm text-slate-500">{t('auth.reset.doneSubtitle')}</p>
             <p className="text-center">
               <ButtonLink href="/login">
-                去登录
+                {t('auth.reset.goLogin')}
               </ButtonLink>
             </p>
           </>
         ) : !token ? (
           <>
-            <h1 className="text-center text-lg font-bold text-rose-600">链接无效</h1>
-            <p className="mb-6 mt-2 text-center text-sm text-slate-500">缺少重置令牌，请通过邮件链接进入本页</p>
+            <h1 className="text-center text-lg font-bold text-rose-600">{t('auth.reset.invalidTitle')}</h1>
+            <p className="mb-6 mt-2 text-center text-sm text-slate-500">{t('auth.reset.invalidSubtitle')}</p>
             <p className="text-center text-sm">
-              <Link href="/forgot-password" className="text-primary-600 hover:underline">重新申请找回密码</Link>
+              <Link href="/forgot-password" className="text-primary-600 hover:underline">{t('auth.reset.reapply')}</Link>
             </p>
           </>
         ) : (
           <>
-            <h1 className="text-center text-xl font-bold text-slate-900">设置新密码</h1>
-            <p className="mb-6 mt-1 text-center text-sm text-slate-500">请输入新的登录密码</p>
+            <h1 className="text-center text-xl font-bold text-slate-900">{t('auth.reset.title')}</h1>
+            <p className="mb-6 mt-1 text-center text-sm text-slate-500">{t('auth.reset.subtitle')}</p>
             {error && <div className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
             <form onSubmit={submit} className="space-y-4">
-              <Field label="新密码（至少 6 位）">
-                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="请输入新密码" autoFocus />
+              <Field label={t('auth.reset.newPasswordLabel')}>
+                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={t('auth.reset.newPasswordPlaceholder')} autoFocus />
               </Field>
-              <Field label="确认新密码">
-                <Input type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} placeholder="再次输入新密码" />
+              <Field label={t('auth.reset.confirmLabel')}>
+                <Input type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} placeholder={t('auth.reset.confirmPlaceholder')} />
               </Field>
-              <Button className="w-full" loading={loading}>重置密码</Button>
+              <Button className="w-full" loading={loading}>{t('auth.reset.submit')}</Button>
             </form>
           </>
         )}

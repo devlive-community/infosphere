@@ -170,4 +170,53 @@ export const zh: Record<string, string> = {
   'account.oauth.unbind': '解绑',
   'account.oauth.bind': '绑定',
   'account.oauth.noEmailHint': '提示：尚未填写邮箱，第三方登录的关联识别会受限。',
+
+  // 找回密码
+  'auth.forgot.title': '找回密码',
+  'auth.forgot.subtitle': '输入注册邮箱，我们会发送重置链接',
+  'auth.forgot.emailLabel': '注册邮箱',
+  'auth.forgot.submit': '发送重置链接',
+  'auth.forgot.sentFallback': '如果该邮箱已注册，重置链接已发送',
+  'auth.forgot.backToLogin': '返回登录页',
+  'auth.forgot.rememberedPrefix': '想起密码了？',
+  'auth.forgot.backToLoginShort': '返回登录',
+
+  // 重置密码
+  'auth.reset.verifying': '正在验证重置链接…',
+  'auth.reset.doneTitle': '密码已重置',
+  'auth.reset.doneSubtitle': '请使用新密码登录你的账户',
+  'auth.reset.goLogin': '去登录',
+  'auth.reset.invalidTitle': '链接无效',
+  'auth.reset.invalidSubtitle': '缺少重置令牌，请通过邮件链接进入本页',
+  'auth.reset.reapply': '重新申请找回密码',
+  'auth.reset.title': '设置新密码',
+  'auth.reset.subtitle': '请输入新的登录密码',
+  'auth.reset.passwordMismatch': '两次输入的密码不一致',
+  'auth.reset.newPasswordLabel': '新密码（至少 6 位）',
+  'auth.reset.newPasswordPlaceholder': '请输入新密码',
+  'auth.reset.confirmLabel': '确认新密码',
+  'auth.reset.confirmPlaceholder': '再次输入新密码',
+  'auth.reset.submit': '重置密码',
+
+  // 邮箱激活
+  'auth.verify.seoTitle': '邮箱激活',
+  'auth.verify.missingToken': '激活链接缺少令牌，请从邮件中重新打开',
+  'auth.verify.activating': '正在激活邮箱…',
+  'auth.verify.okTitle': '邮箱已激活',
+  'auth.verify.okSubtitle': '现在你可以创建书籍、发表评论等全部功能。',
+  'auth.verify.goHome': '进入首页',
+  'auth.verify.failed': '激活失败',
+  'auth.verify.backHome': '返回首页',
+
+  // 第三方登录回调
+  'auth.callback.seoTitle': '第三方登录',
+  'auth.callback.missingToken': '登录回跳缺少令牌，请重新登录',
+  'auth.callback.verifyFailed': '登录令牌校验失败，请重新登录',
+  'auth.callback.failedTitle': '登录失败',
+  'auth.callback.backToLogin': '返回登录页',
+  'auth.callback.success': '登录成功，正在进入…',
+
+  // 404
+  'error.notfound.message': '页面不存在或已被移除',
+  'error.notfound.backHome': '返回首页',
 }
