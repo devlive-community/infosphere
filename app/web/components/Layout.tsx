@@ -9,6 +9,7 @@ import { API_BASE, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { Button, ButtonLink, Input, Modal, Tooltip, useFeedback } from '@/components/ui'
 import NotificationBell from '@/components/NotificationBell'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { SearchIcon } from '@/components/icons'
 
 function UserMenu() {
@@ -209,6 +210,7 @@ export default function Layout({ title, children }: { title?: string; children: 
               placeholder="搜索书籍、主题或作者" />
           </form>
           <div className="ml-auto flex items-center gap-1.5 lg:ml-0">
+            <LanguageSwitcher />
             <NotificationBell />
             <UserMenu />
           </div>

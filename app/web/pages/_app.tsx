@@ -4,6 +4,7 @@ import type { AppProps } from 'next/app'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { AppProvider, useApp } from '@/lib/auth'
+import { I18nProvider } from '@/lib/i18n'
 import Layout from '@/components/Layout'
 import Seo from '@/components/Seo'
 import { FeedbackProvider, Loading } from '@/components/ui'
@@ -78,6 +79,7 @@ export default function App({ Component, pageProps }: AppProps) {
   // SSR 页面通过 getServerSideProps 注入安装状态、站点配置与公开数据
   return (
     <AppProvider initialSite={pageProps.site ?? null} initialInstalled={pageProps.installed ?? null} initialUser={pageProps.user ?? null}>
+      <I18nProvider>
       <FeedbackProvider>
         <SiteHead />
         <RouteLoading />
@@ -86,6 +88,7 @@ export default function App({ Component, pageProps }: AppProps) {
         </Shell>
         <StepUpModal />
       </FeedbackProvider>
+      </I18nProvider>
     </AppProvider>
   )
 }
