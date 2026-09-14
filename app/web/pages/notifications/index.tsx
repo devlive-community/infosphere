@@ -5,6 +5,7 @@ import { useRequireAuth, useApp } from '@/lib/auth'
 import { Badge, Button, EmptyState, Loading, Pagination, SegmentedTabs, useFeedback } from '@/components/ui'
 import { BellIcon, FileTextIcon, HeartIcon, UsersIcon, InfoCircleIcon } from '@/components/icons'
 import Seo from '@/components/Seo'
+import Container from '@/components/Container'
 import type { CollaborationInvitation } from '@/lib/types'
 
 interface NotificationItem {
@@ -124,7 +125,7 @@ export default function NotificationsPage() {
   return (
     <>
       <Seo siteName={siteName} title="通知中心" noindex />
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <Container>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-ink">通知中心</h1>
           <div className="flex flex-wrap items-center gap-2">
@@ -211,7 +212,7 @@ export default function NotificationsPage() {
             <Pagination page={page} pageSize={PER_PAGE} total={total} onChange={setPage} />
           </div>
         )}
-      </div>
+      </Container>
     </>
   )
 }
