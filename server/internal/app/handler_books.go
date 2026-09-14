@@ -526,6 +526,11 @@ func (a *App) UpdateBook(c *gin.Context) {
 		book.ExportFormats = normalizeExportFormats(*req.ExportFormats)
 	}
 	if req.Slug != nil && *req.Slug != book.Slug {
+		// 访问路径只允许在「可编辑」时修改一次（目前仅复制出的书籍具备该资格）
+		if !book.SlugEditable {
+			fail(c, http.StatusForbidden, "该书籍的访问路径不可修改")
+			return
+		}
 		if !validSlug(*req.Slug) {
 			fail(c, http.StatusBadRequest, "slug 仅支持小写字母、数字和中划线")
 			return
@@ -537,6 +542,7 @@ func (a *App) UpdateBook(c *gin.Context) {
 			return
 		}
 		book.Slug = *req.Slug
+		book.SlugEditable = false // 用掉这次修改机会
 	}
 
 	if err := a.DB.Save(book).Error; err != nil {

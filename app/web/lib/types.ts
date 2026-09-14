@@ -38,6 +38,7 @@ export interface Book {
   description: string
   cover_image: string
   slug: string
+  slug_editable?: boolean
   user_id: number
   status: BookStatus
   is_public: boolean
