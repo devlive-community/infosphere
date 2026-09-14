@@ -170,4 +170,53 @@ export const en: Record<string, string> = {
   'account.oauth.unbind': 'Unlink',
   'account.oauth.bind': 'Link',
   'account.oauth.noEmailHint': 'Note: no email set yet, which limits third-party account matching.',
+
+  // Forgot password
+  'auth.forgot.title': 'Reset your password',
+  'auth.forgot.subtitle': 'Enter your account email and we will send a reset link',
+  'auth.forgot.emailLabel': 'Account email',
+  'auth.forgot.submit': 'Send reset link',
+  'auth.forgot.sentFallback': 'If that email is registered, a reset link has been sent',
+  'auth.forgot.backToLogin': 'Back to login',
+  'auth.forgot.rememberedPrefix': 'Remembered it? ',
+  'auth.forgot.backToLoginShort': 'Back to login',
+
+  // Reset password
+  'auth.reset.verifying': 'Verifying the reset link…',
+  'auth.reset.doneTitle': 'Password reset',
+  'auth.reset.doneSubtitle': 'Please log in with your new password',
+  'auth.reset.goLogin': 'Go to login',
+  'auth.reset.invalidTitle': 'Invalid link',
+  'auth.reset.invalidSubtitle': 'Missing reset token—please open this page from the email link',
+  'auth.reset.reapply': 'Request a new reset link',
+  'auth.reset.title': 'Set a new password',
+  'auth.reset.subtitle': 'Enter your new login password',
+  'auth.reset.passwordMismatch': 'The two passwords do not match',
+  'auth.reset.newPasswordLabel': 'New password (at least 6 characters)',
+  'auth.reset.newPasswordPlaceholder': 'Enter a new password',
+  'auth.reset.confirmLabel': 'Confirm new password',
+  'auth.reset.confirmPlaceholder': 'Enter the password again',
+  'auth.reset.submit': 'Reset password',
+
+  // Email verification
+  'auth.verify.seoTitle': 'Email activation',
+  'auth.verify.missingToken': 'The activation link is missing a token—please reopen it from the email',
+  'auth.verify.activating': 'Activating your email…',
+  'auth.verify.okTitle': 'Email activated',
+  'auth.verify.okSubtitle': 'You can now create books, post comments and use all features.',
+  'auth.verify.goHome': 'Go to home',
+  'auth.verify.failed': 'Activation failed',
+  'auth.verify.backHome': 'Back to home',
+
+  // OAuth callback
+  'auth.callback.seoTitle': 'Third-party sign-in',
+  'auth.callback.missingToken': 'The sign-in redirect is missing a token—please log in again',
+  'auth.callback.verifyFailed': 'Login token validation failed—please log in again',
+  'auth.callback.failedTitle': 'Sign-in failed',
+  'auth.callback.backToLogin': 'Back to login',
+  'auth.callback.success': 'Signed in, redirecting…',
+
+  // 404
+  'error.notfound.message': 'This page does not exist or has been removed',
+  'error.notfound.backHome': 'Back to home',
 }
