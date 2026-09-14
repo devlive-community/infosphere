@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
-import { oauthErrorText } from '@/components/OAuthButtons'
+import { oauthErrorKey } from '@/components/OAuthButtons'
 import { Button, Loading, useFeedback } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 
 interface Binding {
   provider: string
@@ -20,6 +21,7 @@ const PROVIDER_META: Record<string, { label: string; icon: string }> = {
 export default function OAuthBindings() {
   const { confirmAction } = useFeedback()
   const { user } = useApp()
+  const { t } = useTranslation()
   const [providers, setProviders] = useState<string[]>([])
   const [bindings, setBindings] = useState<Binding[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -47,19 +49,19 @@ export default function OAuthBindings() {
     const linked = params.get('linked')
     const err = params.get('oauth_error')
     if (!linked && !err) return
-    if (linked) setMessage(`${PROVIDER_META[linked]?.label || linked} 账号已绑定`)
-    if (err) setError(oauthErrorText(err))
+    if (linked) setMessage(t('account.oauth.linked', { provider: PROVIDER_META[linked]?.label || linked }))
+    if (err) setError(t(oauthErrorKey(err), { code: err }))
     params.delete('linked')
     params.delete('oauth_error')
     const qs = params.toString()
     window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user) return null
   if (!loaded) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <Loading className="py-10" label="正在加载第三方账号…" />
+        <Loading className="py-10" label={t('account.oauth.loading')} />
       </div>
     )
   }
@@ -67,9 +69,9 @@ export default function OAuthBindings() {
   async function unbind(provider: string) {
     const label = PROVIDER_META[provider]?.label || provider
     if (!await confirmAction({
-      title: '解绑第三方账号',
-      message: `确定解绑 ${label} 账号吗？解绑前请确认已设置登录密码。`,
-      confirmLabel: '确认解绑',
+      title: t('account.oauth.unbindTitle'),
+      message: t('account.oauth.unbindConfirm', { provider: label }),
+      confirmLabel: t('account.oauth.unbindConfirmLabel'),
       danger: true,
     })) return
     setWorking(provider)
@@ -77,7 +79,7 @@ export default function OAuthBindings() {
     setError('')
     try {
       await api(`/auth/oauth/${provider}`, { method: 'DELETE' })
-      setMessage('已解绑')
+      setMessage(t('account.oauth.unbound'))
       await load()
     } catch (err) {
       setError((err as Error).message)
@@ -100,13 +102,13 @@ export default function OAuthBindings() {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="font-semibold text-slate-900">第三方账号</h2>
-      <p className="mt-1 text-xs text-slate-400">绑定后可直接使用第三方账号登录；解绑前请确保已设置登录密码。</p>
+      <h2 className="font-semibold text-slate-900">{t('account.oauth.heading')}</h2>
+      <p className="mt-1 text-xs text-slate-400">{t('account.oauth.desc')}</p>
       {message && <div className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{message}</div>}
       {error && <div className="mt-3 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
 
       {providers.length === 0 ? (
-        <div className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-400">管理员尚未启用任何第三方登录方式。</div>
+        <div className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-400">{t('account.oauth.noneEnabled')}</div>
       ) : providers.map((provider) => {
         const meta = PROVIDER_META[provider] || { label: provider, icon: 'fa-right-to-bracket' }
         const bound = bindings.find((b) => b.provider === provider)
@@ -119,18 +121,18 @@ export default function OAuthBindings() {
               <div>
                 <div className="text-sm font-medium text-slate-900">{meta.label}</div>
                 {bound
-                  ? <div className="text-xs text-slate-400">已绑定：{bound.provider_username}</div>
-                  : <div className="text-xs text-slate-400">未绑定</div>}
+                  ? <div className="text-xs text-slate-400">{t('account.oauth.boundAs', { name: bound.provider_username })}</div>
+                  : <div className="text-xs text-slate-400">{t('account.oauth.notBound')}</div>}
               </div>
             </div>
             {bound
-              ? <Button variant="danger" size="sm" loading={working === provider} onClick={() => unbind(provider)}>解绑</Button>
-              : <Button variant="outline" size="sm" onClick={() => bind(provider)}>绑定</Button>}
+              ? <Button variant="danger" size="sm" loading={working === provider} onClick={() => unbind(provider)}>{t('account.oauth.unbind')}</Button>
+              : <Button variant="outline" size="sm" onClick={() => bind(provider)}>{t('account.oauth.bind')}</Button>}
           </div>
         )
       })}
 
-      {!user.email && <p className="mt-3 text-xs text-amber-600">提示：尚未填写邮箱，第三方登录的关联识别会受限。</p>}
+      {!user.email && <p className="mt-3 text-xs text-amber-600">{t('account.oauth.noEmailHint')}</p>}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { API_BASE, api } from '@/lib/api'
 import { Button, Loading } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 
 const PROVIDER_META: Record<string, { label: string; icon: string }> = {
   github: { label: 'GitHub', icon: 'fa-github' },
@@ -10,6 +11,7 @@ const PROVIDER_META: Record<string, { label: string; icon: string }> = {
 
 // OAuthButtons 第三方登录入口：拉取启用中的 provider，渲染对应按钮（登录/注册页共用）
 export default function OAuthButtons({ label }: { label: string }) {
+  const { t } = useTranslation()
   const [enabled, setEnabled] = useState<string[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -20,12 +22,12 @@ export default function OAuthButtons({ label }: { label: string }) {
       .finally(() => setLoaded(true))
   }, [])
 
-  if (!loaded) return <Loading className="py-4" label="正在加载登录方式…" />
+  if (!loaded) return <Loading className="py-4" label={t('auth.oauth.loading')} />
   if (enabled.length === 0) return null
   return (
     <>
       <div className="flex items-center gap-3 py-1 text-xs text-slate-400">
-        <span className="h-px flex-1 bg-slate-200" />或<span className="h-px flex-1 bg-slate-200" />
+        <span className="h-px flex-1 bg-slate-200" />{t('auth.oauth.divider')}<span className="h-px flex-1 bg-slate-200" />
       </div>
       <div className="space-y-2">
         {enabled.map((p) => {
@@ -35,7 +37,7 @@ export default function OAuthButtons({ label }: { label: string }) {
               onClick={() => {
                 window.location.href = `${API_BASE}/api/v1/auth/oauth/${p}?origin=${encodeURIComponent(window.location.origin)}`
               }}>
-              <i className={`fa-brands ${meta.icon}`} aria-hidden="true" />使用 {meta.label} {label}
+              <i className={`fa-brands ${meta.icon}`} aria-hidden="true" />{t('auth.oauth.button', { provider: meta.label, label })}
             </Button>
           )
         })}
@@ -44,22 +46,13 @@ export default function OAuthButtons({ label }: { label: string }) {
   )
 }
 
-// oauthErrorText 把回调携带的 oauth_error 代码转成可读文案
-export function oauthErrorText(code: string): string {
-  const messages: Record<string, string> = {
-    not_configured: '管理员尚未配置 GitHub 登录',
-    invalid_state: '登录状态校验失败，请重新尝试',
-    missing_code: '未获取到授权码，请重新尝试',
-    provider_unreachable: '无法连接 GitHub，请稍后重试',
-    token_exchange_failed: 'GitHub 授权换取失败，请重试',
-    profile_fetch_failed: '获取 GitHub 账号信息失败，请重试',
-    account_disabled: '该账户已被禁用',
-    register_failed: '自动创建账户失败，请稍后重试',
-    token_issue_failed: '签发登录令牌失败，请重试',
-    unsupported_provider: '不支持的第三方登录方式',
-    registration_closed: '本站当前已关闭注册，无法通过第三方登录创建新账户',
-    registration_invite_required: '本站仅限邀请注册，第三方登录无法创建新账户',
-    already_bound: '该第三方账号已被其他账号绑定，无法重复绑定',
-  }
-  return messages[code] || `第三方登录失败（${code}）`
+const OAUTH_ERROR_CODES = new Set([
+  'not_configured', 'invalid_state', 'missing_code', 'provider_unreachable', 'token_exchange_failed',
+  'profile_fetch_failed', 'account_disabled', 'register_failed', 'token_issue_failed', 'unsupported_provider',
+  'registration_closed', 'registration_invite_required', 'already_bound',
+])
+
+// oauthErrorKey 把回调携带的 oauth_error 代码转成 i18n 键（未知代码回退到带占位的通用键）
+export function oauthErrorKey(code: string): string {
+  return OAUTH_ERROR_CODES.has(code) ? `auth.oautherror.${code}` : 'auth.oautherror.unknown'
 }
