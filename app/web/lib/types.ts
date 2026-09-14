@@ -124,6 +124,10 @@ export interface SiteConfig {
   site_name?: string
   site_description?: string
   site_logo?: string
+  site_favicon?: string
+  site_keywords?: string
+  site_footer_text?: string
+  site_beian?: string
   version?: string
   installation_date?: string
   comments_enabled?: string

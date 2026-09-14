@@ -8,6 +8,7 @@ import Layout from '@/components/Layout'
 import Seo from '@/components/Seo'
 import { FeedbackProvider, Loading } from '@/components/ui'
 import StepUpModal from '@/components/StepUpModal'
+import SiteHead from '@/components/SiteHead'
 import type { ReactNode } from 'react'
 import type { SiteConfig } from '@/lib/types'
 
@@ -78,6 +79,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <AppProvider initialSite={pageProps.site ?? null} initialInstalled={pageProps.installed ?? null} initialUser={pageProps.user ?? null}>
       <FeedbackProvider>
+        <SiteHead />
         <RouteLoading />
         <Shell>
           <Component {...pageProps} />

@@ -76,7 +76,7 @@ func (a *App) SiteStats(c *gin.Context) {
 // GetSiteConfig GET /site 公开站点配置
 func (a *App) GetSiteConfig(c *gin.Context) {
 	var rows []models.SiteConfig
-	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "site_logo", "version", "installation_date", "comments_enabled", "announcement_enabled", "announcement_text", "announcement_tone"}).Find(&rows)
+	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "site_logo", "site_favicon", "site_keywords", "site_footer_text", "site_beian", "version", "installation_date", "comments_enabled", "announcement_enabled", "announcement_text", "announcement_tone"}).Find(&rows)
 	cfg := gin.H{}
 	for _, r := range rows {
 		cfg[r.ConfigKey] = r.ConfigValue
@@ -88,6 +88,10 @@ type siteConfigUpdate struct {
 	SiteName            *string `json:"site_name"`
 	SiteDescription     *string `json:"site_description"`
 	SiteLogo            *string `json:"site_logo"`
+	SiteFavicon         *string `json:"site_favicon"`
+	SiteKeywords        *string `json:"site_keywords"`
+	SiteFooterText      *string `json:"site_footer_text"`
+	SiteBeian           *string `json:"site_beian"`
 	AnnouncementEnabled *bool   `json:"announcement_enabled"`
 	AnnouncementText    *string `json:"announcement_text"`
 	AnnouncementTone    *string `json:"announcement_tone"` // info | warning
@@ -109,6 +113,18 @@ func (a *App) UpdateSiteConfig(c *gin.Context) {
 	}
 	if req.SiteLogo != nil {
 		updates["site_logo"] = strings.TrimSpace(*req.SiteLogo)
+	}
+	if req.SiteFavicon != nil {
+		updates["site_favicon"] = strings.TrimSpace(*req.SiteFavicon)
+	}
+	if req.SiteKeywords != nil {
+		updates["site_keywords"] = strings.TrimSpace(*req.SiteKeywords)
+	}
+	if req.SiteFooterText != nil {
+		updates["site_footer_text"] = strings.TrimSpace(*req.SiteFooterText)
+	}
+	if req.SiteBeian != nil {
+		updates["site_beian"] = strings.TrimSpace(*req.SiteBeian)
 	}
 	if req.AnnouncementEnabled != nil {
 		v := "false"

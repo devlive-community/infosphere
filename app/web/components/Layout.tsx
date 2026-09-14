@@ -227,7 +227,7 @@ export default function Layout({ title, children }: { title?: string; children: 
               {siteName}
             </div>
             <p className="mt-3 max-w-xs text-sm leading-6 text-slate-400">
-              开源自托管的知识管理系统，帮助你沉淀知识、连接思想，与世界分享。
+              {site.site_footer_text || '开源自托管的知识管理系统，帮助你沉淀知识、连接思想，与世界分享。'}
             </p>
           </div>
           <FooterColumn title="产品" links={[
@@ -245,7 +245,14 @@ export default function Layout({ title, children }: { title?: string; children: 
         </div>
         <div className="border-t border-white/10">
           <div className="mx-auto flex flex-col justify-between gap-2 px-4 py-4 text-xs text-slate-400 md:flex-row" style={{ maxWidth: 'var(--content-max-width)' }}>
-            <span>© {year} {siteName} · Powered by InfoSphere</span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>© {year} {siteName} · Powered by InfoSphere</span>
+              {site.site_beian && (
+                <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                  {site.site_beian}
+                </a>
+              )}
+            </div>
             <div className="flex items-center gap-3">
               <span>开源许可：MIT</span>
               {site.version && (
