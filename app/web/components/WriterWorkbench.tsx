@@ -5,7 +5,7 @@ import { api, formatDate, API_BASE, getToken } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown, bindMarkdownInteractivity, headingPlainText } from '@/lib/markdown'
 import Seo from '@/components/Seo'
-import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Tooltip, Modal, useFeedback } from '@/components/ui'
+import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Switch, Tooltip, Modal, useFeedback } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
@@ -28,6 +28,7 @@ interface BookFormState {
   isPublic: boolean
   tags: string[]
   chapterPrefix: string
+  childStatusFollowParent: boolean
 }
 
 const STATUS_META: Record<BookStatus, { label: string; tone: 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'; dot: string }> = {
@@ -158,7 +159,7 @@ export default function Writer({ user }: WriterProps) {
   const [allowComments, setAllowComments] = useState(true)
 
   // 书籍设置表单
-  const [bookForm, setBookForm] = useState<BookFormState>({ title: '', description: '', status: 'draft', isPublic: false, tags: [] as string[], chapterPrefix: '' })
+  const [bookForm, setBookForm] = useState<BookFormState>({ title: '', description: '', status: 'draft', isPublic: false, tags: [] as string[], chapterPrefix: '', childStatusFollowParent: false })
   const [tagInput, setTagInput] = useState('')
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -282,6 +283,7 @@ export default function Writer({ user }: WriterProps) {
           title: b.title, description: b.description || '', status: b.status,
           isPublic: b.is_public, tags: (b.tags || []).map((t) => t.name),
           chapterPrefix: b.chapter_prefix || '',
+          childStatusFollowParent: b.child_status_follow_parent === true,
         })
         await loadTree(b)
         setBook(b)
@@ -361,9 +363,24 @@ export default function Writer({ user }: WriterProps) {
     if (!book) return
     if (!title.trim()) { setMessage('请填写章节标题'); return }
     const effectiveStatus = opts?.status ?? status
+    // 父章节状态变更且含子章节：询问是否把新状态一并应用到子章节
+    let cascadeStatus = false
+    const descendantCount = current ? flatten(current.children).length : 0
+    if (current && descendantCount > 0) {
+      let prevStatus: string = effectiveStatus
+      try { prevStatus = JSON.parse(snapshot.current)[2] } catch { /* 忽略 */ }
+      if (effectiveStatus !== prevStatus) {
+        cascadeStatus = await confirmAction({
+          title: `设为${STATUS_META[effectiveStatus as BookStatus]?.label || effectiveStatus}`,
+          message: `「${current.title}」包含 ${descendantCount} 个子章节。是否将子章节一并设为该状态？`,
+          confirmLabel: '本章及子章节', cancelLabel: '仅本章',
+        })
+      }
+    }
     const payload = {
       title: title.trim(), content, status: effectiveStatus, sort_order: sortOrder,
       parent_id: parentId ? Number(parentId) : null, allow_comments: allowComments,
+      cascade_status: cascadeStatus,
       create_revision: Boolean(current), revision_reason: opts?.status ? 'publish' : 'save',
     }
     setSaveState('saving')
@@ -538,10 +555,14 @@ export default function Writer({ user }: WriterProps) {
     } else {
       setCreatingUnder(null)
     }
-    setParentId(newParent); setStatus('draft')
+    // 子章节状态默认跟随父章节（书籍设置开启时）
+    const newStatus: DocumentStatus = parent && book?.child_status_follow_parent && STATUS_META[parent.status as BookStatus]
+      ? (parent.status as DocumentStatus)
+      : 'draft'
+    setParentId(newParent); setStatus(newStatus)
     setCurrent(null)
     setTitle(''); setContent(''); setSortOrder(newSort); setAllowComments(true)
-    snapshot.current = JSON.stringify(['', '', 'draft', newParent, newSort, true])
+    snapshot.current = JSON.stringify(['', '', newStatus, newParent, newSort, true])
     loadedDocId.current = null
     setSaveState('dirty') // 新章节等待用户手动保存或发布
     setTimeout(() => textareaRef.current?.focus(), 0)
@@ -586,6 +607,7 @@ export default function Writer({ user }: WriterProps) {
       const payload = {
         title: bookForm.title.trim(), description: bookForm.description, status: bookForm.status,
         is_public: bookForm.isPublic, chapter_prefix: bookForm.chapterPrefix,
+        child_status_follow_parent: bookForm.childStatusFollowParent,
         tags: bookForm.tags,
       }
       const updated = await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
@@ -1231,6 +1253,9 @@ export default function Writer({ user }: WriterProps) {
                 </div>
               </Field>
               <Field label="章节前缀"><Input value={bookForm.chapterPrefix} onChange={(e) => setBookForm({ ...bookForm, chapterPrefix: e.target.value })} placeholder="第" /></Field>
+              <Field label="子章节状态跟随父章节" hint="开启后，新建子章节的默认发布状态与父章节一致。">
+                <Switch ariaLabel="子章节状态跟随父章节" checked={bookForm.childStatusFollowParent} onChange={(v) => setBookForm({ ...bookForm, childStatusFollowParent: v })} />
+              </Field>
               <Button className="w-full" onClick={saveBookSettings}>保存书籍设置</Button>
             </div>
           )}

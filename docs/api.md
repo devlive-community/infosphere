@@ -238,7 +238,7 @@ Authorization: Bearer <token>
 | GET | `/books/:id` | 书籍详情（含作者） | `book:read` |
 | GET | `/books/slug/:slug` | 按 slug 查书籍 | `book:read` |
 | GET | `/books/slug/:slug/access` | 服务端计算当前用户的对象级能力：`can_read/can_manage/can_edit_content/can_export/collaborator_role` | `book:read` + 登录 |
-| PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀/阅读水印） | `book:update` |
+| PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀/阅读水印/`child_status_follow_parent` 新建子章节状态跟随父章节） | `book:update` |
 | DELETE | `/books/:id` | 将书籍及当前章节移入 30 天回收站 | `book:delete` |
 | GET | `/books/status-counts?scope=owned\|collaborating` | 当前用户创建或已接受协作书籍的状态统计 | `book:read` |
 | POST | `/books/:id/view` | 可见书籍浏览计数 +1，并写入按日、来源聚合桶；可选 JSON `{referrer}`，只保存来源类别，不保存原始网址；不可见资源统一返回 404 | `book:read` |
@@ -263,7 +263,7 @@ Authorization: Bearer <token>
 | POST | `/books/:id/documents` | 创建文档（title 必填；slug 留空自动生成；parent_id 归属校验；成功后生成初始版本） | `document:create` |
 | GET | `/books/:id/documents/slug/:slug` | 按 slug 查文档（含正文） | `document:read` |
 | GET | `/documents/:id` | 文档详情（含正文） | `document:read` |
-| PUT | `/documents/:id` | 更新（title/content/parent_id/sort_order/status/slug；防环校验）；手动保存传 `create_revision: true` 与 `revision_reason: save|publish` 生成不可变版本 | `document:update` |
+| PUT | `/documents/:id` | 更新（title/content/parent_id/sort_order/status/slug；防环校验）；改 `status` 时传 `cascade_status: true` 可把新状态一并应用到整棵子章节树；手动保存传 `create_revision: true` 与 `revision_reason: save|publish` 生成不可变版本 | `document:update` |
 | DELETE | `/documents/:id` | 将文档及其子树作为同一批次移入 30 天回收站 | `document:delete` |
 | POST | `/documents/:id/view` | 章节浏览计数 +1，并同步累加所属书籍的 `view_count` 及按日分析聚合；可选 JSON `{referrer}`；不可见返回 404 | `document:read` |
 | GET | `/documents/:id/revisions` | 章节版本列表（分页，不含正文）；未授权统一 404 | `document-revision:read` |

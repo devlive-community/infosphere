@@ -71,9 +71,19 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
   }
 
   async function changeStatus(doc: Document, status: DocumentStatus) {
+    // 含子章节时询问：仅本章 or 本章及子章节
+    let cascade = false
+    const childCount = flatten(doc.children || []).length
+    if (childCount > 0) {
+      cascade = await confirmAction({
+        title: `设为${STATUS[status]?.label || '新状态'}`,
+        message: `「${doc.title}」包含 ${childCount} 个子章节。是否将子章节一并设为该状态？`,
+        confirmLabel: '本章及子章节', cancelLabel: '仅本章',
+      })
+    }
     setBusy(doc.id)
     try {
-      await api(`/documents/${doc.id}`, { method: 'PUT', body: { status } })
+      await api(`/documents/${doc.id}`, { method: 'PUT', body: { status, cascade_status: cascade } })
       showToast({ message: `已${STATUS[status]?.label ? '设为' + STATUS[status].label : '更新状态'}`, tone: 'success' })
       load()
     } catch (e) {
