@@ -3,7 +3,7 @@ import Seo from '@/components/Seo'
 import Link from 'next/link'
 import Container from '@/components/Container'
 import AccountSettingsLayout from '@/components/AccountSettingsLayout'
-import { api } from '@/lib/api'
+import { api, API_BASE, getToken } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { Button, Input, Textarea, Field, Loading } from '@/components/ui'
@@ -28,6 +28,7 @@ export default function Profile() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -45,6 +46,24 @@ export default function Profile() {
   if (!user) return <Loading className="min-h-[60vh]" label="正在加载账户资料…" />
 
   const avatarSrc = resolveMediaUrl(avatar)
+
+  async function uploadAvatar(file: File | undefined) {
+    if (!file) return
+    setUploadingAvatar(true)
+    setError('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`${API_BASE}/api/v1/upload`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
+      setAvatar(payload.data.url)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -97,7 +116,12 @@ export default function Profile() {
                   <label className="pt-1 text-sm font-medium text-slate-700">头像</label>
                   <div className="flex items-start gap-4">
                     <UserAvatar user={{ username: user.username, avatar }} size="h-20 w-20 text-2xl" link={false} />
-                    <div>
+                    <div className="space-y-2">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50">
+                        {uploadingAvatar ? '上传中…' : '上传头像'}
+                        <input type="file" accept="image/*" hidden disabled={uploadingAvatar}
+                          onChange={(e) => { void uploadAvatar(e.target.files?.[0]); e.target.value = '' }} />
+                      </label>
                       <p className="text-xs text-slate-400">支持 JPG、PNG，建议使用正方形图片；也可在下方粘贴图片地址</p>
                     </div>
                   </div>
