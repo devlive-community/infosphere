@@ -68,7 +68,8 @@ func (a *App) CopyBook(c *gin.Context) {
 	title = truncateText(title, 255)
 	newBook := models.Book{
 		Title: title, UserID: u.ID, Status: "draft", IsPublic: false,
-		Description: src.Description, CoverImage: src.CoverImage,
+		SlugEditable:  true, // 副本允许一次性修改访问路径
+		Description:   src.Description, CoverImage: src.CoverImage,
 		LoginRequired: src.LoginRequired,
 		OrderCol:      src.OrderCol, OrderDir: src.OrderDir, ChapterPrefix: src.ChapterPrefix,
 		ChildStatusFollowParent: src.ChildStatusFollowParent,

@@ -226,7 +226,9 @@ type Book struct {
 	Description string `gorm:"type:text" json:"description"`
 	CoverImage  string `gorm:"size:500" json:"cover_image"`
 	Slug        string `gorm:"size:255;uniqueIndex;not null" json:"slug"`
-	UserID      uint   `gorm:"index;not null" json:"user_id"`
+	// SlugEditable 是否还允许修改访问路径（slug）。复制出的书籍为 true，修改一次后自动置为 false（只能改一次）。
+	SlugEditable bool `gorm:"default:false" json:"slug_editable"`
+	UserID       uint `gorm:"index;not null" json:"user_id"`
 	Status      string `gorm:"size:20;default:draft;index" json:"status"` // draft | in_progress | published | completed | archived
 	IsPublic    bool   `gorm:"default:false;index" json:"is_public"`
 	// LoginRequired 公开书籍是否仅限登录用户阅读/发现：开启后未登录游客既看不到也读不到，登录用户不受限
