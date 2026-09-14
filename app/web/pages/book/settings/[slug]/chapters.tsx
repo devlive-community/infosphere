@@ -195,7 +195,13 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
             : <FileTextIcon className="h-4 w-4 shrink-0 text-slate-300" />}
           <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{book.chapter_prefix}{doc.title}</span>
           <Badge tone={meta.tone}>{meta.label}</Badge>
-          <div className="flex shrink-0 items-center gap-0.5">
+          {busy === doc.id && (
+            <span className="flex shrink-0 items-center gap-1.5 text-xs text-slate-400">
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" />
+              处理中…
+            </span>
+          )}
+          <div className={`flex shrink-0 items-center gap-0.5 ${busy === doc.id ? 'pointer-events-none opacity-40' : ''}`}>
             <Tooltip content="编辑">
               <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${encodeURIComponent(doc.slug)}`} aria-label="编辑"
                 className="flex items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-600"

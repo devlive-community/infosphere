@@ -176,6 +176,7 @@ export default function AdminUsers() {
                         <span className="block text-right text-xs text-slate-300">不可操作自身</span>
                       ) : (
                         <div className="flex items-center justify-end gap-2">
+                          {busyId === u.id && <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" aria-label="处理中" />}
                           <Select className="w-32" value={u.role} disabled={busyId === u.id}
                             options={[{ value: 'user', label: '普通用户' }, { value: 'admin', label: '管理员' }]}
                             onChange={(v) => changeRole(u, v)} />
