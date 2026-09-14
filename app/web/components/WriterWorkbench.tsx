@@ -14,6 +14,7 @@ import {
   MaximizeIcon, MinimizeIcon,
 } from '@/components/icons'
 import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, DocumentStatus, PageResult } from '@/lib/types'
+import { diffLines, diffStats, type DiffRow } from '@/lib/text-diff'
 
 type SaveState = 'saved' | 'dirty' | 'saving'
 type TabKey = 'toc' | 'settings'
@@ -1644,6 +1645,11 @@ function RevisionDrawer({
   const [detailLoading, setDetailLoading] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const [error, setError] = useState('')
+  // 差异对比：viewMode 统一/并排；compareId 对比对象（'current' 为当前编辑内容，或另一版本 id）
+  const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified')
+  const [compareId, setCompareId] = useState<number | 'current'>('current')
+  const [compareContent, setCompareContent] = useState('')
+  const [compareLoading, setCompareLoading] = useState(false)
 
   const loadList = useCallback(async () => {
     if (!document) return
@@ -1665,8 +1671,27 @@ function RevisionDrawer({
     if (!open || !document) return
     setDetail(null)
     setSelectedId(null)
+    setCompareId('current')
     loadList()
   }, [open, document, loadList])
+
+  // 对比对象若与当前查看的版本相同，回退为“当前编辑内容”，避免自我对比
+  useEffect(() => {
+    if (compareId !== 'current' && compareId === selectedId) setCompareId('current')
+  }, [selectedId, compareId])
+
+  // 解析对比对象的内容：'current' 跟随编辑区，其它取对应版本正文
+  useEffect(() => {
+    if (!open || !document) return
+    if (compareId === 'current') { setCompareContent(currentContent); setCompareLoading(false); return }
+    let active = true
+    setCompareLoading(true)
+    api<DocumentRevision>(`/documents/${document.id}/revisions/${compareId}`)
+      .then((value) => { if (active) setCompareContent(value.content || '') })
+      .catch(() => { if (active) setCompareContent('') })
+      .finally(() => { if (active) setCompareLoading(false) })
+    return () => { active = false }
+  }, [open, document, compareId, currentContent])
 
   useEffect(() => {
     if (!open || !document || selectedId == null) { setDetail(null); return }
@@ -1686,6 +1711,18 @@ function RevisionDrawer({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  // 差异：detail(历史版本) 为旧侧，compareContent(对比对象) 为新侧
+  const diffRows = useMemo(() => (detail ? diffLines(detail.content, compareContent) : []), [detail, compareContent])
+  const stats = useMemo(() => diffStats(diffRows), [diffRows])
+  const compareOptions = useMemo(() => {
+    const opts = [{ value: 'current', label: '当前编辑内容' }]
+    for (const revision of result?.items || []) {
+      if (revision.id === selectedId) continue
+      opts.push({ value: String(revision.id), label: `${REVISION_REASON_LABEL[revision.reason]} · ${formatDate(revision.created_at)}` })
+    }
+    return opts
+  }, [result, selectedId])
 
   if (!open || !document) return null
 
@@ -1727,8 +1764,6 @@ function RevisionDrawer({
       setLoadingMore(false)
     }
   }
-
-  const difference = detail ? detail.content_length - Array.from(currentContent).length : 0
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/25 backdrop-blur-[1px]" role="dialog" aria-modal="true" aria-label="章节版本历史" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
@@ -1791,9 +1826,7 @@ function RevisionDrawer({
                       <span className="font-semibold text-slate-900">{REVISION_REASON_LABEL[detail.reason]}</span>
                       <Badge tone={STATUS_META[detail.status].tone}>{STATUS_META[detail.status].label}</Badge>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {formatDate(detail.created_at)} · 相较当前 {difference === 0 ? '字数相同' : `${difference > 0 ? '多' : '少'} ${Math.abs(difference)} 字`}
-                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{formatDate(detail.created_at)} · {detail.author?.username || '未知用户'}</p>
                   </div>
                   <Button variant="outline" loading={restoring} disabled={hasUnsavedChanges} onClick={restore}>
                     <HistoryIcon className="h-4 w-4" /> 恢复此版本
@@ -1804,10 +1837,27 @@ function RevisionDrawer({
                     当前编辑内容尚未保存。为防止内容丢失，请先关闭面板并手动保存后再恢复。
                   </div>
                 )}
-                <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-slate-200 overflow-hidden lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-                  <RevisionContent title="历史版本" content={detail.content} />
-                  <RevisionContent title="当前编辑内容" content={currentContent} />
+                {/* 差异工具条：选择对比对象、切换统一/并排、显示增删行数 */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="shrink-0">此版本 → 对比到</span>
+                    <Select className="w-52" size="sm" value={compareId === 'current' ? 'current' : String(compareId)}
+                      options={compareOptions} onChange={(value) => setCompareId(value === 'current' ? 'current' : Number(value))} />
+                  </div>
+                  <SegmentedTabs size="sm" value={viewMode} ariaLabel="差异视图" onChange={(value) => setViewMode(value as 'unified' | 'split')}
+                    items={[{ value: 'unified', label: '统一' }, { value: 'split', label: '并排' }]} />
+                  <span className="ml-auto flex items-center gap-2 font-mono text-xs">
+                    <span className="text-emerald-600">+{stats.added}</span>
+                    <span className="text-rose-500">−{stats.removed}</span>
+                  </span>
                 </div>
+                {compareLoading ? (
+                  <Loading className="h-full" label="正在加载对比版本…" />
+                ) : stats.added === 0 && stats.removed === 0 ? (
+                  <div className="flex flex-1 items-center justify-center p-8"><EmptyState>两个版本内容相同</EmptyState></div>
+                ) : (
+                  <RevisionDiff rows={diffRows} mode={viewMode} />
+                )}
               </>
             ) : (
               <EmptyState>选择左侧版本查看内容</EmptyState>
@@ -1819,12 +1869,61 @@ function RevisionDrawer({
   )
 }
 
-function RevisionContent({ title, content }: { title: string; content: string }) {
+// RevisionDiff git diff 式差异视图：统一（单栏 +/-）或并排（左删右增）
+function RevisionDiff({ rows, mode }: { rows: DiffRow[]; mode: 'unified' | 'split' }) {
+  if (mode === 'split') return <RevisionDiffSplit rows={rows} />
   return (
-    <section className="flex min-h-0 flex-col">
-      <h3 className="shrink-0 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
-      <pre className="min-h-0 flex-1 whitespace-pre-wrap break-words overflow-y-auto px-5 py-4 font-mono text-sm leading-6 text-slate-700">{content || '（空内容）'}</pre>
-    </section>
+    <div className="min-h-0 flex-1 overflow-auto bg-white font-mono text-xs leading-6">
+      <table className="w-full border-collapse">
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className={row.type === 'add' ? 'bg-emerald-50' : row.type === 'del' ? 'bg-rose-50' : ''}>
+              <td className="w-10 select-none border-r border-slate-100 px-2 text-right align-top text-slate-300">{row.oldNo ?? ''}</td>
+              <td className="w-10 select-none border-r border-slate-100 px-2 text-right align-top text-slate-300">{row.newNo ?? ''}</td>
+              <td className={`whitespace-pre-wrap break-words px-2 ${row.type === 'add' ? 'text-emerald-700' : row.type === 'del' ? 'text-rose-700' : 'text-slate-700'}`}>
+                <span className="mr-2 inline-block w-3 select-none text-center text-slate-400">{row.type === 'add' ? '+' : row.type === 'del' ? '−' : ''}</span>
+                {row.text || ' '}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// RevisionDiffSplit 并排差异：把连续的删除/新增按行配对，尽量左右对齐
+function RevisionDiffSplit({ rows }: { rows: DiffRow[] }) {
+  const pairs: { left?: DiffRow; right?: DiffRow }[] = []
+  let dels: DiffRow[] = []
+  let adds: DiffRow[] = []
+  const flush = () => {
+    const max = Math.max(dels.length, adds.length)
+    for (let k = 0; k < max; k++) pairs.push({ left: dels[k], right: adds[k] })
+    dels = []
+    adds = []
+  }
+  for (const row of rows) {
+    if (row.type === 'del') dels.push(row)
+    else if (row.type === 'add') adds.push(row)
+    else { flush(); pairs.push({ left: row, right: row }) }
+  }
+  flush()
+  return (
+    <div className="min-h-0 flex-1 overflow-auto bg-white font-mono text-xs leading-6">
+      <table className="w-full table-fixed border-collapse">
+        <tbody>
+          {pairs.map((pair, i) => (
+            <tr key={i}>
+              <td className="w-10 select-none border-r border-slate-100 px-2 text-right align-top text-slate-300">{pair.left?.oldNo ?? ''}</td>
+              <td className={`w-[calc(50%-2.5rem)] whitespace-pre-wrap break-words border-r border-slate-200 px-2 align-top ${pair.left?.type === 'del' ? 'bg-rose-50 text-rose-700' : 'text-slate-700'}`}>{pair.left ? (pair.left.text || ' ') : ''}</td>
+              <td className="w-10 select-none border-r border-slate-100 px-2 text-right align-top text-slate-300">{pair.right?.newNo ?? ''}</td>
+              <td className={`w-[calc(50%-2.5rem)] whitespace-pre-wrap break-words px-2 align-top ${pair.right?.type === 'add' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700'}`}>{pair.right ? (pair.right.text || ' ') : ''}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
