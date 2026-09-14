@@ -27,7 +27,8 @@ export default function CollaboratorManager({ book }: { book: Book }) {
   const [role, setRole] = useState('editor')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [working, setWorking] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [removingId, setRemovingId] = useState<number | null>(null)
 
   const isOwner = user?.id === book.user_id || user?.role === 'admin'
 
@@ -44,7 +45,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
   async function add(e: FormEvent) {
     e.preventDefault()
     if (!username.trim()) return
-    setWorking(true)
+    setAdding(true)
     setMessage('')
     setError('')
     try {
@@ -55,7 +56,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
     } catch (err) {
       setError((err as Error).message)
     } finally {
-      setWorking(false)
+      setAdding(false)
     }
   }
 
@@ -67,7 +68,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
       confirmLabel: self ? '确认退出' : '确认移除',
       danger: true,
     })) return
-    setWorking(true)
+    setRemovingId(userId)
     setMessage('')
     setError('')
     try {
@@ -77,7 +78,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
     } catch (err) {
       setError((err as Error).message)
     } finally {
-      setWorking(false)
+      setRemovingId(null)
     }
   }
 
@@ -116,7 +117,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
                   </span>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" loading={working}
+              <Button variant="ghost" size="sm" loading={removingId === c.user_id} disabled={removingId !== null}
                 onClick={() => remove(c.user_id, c.user?.username || '')}>
                 {user?.id === c.user_id ? '退出' : '移除'}
               </Button>
@@ -133,7 +134,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
             className="sm:w-32"
             options={[{ value: 'editor', label: '编辑者' }, { value: 'viewer', label: '访问者' }]}
             value={role} onChange={setRole} />
-          <Button type="submit" loading={working}>发送邀请</Button>
+          <Button type="submit" loading={adding}>发送邀请</Button>
         </form>
       )}
     </div>

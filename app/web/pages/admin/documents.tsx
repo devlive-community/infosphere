@@ -226,6 +226,7 @@ export default function AdminDocuments() {
                           <Select className="w-28" value={item.status} disabled={busyId === item.id}
                             options={rowStatusOptions}
                             onChange={(value) => updateDocument(item, { status: value as DocumentStatus })} />
+                          {busyId === item.id && <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" aria-label="处理中" />}
                         </div>
                       </td>
                       <td className="px-5 py-3">

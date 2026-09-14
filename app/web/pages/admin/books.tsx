@@ -209,6 +209,7 @@ export default function AdminBooks() {
                           <Select className="w-28" value={book.status} disabled={busyId === book.id}
                             options={rowStatusOptions}
                             onChange={(value) => updateBook(book, { status: value as BookStatus })} />
+                          {busyId === book.id && <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" aria-label="处理中" />}
                         </div>
                       </td>
                       <td className="px-5 py-3">
