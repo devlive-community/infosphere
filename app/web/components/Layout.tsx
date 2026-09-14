@@ -5,6 +5,7 @@ import { useRouter } from 'next/router'
 import Container from '@/components/Container'
 import { ListBulletIcon, BookIcon, TrashIcon, UserCircleIcon, GridIcon, LogOutIcon } from '@/components/icons'
 import { useApp } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import { API_BASE, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { Button, ButtonLink, Input, Modal, Tooltip, useFeedback } from '@/components/ui'
@@ -14,6 +15,7 @@ import { SearchIcon } from '@/components/icons'
 
 function UserMenu() {
   const { user, logout } = useApp()
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -28,20 +30,20 @@ function UserMenu() {
   if (!user) {
     return (
       <div className="flex items-center gap-2">
-        <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100">登录</Link>
-        <ButtonLink href="/register">注册</ButtonLink>
+        <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100">{t('nav.auth.login')}</Link>
+        <ButtonLink href="/register">{t('nav.auth.register')}</ButtonLink>
       </div>
     )
   }
   const items = [
-    { label: '我的书籍', href: '/books', icon: BookIcon },
-    { label: '创作数据', href: '/user/analytics', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" /> },
-    { label: '我在读', href: '/user/reading', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-book-open-reader ${className || ''}`} aria-hidden="true" /> },
-    { label: '我的笔记', href: '/user/notes', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-note-sticky ${className || ''}`} aria-hidden="true" /> },
-    { label: '个人资料', href: '/user/profile', icon: UserCircleIcon },
+    { label: t('nav.menu.myBooks'), href: '/books', icon: BookIcon },
+    { label: t('nav.menu.analytics'), href: '/user/analytics', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" /> },
+    { label: t('nav.menu.reading'), href: '/user/reading', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-book-open-reader ${className || ''}`} aria-hidden="true" /> },
+    { label: t('nav.menu.notes'), href: '/user/notes', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-note-sticky ${className || ''}`} aria-hidden="true" /> },
+    { label: t('nav.menu.profile'), href: '/user/profile', icon: UserCircleIcon },
     // 控制台仅对管理员开放
-    ...(user.role === 'admin' ? [{ label: '控制台', href: '/admin/system', icon: GridIcon }] : []),
-    { label: '回收站', href: '/user/trash', icon: TrashIcon },
+    ...(user.role === 'admin' ? [{ label: t('nav.menu.console'), href: '/admin/system', icon: GridIcon }] : []),
+    { label: t('nav.menu.trash'), href: '/user/trash', icon: TrashIcon },
   ]
   return (
     <div className="relative" ref={ref}>
@@ -67,7 +69,7 @@ function UserMenu() {
           <button onClick={() => { setOpen(false); logout() }}
             className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
             <LogOutIcon className="h-4 w-4" />
-            退出登录
+            {t('nav.menu.logout')}
           </button>
         </div>
       )}
@@ -79,18 +81,19 @@ function UserMenu() {
 function MobileNav() {
   const [open, setOpen] = useState(false)
   const { user } = useApp()
+  const { t } = useTranslation()
   const router = useRouter()
   useEffect(() => { setOpen(false) }, [router.pathname])
   return (
     <div className="relative md:hidden">
-      <button onClick={() => setOpen(!open)} aria-label="导航菜单"
+      <button onClick={() => setOpen(!open)} aria-label={t('nav.aria.menu')}
         className="flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
         style={{ width: 'var(--control-height)', height: 'var(--control-height)' }}>
         <ListBulletIcon className="h-5 w-5" />
       </button>
       {open && (
         <div className="absolute left-0 top-11 z-40 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          {([['发现', '/explore'], ['搜索', '/search'], ...(user ? [['我的书籍', '/books']] : [])] as [string, string][]).map(([label, href]) => (
+          {([[t('nav.main.explore'), '/explore'], [t('nav.main.search'), '/search'], ...(user ? [[t('nav.main.myBooks'), '/books']] : [])] as [string, string][]).map(([label, href]) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">{label}</Link>
           ))}
@@ -103,14 +106,15 @@ function MobileNav() {
 // ActivationBanner 未激活邮箱提示：仅当「注册后必须激活邮箱」开启且用户未激活时出现（email_verified=false）
 function ActivationBanner() {
   const { showToast } = useFeedback()
+  const { t } = useTranslation()
   const [sending, setSending] = useState(false)
   async function resend() {
     setSending(true)
     try {
       const r = await api<{ message: string }>('/auth/email/resend', { method: 'POST' })
-      showToast({ message: r.message || '激活邮件已发送', tone: 'success' })
+      showToast({ message: r.message || t('nav.activation.sent'), tone: 'success' })
     } catch (e) {
-      showToast({ message: (e as Error).message || '发送失败', tone: 'error' })
+      showToast({ message: (e as Error).message || t('nav.activation.failed'), tone: 'error' })
     } finally {
       setSending(false)
     }
@@ -119,8 +123,8 @@ function ActivationBanner() {
     <div className="border-b border-amber-200 bg-amber-50 text-amber-800">
       <div className="mx-auto flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm" style={{ maxWidth: 'var(--content-max-width)' }}>
         <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
-        <span>你的邮箱尚未激活，激活前只能浏览，无法创建书籍或发表评论。</span>
-        <Button variant="ghost" size="sm" loading={sending} onClick={resend} className="text-amber-900 hover:bg-amber-100">重新发送激活邮件</Button>
+        <span>{t('nav.activation.message')}</span>
+        <Button variant="ghost" size="sm" loading={sending} onClick={resend} className="text-amber-900 hover:bg-amber-100">{t('nav.activation.resend')}</Button>
       </div>
     </div>
   )
@@ -158,6 +162,7 @@ function AnnouncementBanner() {
 
 export default function Layout({ title, children }: { title?: string; children: ReactNode }) {
   const { site, user } = useApp()
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
   const siteLogo = site.site_logo ? resolveMediaUrl(site.site_logo) : '/logo.png'
   const year = new Date().getFullYear()
@@ -201,13 +206,13 @@ export default function Layout({ title, children }: { title?: string; children: 
             {siteName}
           </Link>
           <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-            <Link href="/explore" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">发现</Link>
-            {user && <Link href="/books" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">我的书籍</Link>}
+            <Link href="/explore" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">{t('nav.main.explore')}</Link>
+            {user && <Link href="/books" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">{t('nav.main.myBooks')}</Link>}
           </nav>
           <MobileNav />
           <form action="/search" method="get" className="ml-auto hidden w-full max-w-sm lg:block">
             <Input type="search" name="q" leading={<SearchIcon className="h-4 w-4" />}
-              placeholder="搜索书籍、主题或作者" />
+              placeholder={t('nav.search.placeholder')} />
           </form>
           <div className="ml-auto flex items-center gap-1.5 lg:ml-0">
             <LanguageSwitcher />
@@ -229,20 +234,20 @@ export default function Layout({ title, children }: { title?: string; children: 
               {siteName}
             </div>
             <p className="mt-3 max-w-xs text-sm leading-6 text-slate-400">
-              {site.site_footer_text || '开源自托管的知识管理系统，帮助你沉淀知识、连接思想，与世界分享。'}
+              {site.site_footer_text || t('footer.intro.default')}
             </p>
           </div>
-          <FooterColumn title="产品" links={[
-            { label: '发现', href: '/explore' },
-            ...(user ? [{ label: '我的书籍', href: '/books' }] : []),
+          <FooterColumn title={t('footer.column.product')} links={[
+            { label: t('footer.link.explore'), href: '/explore' },
+            ...(user ? [{ label: t('footer.link.myBooks'), href: '/books' }] : []),
           ]} />
-          <FooterColumn title="资源" links={[
-            { label: '文档', href: 'https://github.com/devlive-community/infosphere' },
-            { label: '问题反馈', href: 'https://github.com/devlive-community/infosphere/issues' },
+          <FooterColumn title={t('footer.column.resources')} links={[
+            { label: t('footer.link.docs'), href: 'https://github.com/devlive-community/infosphere' },
+            { label: t('footer.link.issues'), href: 'https://github.com/devlive-community/infosphere/issues' },
           ]} />
-          <FooterColumn title="社区" links={[
-            { label: 'GitHub', href: 'https://github.com/devlive-community/infosphere' },
-            { label: '讨论区', href: 'https://github.com/devlive-community/infosphere/discussions' },
+          <FooterColumn title={t('footer.column.community')} links={[
+            { label: t('footer.link.github'), href: 'https://github.com/devlive-community/infosphere' },
+            { label: t('footer.link.discussions'), href: 'https://github.com/devlive-community/infosphere/discussions' },
           ]} />
         </div>
         <div className="border-t border-white/10">
@@ -256,7 +261,7 @@ export default function Layout({ title, children }: { title?: string; children: 
               )}
             </div>
             <div className="flex items-center gap-3">
-              <span>开源许可：MIT</span>
+              <span>{t('footer.meta.license')}</span>
               {site.version && (
                 <button onClick={() => setShowReleaseModal(true)} className="hover:text-white transition-colors">
                   v{site.version}
@@ -267,14 +272,14 @@ export default function Layout({ title, children }: { title?: string; children: 
         </div>
       </footer>
 
-      <Modal open={showReleaseModal} onClose={() => setShowReleaseModal(false)} title="版本信息">
+      <Modal open={showReleaseModal} onClose={() => setShowReleaseModal(false)} title={t('footer.release.title')}>
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-slate-50 px-4 py-3" style={{ borderRadius: 'var(--radius)' }}>
-            <span className="text-sm text-slate-600">当前版本</span>
+            <span className="text-sm text-slate-600">{t('footer.release.current')}</span>
             <span className="font-medium text-slate-900">v{site.version}</span>
           </div>
           <div className="bg-slate-50 px-4 py-3" style={{ borderRadius: 'var(--radius)' }}>
-            <p className="mb-2 text-sm font-medium text-slate-700">发布日志</p>
+            <p className="mb-2 text-sm font-medium text-slate-700">{t('footer.release.notes')}</p>
             {release?.loading ? (
               <p className="text-sm text-slate-400">正在加载发布日志…</p>
             ) : release?.body ? (
