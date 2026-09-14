@@ -7,6 +7,7 @@ import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import BookCard from '@/components/BookCard'
 import { BookIcon, ChevronRightIcon, CloudIcon, CodeIcon, EyeIcon, FileTextIcon, ShieldIcon, UsersIcon } from '@/components/icons'
+import { useTranslation } from '@/lib/i18n'
 import type { Book, SiteStats , User} from '@/lib/types'
 
 interface HomeProps {
@@ -52,13 +53,14 @@ function LatestCard({ book }: { book: Book }) {
 }
 
 export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: siteName,
-    description: site.site_description || 'InfoSphere 知识管理系统',
+    description: site.site_description || t('home.seo.jsonldDescription'),
     url: siteUrl,
     potentialAction: {
       '@type': 'SearchAction',
@@ -68,17 +70,17 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
   }
 
   const statItems = [
-    { label: '注册用户', value: stats.user_count, icon: UsersIcon, tone: 'bg-primary-50 text-primary-500' },
-    { label: '知识书籍', value: stats.book_count, icon: BookIcon, tone: 'bg-sky-50 text-sky-500' },
-    { label: '文档章节', value: stats.document_count, icon: FileTextIcon, tone: 'bg-emerald-50 text-emerald-500' },
-    { label: '总浏览量', value: stats.total_views, icon: EyeIcon, tone: 'bg-amber-50 text-amber-500' },
+    { label: t('home.stats.users'), value: stats.user_count, icon: UsersIcon, tone: 'bg-primary-50 text-primary-500' },
+    { label: t('home.stats.books'), value: stats.book_count, icon: BookIcon, tone: 'bg-sky-50 text-sky-500' },
+    { label: t('home.stats.chapters'), value: stats.document_count, icon: FileTextIcon, tone: 'bg-emerald-50 text-emerald-500' },
+    { label: t('home.stats.views'), value: stats.total_views, icon: EyeIcon, tone: 'bg-amber-50 text-amber-500' },
   ]
 
   return (
     <div>
       <Seo
         siteName={siteName}
-        description={site.site_description || '简单而强大的开源知识管理系统，支持多数据库与多端访问。'}
+        description={site.site_description || t('home.seo.description')}
         url={siteUrl}
         jsonLd={jsonLd}
       />
@@ -89,24 +91,24 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
         <div>
           <span className="mb-6 block h-1 w-12 rounded-full bg-primary-500" aria-hidden="true" />
           <h1 className="text-4xl font-bold leading-[1.15] text-slate-900 md:text-[44px] md:leading-[1.15]">
-            让知识沉淀，<br />也让灵感流动
+            {t('home.hero.titleLine1')}<br />{t('home.hero.titleLine2')}
           </h1>
           <p className="mt-5 max-w-md text-[15px] leading-7 text-slate-500">
-            一个属于你自己的开源知识空间。写作、整理、发布与阅读，在同一个地方自然发生。
+            {t('home.hero.subtitle')}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/explore">探索知识</ButtonLink>
+            <ButtonLink href="/explore">{t('home.hero.explore')}</ButtonLink>
             <ButtonLink href="/books/create" variant="outline"
               className="border-primary-500 text-primary-600 hover:border-primary-600 hover:bg-primary-50">
-              创建第一本书
+              {t('home.hero.createFirst')}
             </ButtonLink>
           </div>
           <div className="mt-9 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500">
-            <span className="flex items-center gap-1.5"><CodeIcon className="h-4 w-4 text-primary-500" /> 开源</span>
+            <span className="flex items-center gap-1.5"><CodeIcon className="h-4 w-4 text-primary-500" /> {t('home.hero.tagOpenSource')}</span>
             <span className="text-slate-300">·</span>
-            <span className="flex items-center gap-1.5"><ShieldIcon className="h-4 w-4 text-primary-500" /> 自托管</span>
+            <span className="flex items-center gap-1.5"><ShieldIcon className="h-4 w-4 text-primary-500" /> {t('home.hero.tagSelfHosted')}</span>
             <span className="text-slate-300">·</span>
-            <span className="flex items-center gap-1.5"><CloudIcon className="h-4 w-4 text-primary-500" /> 多端同步</span>
+            <span className="flex items-center gap-1.5"><CloudIcon className="h-4 w-4 text-primary-500" /> {t('home.hero.tagMultiDevice')}</span>
           </div>
         </div>
         <HeroIllustration books={latest} />
@@ -132,14 +134,14 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
       {/* 最新发布 */}
       <section className="mt-12">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-900">最新发布</h2>
+          <h2 className="text-xl font-bold text-slate-900">{t('home.section.latest')}</h2>
           <Link href="/explore" className="flex items-center gap-0.5 text-sm text-slate-500 transition-colors hover:text-primary-600">
-            查看全部 <ChevronRightIcon className="h-4 w-4" />
+            {t('home.section.viewAll')} <ChevronRightIcon className="h-4 w-4" />
           </Link>
         </div>
         {latest.length === 0 ? (
           <EmptyState>
-            还没有公开的书籍，<Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
+            {t('home.empty.prefix')}<Link href="/books/create" className="text-primary-600 hover:underline">{t('home.empty.createLink')}</Link>
           </EmptyState>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -154,9 +156,9 @@ export default function Home({ site, siteUrl, stats, latest, hot }: InferGetServ
         <section className="bg-[#0b1f3f] py-12">
           <Container>
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">热门阅读</h2>
+              <h2 className="text-xl font-bold text-white">{t('home.section.hot')}</h2>
               <Link href="/explore" className="flex items-center gap-0.5 text-sm text-slate-400 transition-colors hover:text-white">
-                查看全部 <ChevronRightIcon className="h-4 w-4" />
+                {t('home.section.viewAll')} <ChevronRightIcon className="h-4 w-4" />
               </Link>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
