@@ -3,7 +3,7 @@ import { ReactNode, useRef, useState } from 'react'
 import UserAvatar from '@/components/UserAvatar'
 import { getToken } from '@/lib/api'
 import type { User } from '@/lib/types'
-import { ShieldIcon, UserCircleIcon, DownloadIcon, LinkIcon, PaletteIcon } from '@/components/icons'
+import { ShieldIcon, UserCircleIcon, DownloadIcon, LinkIcon, PaletteIcon, TrashIcon } from '@/components/icons'
 import { useFeedback } from '@/components/ui'
 
 interface AccountSettingsLayoutProps {
@@ -49,7 +49,7 @@ export default function AccountSettingsLayout({ user, active, onAvatarChange, ch
     { key: 'notify' as const, label: '通知设置', icon: <i className="fa-solid fa-bell w-4 text-center text-[13px]" aria-hidden="true" />, href: '/user/notify' },
     { key: 'theme' as const, label: '主题设置', icon: <PaletteIcon className="h-4 w-4" />, href: '/user/theme' },
     { key: 'export' as const, label: '导出设置', icon: <DownloadIcon className="h-4 w-4" />, href: '/user/export' },
-    { key: 'danger' as const, label: '危险区', icon: <i className="fa-solid fa-triangle-exclamation w-4 text-center text-[13px]" aria-hidden="true" />, href: '/user/danger' },
+    { key: 'danger' as const, label: '危险区', icon: <TrashIcon className="h-4 w-4" />, href: '/user/danger' },
   ]
 
   return (
