@@ -9,7 +9,7 @@ import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenu
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
-  ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
+  InfoCircleIcon, ListBulletIcon, ListOrderedIcon, MoreIcon, QuoteIcon, SaveIcon, SearchIcon, TrashIcon, UploadIcon,
   TableIcon, StrikethroughIcon, CodeBlockIcon, CheckSquareIcon, ColumnsIcon, OutlineIcon,
   MaximizeIcon, MinimizeIcon,
 } from '@/components/icons'
@@ -1091,6 +1091,11 @@ export default function Writer({ user }: WriterProps) {
           {saveState === 'saving' && <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> <span className="text-primary-600">保存中…</span></>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {site.help_doc_url && (
+            <Button variant="ghost" title="Markdown 语法帮助" onClick={() => window.open(site.help_doc_url, '_blank', 'noopener,noreferrer')}>
+              <InfoCircleIcon className="h-4 w-4" /> <span className="hidden md:inline">帮助</span>
+            </Button>
+          )}
           <Button variant="ghost" onClick={() => setHistoryOpen(true)} disabled={!current}>
             <HistoryIcon className="h-4 w-4" /> 历史
           </Button>

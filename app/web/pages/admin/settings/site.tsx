@@ -15,6 +15,9 @@ export default function SettingsSite() {
   const [siteKeywords, setSiteKeywords] = useState(site.site_keywords || '')
   const [siteFooterText, setSiteFooterText] = useState(site.site_footer_text || '')
   const [siteBeian, setSiteBeian] = useState(site.site_beian || '')
+  const [helpDocUrl, setHelpDocUrl] = useState(site.help_doc_url || '')
+  const [termsUrl, setTermsUrl] = useState(site.terms_url || '')
+  const [privacyUrl, setPrivacyUrl] = useState(site.privacy_url || '')
   const [uploading, setUploading] = useState(false)
   const [uploadingFavicon, setUploadingFavicon] = useState(false)
   const [annEnabled, setAnnEnabled] = useState(site.announcement_enabled === 'true')
@@ -66,6 +69,7 @@ export default function SettingsSite() {
       await api('/site', { method: 'PUT', body: {
         site_name: siteName, site_description: siteDesc, site_logo: siteLogo,
         site_favicon: siteFavicon, site_keywords: siteKeywords, site_footer_text: siteFooterText, site_beian: siteBeian,
+        help_doc_url: helpDocUrl, terms_url: termsUrl, privacy_url: privacyUrl,
         announcement_enabled: annEnabled, announcement_text: annText, announcement_tone: annTone,
       } })
       setMessage('站点设置已保存，刷新页面后全站生效。')
@@ -123,6 +127,22 @@ export default function SettingsSite() {
           <Field label="备案信息" hint="中国大陆网站可填写 ICP 备案号，显示在页脚并链接至工信部备案系统。">
             <Input value={siteBeian} onChange={(e) => setSiteBeian(e.target.value)} placeholder="例如：京ICP备00000000号-1" />
           </Field>
+
+          <div className="border-t border-slate-100 pt-4">
+            <h3 className="mb-1 text-sm font-semibold text-slate-700">法律与帮助文档</h3>
+            <p className="mb-3 text-xs text-slate-400">把内容写成一本书的某个章节，打开该章节复制浏览器地址粘贴到下方即可。留空则不显示对应入口。</p>
+            <div className="space-y-4">
+              <Field label="编辑器帮助文档" hint="写作台「帮助」按钮打开的章节，通常介绍支持的 Markdown 语法。">
+                <Input value={helpDocUrl} onChange={(e) => setHelpDocUrl(e.target.value)} placeholder="/book/reader/书籍标识/章节标识" />
+              </Field>
+              <Field label="用户协议" hint="注册页会展示《用户协议》链接指向该章节。">
+                <Input value={termsUrl} onChange={(e) => setTermsUrl(e.target.value)} placeholder="/book/reader/书籍标识/章节标识" />
+              </Field>
+              <Field label="隐私政策" hint="注册页会展示《隐私政策》链接指向该章节。">
+                <Input value={privacyUrl} onChange={(e) => setPrivacyUrl(e.target.value)} placeholder="/book/reader/书籍标识/章节标识" />
+              </Field>
+            </div>
+          </div>
 
           <div className="border-t border-slate-100 pt-4">
             <h3 className="mb-3 text-sm font-semibold text-slate-700">全站公告</h3>

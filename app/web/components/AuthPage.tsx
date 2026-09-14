@@ -315,7 +315,22 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
             )}
 
             <p className="mt-6 text-center text-xs leading-5 text-slate-400">
-              {isLogin ? '登录即表示你同意遵守本站的使用规范' : '注册即表示你同意遵守本站的使用规范'}
+              {isLogin ? (
+                '登录即表示你同意遵守本站的使用规范'
+              ) : site.terms_url || site.privacy_url ? (
+                <>
+                  注册即表示你已阅读并同意
+                  {site.terms_url && (
+                    <a href={site.terms_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">《用户协议》</a>
+                  )}
+                  {site.terms_url && site.privacy_url && '与'}
+                  {site.privacy_url && (
+                    <a href={site.privacy_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">《隐私政策》</a>
+                  )}
+                </>
+              ) : (
+                '注册即表示你同意遵守本站的使用规范'
+              )}
             </p>
           </div>
         </section>
