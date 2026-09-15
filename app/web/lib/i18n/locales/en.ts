@@ -435,4 +435,38 @@ export const en: Record<string, string> = {
   'reader.exitFocus': 'Exit focus',
   'reader.collapse': 'Collapse',
   'reader.expand': 'Expand',
+
+  // Account pages (shared)
+  'account.common.home': 'Home',
+  'account.common.settings': 'Account settings',
+  'account.common.verifying': 'Verifying your session…',
+  'account.common.loadingInfo': 'Loading account info…',
+
+  // Favorites
+  'favorites.seoTitle': 'My favorites',
+  'favorites.heading': 'My favorites',
+  'favorites.subtitle': 'All the books you favorited',
+  'favorites.loading': 'Loading favorited books…',
+  'favorites.empty': 'No favorites yet—favorite books you like from their detail page',
+
+  // Notification settings
+  'notify.seoTitle': 'Notifications',
+  'notify.pageSubtitle': 'Choose which in-app notifications also email you',
+  'notify.emailHeading': 'Email notifications',
+  'notify.emailDesc': 'In-app notifications always show in the nav bell; this controls whether you also get an email.',
+  'notify.adminDisabled': 'The admin has not enabled email notifications, so these switches have no effect yet (they apply once enabled).',
+  'notify.loading': 'Loading notification settings…',
+  'notify.save': 'Save',
+  'notify.saved': 'Notification settings saved',
+  'notify.saveFailed': 'Save failed',
+  'notify.itemCommentLabel': 'Comments & replies',
+  'notify.itemCommentHint': 'Someone comments on your chapter or replies to you',
+  'notify.itemReactionLabel': 'Likes & favorites',
+  'notify.itemReactionHint': 'Someone likes or favorites your book',
+  'notify.itemCollaborationLabel': 'Collaboration invites',
+  'notify.itemCollaborationHint': 'Someone invites you to collaborate on a book',
+  'notify.itemModerationLabel': 'Report outcomes',
+  'notify.itemModerationHint': 'Your report has been handled',
+  'notify.itemSystemLabel': 'System notices',
+  'notify.itemSystemHint': 'Version upgrades and other system messages',
 }
