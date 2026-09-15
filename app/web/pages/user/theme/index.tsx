@@ -5,80 +5,9 @@ import Container from '@/components/Container'
 import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import { Button, Input, Loading, SegmentedTabs, useFeedback } from '@/components/ui'
 import { SaveIcon } from '@/components/icons'
-
-const HUES = [
-  { key: 'blue', label: '钴蓝', color: '#4169E1' },
-  { key: 'indigo', label: '靛蓝', color: '#4F46E5' },
-  { key: 'violet', label: '紫罗兰', color: '#8B5CF6' },
-  { key: 'emerald', label: '翡翠', color: '#10B981' },
-  { key: 'rose', label: '玫瑰', color: '#F43F5E' },
-  { key: 'amber', label: '琥珀', color: '#F59E0B' },
-  { key: 'custom', label: '自定义', color: '' },
-] as const
-
-const RADII = [
-  { key: 'sm', label: '小', value: '0.25rem' },
-  { key: 'md', label: '中', value: '0.375rem' },
-  { key: 'lg', label: '大', value: '0.5rem' },
-  { key: 'xl', label: '特大', value: '0.75rem' },
-  { key: '2xl', label: '超大', value: '1rem' },
-  { key: 'custom', label: '自定义', value: '' },
-] as const
-
-const BTN_SIZES = [
-  { key: 'sm', label: '小', desc: '紧凑', height: '2rem', heightSm: '1.75rem' },
-  { key: 'md', label: '中', desc: '标准', height: '2.5rem', heightSm: '2rem' },
-  { key: 'lg', label: '大', desc: '宽松', height: '3rem', heightSm: '2.5rem' },
-  { key: 'custom', label: '自定义', desc: '', height: '', heightSm: '' },
-] as const
-
-const FONT_SIZES = [
-  { key: '14', label: '14px', desc: '紧凑' },
-  { key: '15', label: '15px', desc: '默认' },
-  { key: '16', label: '16px', desc: '舒适' },
-  { key: 'custom', label: '自定义', desc: '' },
-] as const
-
-const CONTENT_WIDTHS = [
-  { key: 'narrow', label: '窄', value: '960px' },
-  { key: 'normal', label: '标准', value: '1200px' },
-  { key: 'wide', label: '宽', value: '1440px' },
-  { key: 'custom', label: '自定义', value: '' },
-] as const
-
-const NAV_HEIGHTS = [
-  { key: '56', label: '低', value: '3.5rem' },
-  { key: '64', label: '标准', value: '4rem' },
-  { key: '72', label: '高', value: '4.5rem' },
-  { key: 'custom', label: '自定义', value: '' },
-] as const
-
-const SIDEBAR_WIDTHS = [
-  { key: '220', label: '窄', value: '220px' },
-  { key: '260', label: '标准', value: '260px' },
-  { key: '300', label: '宽', value: '300px' },
-  { key: 'custom', label: '自定义', value: '' },
-] as const
-
-const PAGE_BGS = [
-  { key: '#F7F6F2', label: '暖白' },
-  { key: '#F8FAFC', label: '冷白' },
-  { key: '#FFFFFF', label: '纯白' },
-  { key: '#F1F5F9', label: '浅灰' },
-  { key: '#FAFAF9', label: '自然' },
-  { key: 'custom', label: '自定义' },
-] as const
-
-const TABS = [
-  { value: 'color', label: '主题色' },
-  { value: 'radius', label: '圆角' },
-  { value: 'control', label: '控件' },
-  { value: 'font', label: '字体' },
-  { value: 'layout', label: '布局' },
-  { value: 'bg', label: '背景' },
-]
 
 export default function ThemeSettings() {
   const { site } = useApp()
@@ -86,6 +15,79 @@ export default function ThemeSettings() {
   const user = useRequireAuth()
   const { theme, applyTheme } = useApp()
   const { showToast } = useFeedback()
+  const { t } = useTranslation()
+
+  const HUES = [
+    { key: 'blue', label: t('user.theme.hueBlue'), color: '#4169E1' },
+    { key: 'indigo', label: t('user.theme.hueIndigo'), color: '#4F46E5' },
+    { key: 'violet', label: t('user.theme.hueViolet'), color: '#8B5CF6' },
+    { key: 'emerald', label: t('user.theme.hueEmerald'), color: '#10B981' },
+    { key: 'rose', label: t('user.theme.hueRose'), color: '#F43F5E' },
+    { key: 'amber', label: t('user.theme.hueAmber'), color: '#F59E0B' },
+    { key: 'custom', label: t('user.theme.hueCustom'), color: '' },
+  ] as const
+
+  const RADII = [
+    { key: 'sm', label: t('user.theme.radiusSm'), value: '0.25rem' },
+    { key: 'md', label: t('user.theme.radiusMd'), value: '0.375rem' },
+    { key: 'lg', label: t('user.theme.radiusLg'), value: '0.5rem' },
+    { key: 'xl', label: t('user.theme.radiusXl'), value: '0.75rem' },
+    { key: '2xl', label: t('user.theme.radius2xl'), value: '1rem' },
+    { key: 'custom', label: t('user.theme.hueCustom'), value: '' },
+  ] as const
+
+  const BTN_SIZES = [
+    { key: 'sm', label: t('user.theme.btnSm'), desc: t('user.theme.btnSmDesc'), height: '2rem', heightSm: '1.75rem' },
+    { key: 'md', label: t('user.theme.btnMd'), desc: t('user.theme.btnMdDesc'), height: '2.5rem', heightSm: '2rem' },
+    { key: 'lg', label: t('user.theme.btnLg'), desc: t('user.theme.btnLgDesc'), height: '3rem', heightSm: '2.5rem' },
+    { key: 'custom', label: t('user.theme.hueCustom'), desc: '', height: '', heightSm: '' },
+  ] as const
+
+  const FONT_SIZES = [
+    { key: '14', label: '14px', desc: t('user.theme.fontCompact') },
+    { key: '15', label: '15px', desc: t('user.theme.fontDefault') },
+    { key: '16', label: '16px', desc: t('user.theme.fontComfortable') },
+    { key: 'custom', label: t('user.theme.hueCustom'), desc: '' },
+  ] as const
+
+  const CONTENT_WIDTHS = [
+    { key: 'narrow', label: t('user.theme.widthNarrow'), value: '960px' },
+    { key: 'normal', label: t('user.theme.widthNormal'), value: '1200px' },
+    { key: 'wide', label: t('user.theme.widthWide'), value: '1440px' },
+    { key: 'custom', label: t('user.theme.hueCustom'), value: '' },
+  ] as const
+
+  const NAV_HEIGHTS = [
+    { key: '56', label: t('user.theme.heightLow'), value: '3.5rem' },
+    { key: '64', label: t('user.theme.heightNormal'), value: '4rem' },
+    { key: '72', label: t('user.theme.heightHigh'), value: '4.5rem' },
+    { key: 'custom', label: t('user.theme.hueCustom'), value: '' },
+  ] as const
+
+  const SIDEBAR_WIDTHS = [
+    { key: '220', label: t('user.theme.widthNarrow'), value: '220px' },
+    { key: '260', label: t('user.theme.widthNormal'), value: '260px' },
+    { key: '300', label: t('user.theme.widthWide'), value: '300px' },
+    { key: 'custom', label: t('user.theme.hueCustom'), value: '' },
+  ] as const
+
+  const PAGE_BGS = [
+    { key: '#F7F6F2', label: t('user.theme.bgWarmWhite') },
+    { key: '#F8FAFC', label: t('user.theme.bgCoolWhite') },
+    { key: '#FFFFFF', label: t('user.theme.bgPureWhite') },
+    { key: '#F1F5F9', label: t('user.theme.bgLightGray') },
+    { key: '#FAFAF9', label: t('user.theme.bgNatural') },
+    { key: 'custom', label: t('user.theme.hueCustom') },
+  ] as const
+
+  const TABS = [
+    { value: 'color', label: t('user.theme.tabColor') },
+    { value: 'radius', label: t('user.theme.tabRadius') },
+    { value: 'control', label: t('user.theme.tabControl') },
+    { value: 'font', label: t('user.theme.tabFont') },
+    { value: 'layout', label: t('user.theme.tabLayout') },
+    { value: 'bg', label: t('user.theme.tabBg') },
+  ]
 
   const [activeTab, setActiveTab] = useState('color')
   const [hue, setHue] = useState(theme.primary_hue)
@@ -125,7 +127,7 @@ export default function ThemeSettings() {
     setCustomPageBg(theme.custom_page_bg || '#F7F6F2')
   }, [theme])
 
-  if (!user) return <Loading className="min-h-[60vh]" label="正在加载主题设置…" />
+  if (!user) return <Loading className="min-h-[60vh]" label={t('user.theme.loading')} />
 
   async function save() {
     setSaving(true)
@@ -152,7 +154,7 @@ export default function ThemeSettings() {
         },
       })
       applyTheme(s)
-      showToast('主题已保存')
+      showToast(t('user.theme.saved'))
     } catch (err) {
       showToast({ message: (err as Error).message, tone: 'error' })
     } finally {
@@ -162,37 +164,34 @@ export default function ThemeSettings() {
 
   return (
     <>
-      <Seo siteName={siteName} title="主题设置" noindex />
+      <Seo siteName={siteName} title={t('user.theme.title')} noindex />
       <Container>
         <nav className="flex items-center gap-1.5 py-4 text-sm text-slate-500">
-          <Link href="/" className="hover:text-primary-600">首页</Link>
+          <Link href="/" className="hover:text-primary-600">{t('user.theme.home')}</Link>
           <span className="text-slate-300">/</span>
-          <Link href="/user/profile" className="hover:text-primary-600">账户设置</Link>
+          <Link href="/user/profile" className="hover:text-primary-600">{t('user.theme.accountSettings')}</Link>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-900">主题设置</span>
+          <span className="text-slate-900">{t('user.theme.title')}</span>
         </nav>
         <div className="pb-6">
-          <h1 className="text-3xl font-bold text-ink">主题设置</h1>
-          <p className="mt-2 text-[15px] text-slate-500">定制界面外观，保存后全局生效。</p>
+          <h1 className="text-3xl font-bold text-ink">{t('user.theme.title')}</h1>
+          <p className="mt-2 text-[15px] text-slate-500">{t('user.theme.description')}</p>
         </div>
 
         <AccountSettingsLayout user={user} active="theme">
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {/* Tab 栏 */}
             <div className="border-b border-slate-200 p-2">
               <SegmentedTabs
                 value={activeTab}
                 items={TABS}
-                ariaLabel="主题设置分类"
+                ariaLabel={t('user.theme.tabLabel')}
                 onChange={setActiveTab}
                 fullWidth
               />
             </div>
 
-            {/* Tab 内容 */}
             <div className="p-6">
 
-              {/* 主题色 */}
               {activeTab === 'color' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
@@ -216,7 +215,7 @@ export default function ThemeSettings() {
                   {hue === 'custom' && (
                     <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center gap-3">
-                        <label className="text-sm font-medium text-slate-700">选择颜色</label>
+                        <label className="text-sm font-medium text-slate-700">{t('user.theme.pickColor')}</label>
                         <input
                           type="color"
                           value={customColor}
@@ -234,13 +233,12 @@ export default function ThemeSettings() {
                           placeholder="#000000"
                         />
                       </div>
-                      <span className="text-xs text-slate-500">自定义品牌色，影响按钮、链接、高亮等</span>
+                      <span className="text-xs text-slate-500">{t('user.theme.customColorHint')}</span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* 圆角 */}
               {activeTab === 'radius' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
@@ -259,7 +257,7 @@ export default function ThemeSettings() {
                   {radius === 'custom' && (
                     <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center gap-3">
-                        <label className="text-sm font-medium text-slate-700">圆角值</label>
+                        <label className="text-sm font-medium text-slate-700">{t('user.theme.radiusValue')}</label>
                         <Input
                           value={customRadius}
                           onChange={(e) => setCustomRadius(e.target.value)}
@@ -267,18 +265,17 @@ export default function ThemeSettings() {
                           placeholder="0.5rem"
                         />
                       </div>
-                      <span className="text-xs text-slate-500">支持 rem、px、% 等 CSS 单位</span>
+                      <span className="text-xs text-slate-500">{t('user.theme.cssUnitHint')}</span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* 控件 */}
               {activeTab === 'control' && (
                 <div className="space-y-6">
                   <div>
-                    <p className="mb-3 text-sm font-medium text-slate-700">控件大小</p>
-                    <p className="mb-3 text-xs text-slate-500">影响按钮、输入框、Tab 等所有控件的高度和内边距</p>
+                    <p className="mb-3 text-sm font-medium text-slate-700">{t('user.theme.controlSize')}</p>
+                    <p className="mb-3 text-xs text-slate-500">{t('user.theme.controlSizeHint')}</p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {BTN_SIZES.map((b) => (
                         <OptionCard key={b.key} active={btnSize === b.key} onClick={() => setBtnSize(b.key)}>
@@ -290,7 +287,7 @@ export default function ThemeSettings() {
                               fontSize: '0.875rem',
                               borderRadius: 'var(--radius)',
                             }}>
-                              按钮
+                              {t('user.theme.btnExample')}
                             </span>
                             <span className={`flex items-center justify-center border-2 px-4 text-slate-600 ${
                               btnSize === b.key ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-white'
@@ -299,7 +296,7 @@ export default function ThemeSettings() {
                               fontSize: '0.875rem',
                               borderRadius: 'var(--radius)',
                             }}>
-                              输入框
+                              {t('user.theme.inputExample')}
                             </span>
                           </div>
                           <span className={`text-xs font-medium ${btnSize === b.key ? 'text-primary-700' : 'text-slate-600'}`}>{b.label}</span>
@@ -311,7 +308,7 @@ export default function ThemeSettings() {
                     {btnSize === 'custom' && (
                       <div className="mt-4 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center gap-3">
-                          <label className="text-sm font-medium text-slate-700">高度</label>
+                          <label className="text-sm font-medium text-slate-700">{t('user.theme.height')}</label>
                           <Input
                             value={customControlHeight}
                             onChange={(e) => setCustomControlHeight(e.target.value)}
@@ -319,14 +316,13 @@ export default function ThemeSettings() {
                             placeholder="2.5rem"
                           />
                         </div>
-                        <span className="text-xs text-slate-500">支持 rem、px 等 CSS 单位</span>
+                        <span className="text-xs text-slate-500">{t('user.theme.cssUnitHintRemPx')}</span>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* 字体 */}
               {activeTab === 'font' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -343,7 +339,7 @@ export default function ThemeSettings() {
                   {fontSize === 'custom' && (
                     <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center gap-3">
-                        <label className="text-sm font-medium text-slate-700">字号</label>
+                        <label className="text-sm font-medium text-slate-700">{t('user.theme.fontSize')}</label>
                         <Input
                           value={customFontSize}
                           onChange={(e) => setCustomFontSize(e.target.value)}
@@ -351,17 +347,16 @@ export default function ThemeSettings() {
                           placeholder="15px"
                         />
                       </div>
-                      <span className="text-xs text-slate-500">支持 px、rem、em 等 CSS 单位</span>
+                      <span className="text-xs text-slate-500">{t('user.theme.cssUnitHintPxRemEm')}</span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* 布局 */}
               {activeTab === 'layout' && (
                 <div className="space-y-6">
                   <div>
-                    <p className="mb-3 text-sm font-medium text-slate-700">内容区宽度</p>
+                    <p className="mb-3 text-sm font-medium text-slate-700">{t('user.theme.contentWidth')}</p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {CONTENT_WIDTHS.map((w) => (
                         <OptionCard key={w.key} active={contentWidth === w.key} onClick={() => setContentWidth(w.key)}>
@@ -379,7 +374,7 @@ export default function ThemeSettings() {
                     {contentWidth === 'custom' && (
                       <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center gap-3">
-                          <label className="text-sm font-medium text-slate-700">宽度</label>
+                          <label className="text-sm font-medium text-slate-700">{t('user.theme.width')}</label>
                           <Input
                             value={customContentWidth}
                             onChange={(e) => setCustomContentWidth(e.target.value)}
@@ -387,12 +382,12 @@ export default function ThemeSettings() {
                             placeholder="1200px"
                           />
                         </div>
-                        <span className="text-xs text-slate-500">支持 px、rem、% 等 CSS 单位</span>
+                        <span className="text-xs text-slate-500">{t('user.theme.cssUnitHintPxRemPercent')}</span>
                       </div>
                     )}
                   </div>
                   <div>
-                    <p className="mb-3 text-sm font-medium text-slate-700">导航栏高度</p>
+                    <p className="mb-3 text-sm font-medium text-slate-700">{t('user.theme.navHeight')}</p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {NAV_HEIGHTS.map((n) => (
                         <OptionCard key={n.key} active={navHeight === n.key} onClick={() => setNavHeight(n.key)}>
@@ -410,7 +405,7 @@ export default function ThemeSettings() {
                     {navHeight === 'custom' && (
                       <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center gap-3">
-                          <label className="text-sm font-medium text-slate-700">高度</label>
+                          <label className="text-sm font-medium text-slate-700">{t('user.theme.height')}</label>
                           <Input
                             value={customNavHeight}
                             onChange={(e) => setCustomNavHeight(e.target.value)}
@@ -418,12 +413,12 @@ export default function ThemeSettings() {
                             placeholder="4rem"
                           />
                         </div>
-                        <span className="text-xs text-slate-500">支持 rem、px 等 CSS 单位</span>
+                        <span className="text-xs text-slate-500">{t('user.theme.cssUnitHintRemPx')}</span>
                       </div>
                     )}
                   </div>
                   <div>
-                    <p className="mb-3 text-sm font-medium text-slate-700">侧边栏宽度</p>
+                    <p className="mb-3 text-sm font-medium text-slate-700">{t('user.theme.sidebarWidth')}</p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {SIDEBAR_WIDTHS.map((s) => (
                         <OptionCard key={s.key} active={sidebarWidth === s.key} onClick={() => setSidebarWidth(s.key)}>
@@ -442,7 +437,7 @@ export default function ThemeSettings() {
                     {sidebarWidth === 'custom' && (
                       <div className="mt-3 flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center gap-3">
-                          <label className="text-sm font-medium text-slate-700">宽度</label>
+                          <label className="text-sm font-medium text-slate-700">{t('user.theme.width')}</label>
                           <Input
                             value={customSidebarWidth}
                             onChange={(e) => setCustomSidebarWidth(e.target.value)}
@@ -450,14 +445,13 @@ export default function ThemeSettings() {
                             placeholder="260px"
                           />
                         </div>
-                        <span className="text-xs text-slate-500">支持 px、rem 等 CSS 单位</span>
+                        <span className="text-xs text-slate-500">{t('user.theme.cssUnitHintRemPx')}</span>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* 背景 */}
               {activeTab === 'bg' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
@@ -484,7 +478,7 @@ export default function ThemeSettings() {
                   {pageBg === 'custom' && (
                     <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center gap-3">
-                        <label className="text-sm font-medium text-slate-700">选择颜色</label>
+                        <label className="text-sm font-medium text-slate-700">{t('user.theme.pickColor')}</label>
                         <input
                           type="color"
                           value={customPageBg}
@@ -502,7 +496,7 @@ export default function ThemeSettings() {
                           placeholder="#000000"
                         />
                       </div>
-                      <span className="text-xs text-slate-500">自定义页面背景颜色</span>
+                      <span className="text-xs text-slate-500">{t('user.theme.customBgHint')}</span>
                     </div>
                   )}
                 </div>
@@ -511,9 +505,8 @@ export default function ThemeSettings() {
             </div>
           </div>
 
-          {/* 保存 */}
           <div className="mt-6 flex justify-end">
-            <Button onClick={save} loading={saving}><SaveIcon className="h-4 w-4" /> 保存主题</Button>
+            <Button onClick={save} loading={saving}><SaveIcon className="h-4 w-4" /> {t('user.theme.save')}</Button>
           </div>
         </AccountSettingsLayout>
       </Container>
