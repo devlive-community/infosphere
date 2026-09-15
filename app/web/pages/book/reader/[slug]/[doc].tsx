@@ -9,7 +9,8 @@ import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import { ButtonLink, Tooltip } from '@/components/ui'
-import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
+import DocTreeIcon from '@/components/DocTreeIcon'
+import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress, getReadingProgress } from '@/lib/reading-progress'
 import { useTranslation } from '@/lib/i18n'
 import Comments from '@/components/Comments'
@@ -575,9 +576,7 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
               ) : <span className="ml-1 w-5 shrink-0" />}
               <Link href={`/book/reader?slug=${encodeURIComponent(bookSlug)}&doc=${item.slug}`}
                 className="flex flex-1 items-center gap-1.5 py-1.5 pl-1 pr-2 text-left">
-                {hasChildren
-                  ? <FolderIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />
-                  : <FileTextIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />}
+                <DocTreeIcon icon={item.icon} hasChildren={hasChildren} colorClass={active ? 'text-primary-500' : 'text-slate-400'} />
                 <span className={`whitespace-nowrap ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
                 {hasRead && (
                   <span className="ml-auto flex shrink-0 items-center gap-1 pl-2 text-[11px] font-medium text-emerald-600">

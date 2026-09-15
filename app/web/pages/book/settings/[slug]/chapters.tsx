@@ -3,8 +3,9 @@ import Link from 'next/link'
 import type { InferGetServerSidePropsType } from 'next'
 import { api } from '@/lib/api'
 import { Badge, ButtonLink, DropdownMenu, Loading, EmptyState, Tooltip, useFeedback } from '@/components/ui'
-import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, GripIcon, HistoryIcon, LinkIcon, PencilIcon, TrashIcon } from '@/components/icons'
+import { ChevronDownIcon, ChevronRightIcon, GripIcon, HistoryIcon, LinkIcon, PencilIcon, TrashIcon } from '@/components/icons'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
+import DocTreeIcon from '@/components/DocTreeIcon'
 import { getBookSettingsProps } from '@/lib/book-settings'
 import type { Document, DocumentStatus } from '@/lib/types'
 
@@ -190,9 +191,7 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
           ) : (
             <span className="w-5 shrink-0" />
           )}
-          {hasChildren
-            ? <FolderIcon className="h-4 w-4 shrink-0 text-slate-400" />
-            : <FileTextIcon className="h-4 w-4 shrink-0 text-slate-300" />}
+          <DocTreeIcon icon={doc.icon} hasChildren={hasChildren} colorClass={hasChildren ? 'text-slate-400' : 'text-slate-300'} />
           <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{book.chapter_prefix}{doc.title}</span>
           <Badge tone={meta.tone}>{meta.label}</Badge>
           {busy === doc.id && (

@@ -97,6 +97,7 @@ export interface Document {
   sort_order: number
   view_count?: number
   status: DocumentStatus
+  icon?: string
   allow_comments?: boolean | null
   created_at: string
   updated_at: string

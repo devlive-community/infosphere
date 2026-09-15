@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,6 +15,25 @@ import (
 )
 
 var docStatuses = map[string]bool{"draft": true, "published": true, "archived": true}
+
+// docIconPattern 匹配正文中的图标元数据注释：<!-- icon: xxx -->（大小写不敏感，取首个）
+var docIconPattern = regexp.MustCompile(`(?i)<!--\s*icon:\s*([^>]+?)\s*-->`)
+
+// docIconAllowed 仅保留 FontAwesome 类名允许的字符（字母数字、空格、连字符、下划线）
+var docIconAllowed = regexp.MustCompile(`[^a-zA-Z0-9 _-]+`)
+
+// extractDocIcon 从章节正文提取 <!-- icon: xxx --> 元数据，归一化为安全的图标名（供目录树替换默认图标）。
+// 返回小写、去除非法字符、长度不超过 64 的值；未配置或非法时返回空串。
+func extractDocIcon(content string) string {
+	m := docIconPattern.FindStringSubmatch(content)
+	if m == nil {
+		return ""
+	}
+	icon := strings.ToLower(strings.TrimSpace(m[1]))
+	icon = strings.TrimSpace(docIconAllowed.ReplaceAllString(icon, ""))
+	icon = strings.Join(strings.Fields(icon), " ") // 折叠多余空白
+	return truncateText(icon, 64)
+}
 
 // ListDocumentTree GET /books/:id/documents 返回文档树（不含正文）
 func (a *App) ListDocumentTree(c *gin.Context) {
@@ -30,7 +50,7 @@ func (a *App) ListDocumentTree(c *gin.Context) {
 
 	var docs []models.Document
 	query := a.DB.Where("book_id = ?", book.ID).
-		Select("id", "book_id", "parent_id", "title", "slug", "user_id", "sort_order", "status", "created_at", "updated_at")
+		Select("id", "book_id", "parent_id", "title", "slug", "user_id", "sort_order", "status", "icon", "created_at", "updated_at")
 	if !a.canEditBookContent(u, book) {
 		query = query.Where("status = ?", "published")
 	}
@@ -149,6 +169,7 @@ func (a *App) CreateDocument(c *gin.Context) {
 	if req.Content != nil {
 		doc.Content = *req.Content
 	}
+	doc.Icon = extractDocIcon(doc.Content)
 	if req.SortOrder != nil {
 		doc.SortOrder = *req.SortOrder
 	}
@@ -321,6 +342,7 @@ func (a *App) UpdateDocument(c *gin.Context) {
 	}
 	if req.Content != nil {
 		doc.Content = *req.Content
+		doc.Icon = extractDocIcon(doc.Content)
 	}
 	if req.SortOrder != nil {
 		doc.SortOrder = *req.SortOrder
