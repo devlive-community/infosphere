@@ -149,7 +149,6 @@ export default function Writer({ user }: WriterProps) {
   const [activeMatch, setActiveMatch] = useState(0)
   const findInputRef = useRef<HTMLInputElement>(null)
   const [saveState, setSaveState] = useState<SaveState>('saved')
-  const [message, setMessage] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [webImportOpen, setWebImportOpen] = useState(false)
   const [webImportParent, setWebImportParent] = useState<Document | null>(null)
@@ -182,6 +181,7 @@ export default function Writer({ user }: WriterProps) {
   const loadedDocId = useRef<number | null>(null) // 当前表单对应的文档，防止切换章节时误触发自动保存
   const saveRef = useRef<(opts?: { status?: DocumentStatus }) => Promise<boolean | undefined>>(async () => undefined)
   const didInitExpand = useRef(false)
+  const tocScrollRef = useRef<HTMLDivElement>(null)
 
   const flatDocs = useMemo(() => flatten(tree), [tree])
   // 当前章节的标题大纲（跳过围栏代码块内的 # 行）；offset 为该标题行在正文中的字符偏移。
@@ -285,6 +285,12 @@ export default function Writer({ user }: WriterProps) {
     setExpanded(ids)
   }, [tree])
 
+  // 目录自动定位：切换/选中章节后，把当前章节滚动到左侧目录可视区
+  useEffect(() => {
+    const el = tocScrollRef.current?.querySelector('[data-toc-active="1"]')
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [current?.id, expanded])
+
   // 加载书籍与章节树
   useEffect(() => {
     if (!user || !bookSlug) return
@@ -373,7 +379,7 @@ export default function Writer({ user }: WriterProps) {
   // 保存：opts.status 允许“发布”一次性覆盖状态
   const save = useCallback(async (opts?: { status?: DocumentStatus }) => {
     if (!book) return
-    if (!title.trim()) { setMessage('请填写章节标题'); return }
+    if (!title.trim()) { showToast({ message: current ? '请填写章节标题' : '请先在左侧新建或选择一个章节，并填写标题', tone: 'error' }); return }
     const effectiveStatus = opts?.status ?? status
     // 父章节状态变更且含子章节：询问是否把新状态一并应用到子章节
     let cascadeStatus = false
@@ -427,7 +433,7 @@ export default function Writer({ user }: WriterProps) {
       return true
     } catch (e) {
       setSaveState('dirty')
-      setMessage((e as Error).message)
+      showToast({ title: '保存失败', message: (e as Error).message, tone: 'error' })
       return false
     }
   }, [book, title, content, status, parentId, sortOrder, allowComments, slug, current, loadTree]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -480,7 +486,7 @@ export default function Writer({ user }: WriterProps) {
   }
 
   async function publish() {
-    if (!title.trim()) { setMessage('请先填写章节标题再发布'); return }
+    if (!title.trim()) { showToast({ message: current ? '请先填写章节标题再发布' : '请先在左侧新建或选择一个章节，并填写标题', tone: 'error' }); return }
     const published = await save({ status: 'published' })
     // 发布成功后跳转到书籍详情页，让作者立即看到读者视角的成书效果。
     if (published) router.push(`/book/detail/${encodeURIComponent(bookSlug)}`)
@@ -613,8 +619,7 @@ export default function Writer({ user }: WriterProps) {
     if (document.parent_id) setExpanded((value) => new Set(value).add(document.parent_id as number))
     if (book) await loadTree(book)
     await router.push(`/book/writer/${encodeURIComponent(bookSlug)}/${encodeURIComponent(document.slug)}`, undefined, { shallow: true })
-    setMessage(`已采集为草稿章节《${document.title}》`)
-    setTimeout(() => setMessage(''), 2500)
+    showToast({ message: `已采集为草稿章节《${document.title}》`, tone: 'success' })
   }
 
   async function saveBookSettings() {
@@ -629,9 +634,8 @@ export default function Writer({ user }: WriterProps) {
       }
       const updated = await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
       setBook(updated)
-      setMessage('书籍设置已保存')
-      setTimeout(() => setMessage(''), 2000)
-    } catch (e) { setMessage((e as Error).message) } finally { setSavingBook(false) }
+      showToast({ message: '书籍设置已保存', tone: 'success' })
+    } catch (e) { showToast({ title: '保存失败', message: (e as Error).message, tone: 'error' }) } finally { setSavingBook(false) }
   }
 
   async function applyRestoredDocument(restored: Document) {
@@ -648,7 +652,7 @@ export default function Writer({ user }: WriterProps) {
     loadedDocId.current = restored.id
     setCurrent(restored)
     setSaveState('saved')
-    setMessage('历史版本已恢复，并已保留恢复前快照')
+    showToast({ message: '历史版本已恢复，并已保留恢复前快照', tone: 'success' })
     if (book) await loadTree(book)
   }
 
@@ -1276,13 +1280,13 @@ export default function Writer({ user }: WriterProps) {
                   {newMenuOpen && (
                     <div className="absolute left-0 right-0 top-11 z-20 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                       <button onClick={() => { createNew(); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> 新建章节</button>
-                      <button onClick={() => { setNewMenuOpen(false); if (!current) { setMessage('请先选择一个章节作为父级'); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
+                      <button onClick={() => { setNewMenuOpen(false); if (!current) { showToast({ message: '请先选择一个章节作为父级', tone: 'error' }); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
                       <button onClick={() => openWebImport()} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> 从网页采集</button>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-3 pb-2"
+              <div ref={tocScrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-3 pb-2"
                 onClick={(e) => { if (e.target === e.currentTarget) deselect() }}>
                 {filteredTree.length === 0 ? (
                   <EmptyState>{search ? '没有匹配的章节' : '暂无章节'}</EmptyState>
@@ -2236,6 +2240,7 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
   return (
     <li>
       <div
+        {...(active ? { 'data-toc-active': '1' } : {})}
         draggable={dragEnabled}
         onContextMenu={(event) => {
           event.preventDefault()

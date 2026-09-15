@@ -163,6 +163,13 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const allCollapsed = expanded.size === 0
   const toggleAll = () => setExpanded(allCollapsed ? new Set(allParentIds) : new Set())
 
+  // 目录自动定位：切换章节后，把当前章节滚动到左侧目录可视区（若它在非展开/滚动区外）
+  const tocScrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = tocScrollRef.current?.querySelector('[data-toc-active="1"]')
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [doc?.id, expanded])
+
   // 记录阅读进度（登录用户按用户名隔离）：打开即标记该章已读并置为最近章节
   useEffect(() => {
     if (user && book && doc) {
@@ -384,7 +391,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
               )}
             </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div ref={tocScrollRef} className="min-h-0 flex-1 overflow-y-auto">
               <div className="min-w-max pb-2 pl-4">
                 <ReaderTree items={tree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id}
                   expanded={expanded} setExpanded={setExpanded} readSet={readSet} />
@@ -586,6 +593,7 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
                 </button>
               ) : <span className="ml-1 w-5 shrink-0" />}
               <Link href={`/book/reader?slug=${encodeURIComponent(bookSlug)}&doc=${item.slug}`}
+                {...(active ? { 'data-toc-active': '1' } : {})}
                 className="flex flex-1 items-center gap-1.5 py-1.5 pl-1 pr-2 text-left">
                 <DocTreeIcon icon={item.icon} hasChildren={hasChildren} colorClass={active ? 'text-primary-500' : 'text-slate-400'} />
                 <span className={`whitespace-nowrap ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
