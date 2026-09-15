@@ -1,6 +1,7 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Tooltip from './Tooltip'
+import { useTranslation } from '../../lib/i18n'
 
 interface DropdownMenuProps {
   open: boolean
@@ -18,7 +19,9 @@ const MENU_GAP = 8
 const VIEWPORT_GAP = 8
 
 // DropdownMenu 使用 Portal 渲染菜单，避免被卡片 overflow-hidden 裁切。
-export default function DropdownMenu({ open, onOpenChange, children, label = '更多操作' }: DropdownMenuProps) {
+export default function DropdownMenu({ open, onOpenChange, children, label }: DropdownMenuProps) {
+  const { t } = useTranslation()
+  const resolvedLabel = label ?? t('ui.dropdownMenu.label')
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<MenuPosition | null>(null)
@@ -66,11 +69,11 @@ export default function DropdownMenu({ open, onOpenChange, children, label = '�
 
   const layer = open && typeof document !== 'undefined' && createPortal(
     <>
-      <button type="button" aria-label="关闭菜单" className="fixed inset-0 z-[110] cursor-default" onClick={() => onOpenChange(false)} />
+      <button type="button" aria-label={t('ui.dropdownMenu.close')} className="fixed inset-0 z-[110] cursor-default" onClick={() => onOpenChange(false)} />
       <div
         ref={menuRef}
         role="menu"
-        aria-label={label}
+        aria-label={resolvedLabel}
         className="fixed z-[120] w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
         style={{
           left: position?.left ?? 0,
@@ -86,11 +89,11 @@ export default function DropdownMenu({ open, onOpenChange, children, label = '�
 
   return (
     <span className="inline-flex">
-      <Tooltip content={label} disabled={open}>
+      <Tooltip content={resolvedLabel} disabled={open}>
         <button
           ref={triggerRef}
           type="button"
-          aria-label={label}
+          aria-label={resolvedLabel}
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => onOpenChange(!open)}

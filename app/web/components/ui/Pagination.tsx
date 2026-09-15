@@ -1,3 +1,4 @@
+import { useTranslation } from '../../lib/i18n'
 import { ControlSize, controlHeight, sizedControlStyle } from './controlSize'
 
 // Pagination 通用分页条
@@ -23,16 +24,17 @@ export function Pagination({ page, pageSize, total, onChange, size = 'md' }: {
         : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
     }`
 
+  const { t } = useTranslation()
   return (
     <div className="mt-6 flex items-center justify-center gap-1.5">
-      <button disabled={page <= 1} onClick={() => onChange(page - 1)} className={navClass} style={sizedControlStyle(size)}>上一页</button>
+      <button disabled={page <= 1} onClick={() => onChange(page - 1)} className={navClass} style={sizedControlStyle(size)}>{t('ui.pagination.prev')}</button>
       {list[0] > 1 && <span className="px-1 text-slate-400">…</span>}
       {list.map((p) => (
         <button key={p} onClick={() => onChange(p)} className={pageClass(p === page)}
           style={{ ...sizedControlStyle(size), minWidth: controlHeight[size] }}>{p}</button>
       ))}
       {list[list.length - 1] < pages && <span className="px-1 text-slate-400">…</span>}
-      <button disabled={page >= pages} onClick={() => onChange(page + 1)} className={navClass} style={sizedControlStyle(size)}>下一页</button>
+      <button disabled={page >= pages} onClick={() => onChange(page + 1)} className={navClass} style={sizedControlStyle(size)}>{t('ui.pagination.next')}</button>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { ButtonHTMLAttributes, KeyboardEvent, ReactNode, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from '../../lib/i18n'
 
 interface Point {
   x: number
@@ -49,7 +50,9 @@ interface ContextMenuProps {
 }
 
 // ContextMenu 使用鼠标坐标定位，并通过 Portal 脱离目录等滚动容器。
-export default function ContextMenu({ open, x, y, onClose, children, label = '上下文菜单', className, align = 'start', flipY }: ContextMenuProps) {
+export default function ContextMenu({ open, x, y, onClose, children, label, className, align = 'start', flipY }: ContextMenuProps) {
+  const { t } = useTranslation()
+  const resolvedLabel = label ?? t('ui.contextMenu.label')
   const menuRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<Point | null>(null)
 
@@ -107,7 +110,7 @@ export default function ContextMenu({ open, x, y, onClose, children, label = '�
 
   if (!open || typeof document === 'undefined') return null
   return createPortal(
-    <div ref={menuRef} role="menu" aria-label={label} onKeyDown={handleKeyDown}
+    <div ref={menuRef} role="menu" aria-label={resolvedLabel} onKeyDown={handleKeyDown}
       onContextMenu={(event) => event.preventDefault()}
       className={`fixed z-[120] w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl ${className || ''}`.trim()}
       style={{

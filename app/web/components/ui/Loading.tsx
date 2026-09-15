@@ -1,11 +1,14 @@
 import { ReactNode } from 'react'
+import { useTranslation } from '../../lib/i18n'
 
 // Loading 通用加载态：居中旋转圆环
-export function Loading({ className, label = '加载中…' }: { className?: string; label?: string }) {
+export function Loading({ className, label }: { className?: string; label?: string }) {
+  const { t } = useTranslation()
+  const resolvedLabel = label ?? t('ui.loading.default')
   return (
     <div className={`flex flex-col items-center justify-center gap-2 py-16 text-slate-400 ${className || ''}`.trim()}>
       <span className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" />
-      {label && <span className="text-sm">{label}</span>}
+      {resolvedLabel && <span className="text-sm">{resolvedLabel}</span>}
     </div>
   )
 }

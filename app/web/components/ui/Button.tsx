@@ -1,5 +1,6 @@
 import { ButtonHTMLAttributes, AnchorHTMLAttributes } from 'react'
 import Link from 'next/link'
+import { useTranslation } from '../../lib/i18n'
 import { ControlSize, sizedControlStyle } from './controlSize'
 
 type Variant = 'primary' | 'outline' | 'danger' | 'ghost'
@@ -33,6 +34,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 // Button 通用按钮；loading 时自动禁用并显示处理中状态
 export function Button({ variant, size = 'md', loading, children, className, disabled, style, ...rest }: ButtonProps) {
+  const { t } = useTranslation()
   return (
     <button
       className={resolveClass(variant, size, className)}
@@ -40,7 +42,7 @@ export function Button({ variant, size = 'md', loading, children, className, dis
       {...rest}
       style={sizedControlStyle(size, style)}
     >
-      {loading ? '处理中…' : children}
+      {loading ? t('ui.button.processing') : children}
     </button>
   )
 }
