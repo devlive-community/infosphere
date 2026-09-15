@@ -298,7 +298,7 @@ function ConfigCard({ icon: Icon, tone, title, status, href, ok }: {
       </p>
       <Link href={href} className="mt-4 inline-flex w-fit items-center rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
         style={{ height: 'var(--control-height-sm)' }}>
-        管理
+        {t('admin.system.manage')}
       </Link>
     </div>
   )
@@ -346,7 +346,7 @@ function ActivityCard({ icon, title, items, empty }: {
       ) : items ? (
         <p className="py-6 text-sm text-slate-400">{empty}</p>
       ) : (
-        <p className="py-6 text-sm text-slate-400">暂时无法获取活动数据</p>
+        <p className="py-6 text-sm text-slate-400">{t('admin.system.noActivity')}</p>
       )}
     </section>
   )

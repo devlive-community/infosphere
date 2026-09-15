@@ -219,7 +219,7 @@ export default function Layout({ title, children }: { title?: string; children: 
     <div className="flex min-h-screen flex-col overflow-x-clip">
       <Head>
         <title>{title ? `${title} - ${siteName}` : siteName}</title>
-        <meta name="description" content={site.site_description || 'InfoSphere 知识管理系统'} />
+        <meta name="description" content={site.site_description || t('home.seo.jsonldDescription')} />
       </Head>
 
       <AnnouncementBanner />

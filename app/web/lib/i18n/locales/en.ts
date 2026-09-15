@@ -1750,6 +1750,8 @@ export const en: Record<string, string> = {
   'admin.reports.thisContent': 'this content',
   // 系统概览
   'admin.system.loading': 'Loading dashboard data…',
+  'admin.system.manage': 'Manage',
+  'admin.system.noActivity': 'Activity data is temporarily unavailable',
   'admin.system.title': 'Dashboard',
   'admin.system.description': 'View service status and maintain site configuration',
   'admin.system.viewSite': 'View site',
