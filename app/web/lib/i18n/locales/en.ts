@@ -224,6 +224,16 @@ export const en: Record<string, string> = {
   'book.variant.language': 'Language',
   'book.variant.version': 'Version',
 
+  // Book status / visibility (shared)
+  'book.status.draft': 'Draft',
+  'book.status.in_progress': 'In progress',
+  'book.status.published': 'Published',
+  'book.status.completed': 'Completed',
+  'book.status.archived': 'Archived',
+  'book.visibility.public': 'Public',
+  'book.visibility.private': 'Private',
+  'book.card.noDescription': 'No description yet',
+
   // Home
   'home.seo.description': 'A simple yet powerful open-source knowledge platform with multi-database and multi-device support.',
   'home.seo.jsonldDescription': 'InfoSphere knowledge platform',
