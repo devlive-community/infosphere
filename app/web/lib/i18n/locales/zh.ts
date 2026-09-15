@@ -435,6 +435,8 @@ export const zh: Record<string, string> = {
   'reader.exitFocus': '退出专注',
   'reader.collapse': '折叠',
   'reader.expand': '展开',
+  'reader.expandAll': '全部展开',
+  'reader.collapseAll': '全部收起',
 
   // 账户页通用
   'account.common.home': '首页',
