@@ -66,6 +66,9 @@ export const en: Record<string, string> = {
   'footer.release.title': 'Release info',
   'footer.release.current': 'Current version',
   'footer.release.notes': 'Release notes',
+  'footer.release.loading': 'Loading release notes…',
+  'footer.release.empty': 'No detailed release notes for this version. Click below to view the full changelog.',
+  'footer.release.viewAll': 'View full changelog',
 
   // Login / Register
   'auth.tab.login': 'Log in',

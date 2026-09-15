@@ -66,6 +66,9 @@ export const zh: Record<string, string> = {
   'footer.release.title': '版本信息',
   'footer.release.current': '当前版本',
   'footer.release.notes': '发布日志',
+  'footer.release.loading': '正在加载发布日志…',
+  'footer.release.empty': '暂无该版本的详细发布日志，可点击下方查看完整发布日志。',
+  'footer.release.viewAll': '查看完整发布日志',
 
   // 登录 / 注册
   'auth.tab.login': '登录',
