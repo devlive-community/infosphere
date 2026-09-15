@@ -351,8 +351,12 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		doc.AllowComments = req.AllowComments
 	}
 	cascadeStatus := ""
+	publishedChapter := false
 	if req.Status != nil && docStatuses[*req.Status] {
 		doc.Status = *req.Status
+		if *req.Status == "published" {
+			publishedChapter = true
+		}
 		if req.CascadeStatus != nil && *req.CascadeStatus {
 			cascadeStatus = *req.Status
 		}
@@ -409,6 +413,15 @@ func (a *App) UpdateDocument(c *gin.Context) {
 					return err
 				}
 			}
+		}
+		// 发布章节时联动提升书籍状态：草稿书一旦有章节被发布，说明写作已推进，
+		// 将书籍从 draft 提升为 in_progress，避免“章节已发布但书籍仍是草稿”导致公开区不可见。
+		// 只升不降：in_progress/published/completed/archived 均保持不变，尊重作者在书籍设置中的选择。
+		if publishedChapter && book.Status == "draft" {
+			if err := tx.Model(&models.Book{}).Where("id = ?", book.ID).Update("status", "in_progress").Error; err != nil {
+				return err
+			}
+			book.Status = "in_progress"
 		}
 		if req.CreateRevision != nil && *req.CreateRevision {
 			reason := "save"
