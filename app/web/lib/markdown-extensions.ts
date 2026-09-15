@@ -31,16 +31,33 @@ function escapeHtml(text: string): string {
 // 导致代码块中的 :::、=== "x"、</Tabs> 等文本被误判，同名块也无法嵌套。
 // 这里统一为“围栏感知 + 深度计数”的逐行扫描。
 
-const FENCE_OPEN = /^(`{3,}|~{3,})/
+// 围栏标记允许任意缩进：迁移自其他文档系统的 <Tab>/<Tip> 内容往往整体缩进，
+// 围栏行也随内容一起缩进，若只识别行首围栏会丢失围栏状态。
+const FENCE_OPEN = /^\s*(`{3,}|~{3,})/
 
 // lineFence 根据当前行更新围栏状态：返回 '' 表示不在围栏内，否则为围栏字符（` 或 ~）
 function lineFence(fence: string, line: string): string {
   if (fence) {
-    if (new RegExp(`^${fence}{3,}[ \\t]*$`).test(line.trim())) return ''
+    if (new RegExp(`^\\s*${fence}{3,}[ \\t]*$`).test(line)) return ''
     return fence
   }
   const open = FENCE_OPEN.exec(line)
   return open ? open[1][0] : fence
+}
+
+// dedentBlock 去除块内各行的公共缩进（HTML 标签块迁移内容通常整体缩进，
+// 不去缩会被 Markdown 解析为缩进代码块）。空行不参与最小缩进计算，
+// 各行超出公共缩进的部分保留（相对缩进不丢失）。
+export function dedentBlock(content: string): string {
+  const lines = content.split('\n')
+  let min = Infinity
+  for (const line of lines) {
+    if (!line.trim()) continue
+    const indent = line.match(/^[ \t]*/)![0].length
+    if (indent < min) min = indent
+  }
+  if (!Number.isFinite(min) || min === 0) return content
+  return lines.map((line) => line.slice(min)).join('\n')
 }
 
 // 行区间 [start, end) 在原始字符串中的偏移换算用：把 lines 切回字符串时行间有 '\n'
@@ -95,7 +112,7 @@ function collectTagEvents(line: string, tag: string): TagBlockEvent[] {
 
 // scanTagBlock 扫描 HTML 标签块（<Tabs>、<Note> 等）的内容，支持同名嵌套，
 // 围栏代码内的闭合标签不参与判定。openMatch 为开头标签的匹配结果。
-function scanTagBlock(src: string, tag: string, openMatch: RegExpExecArray): { content: string; raw: string } | undefined {
+export function scanTagBlock(src: string, tag: string, openMatch: RegExpExecArray): { content: string; raw: string } | undefined {
   const bodyStart = openMatch.index + openMatch[0].length
   const lines = src.slice(bodyStart).split('\n')
   let fence = ''
@@ -131,7 +148,7 @@ function scanTagBlock(src: string, tag: string, openMatch: RegExpExecArray): { c
 
 // extractTagBlocks 从 content 中按顺序提取成对的 <Tag attrs>…</Tag> 子块，
 // 围栏代码内的标签不参与判定，同名嵌套按深度配对（内层块交给后续重新分词处理）。
-function extractTagBlocks(content: string, tag: string): { attrs: string; body: string }[] {
+export function extractTagBlocks(content: string, tag: string): { attrs: string; body: string }[] {
   const lines = content.split('\n')
   let fence = ''
   let depth = 0
@@ -253,14 +270,15 @@ const tabsTagExtension: TokenizerAndRendererExtension = {
   },
   tokenizer(src) {
     const open = /<Tabs\s*>/i.exec(src)
-    if (!open) return undefined
+    // 标签必须从当前位置开始匹配，否则内层同名标签会把外层块吞掉
+    if (!open || open.index !== 0) return undefined
     const block = scanTagBlock(src, 'Tabs', open)
     if (!block) return undefined
     // 围栏感知 + 同名嵌套配对地提取 <Tab title="…"> 子块
     const tabs: { title: string; tokens: Tokens.Generic[] }[] = []
     for (const tab of extractTagBlocks(block.content, 'Tab')) {
       const titleMatch = /title\s*=\s*["']([^"']*)["']/i.exec(tab.attrs)
-      if (titleMatch) tabs.push({ title: titleMatch[1], tokens: this.lexer.blockTokens(tab.body.trim()) })
+      if (titleMatch) tabs.push({ title: titleMatch[1], tokens: this.lexer.blockTokens(dedentBlock(tab.body).trim()) })
     }
     if (tabs.length === 0) return undefined
     return { type: 'md-tabs-tag', raw: block.raw, tabs } as Tokens.Generic
@@ -289,10 +307,11 @@ const calloutTagExtension: TokenizerAndRendererExtension = {
   },
   tokenizer(src) {
     const open = /<(Note|Tip|Warning|Info|Caution|Important)\s*>/i.exec(src)
-    if (!open) return undefined
+    // 标签必须从当前位置开始匹配，否则内层 Tip 等标签会把外层块吞掉
+    if (!open || open.index !== 0) return undefined
     const block = scanTagBlock(src, open[1], open)
     if (!block) return undefined
-    let body = block.content.trim()
+    let body = dedentBlock(block.content).trim()
     let title = ''
     // 可选：开头 **标题** 作为提示块标题
     const tm = /^\*\*(.+?)\*\*[ \t]*\n?/.exec(body)
