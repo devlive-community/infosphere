@@ -435,4 +435,38 @@ export const zh: Record<string, string> = {
   'reader.exitFocus': '退出专注',
   'reader.collapse': '折叠',
   'reader.expand': '展开',
+
+  // 账户页通用
+  'account.common.home': '首页',
+  'account.common.settings': '账户设置',
+  'account.common.verifying': '正在验证登录状态…',
+  'account.common.loadingInfo': '正在加载账户信息…',
+
+  // 我的收藏
+  'favorites.seoTitle': '我的收藏',
+  'favorites.heading': '我的收藏',
+  'favorites.subtitle': '你收藏的全部书籍',
+  'favorites.loading': '正在加载收藏书籍…',
+  'favorites.empty': '还没有收藏书籍，去书籍详情页收藏喜欢的作品吧',
+
+  // 通知设置
+  'notify.seoTitle': '通知设置',
+  'notify.pageSubtitle': '选择哪些站内通知同时给你发邮件',
+  'notify.emailHeading': '邮件通知',
+  'notify.emailDesc': '站内通知始终会在导航铃铛里显示；这里控制是否额外给你发邮件。',
+  'notify.adminDisabled': '管理员当前未开启邮件通知，以下开关暂不生效（开启后按此设置发送）。',
+  'notify.loading': '正在加载通知设置…',
+  'notify.save': '保存',
+  'notify.saved': '通知设置已保存',
+  'notify.saveFailed': '保存失败',
+  'notify.itemCommentLabel': '评论与回复',
+  'notify.itemCommentHint': '有人评论你的章节或回复你的评论',
+  'notify.itemReactionLabel': '点赞与收藏',
+  'notify.itemReactionHint': '有人点赞或收藏你的书籍',
+  'notify.itemCollaborationLabel': '协作邀请',
+  'notify.itemCollaborationHint': '有人邀请你协作书籍',
+  'notify.itemModerationLabel': '举报处理结果',
+  'notify.itemModerationHint': '你的举报被处理',
+  'notify.itemSystemLabel': '系统通知',
+  'notify.itemSystemHint': '版本升级等系统消息',
 }
