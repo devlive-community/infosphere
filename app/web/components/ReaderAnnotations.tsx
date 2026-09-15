@@ -5,6 +5,7 @@ import type { Book, Document, User } from '@/lib/types'
 import { api, formatDate } from '@/lib/api'
 import { relocateAnnotation, type ReadingAnnotation } from '@/lib/reading-annotations'
 import { Badge, Button, ButtonLink, Card, EmptyState, Loading, Modal, Textarea, Tooltip, useFeedback } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 
 export type { ReadingAnnotation } from '@/lib/reading-annotations'
 
@@ -71,7 +72,7 @@ function wrapRange(root: HTMLElement, start: number, end: number, annotation: Re
     const mark = document.createElement('mark')
     mark.dataset.readerAnnotation = String(annotation.id)
     mark.className = `cursor-pointer rounded-sm px-0.5 ${markClass[annotation.color] || markClass.yellow}`
-    mark.setAttribute('aria-label', annotation.note ? `私人笔记：${annotation.note}` : '私人划线')
+    mark.setAttribute('aria-label', annotation.note ? t('annot.privateNoteLabel', { note: annotation.note }) : t('annot.privateHighlight'))
     range.surroundContents(mark)
   }
 }
@@ -83,6 +84,7 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
   contentRef: RefObject<HTMLDivElement>
 }) {
   const { showToast, confirmAction } = useFeedback()
+  const { t } = useTranslation()
   const [items, setItems] = useState<ReadingAnnotation[]>([])
   const [loading, setLoading] = useState(Boolean(user))
   const [selection, setSelection] = useState<SelectionAnchor | null>(null)
@@ -97,7 +99,7 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
     try {
       setItems(await api<ReadingAnnotation[]>(`/documents/${doc.id}/annotations`))
     } catch (error) {
-      showToast({ title: '私人标注加载失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('annot.loadFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setLoading(false)
     }
@@ -167,9 +169,9 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
       setItems((current) => [...current, created])
       setSelection(null)
       window.getSelection()?.removeAllRanges()
-      showToast({ message: kind === 'note' ? '私人笔记已保存' : '划线已保存', tone: 'success' })
+      showToast({ message: kind === 'note' ? t('annot.noteSaved') : t('annot.highlightSaved'), tone: 'success' })
     } catch (error) {
-      showToast({ title: '保存失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('annot.saveFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setSaving(false)
     }
@@ -181,14 +183,14 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
       if (bookmarked) {
         await api(`/annotations/${bookmarked.id}`, { method: 'DELETE' })
         setItems((current) => current.filter((item) => item.id !== bookmarked.id))
-        showToast({ message: '章节书签已取消', tone: 'success' })
+        showToast({ message: t('annot.bookmarkRemoved'), tone: 'success' })
       } else {
         const created = await api<ReadingAnnotation>(`/documents/${doc.id}/annotations`, { method: 'POST', body: { kind: 'bookmark' } })
         setItems((current) => [...current.filter((item) => item.kind !== 'bookmark'), created])
-        showToast({ message: '章节已加入书签', tone: 'success' })
+        showToast({ message: t('annot.bookmarkAdded'), tone: 'success' })
       }
     } catch (error) {
-      showToast({ title: '书签操作失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('annot.bookmarkFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setSaving(false)
     }
@@ -206,34 +208,34 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
       }
       setEditing(null)
       setNote('')
-      showToast({ message: '私人笔记已保存', tone: 'success' })
+      showToast({ message: t('annot.noteSaved'), tone: 'success' })
     } catch (error) {
-      showToast({ title: '笔记保存失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('annot.noteSaveFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setSaving(false)
     }
   }
 
   async function remove(item: ReadingAnnotation) {
-    const confirmed = await confirmAction({ title: '删除私人标注', message: '删除后无法恢复，是否继续？', confirmLabel: '删除', danger: true })
+    const confirmed = await confirmAction({ title: t('annot.deleteTitle'), message: t('annot.deleteConfirm'), confirmLabel: t('common.actions.delete'), danger: true })
     if (!confirmed) return
     try {
       await api(`/annotations/${item.id}`, { method: 'DELETE' })
       setItems((current) => current.filter((entry) => entry.id !== item.id))
-      showToast({ message: '私人标注已删除', tone: 'success' })
+      showToast({ message: t('annot.deleted'), tone: 'success' })
     } catch (error) {
-      showToast({ title: '删除失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('annot.deleteFailed'), message: (error as Error).message, tone: 'error' })
     }
   }
 
   if (!user) {
-    return <div className="mb-5 flex items-center gap-2 text-sm text-slate-400"><i className="fa-solid fa-highlighter" aria-hidden="true" />登录后可跨设备保存划线和私人笔记<ButtonLink href={`/login?next=${encodeURIComponent(`/book/reader/${book.slug}/${doc.slug}`)}`} variant="ghost" size="sm">登录</ButtonLink></div>
+    return <div className="mb-5 flex items-center gap-2 text-sm text-slate-400"><i className="fa-solid fa-highlighter" aria-hidden="true" />{t('annot.loginHint')}<ButtonLink href={`/login?next=${encodeURIComponent(`/book/reader/${book.slug}/${doc.slug}`)}`} variant="ghost" size="sm">{t('comment.loginLink')}</ButtonLink></div>
   }
 
   const selectionToolbar = selection && typeof document !== 'undefined' && createPortal(
     <Card className="fixed z-[170] flex items-center gap-1 p-1 shadow-xl" style={{ top: selection.top, left: selection.left }}>
-      <Button size="sm" variant="ghost" disabled={saving} onClick={() => void createFromSelection('highlight', selection)}><i className="fa-solid fa-highlighter" aria-hidden="true" />划线</Button>
-      <Button size="sm" variant="ghost" disabled={saving} onClick={() => { setNote(''); setEditing({ annotation: null, selection }) }}><i className="fa-solid fa-note-sticky" aria-hidden="true" />笔记</Button>
+      <Button size="sm" variant="ghost" disabled={saving} onClick={() => void createFromSelection('highlight', selection)}><i className="fa-solid fa-highlighter" aria-hidden="true" />{t('annot.badgeHighlight')}</Button>
+      <Button size="sm" variant="ghost" disabled={saving} onClick={() => { setNote(''); setEditing({ annotation: null, selection }) }}><i className="fa-solid fa-note-sticky" aria-hidden="true" />{t('annot.badgeNote')}</Button>
     </Card>, document.body,
   )
 
@@ -241,16 +243,16 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
     <>
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2">
         <Button size="sm" variant={bookmarked ? 'primary' : 'ghost'} loading={saving} onClick={() => void toggleBookmark()}>
-          <i className={`fa-${bookmarked ? 'solid' : 'regular'} fa-bookmark`} aria-hidden="true" />{bookmarked ? '已加入书签' : '章节书签'}
+          <i className={`fa-${bookmarked ? 'solid' : 'regular'} fa-bookmark`} aria-hidden="true" />{bookmarked ? t('annot.bookmarked') : t('annot.bookmarkChapter')}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => setPanelOpen(true)}><i className="fa-solid fa-note-sticky" aria-hidden="true" />本章标注 {items.filter((item) => item.kind !== 'bookmark').length}</Button>
-        <span className="text-xs text-slate-400">选中正文即可添加划线或私人笔记</span>
+        <Button size="sm" variant="ghost" onClick={() => setPanelOpen(true)}><i className="fa-solid fa-note-sticky" aria-hidden="true" />{t('annot.chapterAnnotations')} {items.filter((item) => item.kind !== 'bookmark').length}</Button>
+        <span className="text-xs text-slate-400">{t('annot.selectHint')}</span>
       </div>
       {selectionToolbar}
 
-      <Modal open={panelOpen} onClose={() => setPanelOpen(false)} title="本章私人标注" className="max-w-2xl">
-        {loading ? <Loading label="正在加载私人标注…" /> : items.filter((item) => item.kind !== 'bookmark').length === 0 ? (
-          <EmptyState>选中章节正文后即可创建划线或私人笔记</EmptyState>
+      <Modal open={panelOpen} onClose={() => setPanelOpen(false)} title={t('annot.panelTitle')} className="max-w-2xl">
+        {loading ? <Loading label={t('annot.loading')} /> : items.filter((item) => item.kind !== 'bookmark').length === 0 ? (
+          <EmptyState>{t('annot.emptyState')}</EmptyState>
         ) : (
           <div className="space-y-3">
             {items.filter((item) => item.kind !== 'bookmark').map((item) => (
@@ -258,20 +260,20 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <Badge tone={item.kind === 'note' ? 'primary' : 'amber'}>{item.kind === 'note' ? '私人笔记' : '划线'}</Badge>
-                      {item.anchor_status === 'orphaned' && <Badge tone="rose">原文位置已失效</Badge>}
-                      {item.anchor_status === 'relocated' && <Badge tone="slate">已重新定位</Badge>}
+                      <Badge tone={item.kind === 'note' ? 'primary' : 'amber'}>{item.kind === 'note' ? t('annot.badgeNote') : t('annot.badgeHighlight')}</Badge>
+                      {item.anchor_status === 'orphaned' && <Badge tone="rose">{t('annot.orphaned')}</Badge>}
+                      {item.anchor_status === 'relocated' && <Badge tone="slate">{t('annot.relocated')}</Badge>}
                     </div>
                     <blockquote className="border-l-2 border-primary-300 pl-3 text-sm leading-6 text-slate-600">{item.quote}</blockquote>
                     {item.note && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-800">{item.note}</p>}
                     <p className="mt-2 text-xs text-slate-400">{formatDate(item.updated_at)}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    {item.kind === 'note' && <Tooltip content="编辑笔记"><button type="button" aria-label="编辑笔记"
+                    {item.kind === 'note' && <Tooltip content={t('annot.editNote')}><button type="button" aria-label={t('annot.editNote')}
                       className="flex items-center justify-center rounded-lg text-slate-400 hover:bg-primary-50 hover:text-primary-600"
                       style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
                       onClick={() => { setNote(item.note); setEditing({ annotation: item, selection: null }) }}><i className="fa-solid fa-pen" aria-hidden="true" /></button></Tooltip>}
-                    <Tooltip content="删除标注"><button type="button" aria-label="删除标注"
+                    <Tooltip content={t('annot.deleteAnnotation')}><button type="button" aria-label={t('annot.deleteAnnotation')}
                       className="flex items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                       style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
                       onClick={() => void remove(item)}><i className="fa-solid fa-trash" aria-hidden="true" /></button></Tooltip>
@@ -281,13 +283,13 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
             ))}
           </div>
         )}
-        <div className="mt-4 text-right"><Link href="/user/notes" className="text-sm font-medium text-primary-600 hover:text-primary-700">查看我的全部笔记</Link></div>
+        <div className="mt-4 text-right"><Link href="/user/notes" className="text-sm font-medium text-primary-600 hover:text-primary-700">{t('annot.viewAllNotes')}</Link></div>
       </Modal>
 
-      <Modal open={Boolean(editing)} onClose={() => { setEditing(null); setNote('') }} title={editing?.annotation ? '编辑私人笔记' : '添加私人笔记'}
-        footer={<><Button variant="ghost" onClick={() => { setEditing(null); setNote('') }}>取消</Button><Button loading={saving} disabled={!note.trim()} onClick={() => void saveNote()}>保存笔记</Button></>}>
+      <Modal open={Boolean(editing)} onClose={() => { setEditing(null); setNote('') }} title={editing?.annotation ? t('annot.editNoteTitle') : t('annot.addNoteTitle')}
+        footer={<><Button variant="ghost" onClick={() => { setEditing(null); setNote('') }}>{t('common.actions.cancel')}</Button><Button loading={saving} disabled={!note.trim()} onClick={() => void saveNote()}>{t('annot.action.saveNote')}</Button></>}>
         {editing?.selection && <blockquote className="mb-4 max-h-28 overflow-y-auto break-words border-l-2 border-primary-300 pl-3 text-sm leading-6 text-slate-500">{editing.selection.quote}</blockquote>}
-        <Textarea rows={6} value={note} maxLength={10000} placeholder="记录你的想法，仅自己可见" onChange={(event) => setNote(event.target.value)} />
+        <Textarea rows={6} value={note} maxLength={10000} placeholder={t('annot.notePlaceholder')} onChange={(event) => setNote(event.target.value)} />
         <p className="mt-2 text-right text-xs text-slate-400">{note.length}/10000</p>
       </Modal>
     </>

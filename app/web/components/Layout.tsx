@@ -16,7 +16,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { SearchIcon } from '@/components/icons'
 
 function UserMenu() {
-  const { user, logout } = useApp()
+  const { user, logout, site } = useApp()
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -42,6 +42,7 @@ function UserMenu() {
     { label: t('nav.menu.analytics'), href: '/user/analytics', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" /> },
     { label: t('nav.menu.reading'), href: '/user/reading', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-book-open-reader ${className || ''}`} aria-hidden="true" /> },
     { label: t('nav.menu.notes'), href: '/user/notes', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-note-sticky ${className || ''}`} aria-hidden="true" /> },
+    ...(site.achievements_enabled === 'true' ? [{ label: t('nav.menu.achievements'), href: '/user/achievements', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-trophy ${className || ''}`} aria-hidden="true" /> }] : []),
     { label: t('nav.menu.profile'), href: '/user/profile', icon: UserCircleIcon },
     // 控制台仅对管理员开放
     ...(user.role === 'admin' ? [{ label: t('nav.menu.console'), href: '/admin/system', icon: GridIcon }] : []),
@@ -152,8 +153,8 @@ function AnnouncementBanner() {
       <div className="mx-auto flex items-start gap-3 px-4 py-2.5 text-sm" style={{ maxWidth: 'var(--content-max-width)' }}>
         <i className={`fa-solid ${warning ? 'fa-triangle-exclamation' : 'fa-bullhorn'} mt-0.5 shrink-0`} aria-hidden="true" />
         <span className="min-w-0 flex-1 whitespace-pre-wrap">{text}</span>
-        <Tooltip content="关闭公告">
-          <button type="button" onClick={dismiss} aria-label="关闭公告" className="shrink-0 opacity-60 transition-opacity hover:opacity-100">
+        <Tooltip content={t('common.announcement.close')}>
+          <button type="button" onClick={dismiss} aria-label={t('common.announcement.close')} className="shrink-0 opacity-60 transition-opacity hover:opacity-100">
             <i className="fa-solid fa-xmark" aria-hidden="true" />
           </button>
         </Tooltip>

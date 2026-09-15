@@ -46,6 +46,7 @@ export const zh: Record<string, string> = {
   'nav.menu.analytics': '创作数据',
   'nav.menu.reading': '我在读',
   'nav.menu.notes': '我的笔记',
+  'nav.menu.achievements': '我的成就',
   'nav.menu.profile': '个人资料',
   'nav.menu.console': '控制台',
   'nav.menu.trash': '回收站',
@@ -406,6 +407,7 @@ export const zh: Record<string, string> = {
   'annot.editNoteTitle': '编辑私人笔记',
   'annot.addNoteTitle': '添加私人笔记',
   'annot.notePlaceholder': '记录你的想法，仅自己可见',
+  'annot.action.saveNote': '保存笔记',
 
   // 组件：协作者管理
   'collab.roleEditor': '编辑者',
@@ -645,6 +647,8 @@ export const zh: Record<string, string> = {
   'notify.itemModerationHint': '你的举报被处理',
   'notify.itemSystemLabel': '系统通知',
   'notify.itemSystemHint': '版本升级等系统消息',
+  'notify.itemAchievementLabel': '成就通知',
+  'notify.itemAchievementHint': '成就解锁和人工授予结果',
 
   // 危险区
   'danger.title': '危险区',
@@ -691,4 +695,72 @@ export const zh: Record<string, string> = {
   'invite.copied': '邀请码已复制',
   'invite.copyFailed': '复制失败，请手动复制',
   'invite.linkCopied': '邀请链接已复制，打开即可预填邀请码注册',
+
+  // 书籍设置
+  'bookSettings.nav.basic': '基本信息',
+  'bookSettings.nav.chapters': '章节管理',
+  'bookSettings.nav.analytics': '数据分析',
+  'bookSettings.nav.collaborators': '协作者',
+  'bookSettings.nav.export': '导出设置',
+  'bookSettings.nav.data': '导入导出',
+  'bookSettings.nav.danger': '危险区',
+  'bookSettings.action.write': '进入写作',
+  'bookSettings.action.viewDetail': '查看书籍详情',
+
+  // 管理后台
+  'admin.title': '管理后台',
+  'admin.nav.system': '系统概览',
+  'admin.nav.users': '用户管理',
+  'admin.nav.books': '书籍管理',
+  'admin.nav.documents': '章节管理',
+  'admin.nav.achievements': '成就管理',
+  'admin.nav.reports': '内容审核',
+  'admin.nav.audit': '审计日志',
+  'admin.nav.tasks': '异步任务',
+  'admin.nav.settings': '系统设置',
+  'admin.nav.plugins': '插件',
+  'admin.nav.upgrade': '版本更新',
+  'admin.action.backToSite': '返回站点',
+  'admin.loading.auth': '正在验证管理权限…',
+  'admin.aria.openMenu': '打开菜单',
+  'admin.search.placeholder': '搜索设置或功能',
+
+  // 系统设置
+  'admin.settings.site': '站点设置',
+  'admin.settings.registration': '注册设置',
+  'admin.settings.captcha': '验证码',
+  'admin.settings.loginSecurity': '登录安全',
+  'admin.settings.content': '内容设置',
+  'admin.settings.storage': '存储配置',
+  'admin.settings.mail': '邮件服务',
+  'admin.settings.translation': '翻译服务',
+  'admin.settings.oauth': '第三方登录',
+  'admin.settings.title': '系统设置',
+  'admin.settings.ariaLabel': '系统设置分类',
+
+  // 通知中心
+  'notify.pageTitle': '通知中心',
+  'notify.filter.aria': '通知筛选',
+  'notify.tab.all': '全部',
+  'notify.tab.unread': '未读',
+  'notify.collabPendingTitle': '待确认的协作邀请',
+  'notify.pendingCount': '{count} 个待处理',
+  'notify.collabLoading': '正在加载协作邀请…',
+  'notify.collabEmpty': '当前没有待确认的协作邀请',
+  'notify.adminDefault': '书籍管理员',
+  'notify.collabInviteText': '邀请你协作',
+  'notify.collabRoleLabel': '角色：',
+  'notify.collabRoleEditor': '编辑者，可管理章节内容',
+  'notify.collabRoleViewer': '访问者，可阅读书籍内容',
+  'notify.collabAccept': '接受邀请',
+  'notify.emptyUnread': '没有未读通知',
+  'notify.inviteLoadFailed': '邀请加载失败',
+  'notify.collabAccepted': '已加入协作',
+  'notify.collabRejected': '已拒绝邀请',
+  'notify.collabAccessGranted': '现在可以访问《{title}》了',
+  'notify.collabDismissed': '该邀请已从待处理列表移除',
+  'notify.inviteActionFailed': '处理邀请失败',
+
+  // 通用（补充）
+  'common.announcement.close': '关闭公告',
 }
