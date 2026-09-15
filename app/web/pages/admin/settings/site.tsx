@@ -4,6 +4,22 @@ import { resolveMediaUrl } from '@/lib/media'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
 import { Button, Input, Textarea, Field, Switch, Select } from '@/components/ui'
+import { TrashIcon } from '@/components/icons'
+import type { FooterLinkGroup } from '@/lib/types'
+
+function parseFooterGroups(raw?: string): FooterLinkGroup[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((g): FooterLinkGroup => ({
+      title: String(g?.title || ''),
+      links: Array.isArray(g?.links) ? g.links.map((l: { label?: unknown; href?: unknown }) => ({ label: String(l?.label || ''), href: String(l?.href || '') })) : [],
+    }))
+  } catch {
+    return []
+  }
+}
 
 // 系统设置 · 站点设置：站点名称、描述、Logo 与全站公告（仅管理员）
 export default function SettingsSite() {
@@ -14,6 +30,7 @@ export default function SettingsSite() {
   const [siteFavicon, setSiteFavicon] = useState(site.site_favicon || '')
   const [siteKeywords, setSiteKeywords] = useState(site.site_keywords || '')
   const [siteFooterText, setSiteFooterText] = useState(site.site_footer_text || '')
+  const [footerGroups, setFooterGroups] = useState<FooterLinkGroup[]>(() => parseFooterGroups(site.site_footer_links))
   const [siteBeian, setSiteBeian] = useState(site.site_beian || '')
   const [helpDocUrl, setHelpDocUrl] = useState(site.help_doc_url || '')
   const [termsUrl, setTermsUrl] = useState(site.terms_url || '')
@@ -62,13 +79,37 @@ export default function SettingsSite() {
     }
   }
 
+  function updateGroup(gi: number, patch: Partial<FooterLinkGroup>) {
+    setFooterGroups((prev) => prev.map((g, i) => (i === gi ? { ...g, ...patch } : g)))
+  }
+  function updateLink(gi: number, li: number, patch: Partial<{ label: string; href: string }>) {
+    setFooterGroups((prev) => prev.map((g, i) => (i === gi ? { ...g, links: g.links.map((l, j) => (j === li ? { ...l, ...patch } : l)) } : g)))
+  }
+  function addGroup() {
+    setFooterGroups((prev) => [...prev, { title: '', links: [{ label: '', href: '' }] }])
+  }
+  function removeGroup(gi: number) {
+    setFooterGroups((prev) => prev.filter((_, i) => i !== gi))
+  }
+  function addLink(gi: number) {
+    setFooterGroups((prev) => prev.map((g, i) => (i === gi ? { ...g, links: [...g.links, { label: '', href: '' }] } : g)))
+  }
+  function removeLink(gi: number, li: number) {
+    setFooterGroups((prev) => prev.map((g, i) => (i === gi ? { ...g, links: g.links.filter((_, j) => j !== li) } : g)))
+  }
+
   async function save() {
     setSaving(true)
     setMessage('')
     try {
+      // 过滤空链接与空分组，序列化为后端保存的 JSON（为空则清空，前端回退默认页脚）
+      const cleaned = footerGroups
+        .map((g) => ({ title: g.title.trim(), links: g.links.filter((l) => l.label.trim() && l.href.trim()).map((l) => ({ label: l.label.trim(), href: l.href.trim() })) }))
+        .filter((g) => g.links.length > 0)
       await api('/site', { method: 'PUT', body: {
         site_name: siteName, site_description: siteDesc, site_logo: siteLogo,
         site_favicon: siteFavicon, site_keywords: siteKeywords, site_footer_text: siteFooterText, site_beian: siteBeian,
+        site_footer_links: JSON.stringify(cleaned),
         help_doc_url: helpDocUrl, terms_url: termsUrl, privacy_url: privacyUrl,
         announcement_enabled: annEnabled, announcement_text: annText, announcement_tone: annTone,
       } })
@@ -127,6 +168,36 @@ export default function SettingsSite() {
           <Field label="备案信息" hint="中国大陆网站可填写 ICP 备案号，显示在页脚并链接至工信部备案系统。">
             <Input value={siteBeian} onChange={(e) => setSiteBeian(e.target.value)} placeholder="例如：京ICP备00000000号-1" />
           </Field>
+
+          <div className="border-t border-slate-100 pt-4">
+            <h3 className="mb-1 text-sm font-semibold text-slate-700">页脚链接</h3>
+            <p className="mb-3 text-xs text-slate-400">按分组配置页脚显示的链接。留空则使用默认页脚（产品 / 资源 / 社区）。站内路径以 / 开头，站外链接以 http(s):// 开头。</p>
+            <div className="space-y-4">
+              {footerGroups.map((g, gi) => (
+                <div key={gi} className="rounded-lg border border-slate-200 p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Input value={g.title} onChange={(e) => updateGroup(gi, { title: e.target.value })} placeholder="分组标题，如：产品" className="flex-1" />
+                    <Button type="button" variant="ghost" className="shrink-0 text-slate-400 hover:text-rose-500" onClick={() => removeGroup(gi)} aria-label="删除分组">
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {g.links.map((l, li) => (
+                      <div key={li} className="flex items-center gap-2">
+                        <Input value={l.label} onChange={(e) => updateLink(gi, li, { label: e.target.value })} placeholder="链接文字" className="flex-1" />
+                        <Input value={l.href} onChange={(e) => updateLink(gi, li, { href: e.target.value })} placeholder="/explore 或 https://…" className="flex-[1.4]" />
+                        <Button type="button" variant="ghost" className="shrink-0 text-slate-400 hover:text-rose-500" onClick={() => removeLink(gi, li)} aria-label="删除链接">
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="ghost" className="text-slate-500" onClick={() => addLink(gi)}>+ 添加链接</Button>
+                  </div>
+                </div>
+              ))}
+              <Button type="button" variant="ghost" className="text-slate-600" onClick={addGroup}>+ 添加分组</Button>
+            </div>
+          </div>
 
           <div className="border-t border-slate-100 pt-4">
             <h3 className="mb-1 text-sm font-semibold text-slate-700">法律与帮助文档</h3>
