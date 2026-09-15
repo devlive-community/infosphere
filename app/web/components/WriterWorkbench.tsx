@@ -100,6 +100,8 @@ const SLASH_COMMANDS: { key: string; label: string; kw: string }[] = [
   { key: 'note', label: '备注块', kw: 'note 备注' },
   { key: 'tip', label: '提示块', kw: 'tip 提示' },
   { key: 'warning', label: '警告块', kw: 'warning warn 警告' },
+  { key: 'accordion', label: '折叠面板', kw: 'accordion collapse 折叠 面板' },
+  { key: 'steps', label: '步骤', kw: 'steps step 步骤' },
   { key: 'children', label: '子章节目录', kw: 'children subchapters toc 子章节 目录' },
   { key: 'hr', label: '分隔线', kw: 'hr rule divider' },
   { key: 'image', label: '上传图片', kw: 'image img upload photo' },
@@ -128,6 +130,7 @@ export default function Writer({ user }: WriterProps) {
   const [chapterMenu, setChapterMenu] = useState<ChapterMenuState | null>(null)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
   const [insertMenuOpen, setInsertMenuOpen] = useState(false)
+  const [metaMenuOpen, setMetaMenuOpen] = useState(false)
   const [translateMenuOpen, setTranslateMenuOpen] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
@@ -779,12 +782,14 @@ export default function Writer({ user }: WriterProps) {
     insertText('\n| 列 1 | 列 2 |\n| --- | --- |\n| 单元格 | 单元格 |\n')
   }
 
-  // 插入结构化组件片段（Tabs / Note / Warning / Tip）；阅读页与预览均可渲染
+  // 插入结构化组件片段（Tabs / Note / Warning / Tip / Accordion / Steps）；阅读页与预览均可渲染
   const COMPONENT_SNIPPETS: Record<string, string> = {
     tabs: '\n<Tabs>\n<Tab title="标签一">\n\n内容一\n\n</Tab>\n<Tab title="标签二">\n\n内容二\n\n</Tab>\n</Tabs>\n',
     note: '\n<Note>\n**备注**\n\n在此填写备注内容。\n</Note>\n',
     tip: '\n<Tip>\n**提示**\n\n在此填写提示内容。\n</Tip>\n',
     warning: '\n<Warning>\n**警告**\n\n在此填写警告内容。\n</Warning>\n',
+    accordion: '\n<AccordionGroup>\n<Accordion title="标题一">\n\n内容一\n\n</Accordion>\n<Accordion title="标题二">\n\n内容二\n\n</Accordion>\n</AccordionGroup>\n',
+    steps: '\n<Steps>\n<Step title="第一步">\n\n步骤说明\n\n</Step>\n<Step title="第二步">\n\n步骤说明\n\n</Step>\n</Steps>\n',
   }
   function insertComponent(kind: keyof typeof COMPONENT_SNIPPETS) {
     insertText(COMPONENT_SNIPPETS[kind])
@@ -794,6 +799,32 @@ export default function Writer({ user }: WriterProps) {
   function insertChildrenToc() {
     insertText('\n[children]\n')
     setInsertMenuOpen(false)
+  }
+
+  // 元数据：章节图标（<!-- icon: xxx -->），替换目录树中的默认文档/文件夹图标。
+  const DOC_ICON_RE = /<!--\s*icon:[^>]*-->[ \t]*\n?/i
+  async function setDocIcon() {
+    setMetaMenuOpen(false)
+    const el = textareaRef.current
+    const value = el?.value ?? content
+    const currentIcon = /<!--\s*icon:\s*([^>]+?)\s*-->/i.exec(value)?.[1]?.trim() || ''
+    const input = await requestInput({
+      title: '设置章节图标',
+      message: '输入 FontAwesome 图标名（如 database、rocket；品牌图标用 “brands fa-github”）。留空则移除图标。',
+      label: '图标名', defaultValue: currentIcon, placeholder: 'database', confirmLabel: '保存',
+    })
+    if (input === null) return // 取消
+    const icon = input.trim()
+    let next: string
+    if (!icon) {
+      next = value.replace(DOC_ICON_RE, '')
+    } else if (DOC_ICON_RE.test(value)) {
+      next = value.replace(DOC_ICON_RE, `<!-- icon: ${icon} -->\n`)
+    } else {
+      next = `<!-- icon: ${icon} -->\n` + value
+    }
+    setContent(next)
+    showToast({ message: icon ? '已设置章节图标' : '已移除章节图标', tone: 'success' })
   }
 
   // 可选目标语言（后台翻译服务负责实际转换）
@@ -1015,6 +1046,8 @@ export default function Writer({ user }: WriterProps) {
         case 'note': insertComponent('note'); break
         case 'tip': insertComponent('tip'); break
         case 'warning': insertComponent('warning'); break
+        case 'accordion': insertComponent('accordion'); break
+        case 'steps': insertComponent('steps'); break
         case 'children': insertChildrenToc(); break
         case 'hr': insertText('---\n'); break
         case 'image': fileInputRef.current?.click(); break
@@ -1411,8 +1444,25 @@ export default function Writer({ user }: WriterProps) {
                           <button type="button" onClick={() => insertComponent('note')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">备注 Note</button>
                           <button type="button" onClick={() => insertComponent('tip')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">提示 Tip</button>
                           <button type="button" onClick={() => insertComponent('warning')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">警告 Warning</button>
+                          <button type="button" onClick={() => insertComponent('accordion')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">折叠面板 Accordion</button>
+                          <button type="button" onClick={() => insertComponent('steps')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">步骤 Steps</button>
                           <div className="my-1 h-px bg-slate-100" />
                           <button type="button" onClick={insertChildrenToc} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">子章节目录</button>
+                        </div>
+                      </>
+                    )}
+                  </span>
+                  <span className="relative">
+                    <ToolbarButton title="章节元数据（图标等）" onClick={() => setMetaMenuOpen((v) => !v)}>
+                      <i className="fa-solid fa-tags text-[15px]" aria-hidden="true" />
+                    </ToolbarButton>
+                    {metaMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setMetaMenuOpen(false)} />
+                        <div className="absolute left-0 top-9 z-20 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                          <button type="button" onClick={() => void setDocIcon()} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">
+                            <i className="fa-solid fa-icons w-4 text-center text-slate-400" aria-hidden="true" /> 章节图标
+                          </button>
                         </div>
                       </>
                     )}
