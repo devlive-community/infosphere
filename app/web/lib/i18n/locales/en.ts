@@ -1626,4 +1626,10 @@ export const en: Record<string, string> = {
   'user.export.statusPublished': 'Published',
   'user.export.statusCompleted': 'Completed',
   'user.export.statusArchived': 'Archived',
+  // 第三方账号页
+  'user.oauth.title': 'Third-party Accounts',
+  'user.oauth.home': 'Home',
+  'user.oauth.accountSettings': 'Account Settings',
+  'user.oauth.description': 'Manage third-party account bindings with multiple login methods.',
+  'user.oauth.loading': 'Loading account settings…',
 }
