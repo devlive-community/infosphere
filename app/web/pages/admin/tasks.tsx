@@ -25,29 +25,6 @@ interface BackgroundTask {
   updated_at: string
 }
 
-const statusOptions = [
-  { value: '', label: '全部状态' },
-  { value: 'pending', label: '等待执行' },
-  { value: 'running', label: '执行中' },
-  { value: 'retrying', label: '等待重试' },
-  { value: 'succeeded', label: '已完成' },
-  { value: 'failed', label: '最终失败' },
-]
-
-const statusMeta: Record<TaskStatus, { label: string; tone: 'slate' | 'primary' | 'amber' | 'emerald' | 'rose' }> = {
-  pending: { label: '等待执行', tone: 'slate' },
-  running: { label: '执行中', tone: 'primary' },
-  retrying: { label: '等待重试', tone: 'amber' },
-  succeeded: { label: '已完成', tone: 'emerald' },
-  failed: { label: '最终失败', tone: 'rose' },
-}
-
-const typeLabels: Record<string, string> = {
-  'email.send': '发送邮件',
-  'content.import.pdf': '解析 PDF 并导入书籍',
-  'content.import.zip': '还原 ZIP 书籍',
-}
-
 export default function AdminTasks() {
   const { user } = useApp()
   const { showToast } = useFeedback()
