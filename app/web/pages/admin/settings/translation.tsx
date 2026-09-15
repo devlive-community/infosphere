@@ -73,7 +73,7 @@ export default function SettingsTranslation() {
           {cfg.provider !== 'none' && (
             <>
               <Field label="API Key" hint={t('admin.settings.translation.apiKeyHint')}>
-                <Input type="password" value={cfg.api_key} onChange={(e) => setCfg({ ...cfg, api_key: e.target.value })} placeholder="sk-… 或服务密钥" />
+                <Input type="password" value={cfg.api_key} onChange={(e) => setCfg({ ...cfg, api_key: e.target.value })} placeholder={t('admin.settings.translation.apiKeyPlaceholder')} />
               </Field>
               <Field label={t('admin.settings.translation.apiBase')} hint={hint ? t('admin.settings.translation.apiBaseHintWithDefault', { default: hint.base }) : t('admin.settings.translation.apiBaseHint')}>
                 <Input value={cfg.api_base} onChange={(e) => setCfg({ ...cfg, api_base: e.target.value })} placeholder={hint?.base} />

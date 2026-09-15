@@ -6,18 +6,16 @@ import { Button, Input, Field, Switch, Loading } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 import { OAuthProviderConfig } from '@/lib/admin'
 
-// 各 provider 的回调路径说明
-const CALLBACK: Record<string, string> = {
-  github: 'GitHub「Developer settings → OAuth Apps」',
-  google: 'Google Cloud Console「凭据 → OAuth 客户端 ID」',
-  gitlab: 'GitLab「用户设置 → Applications」',
-}
-
 // 系统设置 · 第三方登录：GitHub / Google / GitLab OAuth（仅管理员）
 export default function SettingsOAuth() {
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
   const { t } = useTranslation()
+  const CALLBACK: Record<string, string> = {
+    github: t('admin.settings.oauth.callback.github'),
+    google: t('admin.settings.oauth.callback.google'),
+    gitlab: t('admin.settings.oauth.callback.gitlab'),
+  }
   const [providers, setProviders] = useState<OAuthProviderConfig[]>([])
   const [message, setMessage] = useState('')
   const [savingKey, setSavingKey] = useState('')
