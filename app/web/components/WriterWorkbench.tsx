@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { api, formatDate, API_BASE, getToken } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import { renderMarkdown, bindMarkdownInteractivity, headingPlainText } from '@/lib/markdown'
 import Seo from '@/components/Seo'
 import DocTreeIcon from '@/components/DocTreeIcon'
@@ -32,12 +33,12 @@ interface BookFormState {
   childStatusFollowParent: boolean
 }
 
-const STATUS_META: Record<BookStatus, { label: string; tone: 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'; dot: string }> = {
-  draft: { label: '草稿', tone: 'slate', dot: 'bg-slate-400' },
-  in_progress: { label: '进行中', tone: 'primary', dot: 'bg-primary-500' },
-  published: { label: '已发布', tone: 'emerald', dot: 'bg-emerald-500' },
-  completed: { label: '已完成', tone: 'violet', dot: 'bg-violet-500' },
-  archived: { label: '已归档', tone: 'amber', dot: 'bg-amber-500' },
+const STATUS_META: Record<BookStatus, { labelKey: string; tone: 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'; dot: string }> = {
+  draft: { labelKey: 'book.status.draft', tone: 'slate', dot: 'bg-slate-400' },
+  in_progress: { labelKey: 'book.status.in_progress', tone: 'primary', dot: 'bg-primary-500' },
+  published: { labelKey: 'book.status.published', tone: 'emerald', dot: 'bg-emerald-500' },
+  completed: { labelKey: 'book.status.completed', tone: 'violet', dot: 'bg-violet-500' },
+  archived: { labelKey: 'book.status.archived', tone: 'amber', dot: 'bg-amber-500' },
 }
 
 // 临时关闭章节自动保存；恢复时只需改为 true，手动保存与发布流程不受影响。
@@ -85,28 +86,28 @@ const WRAP_PAIRS: Record<string, string> = {
 }
 
 // 斜杠命令元数据（label 展示，kw 供拉丁关键词过滤）；动作在 selectSlash 里按 key 分派。
-const SLASH_COMMANDS: { key: string; label: string; kw: string }[] = [
-  { key: 'h1', label: '标题 1', kw: 'h1 heading title' },
-  { key: 'h2', label: '标题 2', kw: 'h2 heading title' },
-  { key: 'h3', label: '标题 3', kw: 'h3 heading title' },
-  { key: 'h4', label: '标题 4', kw: 'h4 heading title' },
-  { key: 'ul', label: '无序列表', kw: 'ul list bullet' },
-  { key: 'ol', label: '有序列表', kw: 'ol list ordered number' },
-  { key: 'task', label: '任务列表', kw: 'task todo check' },
-  { key: 'quote', label: '引用', kw: 'quote blockquote' },
-  { key: 'code', label: '代码块', kw: 'code block pre' },
-  { key: 'table', label: '表格', kw: 'table grid' },
-  { key: 'tabs', label: '标签页', kw: 'tabs tab 标签页' },
-  { key: 'note', label: '备注块', kw: 'note 备注' },
-  { key: 'tip', label: '提示块', kw: 'tip 提示' },
-  { key: 'warning', label: '警告块', kw: 'warning warn 警告' },
-  { key: 'accordion', label: '折叠面板', kw: 'accordion collapse 折叠 面板' },
-  { key: 'steps', label: '步骤', kw: 'steps step 步骤' },
-  { key: 'children', label: '子章节目录', kw: 'children subchapters toc 子章节 目录' },
-  { key: 'hr', label: '分隔线', kw: 'hr rule divider' },
-  { key: 'image', label: '上传图片', kw: 'image img upload photo' },
-  { key: 'collect', label: '采集网页', kw: 'collect web fetch import scrape 采集 网页' },
-  { key: 'link', label: '链接', kw: 'link url href' },
+const SLASH_COMMANDS: { key: string; labelKey: string; kw: string }[] = [
+  { key: 'h1', labelKey: 'writer.slash.h1', kw: 'h1 heading title' },
+  { key: 'h2', labelKey: 'writer.slash.h2', kw: 'h2 heading title' },
+  { key: 'h3', labelKey: 'writer.slash.h3', kw: 'h3 heading title' },
+  { key: 'h4', labelKey: 'writer.slash.h4', kw: 'h4 heading title' },
+  { key: 'ul', labelKey: 'writer.slash.ul', kw: 'ul list bullet' },
+  { key: 'ol', labelKey: 'writer.slash.ol', kw: 'ol list ordered number' },
+  { key: 'task', labelKey: 'writer.slash.task', kw: 'task todo check' },
+  { key: 'quote', labelKey: 'writer.slash.quote', kw: 'quote blockquote' },
+  { key: 'code', labelKey: 'writer.slash.code', kw: 'code block pre' },
+  { key: 'table', labelKey: 'writer.slash.table', kw: 'table grid' },
+  { key: 'tabs', labelKey: 'writer.slash.tabs', kw: 'tabs tab 标签页' },
+  { key: 'note', labelKey: 'writer.slash.note', kw: 'note 备注' },
+  { key: 'tip', labelKey: 'writer.slash.tip', kw: 'tip 提示' },
+  { key: 'warning', labelKey: 'writer.slash.warning', kw: 'warning warn 警告' },
+  { key: 'accordion', labelKey: 'writer.slash.accordion', kw: 'accordion collapse 折叠 面板' },
+  { key: 'steps', labelKey: 'writer.slash.steps', kw: 'steps step 步骤' },
+  { key: 'children', labelKey: 'writer.slash.children', kw: 'children subchapters toc 子章节 目录' },
+  { key: 'hr', labelKey: 'writer.slash.hr', kw: 'hr rule divider' },
+  { key: 'image', labelKey: 'writer.slash.image', kw: 'image img upload photo' },
+  { key: 'collect', labelKey: 'writer.slash.collect', kw: 'collect web fetch import scrape 采集 网页' },
+  { key: 'link', labelKey: 'writer.slash.link', kw: 'link url href' },
 ]
 
 // Writer：书籍与章节编辑器（三栏工作台布局）
@@ -115,6 +116,7 @@ export default function Writer({ user }: WriterProps) {
   useRequireAuth()
   const router = useRouter()
   const { site } = useApp()
+  const { t } = useTranslation()
   const bookSlug = (router.query.slug as string) || ''
   // 路由为可选 catch-all（[[...doc]]）：doc 可能是数组或缺省
   const docSlug = Array.isArray(router.query.doc) ? (router.query.doc[0] || '') : ((router.query.doc as string) || '')
@@ -235,8 +237,8 @@ export default function Writer({ user }: WriterProps) {
   const filteredSlash = useMemo(() => {
     const q = slash.query.toLowerCase()
     if (!q) return SLASH_COMMANDS
-    return SLASH_COMMANDS.filter((c) => c.label.includes(slash.query) || c.kw.includes(q) || c.key.includes(q))
-  }, [slash.query])
+    return SLASH_COMMANDS.filter((c) => t(c.labelKey).includes(slash.query) || c.kw.includes(q) || c.key.includes(q))
+  }, [slash.query, t])
   const previewRef = useRef<HTMLDivElement>(null)
   // 预览内容防抖：输入时避免每键全量重渲染 Markdown
   const [previewHtml, setPreviewHtml] = useState('')
@@ -308,8 +310,8 @@ export default function Writer({ user }: WriterProps) {
         await loadTree(b)
         setBook(b)
       })
-      .catch((e) => showToast({ title: '书籍加载失败', message: (e as Error).message, tone: 'error' }))
-  }, [user, bookSlug, loadTree, showToast])
+      .catch((e) => showToast({ title: t('writer.bookLoadFailed'), message: (e as Error).message, tone: 'error' }))
+  }, [user, bookSlug, loadTree, showToast, t])
 
   function resetForm() {
     setCurrent(null)
@@ -323,9 +325,9 @@ export default function Writer({ user }: WriterProps) {
   async function confirmDiscard() {
     if (saveState !== 'dirty') return true
     return confirmAction({
-      title: '放弃未保存的更改',
-      message: '当前章节有未保存的更改，继续后这些修改将丢失。',
-      confirmLabel: '放弃并继续',
+      title: t('writer.discardTitle'),
+      message: t('writer.discardMsg'),
+      confirmLabel: t('writer.discardConfirm'),
       danger: true,
     })
   }
@@ -370,7 +372,7 @@ export default function Writer({ user }: WriterProps) {
             else localStorage.removeItem(draftKey(full.id))
           }
         } catch { /* 忽略 */ }
-      }).catch((e) => { if (active) showToast({ title: '章节加载失败', message: (e as Error).message, tone: 'error' }) })
+      }).catch((e) => { if (active) showToast({ title: t('writer.chapterLoadFailed'), message: (e as Error).message, tone: 'error' }) })
         .finally(() => { if (active) setDocumentLoading(false) })
       return () => { active = false }
     } else if (!docSlug) {
@@ -382,7 +384,7 @@ export default function Writer({ user }: WriterProps) {
   // 保存：opts.status 允许“发布”一次性覆盖状态
   const save = useCallback(async (opts?: { status?: DocumentStatus }) => {
     if (!book) return
-    if (!title.trim()) { showToast({ message: current ? '请填写章节标题' : '请先在左侧新建或选择一个章节，并填写标题', tone: 'error' }); return }
+    if (!title.trim()) { showToast({ message: current ? t('writer.needTitle') : t('writer.needSelectAndTitle'), tone: 'error' }); return }
     const effectiveStatus = opts?.status ?? status
     // 父章节状态变更且含子章节：询问是否把新状态一并应用到子章节
     let cascadeStatus = false
@@ -392,9 +394,9 @@ export default function Writer({ user }: WriterProps) {
       try { prevStatus = JSON.parse(snapshot.current)[2] } catch { /* 忽略 */ }
       if (effectiveStatus !== prevStatus) {
         cascadeStatus = await confirmAction({
-          title: `设为${STATUS_META[effectiveStatus as BookStatus]?.label || effectiveStatus}`,
-          message: `「${current.title}」包含 ${descendantCount} 个子章节。是否将子章节一并设为该状态？`,
-          confirmLabel: '本章及子章节', cancelLabel: '仅本章',
+          title: t('writer.setStatusTitle', { status: t(`book.status.${effectiveStatus}`) }),
+          message: t('writer.cascadeMsg', { title: current.title, n: descendantCount }),
+          confirmLabel: t('writer.cascadeConfirm'), cancelLabel: t('writer.cascadeCancel'),
         })
       }
     }
@@ -436,7 +438,7 @@ export default function Writer({ user }: WriterProps) {
       return true
     } catch (e) {
       setSaveState('dirty')
-      showToast({ title: '保存失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('writer.saveFailed'), message: (e as Error).message, tone: 'error' })
       return false
     }
   }, [book, title, content, status, parentId, sortOrder, allowComments, slug, current, loadTree]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -489,7 +491,7 @@ export default function Writer({ user }: WriterProps) {
   }
 
   async function publish() {
-    if (!title.trim()) { showToast({ message: current ? '请先填写章节标题再发布' : '请先在左侧新建或选择一个章节，并填写标题', tone: 'error' }); return }
+    if (!title.trim()) { showToast({ message: current ? t('writer.needTitlePublish') : t('writer.needSelectAndTitle'), tone: 'error' }); return }
     const published = await save({ status: 'published' })
     // 发布成功后跳转到书籍详情页，让作者立即看到读者视角的成书效果。
     if (published) router.push(`/book/detail/${encodeURIComponent(bookSlug)}`)
@@ -498,16 +500,16 @@ export default function Writer({ user }: WriterProps) {
   async function removeDoc(doc: Document) {
     if (!book) return
     if (!await confirmAction({
-      title: '删除章节',
-      message: `确定删除「${doc.title}」及其子章节吗？此操作不可撤销。`,
-      confirmLabel: '删除章节',
+      title: t('writer.deleteTitle'),
+      message: t('writer.deleteMsg', { title: doc.title }),
+      confirmLabel: t('writer.deleteConfirm'),
       danger: true,
     })) return
     try {
       await api(`/documents/${doc.id}`, { method: 'DELETE' })
       await loadTree(book)
       if (current?.id === doc.id) { resetForm(); router.push(`/book/writer/${encodeURIComponent(bookSlug)}`, undefined, { shallow: true }) }
-    } catch (e) { showToast({ title: '删除失败', message: (e as Error).message, tone: 'error' }) }
+    } catch (e) { showToast({ title: t('writer.deleteFailed'), message: (e as Error).message, tone: 'error' }) }
   }
 
   async function move(doc: Document, delta: -1 | 1) {
@@ -622,7 +624,7 @@ export default function Writer({ user }: WriterProps) {
     if (document.parent_id) setExpanded((value) => new Set(value).add(document.parent_id as number))
     if (book) await loadTree(book)
     await router.push(`/book/writer/${encodeURIComponent(bookSlug)}/${encodeURIComponent(document.slug)}`, undefined, { shallow: true })
-    showToast({ message: `已采集为草稿章节《${document.title}》`, tone: 'success' })
+    showToast({ message: t('writer.collectedDraft', { title: document.title }), tone: 'success' })
   }
 
   async function saveBookSettings() {
@@ -637,8 +639,8 @@ export default function Writer({ user }: WriterProps) {
       }
       const updated = await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
       setBook(updated)
-      showToast({ message: '书籍设置已保存', tone: 'success' })
-    } catch (e) { showToast({ title: '保存失败', message: (e as Error).message, tone: 'error' }) } finally { setSavingBook(false) }
+      showToast({ message: t('writer.bookSettingsSaved'), tone: 'success' })
+    } catch (e) { showToast({ title: t('writer.saveFailed'), message: (e as Error).message, tone: 'error' }) } finally { setSavingBook(false) }
   }
 
   async function applyRestoredDocument(restored: Document) {
@@ -655,7 +657,7 @@ export default function Writer({ user }: WriterProps) {
     loadedDocId.current = restored.id
     setCurrent(restored)
     setSaveState('saved')
-    showToast({ message: '历史版本已恢复，并已保留恢复前快照', tone: 'success' })
+    showToast({ message: t('writer.versionRestored'), tone: 'success' })
     if (book) await loadTree(book)
   }
 
@@ -679,28 +681,28 @@ export default function Writer({ user }: WriterProps) {
   }
 
   async function insertLink() {
-    const url = await requestInput({ title: '添加链接', label: '链接地址', defaultValue: 'https://', placeholder: 'https://example.com', confirmLabel: '插入链接' })
+    const url = await requestInput({ title: t('writer.addLinkTitle'), label: t('writer.addLinkLabel'), defaultValue: 'https://', placeholder: 'https://example.com', confirmLabel: t('writer.insertLinkBtn') })
     if (url) wrapSelection('[', `](${url})`)
   }
 
   async function insertImage() {
-    const url = await requestInput({ title: '添加图片', message: '请输入可公开访问的图片地址。', label: '图片地址', defaultValue: 'https://', placeholder: 'https://example.com/image.png', confirmLabel: '插入图片' })
+    const url = await requestInput({ title: t('writer.addImageTitle'), message: t('writer.addImageMsg'), label: t('writer.addImageLabel'), defaultValue: 'https://', placeholder: 'https://example.com/image.png', confirmLabel: t('writer.insertImageBtn') })
     if (url) wrapSelection('![', `](${url})`)
   }
 
   // collectWebContent 采集网页正文并以 Markdown 插入到光标处（不建新章节）。
   async function collectWebContent() {
-    const url = await requestInput({ title: '采集网页内容', message: '输入网页地址，自动抓取正文并以 Markdown 插入到光标处。', label: '网页地址', defaultValue: 'https://', placeholder: 'https://example.com/article', confirmLabel: '采集' })
+    const url = await requestInput({ title: t('writer.collectTitle'), message: t('writer.collectMsg'), label: t('writer.collectLabel'), defaultValue: 'https://', placeholder: 'https://example.com/article', confirmLabel: t('writer.collectBtn') })
     const target = (url || '').trim()
     if (!target || !/^https?:\/\//.test(target)) return
     setCollecting(true)
     try {
       const d = await api<{ title: string; markdown: string; source_url: string }>('/import/web-content', { method: 'POST', body: { url: target, render_mode: 'auto' } })
-      const block = (d.title ? `## ${d.title}\n\n` : '') + d.markdown + `\n\n> 来源：[原始网页](${d.source_url})\n`
+      const block = (d.title ? `## ${d.title}\n\n` : '') + d.markdown + `\n\n> ${t('writer.collectSource')}：[${t('writer.collectOrigin')}](${d.source_url})\n`
       insertText('\n' + block)
-      showToast({ message: '已采集网页内容', tone: 'success' })
+      showToast({ message: t('writer.webCollected'), tone: 'success' })
     } catch (e) {
-      showToast({ title: '采集失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('writer.collectFailed'), message: (e as Error).message, tone: 'error' })
     } finally {
       setCollecting(false)
     }
@@ -779,7 +781,7 @@ export default function Writer({ user }: WriterProps) {
   }
 
   function insertTable() {
-    insertText('\n| 列 1 | 列 2 |\n| --- | --- |\n| 单元格 | 单元格 |\n')
+    insertText(`\n| ${t('writer.tableCol')} 1 | ${t('writer.tableCol')} 2 |\n| --- | --- |\n| ${t('writer.tableCell')} | ${t('writer.tableCell')} |\n`)
   }
 
   // 插入结构化组件片段（Tabs / Note / Warning / Tip / Accordion / Steps）；阅读页与预览均可渲染
@@ -809,9 +811,9 @@ export default function Writer({ user }: WriterProps) {
     const value = el?.value ?? content
     const currentIcon = /<!--\s*icon:\s*([^>]+?)\s*-->/i.exec(value)?.[1]?.trim() || ''
     const input = await requestInput({
-      title: '设置章节图标',
-      message: '输入 FontAwesome 图标名（如 database、rocket；品牌图标用 “brands fa-github”）。留空则移除图标。',
-      label: '图标名', defaultValue: currentIcon, placeholder: 'database', confirmLabel: '保存',
+      title: t('writer.setIconTitle'),
+      message: t('writer.setIconMsg'),
+      label: t('writer.setIconLabel'), defaultValue: currentIcon, placeholder: 'database', confirmLabel: t('common.actions.save'),
     })
     if (input === null) return // 取消
     const icon = input.trim()
@@ -824,7 +826,7 @@ export default function Writer({ user }: WriterProps) {
       next = `<!-- icon: ${icon} -->\n` + value
     }
     setContent(next)
-    showToast({ message: icon ? '已设置章节图标' : '已移除章节图标', tone: 'success' })
+    showToast({ message: icon ? t('writer.iconSet') : t('writer.iconRemoved'), tone: 'success' })
   }
 
   // 可选目标语言（后台翻译服务负责实际转换）
@@ -846,12 +848,12 @@ export default function Writer({ user }: WriterProps) {
     if (!el) return
     const hasSelection = el.selectionStart !== el.selectionEnd
     const source = hasSelection ? el.value.slice(el.selectionStart, el.selectionEnd) : el.value
-    if (!source.trim()) { showToast({ message: '没有可翻译的内容', tone: 'error' }); return }
+    if (!source.trim()) { showToast({ message: t('writer.noTranslateContent'), tone: 'error' }); return }
     if (!hasSelection) {
       const okToReplace = await confirmAction({
-        title: `翻译为${label}`,
-        message: '将翻译整章内容并替换当前正文，是否继续？（可先选中部分文字仅翻译选区）',
-        confirmLabel: '翻译并替换',
+        title: t('writer.translateToTitle', { label }),
+        message: t('writer.translateMsg'),
+        confirmLabel: t('writer.translateConfirm'),
       })
       if (!okToReplace) return
     }
@@ -867,9 +869,9 @@ export default function Writer({ user }: WriterProps) {
       } else {
         setContent(d.text)
       }
-      showToast({ message: '已翻译', tone: 'success' })
+      showToast({ message: t('writer.translated'), tone: 'success' })
     } catch (e) {
-      showToast({ title: '翻译失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('writer.translateFailed'), message: (e as Error).message, tone: 'error' })
     } finally {
       setTranslating(false)
     }
@@ -890,11 +892,11 @@ export default function Writer({ user }: WriterProps) {
   // 上传图片文件并在光标处插入 Markdown；先插占位符，成功后替换、失败后移除。
   async function uploadAndInsertImage(file: File) {
     if (!file.type.startsWith('image/')) {
-      showToast({ title: '仅支持图片', message: '请选择图片文件', tone: 'error' })
+      showToast({ title: t('writer.onlyImages'), message: t('writer.selectImageFile'), tone: 'error' })
       return
     }
     const token = `uploading-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    const placeholder = `![上传中…](${token})`
+    const placeholder = `![${t('writer.uploadingImg')}](${token})`
     insertText(placeholder)
     setUploading(true)
     try {
@@ -902,12 +904,12 @@ export default function Writer({ user }: WriterProps) {
       fd.append('file', file)
       const res = await fetch(`${API_BASE}/api/v1/upload`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd })
       const payload = await res.json().catch(() => ({}))
-      if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
-      const alt = file.name.replace(/\.[^.]+$/, '') || '图片'
+      if (!res.ok || payload.success === false) throw new Error(payload.message || t('writer.uploadFailed'))
+      const alt = file.name.replace(/\.[^.]+$/, '') || t('writer.imageAlt')
       setContent((prev) => prev.replace(placeholder, `![${alt}](${payload.data.url})`))
     } catch (err) {
       setContent((prev) => prev.replace(placeholder, ''))
-      showToast({ title: '图片上传失败', message: (err as Error).message, tone: 'error' })
+      showToast({ title: t('writer.imageUploadFailed'), message: (err as Error).message, tone: 'error' })
     } finally {
       setUploading(false)
     }
@@ -987,7 +989,7 @@ export default function Writer({ user }: WriterProps) {
       : content.replace(new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), () => replaceText)
     setContent(next)
     setActiveMatch(0)
-    showToast({ message: `已替换 ${matches.length} 处`, tone: 'success' })
+    showToast({ message: t('writer.replacedCount', { n: matches.length }), tone: 'success' })
   }
 
   function closeFind() {
@@ -1192,7 +1194,7 @@ export default function Writer({ user }: WriterProps) {
     await router.push(href)
   }
 
-  if (!user) return <Loading className="min-h-screen" label="正在验证编辑权限…" />
+  if (!user) return <Loading className="min-h-screen" label={t('writer.verifyingPerms')} />
 
   const chapterPrefix = book?.chapter_prefix || ''
   const byId = new Map(flatDocs.map((d) => [d.id, d]))
@@ -1213,12 +1215,12 @@ export default function Writer({ user }: WriterProps) {
   if (!book) {
     return (
       <div className="flex h-screen items-center justify-center bg-warm">
-        <Loading label="正在加载书籍与章节…" />
+        <Loading label={t('writer.loadingBook')} />
       </div>
     )
   }
 
-  const titleText = current ? `${chapterPrefix}${current.title} · ${book.title}` : `新建章节 · ${book.title}`
+  const titleText = current ? `${chapterPrefix}${current.title} · ${book.title}` : `${t('writer.newChapterTitle')} · ${book.title}`
 
   const filteredTree = search.trim() ? filterTree(tree, search.trim()) : tree
 
@@ -1233,35 +1235,35 @@ export default function Writer({ user }: WriterProps) {
             {siteName}
           </Link>
           <span className="text-slate-300">/</span>
-          <Link href="/books" onClick={(event) => { event.preventDefault(); navigateAway('/books') }} className="shrink-0 text-slate-500 hover:text-primary-600">我的书籍</Link>
+          <Link href="/books" onClick={(event) => { event.preventDefault(); navigateAway('/books') }} className="shrink-0 text-slate-500 hover:text-primary-600">{t('writer.myBooks')}</Link>
           <span className="text-slate-300">/</span>
           <span className="truncate font-medium text-slate-900">{book.title}</span>
         </div>
         <div className="hidden items-center gap-1.5 text-sm text-slate-400 md:flex">
-          {saveState === 'saved' && <><CheckCircleIcon className="h-4 w-4 text-emerald-500" /> 所有更改已保存</>}
-          {saveState === 'dirty' && <><CloudIcon className="h-4 w-4 text-amber-500" /> 未保存的更改</>}
-          {saveState === 'saving' && <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> <span className="text-primary-600">保存中…</span></>}
+          {saveState === 'saved' && <><CheckCircleIcon className="h-4 w-4 text-emerald-500" /> {t('writer.allSaved')}</>}
+          {saveState === 'dirty' && <><CloudIcon className="h-4 w-4 text-amber-500" /> {t('writer.unsaved')}</>}
+          {saveState === 'saving' && <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> <span className="text-primary-600">{t('writer.savingState')}</span></>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {site.help_doc_url && (
-            <Button variant="ghost" title="Markdown 语法帮助" onClick={() => window.open(site.help_doc_url, '_blank', 'noopener,noreferrer')}>
-              <InfoCircleIcon className="h-4 w-4" /> <span className="hidden md:inline">帮助</span>
+            <Button variant="ghost" title={t('writer.mdHelp')} onClick={() => window.open(site.help_doc_url, '_blank', 'noopener,noreferrer')}>
+              <InfoCircleIcon className="h-4 w-4" /> <span className="hidden md:inline">{t('writer.help')}</span>
             </Button>
           )}
           <Button variant="ghost" onClick={() => setHistoryOpen(true)} disabled={!current}>
-            <HistoryIcon className="h-4 w-4" /> 历史
+            <HistoryIcon className="h-4 w-4" /> {t('writer.history')}
           </Button>
           <Button variant="ghost" className="hidden md:inline-flex" onClick={() => { setSplitPreview((v) => !v); setPreview(false) }}>
-            <ColumnsIcon className="h-4 w-4" /> {splitPreview ? '退出分栏' : '分栏'}
+            <ColumnsIcon className="h-4 w-4" /> {splitPreview ? t('writer.exitSplit') : t('writer.split')}
           </Button>
           <Button variant="ghost" onClick={() => { setPreview((p) => !p); setSplitPreview(false) }}>
-            <EyeIcon className="h-4 w-4" /> {preview ? '编辑' : '预览'}
+            <EyeIcon className="h-4 w-4" /> {preview ? t('writer.edit') : t('writer.preview')}
           </Button>
           <Button variant="outline" onClick={() => saveRef.current()} disabled={saveState === 'saving'}>
-            <SaveIcon className="h-4 w-4" /> {saveState === 'saving' ? '保存中…' : '保存'}
+            <SaveIcon className="h-4 w-4" /> {saveState === 'saving' ? t('writer.savingState') : t('writer.save')}
           </Button>
           <Button onClick={publish} disabled={saveState === 'saving'}>
-            <UploadIcon className="h-4 w-4" /> 发布
+            <UploadIcon className="h-4 w-4" /> {t('writer.publish')}
           </Button>
         </div>
       </header>
@@ -1285,10 +1287,10 @@ export default function Writer({ user }: WriterProps) {
           </div>
 
           <div className="px-3 pt-3">
-            <SegmentedTabs fullWidth size="sm" value={tab} ariaLabel="编辑器侧栏"
+            <SegmentedTabs fullWidth size="sm" value={tab} ariaLabel={t('writer.sidebarAria')}
               onChange={(value) => setTab(value as TabKey)} items={[
-                { value: 'toc', label: '目录' },
-                { value: 'settings', label: '书籍设置' },
+                { value: 'toc', label: t('writer.tabToc') },
+                { value: 'settings', label: t('writer.tabSettings') },
               ]} />
           </div>
 
@@ -1297,24 +1299,24 @@ export default function Writer({ user }: WriterProps) {
               <div className="p-3">
                 <div className="relative">
                   <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Input className="pl-9" placeholder="搜索章节" value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <Input className="pl-9" placeholder={t('writer.searchChapter')} value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <div className="relative mt-2.5">
                   <button onClick={() => createNew()}
                     className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50"
                     style={{ height: 'var(--control-height)' }}>
-                    + 新建章节
+                    + {t('writer.newChapterBtn')}
                   </button>
-                  <button onClick={() => setNewMenuOpen(!newMenuOpen)} aria-label="更多创建方式"
+                  <button onClick={() => setNewMenuOpen(!newMenuOpen)} aria-label={t('writer.moreCreate')}
                     className="absolute right-1 top-1 flex items-center justify-center rounded-md text-primary-600 hover:bg-primary-50"
                     style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
                     <ChevronDownIcon className="h-4 w-4" />
                   </button>
                   {newMenuOpen && (
                     <div className="absolute left-0 right-0 top-11 z-20 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                      <button onClick={() => { createNew(); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> 新建章节</button>
-                      <button onClick={() => { setNewMenuOpen(false); if (!current) { showToast({ message: '请先选择一个章节作为父级', tone: 'error' }); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> 新建子章节</button>
-                      <button onClick={() => openWebImport()} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> 从网页采集</button>
+                      <button onClick={() => { createNew(); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> {t('writer.newChapterBtn')}</button>
+                      <button onClick={() => { setNewMenuOpen(false); if (!current) { showToast({ message: t('writer.needParent'), tone: 'error' }); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> {t('writer.newSubChapter')}</button>
+                      <button onClick={() => openWebImport()} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> {t('writer.fromWeb')}</button>
                     </div>
                   )}
                 </div>
@@ -1322,7 +1324,7 @@ export default function Writer({ user }: WriterProps) {
               <div ref={tocScrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-3 pb-2"
                 onClick={(e) => { if (e.target === e.currentTarget) deselect() }}>
                 {filteredTree.length === 0 ? (
-                  <EmptyState>{search ? '没有匹配的章节' : '暂无章节'}</EmptyState>
+                  <EmptyState>{search ? t('writer.noMatch') : t('writer.noChapters')}</EmptyState>
                 ) : (
                   <TreeItems items={filteredTree} search={search.trim()} expanded={expanded} setExpanded={setExpanded}
                     currentId={current?.id ?? creatingUnder ?? undefined} chapterPrefix={chapterPrefix}
@@ -1336,52 +1338,52 @@ export default function Writer({ user }: WriterProps) {
                 )}
               </div>
               <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 text-xs text-slate-400">
-                <ListBulletIcon className="h-4 w-4" /> {flatDocs.length} 个章节
+                <ListBulletIcon className="h-4 w-4" /> {t('writer.chapterCount', { n: flatDocs.length })}
               </div>
             </div>
           ) : (
             <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto p-4">
-              <Field label="书籍标题"><Input value={bookForm.title} onChange={(e) => setBookForm({ ...bookForm, title: e.target.value })} /></Field>
-              <Field label="简介"><Textarea className="min-h-[72px]" value={bookForm.description} onChange={(e) => setBookForm({ ...bookForm, description: e.target.value })} /></Field>
-              <Field label="状态">
+              <Field label={t('writer.bookTitleLabel')}><Input value={bookForm.title} onChange={(e) => setBookForm({ ...bookForm, title: e.target.value })} /></Field>
+              <Field label={t('writer.intro')}><Textarea className="min-h-[72px]" value={bookForm.description} onChange={(e) => setBookForm({ ...bookForm, description: e.target.value })} /></Field>
+              <Field label={t('writer.statusLabel')}>
                 <Select value={bookForm.status} onChange={(v) => setBookForm({ ...bookForm, status: v as BookStatus })}
                   options={[
-                    { value: 'draft', label: '草稿' }, { value: 'in_progress', label: '进行中' },
-                    { value: 'published', label: '已发布' }, { value: 'completed', label: '已完成' },
-                    { value: 'archived', label: '已归档' },
+                    { value: 'draft', label: t('book.status.draft') }, { value: 'in_progress', label: t('book.status.in_progress') },
+                    { value: 'published', label: t('book.status.published') }, { value: 'completed', label: t('book.status.completed') },
+                    { value: 'archived', label: t('book.status.archived') },
                   ]} />
               </Field>
-              <Field label="可见性">
+              <Field label={t('writer.visibilityLabel')}>
                 <div className="grid grid-cols-2 gap-2">
-                  <VisibilityCard active={!bookForm.isPublic} onClick={() => setBookForm({ ...bookForm, isPublic: false })} title="仅自己可见" desc="尚未完成的内容" />
-                  <VisibilityCard active={bookForm.isPublic} onClick={() => setBookForm({ ...bookForm, isPublic: true })} title="公开访问" desc="所有访客可阅读" />
+                  <VisibilityCard active={!bookForm.isPublic} onClick={() => setBookForm({ ...bookForm, isPublic: false })} title={t('writer.visPrivate')} desc={t('writer.visPrivateDesc')} />
+                  <VisibilityCard active={bookForm.isPublic} onClick={() => setBookForm({ ...bookForm, isPublic: true })} title={t('writer.visPublic')} desc={t('writer.visPublicDesc')} />
                 </div>
               </Field>
-              <Field label="标签" hint="回车添加，最多 10 个">
+              <Field label={t('writer.tagsLabel')} hint={t('writer.tagsHint')}>
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition-colors focus-within:border-primary-500">
-                  {bookForm.tags.map((t) => (
-                    <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
-                      {t}
-                      <button type="button" aria-label={`移除 ${t}`} onClick={() => setBookForm({ ...bookForm, tags: bookForm.tags.filter((x) => x !== t) })}
+                  {bookForm.tags.map((tag) => (
+                    <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
+                      {tag}
+                      <button type="button" aria-label={t('writer.removeTag', { tag })} onClick={() => setBookForm({ ...bookForm, tags: bookForm.tags.filter((x) => x !== tag) })}
                         className="text-primary-400 hover:text-primary-700"><CloseIcon className="h-3 w-3" /></button>
                     </span>
                   ))}
                   <input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') { e.preventDefault(); const t = tagInput.trim(); if (t && !bookForm.tags.includes(t) && bookForm.tags.length < 10) { setBookForm({ ...bookForm, tags: [...bookForm.tags, t] }) } setTagInput('') }
+                      if (e.key === 'Enter') { e.preventDefault(); const tag = tagInput.trim(); if (tag && !bookForm.tags.includes(tag) && bookForm.tags.length < 10) { setBookForm({ ...bookForm, tags: [...bookForm.tags, tag] }) } setTagInput('') }
                       else if (e.key === 'Backspace' && !tagInput && bookForm.tags.length) { setBookForm({ ...bookForm, tags: bookForm.tags.slice(0, -1) }) }
                     }}
-                    onBlur={() => { const t = tagInput.trim(); if (t && !bookForm.tags.includes(t) && bookForm.tags.length < 10) { setBookForm({ ...bookForm, tags: [...bookForm.tags, t] }) } setTagInput('') }}
-                    placeholder={bookForm.tags.length >= 10 ? '已达上限' : '添加标签'}
+                    onBlur={() => { const tag = tagInput.trim(); if (tag && !bookForm.tags.includes(tag) && bookForm.tags.length < 10) { setBookForm({ ...bookForm, tags: [...bookForm.tags, tag] }) } setTagInput('') }}
+                    placeholder={bookForm.tags.length >= 10 ? t('writer.tagsLimit') : t('writer.addTag')}
                     disabled={bookForm.tags.length >= 10}
                     className="min-w-[100px] flex-1 border-0 bg-transparent p-0 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-0" />
                 </div>
               </Field>
-              <Field label="章节前缀"><Input value={bookForm.chapterPrefix} onChange={(e) => setBookForm({ ...bookForm, chapterPrefix: e.target.value })} placeholder="第" /></Field>
-              <Field label="子章节状态跟随父章节" hint="开启后，新建子章节的默认发布状态与父章节一致。">
-                <Switch ariaLabel="子章节状态跟随父章节" checked={bookForm.childStatusFollowParent} onChange={(v) => setBookForm({ ...bookForm, childStatusFollowParent: v })} />
+              <Field label={t('writer.chapterPrefixLabel')}><Input value={bookForm.chapterPrefix} onChange={(e) => setBookForm({ ...bookForm, chapterPrefix: e.target.value })} placeholder="第" /></Field>
+              <Field label={t('writer.followChild')} hint={t('writer.followChildHint')}>
+                <Switch ariaLabel={t('writer.followChild')} checked={bookForm.childStatusFollowParent} onChange={(v) => setBookForm({ ...bookForm, childStatusFollowParent: v })} />
               </Field>
-              <Button className="w-full" loading={savingBook} onClick={saveBookSettings}>保存书籍设置</Button>
+              <Button className="w-full" loading={savingBook} onClick={saveBookSettings}>{t('writer.saveBookSettings')}</Button>
             </div>
           )}
         </aside>
@@ -1390,7 +1392,7 @@ export default function Writer({ user }: WriterProps) {
         <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
           {documentLoading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/75 backdrop-blur-[1px]">
-              <Loading label="正在加载章节内容…" />
+              <Loading label={t('writer.loadingChapter')} />
             </div>
           )}
           <div className="flex min-h-0 w-full flex-1 flex-col px-8 py-6">
@@ -1400,13 +1402,13 @@ export default function Writer({ user }: WriterProps) {
             {/* 标题：原生输入，无边框，避免与 Input 组件的 border 样式冲突 */}
             <input
               className="w-full shrink-0 border-0 bg-transparent p-0 text-3xl font-bold text-ink placeholder:text-slate-300 focus:outline-none focus:ring-0"
-              placeholder="章节标题" value={title} onChange={(e) => setTitle(e.target.value)} />
+              placeholder={t('writer.chapterTitlePlaceholder')} value={title} onChange={(e) => setTitle(e.target.value)} />
 
             {draftRecovery && (
               <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
-                <span className="flex-1">发现本地未保存的草稿（{formatDate(new Date(draftRecovery.ts).toISOString()).slice(5)}），是否恢复？</span>
-                <Button size="sm" variant="outline" onClick={() => { setContent(draftRecovery.content); setDraftRecovery(null) }}>恢复草稿</Button>
-                <Button size="sm" variant="ghost" onClick={() => { if (current) { try { localStorage.removeItem(draftKey(current.id)) } catch { /* 忽略 */ } } setDraftRecovery(null) }}>丢弃</Button>
+                <span className="flex-1">{t('writer.draftFound', { time: formatDate(new Date(draftRecovery.ts).toISOString()).slice(5) })}</span>
+                <Button size="sm" variant="outline" onClick={() => { setContent(draftRecovery.content); setDraftRecovery(null) }}>{t('writer.restoreDraft')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => { if (current) { try { localStorage.removeItem(draftKey(current.id)) } catch { /* 忽略 */ } } setDraftRecovery(null) }}>{t('writer.discardDraft')}</Button>
               </div>
             )}
 
@@ -1419,41 +1421,41 @@ export default function Writer({ user }: WriterProps) {
                   <ToolbarSelect onPick={(prefix) => insertAtLineStart(prefix)} />
                   <ToolbarOutline outline={outline} onJump={jumpToHeading} />
                   <ToolbarDivider />
-                  <ToolbarButton title="加粗 (Ctrl/⌘+B)" onClick={() => wrapSelection('**')}><span className="font-bold">B</span></ToolbarButton>
-                  <ToolbarButton title="斜体 (Ctrl/⌘+I)" onClick={() => wrapSelection('*')}><span className="italic">I</span></ToolbarButton>
-                  <ToolbarButton title="删除线" onClick={() => wrapSelection('~~')}><StrikethroughIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.bold')} onClick={() => wrapSelection('**')}><span className="font-bold">B</span></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.italic')} onClick={() => wrapSelection('*')}><span className="italic">I</span></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.strike')} onClick={() => wrapSelection('~~')}><StrikethroughIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="链接 (Ctrl/⌘+K)" onClick={insertLink}><LinkIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title="引用" onClick={() => insertAtLineStart('> ')}><QuoteIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title="行内代码" onClick={() => wrapSelection('`')}><CodeIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title="代码块" onClick={insertCodeBlock}><CodeBlockIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.link')} onClick={insertLink}><LinkIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.quote')} onClick={() => insertAtLineStart('> ')}><QuoteIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.inlineCode')} onClick={() => wrapSelection('`')}><CodeIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.codeBlock')} onClick={insertCodeBlock}><CodeBlockIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="无序列表" onClick={() => insertAtLineStart('- ')}><ListBulletIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title="有序列表" onClick={() => insertAtLineStart('1. ')}><ListOrderedIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title="任务列表" onClick={() => insertAtLineStart('- [ ] ')}><CheckSquareIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title="表格" onClick={insertTable}><TableIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.ul')} onClick={() => insertAtLineStart('- ')}><ListBulletIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.ol')} onClick={() => insertAtLineStart('1. ')}><ListOrderedIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.task')} onClick={() => insertAtLineStart('- [ ] ')}><CheckSquareIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.table')} onClick={insertTable}><TableIcon className="h-4 w-4" /></ToolbarButton>
                   <span className="relative">
-                    <ToolbarButton title="插入组件（标签页 / 提示块 / 子章节目录）" onClick={() => setInsertMenuOpen((v) => !v)}>
+                    <ToolbarButton title={t('writer.tb.insert')} onClick={() => setInsertMenuOpen((v) => !v)}>
                       <ColumnsIcon className="h-4 w-4" />
                     </ToolbarButton>
                     {insertMenuOpen && (
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setInsertMenuOpen(false)} />
                         <div className="absolute left-0 top-9 z-20 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                          <button type="button" onClick={() => insertComponent('tabs')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">标签页 Tabs</button>
-                          <button type="button" onClick={() => insertComponent('note')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">备注 Note</button>
-                          <button type="button" onClick={() => insertComponent('tip')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">提示 Tip</button>
-                          <button type="button" onClick={() => insertComponent('warning')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">警告 Warning</button>
-                          <button type="button" onClick={() => insertComponent('accordion')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">折叠面板 Accordion</button>
-                          <button type="button" onClick={() => insertComponent('steps')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">步骤 Steps</button>
+                          <button type="button" onClick={() => insertComponent('tabs')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">{t('writer.insertMenu.tabs')}</button>
+                          <button type="button" onClick={() => insertComponent('note')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">{t('writer.insertMenu.note')}</button>
+                          <button type="button" onClick={() => insertComponent('tip')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">{t('writer.insertMenu.tip')}</button>
+                          <button type="button" onClick={() => insertComponent('warning')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">{t('writer.insertMenu.warning')}</button>
+                          <button type="button" onClick={() => insertComponent('accordion')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">{t('writer.insertMenu.accordion')}</button>
+                          <button type="button" onClick={() => insertComponent('steps')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">{t('writer.insertMenu.steps')}</button>
                           <div className="my-1 h-px bg-slate-100" />
-                          <button type="button" onClick={insertChildrenToc} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">子章节目录</button>
+                          <button type="button" onClick={insertChildrenToc} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">{t('writer.insertMenu.children')}</button>
                         </div>
                       </>
                     )}
                   </span>
                   <span className="relative">
-                    <ToolbarButton title="章节元数据（图标等）" onClick={() => setMetaMenuOpen((v) => !v)}>
+                    <ToolbarButton title={t('writer.tb.meta')} onClick={() => setMetaMenuOpen((v) => !v)}>
                       <i className="fa-solid fa-tags text-[15px]" aria-hidden="true" />
                     </ToolbarButton>
                     {metaMenuOpen && (
@@ -1461,7 +1463,7 @@ export default function Writer({ user }: WriterProps) {
                         <div className="fixed inset-0 z-10" onClick={() => setMetaMenuOpen(false)} />
                         <div className="absolute left-0 top-9 z-20 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                           <button type="button" onClick={() => void setDocIcon()} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">
-                            <i className="fa-solid fa-icons w-4 text-center text-slate-400" aria-hidden="true" /> 章节图标
+                            <i className="fa-solid fa-icons w-4 text-center text-slate-400" aria-hidden="true" /> {t('writer.tb.chapterIcon')}
                           </button>
                         </div>
                       </>
@@ -1469,7 +1471,7 @@ export default function Writer({ user }: WriterProps) {
                   </span>
                   {site.translation_enabled && (
                     <span className="relative">
-                      <ToolbarButton title={translating ? '翻译中…' : '翻译（选区或整章）'} onClick={() => { if (!translating) setTranslateMenuOpen((v) => !v) }}>
+                      <ToolbarButton title={translating ? t('writer.tb.translating') : t('writer.tb.translate')} onClick={() => { if (!translating) setTranslateMenuOpen((v) => !v) }}>
                         {translating ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> : <GlobeIcon className="h-4 w-4" />}
                       </ToolbarButton>
                       {translateMenuOpen && (
@@ -1486,11 +1488,11 @@ export default function Writer({ user }: WriterProps) {
                     </span>
                   )}
                   <ToolbarDivider />
-                  <ToolbarButton title="查找替换 (Ctrl/⌘+F)" onClick={() => setFindOpen((v) => !v)}><SearchIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.find')} onClick={() => setFindOpen((v) => !v)}><SearchIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="上传图片" onClick={() => fileInputRef.current?.click()}><UploadIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title="图片链接" onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title={collecting ? '采集中…' : '采集网页内容'} onClick={() => { if (!collecting) void collectWebContent() }}>
+                  <ToolbarButton title={t('writer.tb.uploadImage')} onClick={() => fileInputRef.current?.click()}><UploadIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.imageLink')} onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
+                  <ToolbarButton title={collecting ? t('writer.tb.collecting') : t('writer.tb.collect')} onClick={() => { if (!collecting) void collectWebContent() }}>
                     {collecting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> : <GlobeIcon className="h-4 w-4" />}
                   </ToolbarButton>
                   <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
@@ -1540,7 +1542,7 @@ export default function Writer({ user }: WriterProps) {
                   <textarea ref={textareaRef}
                     className="min-h-0 w-full flex-1 resize-none border-b border-slate-200 bg-transparent px-6 py-5 font-mono leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 md:w-1/2 md:border-b-0 md:border-r"
                     style={{ fontSize }}
-                    placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片，输入 / 唤起命令）" value={content}
+                    placeholder={t('writer.editorPlaceholder')} value={content}
                     onChange={(e) => { setContent(e.target.value); refreshSlash() }}
                     onKeyDown={onEditorKeyDown}
                     onPaste={onEditorPaste}
@@ -1555,7 +1557,7 @@ export default function Writer({ user }: WriterProps) {
                 <textarea ref={textareaRef}
                   className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-6 py-5 font-mono leading-7 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
                   style={{ fontSize }}
-                  placeholder="使用 Markdown 编写章节内容…（可直接粘贴或拖入图片，输入 / 唤起命令）" value={content}
+                  placeholder={t('writer.editorPlaceholder')} value={content}
                   onChange={(e) => { setContent(e.target.value); refreshSlash() }}
                   onKeyDown={onEditorKeyDown}
                   onPaste={onEditorPaste}
@@ -1566,28 +1568,28 @@ export default function Writer({ user }: WriterProps) {
               <div className="flex shrink-0 items-center justify-between border-t border-slate-200 px-4 py-2.5 text-xs text-slate-400">
                 <span className="flex items-center gap-2">
                   <span className="flex items-center gap-1">Markdown <ChevronDownIcon className="h-3.5 w-3.5" /></span>
-                  <button type="button" onClick={() => setFocusMode((v) => !v)} aria-label={focusMode ? '退出专注模式' : '专注模式'}
+                  <button type="button" onClick={() => setFocusMode((v) => !v)} aria-label={focusMode ? t('writer.exitFocusMode') : t('writer.focusMode')}
                     className="flex items-center gap-1 rounded px-1.5 py-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
                     {focusMode ? <MinimizeIcon className="h-3.5 w-3.5" /> : <MaximizeIcon className="h-3.5 w-3.5" />}
-                    {focusMode ? '退出专注' : '专注'}
+                    {focusMode ? t('writer.exitFocus') : t('writer.focus')}
                   </button>
-                  <button type="button" onClick={() => setShortcutsOpen(true)} aria-label="快捷键"
+                  <button type="button" onClick={() => setShortcutsOpen(true)} aria-label={t('writer.shortcuts')}
                     className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-[10px] font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
                     ?
                   </button>
                   <span className="flex items-center overflow-hidden rounded border border-slate-200">
                     <button type="button" onClick={() => setFontSize((s) => Math.max(12, s - 1))} disabled={fontSize <= 12}
-                      aria-label="减小字号" className="px-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40">A-</button>
+                      aria-label={t('writer.decreaseFont')} className="px-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40">A-</button>
                     <span className="px-1 tabular-nums text-slate-400">{fontSize}</span>
                     <button type="button" onClick={() => setFontSize((s) => Math.min(22, s + 1))} disabled={fontSize >= 22}
-                      aria-label="增大字号" className="px-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40">A+</button>
+                      aria-label={t('writer.increaseFont')} className="px-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40">A+</button>
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
-                  {uploading && <span className="flex items-center gap-1 text-primary-500"><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" /> 上传中…</span>}
-                  <span>{wordCount} 字{readingMinutes > 0 && ` · 约 ${readingMinutes} 分钟`}</span>
+                  {uploading && <span className="flex items-center gap-1 text-primary-500"><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" /> {t('writer.uploadingImg')}</span>}
+                  <span>{t('writer.wordCount', { n: wordCount })}{readingMinutes > 0 && ` · ${t('writer.readingMinutes', { n: readingMinutes })}`}</span>
                 </span>
-                {current ? <span>更新于 {formatDate(current.updated_at).slice(11)}</span> : <span />}
+                {current ? <span>{t('writer.updatedAt', { time: formatDate(current.updated_at).slice(11) })}</span> : <span />}
               </div>
             </div>
           </div>
@@ -1600,25 +1602,25 @@ export default function Writer({ user }: WriterProps) {
                 <button key={c.key} type="button"
                   onMouseDown={(e) => { e.preventDefault(); selectSlash(c) }}
                   className={`block w-full px-3 py-1.5 text-left ${i === Math.min(slash.index, filteredSlash.length - 1) ? 'bg-primary-50 text-primary-700' : 'text-slate-700 hover:bg-slate-50'}`}>
-                  {c.label}
+                  {t(c.labelKey)}
                 </button>
               ))}
             </div>
           )}
 
-          <Modal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} title="编辑器快捷键">
+          <Modal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} title={t('writer.shortcutsTitle')}>
             <dl className="space-y-2.5">
               {[
-                ['保存', '⌘/Ctrl + S'],
-                ['加粗 / 斜体 / 链接', '⌘/Ctrl + B / I / K'],
-                ['查找替换', '⌘/Ctrl + F'],
-                ['复制整行', '⌘/Ctrl + Shift + D'],
-                ['上/下移动整行', 'Alt + ↑ / ↓'],
-                ['插入命令菜单', '/（行首或空格后）'],
-                ['包裹选中文本', '选中后按 ( [ { ` * _ ~ " \''],
-                ['列表续行 / 空项退出', 'Enter'],
-                ['列表缩进 / 反缩进', 'Tab / Shift + Tab'],
-                ['退出专注 / 关闭菜单', 'Esc'],
+                [t('writer.sc.save'), '⌘/Ctrl + S'],
+                [t('writer.sc.format'), '⌘/Ctrl + B / I / K'],
+                [t('writer.sc.find'), '⌘/Ctrl + F'],
+                [t('writer.sc.dupLine'), '⌘/Ctrl + Shift + D'],
+                [t('writer.sc.moveLine'), 'Alt + ↑ / ↓'],
+                [t('writer.sc.slashMenu'), t('writer.sc.slashMenuKey')],
+                [t('writer.sc.wrap'), '( [ { ` * _ ~ " \''],
+                [t('writer.sc.listContinue'), 'Enter'],
+                [t('writer.sc.indent'), 'Tab / Shift + Tab'],
+                [t('writer.sc.escape'), 'Esc'],
               ].map(([action, keys]) => (
                 <div key={action} className="flex items-center justify-between gap-4">
                   <dt className="text-sm text-slate-600">{action}</dt>
@@ -1631,25 +1633,25 @@ export default function Writer({ user }: WriterProps) {
 
         {/* 右栏：章节设置 */}
         <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-slate-200 bg-white p-4 xl:block">
-          <h2 className="mb-4 font-bold text-slate-900">章节设置</h2>
+          <h2 className="mb-4 font-bold text-slate-900">{t('writer.chapterSettings')}</h2>
           <div className="space-y-4">
-            <Field label="发布状态">
+            <Field label={t('writer.publishStatus')}>
               <Select value={status} onChange={(v) => setStatus(v as DocumentStatus)}
                 leading={<span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_META[status].dot}`} />}
-                options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }, { value: 'archived', label: '已归档' }]} />
+                options={[{ value: 'draft', label: t('book.status.draft') }, { value: 'published', label: t('book.status.published') }, { value: 'archived', label: t('book.status.archived') }]} />
             </Field>
-            <Field label="父级章节">
+            <Field label={t('writer.parentChapter')}>
               <Select value={parentId} onChange={(v) => setParentId(v)}
-                options={[{ value: '', label: '作为顶级章节' }, ...parentCandidates.map((d) => ({ value: String(d.id), label: `${chapterPrefix}${d.title}` }))]} />
+                options={[{ value: '', label: t('writer.asTopLevel') }, ...parentCandidates.map((d) => ({ value: String(d.id), label: `${chapterPrefix}${d.title}` }))]} />
             </Field>
-            <Field label="排序">
+            <Field label={t('writer.sortOrder')}>
               <Input type="number" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value) || 0)} />
             </Field>
-            <Field label="文档路径" hint="URL 中的 slug；留空则按标题自动生成。仅小写字母、数字和中划线。">
-              <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="留空则按标题自动生成" />
+            <Field label={t('writer.docPath')} hint={t('writer.docPathHint')}>
+              <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder={t('writer.docPathPlaceholder')} />
             </Field>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700">公开后允许评论</span>
+              <span className="text-sm font-medium text-slate-700">{t('writer.allowComments')}</span>
               <button role="switch" aria-checked={allowComments} onClick={() => setAllowComments(!allowComments)}
                 className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${allowComments ? 'bg-primary-500' : 'bg-slate-300'}`}>
                 <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${allowComments ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
@@ -1658,48 +1660,48 @@ export default function Writer({ user }: WriterProps) {
           </div>
 
           <div className="mt-6 border-t border-slate-100 pt-5">
-            <h3 className="mb-3 font-semibold text-slate-900">本章信息</h3>
+            <h3 className="mb-3 font-semibold text-slate-900">{t('writer.chapterInfo')}</h3>
             <dl className="space-y-3 text-sm">
-              <div><dt className="text-slate-400">创建时间</dt><dd className="mt-0.5 text-slate-700">{current ? formatDate(current.created_at) : '-'}</dd></div>
-              <div><dt className="text-slate-400">更新时间</dt><dd className="mt-0.5 text-slate-700">{current ? formatDate(current.updated_at) : '-'}</dd></div>
+              <div><dt className="text-slate-400">{t('writer.createdTime')}</dt><dd className="mt-0.5 text-slate-700">{current ? formatDate(current.created_at) : '-'}</dd></div>
+              <div><dt className="text-slate-400">{t('writer.updatedTime')}</dt><dd className="mt-0.5 text-slate-700">{current ? formatDate(current.updated_at) : '-'}</dd></div>
             </dl>
           </div>
 
           <div className="mt-6 border-t border-slate-100 pt-5">
             <Button variant="outline" className="w-full" onClick={() => setHistoryOpen(true)} disabled={!current}>
-              <HistoryIcon className="h-4 w-4" /> 查看版本历史
+              <HistoryIcon className="h-4 w-4" /> {t('writer.viewVersions')}
             </Button>
           </div>
 
           <div className="mt-6 border-t border-slate-100 pt-5">
             <button onClick={() => current && removeDoc(current)} disabled={!current}
               className="flex items-center gap-1.5 text-sm text-rose-500 transition-colors hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40">
-              <TrashIcon className="h-4 w-4" /> 删除本章
+              <TrashIcon className="h-4 w-4" /> {t('writer.deleteChapter')}
             </button>
           </div>
         </aside>
       </div>
       <ContextMenu open={chapterMenu !== null} x={chapterMenu?.x ?? 0} y={chapterMenu?.y ?? 0}
-        align={chapterMenu?.align} flipY={chapterMenu?.flipY} onClose={closeChapterMenu} label="章节操作">
+        align={chapterMenu?.align} flipY={chapterMenu?.flipY} onClose={closeChapterMenu} label={t('writer.chapterActions')}>
         <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) createSiblingOf(d) }}>
-          <FileTextIcon className="h-4 w-4" /> 新建章节
+          <FileTextIcon className="h-4 w-4" /> {t('writer.newChapterBtn')}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) createChildOf(d) }}>
-          <FolderIcon className="h-4 w-4" /> 新建子章节
+          <FolderIcon className="h-4 w-4" /> {t('writer.newSubChapter')}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) openWebImport(d) }}>
-          <GlobeIcon className="h-4 w-4" /> 从网页采集
+          <GlobeIcon className="h-4 w-4" /> {t('writer.fromWeb')}
         </ContextMenuItem>
         <div role="separator" className="my-1 border-t border-slate-100" />
         <ContextMenuItem onClick={() => { if (chapterMenu) move(chapterMenu.doc, -1); closeChapterMenu() }}>
-          <i className="fa-solid fa-arrow-up" aria-hidden="true" /> 上移
+          <i className="fa-solid fa-arrow-up" aria-hidden="true" /> {t('writer.moveUp')}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => { if (chapterMenu) move(chapterMenu.doc, 1); closeChapterMenu() }}>
-          <i className="fa-solid fa-arrow-down" aria-hidden="true" /> 下移
+          <i className="fa-solid fa-arrow-down" aria-hidden="true" /> {t('writer.moveDown')}
         </ContextMenuItem>
         <div role="separator" className="my-1 border-t border-slate-100" />
         <ContextMenuItem danger onClick={() => { if (chapterMenu) removeDoc(chapterMenu.doc); closeChapterMenu() }}>
-          <TrashIcon className="h-4 w-4" /> 删除
+          <TrashIcon className="h-4 w-4" /> {t('writer.deleteAction')}
         </ContextMenuItem>
       </ContextMenu>
       <RevisionDrawer
@@ -1727,11 +1729,11 @@ export default function Writer({ user }: WriterProps) {
 /* ── 子组件 ── */
 
 const REVISION_REASON_LABEL: Record<DocumentRevisionSummary['reason'], string> = {
-  create: '创建章节',
-  save: '手动保存',
-  publish: '发布版本',
-  pre_restore: '恢复前备份',
-  restore: '恢复完成',
+  create: 'writer.rev.create',
+  save: 'writer.rev.save',
+  publish: 'writer.rev.publish',
+  pre_restore: 'writer.rev.pre_restore',
+  restore: 'writer.rev.restore',
 }
 
 type WebRenderMode = 'auto' | 'static' | 'browser'
@@ -1744,6 +1746,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
   onClose: () => void
   onImported: (document: Document) => Promise<void>
 }) {
+  const { t } = useTranslation()
   const [url, setURL] = useState('')
   const [title, setTitle] = useState('')
   const [renderMode, setRenderMode] = useState<WebRenderMode>('auto')
@@ -1771,7 +1774,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
 
   async function collect() {
     if (!url.trim()) {
-      setError('请输入要采集的网页地址')
+      setError(t('writer.needCollectUrl'))
       return
     }
     setLoading(true)
@@ -1795,7 +1798,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4 backdrop-blur-[2px]"
-      role="dialog" aria-modal="true" aria-label="从网页采集章节"
+      role="dialog" aria-modal="true" aria-label={t('writer.webCollectAria')}
       onMouseDown={(event) => { if (!loading && event.target === event.currentTarget) onClose() }}>
       <section className="flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <header className="flex shrink-0 items-start justify-between border-b border-slate-100 px-6 py-5">
@@ -1804,13 +1807,13 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
               <GlobeIcon className="h-5 w-5" />
             </span>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">从网页采集章节</h2>
+              <h2 className="text-lg font-bold text-slate-900">{t('writer.webCollectTitle')}</h2>
               <p className="mt-1 text-sm text-slate-500">
-                {parent ? `将作为《${parent.title}》的子章节保存` : '将作为顶级章节保存'}，默认保持草稿状态。
+                {parent ? t('writer.saveAsChildOf', { title: parent.title }) : t('writer.saveAsTopLevel')}{t('writer.keepDraft')}
               </p>
             </div>
           </div>
-          <button type="button" aria-label="关闭网页采集" disabled={loading} onClick={onClose}
+          <button type="button" aria-label={t('writer.closeWebCollect')} disabled={loading} onClick={onClose}
             className="flex items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40"
             style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <CloseIcon className="h-5 w-5" />
@@ -1818,27 +1821,27 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
         </header>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6">
-          <Field label="网页地址" hint="自动提取正文，导航、页头、页脚、侧栏、广告、评论与相关推荐不会写入章节。">
+          <Field label={t('writer.webUrl')} hint={t('writer.webUrlHint')}>
             <Input type="url" value={url} onChange={(event) => setURL(event.target.value)}
               placeholder="https://example.com/article" leading={<GlobeIcon className="h-4 w-4" />} />
           </Field>
-          <Field label={<>章节标题 <span className="font-normal text-slate-400">（可选）</span></>} hint="留空时使用网页标题。">
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="使用网页标题" />
+          <Field label={<>{t('writer.chapterTitleFieldLabel')} <span className="font-normal text-slate-400">{t('writer.optional')}</span></>} hint={t('writer.chapterTitleHint')}>
+            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t('writer.useWebTitle')} />
           </Field>
-          <Field label="解析方式" hint={browserAvailable ? undefined : '浏览器渲染需管理员在后台「插件」中安装无头浏览器插件；当前仅可静态抓取。'}>
+          <Field label={t('writer.parseMethod')} hint={browserAvailable ? undefined : t('writer.parseHint')}>
             <Select menuPlacement="top" value={renderMode} onChange={(value) => setRenderMode(value as WebRenderMode)} options={[
-              { value: 'auto', label: '自动识别（推荐）' },
-              { value: 'static', label: '仅静态抓取' },
-              ...(browserAvailable ? [{ value: 'browser', label: '使用浏览器运行 JavaScript' }] : []),
+              { value: 'auto', label: t('writer.parseAuto') },
+              { value: 'static', label: t('writer.parseStatic') },
+              ...(browserAvailable ? [{ value: 'browser', label: t('writer.parseBrowser') }] : []),
             ]} />
           </Field>
 
           {error && <div role="alert" className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-600 [overflow-wrap:anywhere]">{error}</div>}
-          {loading && <div className="rounded-xl border border-primary-100 bg-primary-50/50 px-4 py-4"><Loading className="py-1" label="正在提取网页正文并构建章节…" /></div>}
+          {loading && <div className="rounded-xl border border-primary-100 bg-primary-50/50 px-4 py-4"><Loading className="py-1" label={t('writer.extracting')} /></div>}
 
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
-            <Button variant="outline" disabled={loading} onClick={onClose}>取消</Button>
-            <Button loading={loading} onClick={collect}>采集为章节</Button>
+            <Button variant="outline" disabled={loading} onClick={onClose}>{t('common.actions.cancel')}</Button>
+            <Button loading={loading} onClick={collect}>{t('writer.collectAsChapter')}</Button>
           </div>
         </div>
       </section>
@@ -1856,6 +1859,7 @@ function RevisionDrawer({
   onClose: () => void
   onRestored: (document: Document) => Promise<void>
 }) {
+  const { t } = useTranslation()
   const { confirmAction } = useFeedback()
   const [result, setResult] = useState<PageResult<DocumentRevisionSummary> | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -1936,25 +1940,25 @@ function RevisionDrawer({
   const diffRows = useMemo(() => (detail ? diffLines(detail.content, compareContent) : []), [detail, compareContent])
   const stats = useMemo(() => diffStats(diffRows), [diffRows])
   const compareOptions = useMemo(() => {
-    const opts = [{ value: 'current', label: '当前编辑内容' }]
+    const opts = [{ value: 'current', label: t('writer.currentEdit') }]
     for (const revision of result?.items || []) {
       if (revision.id === selectedId) continue
-      opts.push({ value: String(revision.id), label: `${REVISION_REASON_LABEL[revision.reason]} · ${formatDate(revision.created_at)}` })
+      opts.push({ value: String(revision.id), label: `${t(REVISION_REASON_LABEL[revision.reason])} · ${formatDate(revision.created_at)}` })
     }
     return opts
-  }, [result, selectedId])
+  }, [result, selectedId, t])
 
   if (!open || !document) return null
 
   async function restore() {
     if (hasUnsavedChanges) {
-      setError('当前编辑内容尚未保存。请关闭版本历史并先手动保存，再执行恢复。')
+      setError(t('writer.unsavedRestoreWarn'))
       return
     }
     if (!detail || !await confirmAction({
-      title: '恢复历史版本',
-      message: `确定恢复到 ${formatDate(detail.created_at)} 的版本吗？当前内容会先自动备份。`,
-      confirmLabel: '恢复版本',
+      title: t('writer.restoreVersionTitle'),
+      message: t('writer.restoreVersionMsg', { time: formatDate(detail.created_at) }),
+      confirmLabel: t('writer.restoreVersionConfirm'),
     })) return
     setRestoring(true)
     setError('')
@@ -1986,7 +1990,7 @@ function RevisionDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/25 backdrop-blur-[1px]" role="dialog" aria-modal="true" aria-label="章节版本历史" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/25 backdrop-blur-[1px]" role="dialog" aria-modal="true" aria-label={t('writer.versionHistoryAria')} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <section className="flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-5">
           <div className="flex min-w-0 items-center gap-3">
@@ -1994,11 +1998,11 @@ function RevisionDrawer({
               <HistoryIcon className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <h2 className="truncate font-bold text-slate-900">版本历史</h2>
-              <p className="truncate text-xs text-slate-500">{document.title} · 每次手动保存均生成版本</p>
+              <h2 className="truncate font-bold text-slate-900">{t('writer.versionHistory')}</h2>
+              <p className="truncate text-xs text-slate-500">{document.title} · {t('writer.everyManualSave')}</p>
             </div>
           </div>
-          <button type="button" aria-label="关闭版本历史" onClick={onClose}
+          <button type="button" aria-label={t('writer.closeVersionHistory')} onClick={onClose}
             className="flex items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
             style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <CloseIcon className="h-5 w-5" />
@@ -2010,9 +2014,9 @@ function RevisionDrawer({
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <aside className="h-52 shrink-0 overflow-y-auto border-b border-slate-200 bg-slate-50/70 p-3 md:h-auto md:w-72 md:border-b-0 md:border-r">
             {listLoading ? (
-              <Loading className="h-full py-8" label="正在加载版本…" />
+              <Loading className="h-full py-8" label={t('writer.loadingVersions')} />
             ) : !result?.items.length ? (
-              <EmptyState>暂无历史版本</EmptyState>
+              <EmptyState>{t('writer.noVersions')}</EmptyState>
             ) : (
               <div className="space-y-1.5">
                 {result.items.map((revision) => (
@@ -2020,15 +2024,15 @@ function RevisionDrawer({
                     className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${selectedId === revision.id ? 'border-primary-200 bg-white shadow-sm ring-1 ring-primary-100' : 'border-transparent hover:border-slate-200 hover:bg-white'}`}>
                     <span className="flex items-center justify-between gap-2">
                       <span className={`text-sm font-semibold ${selectedId === revision.id ? 'text-primary-700' : 'text-slate-800'}`}>{REVISION_REASON_LABEL[revision.reason]}</span>
-                      <span className="text-[11px] text-slate-400">{revision.content_length} 字</span>
+                      <span className="text-[11px] text-slate-400">{t('writer.charCount', { n: revision.content_length })}</span>
                     </span>
                     <span className="mt-1 block text-xs text-slate-500">{formatDate(revision.created_at)}</span>
-                    <span className="mt-0.5 block truncate text-xs text-slate-400">{revision.author?.username || '未知用户'}</span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-400">{revision.author?.username || t('writer.unknownUser')}</span>
                   </button>
                 ))}
                 {result.items.length < result.total && (
                   <Button variant="ghost" size="sm" className="w-full" loading={loadingMore} onClick={loadMore}>
-                    加载更早版本
+                    {t('writer.loadEarlier')}
                   </Button>
                 )}
               </div>
@@ -2037,50 +2041,50 @@ function RevisionDrawer({
 
           <main className="flex min-h-0 min-w-0 flex-1 flex-col">
             {detailLoading ? (
-              <Loading className="h-full" label="正在加载版本内容…" />
+              <Loading className="h-full" label={t('writer.loadingVersionContent')} />
             ) : detail ? (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900">{REVISION_REASON_LABEL[detail.reason]}</span>
+                      <span className="font-semibold text-slate-900">{t(REVISION_REASON_LABEL[detail.reason])}</span>
                       <Badge tone={STATUS_META[detail.status].tone}>{STATUS_META[detail.status].label}</Badge>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">{formatDate(detail.created_at)} · {detail.author?.username || '未知用户'}</p>
+                    <p className="mt-1 text-xs text-slate-500">{formatDate(detail.created_at)} · {detail.author?.username || t('writer.unknownUser')}</p>
                   </div>
                   <Button variant="outline" loading={restoring} disabled={hasUnsavedChanges} onClick={restore}>
-                    <HistoryIcon className="h-4 w-4" /> 恢复此版本
+                    <HistoryIcon className="h-4 w-4" /> {t('writer.restoreThisVersion')}
                   </Button>
                 </div>
                 {hasUnsavedChanges && (
                   <div className="border-b border-amber-100 bg-amber-50 px-5 py-2.5 text-xs text-amber-800">
-                    当前编辑内容尚未保存。为防止内容丢失，请先关闭面板并手动保存后再恢复。
+                    {t('writer.unsavedRestoreWarn2')}
                   </div>
                 )}
                 {/* 差异工具条：选择对比对象、切换统一/并排、显示增删行数 */}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/60 px-5 py-2.5">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="shrink-0">此版本 → 对比到</span>
+                    <span className="shrink-0">{t('writer.thisVersionCompareTo')}</span>
                     <Select className="w-52" size="sm" value={compareId === 'current' ? 'current' : String(compareId)}
                       options={compareOptions} onChange={(value) => setCompareId(value === 'current' ? 'current' : Number(value))} />
                   </div>
-                  <SegmentedTabs size="sm" value={viewMode} ariaLabel="差异视图" onChange={(value) => setViewMode(value as 'unified' | 'split')}
-                    items={[{ value: 'unified', label: '统一' }, { value: 'split', label: '并排' }]} />
+                  <SegmentedTabs size="sm" value={viewMode} ariaLabel={t('writer.diffViewAria')} onChange={(value) => setViewMode(value as 'unified' | 'split')}
+                    items={[{ value: 'unified', label: t('writer.diffUnified') }, { value: 'split', label: t('writer.diffSplit') }]} />
                   <span className="ml-auto flex items-center gap-2 font-mono text-xs">
                     <span className="text-emerald-600">+{stats.added}</span>
                     <span className="text-rose-500">−{stats.removed}</span>
                   </span>
                 </div>
                 {compareLoading ? (
-                  <Loading className="h-full" label="正在加载对比版本…" />
+                  <Loading className="h-full" label={t('writer.loadingCompare')} />
                 ) : stats.added === 0 && stats.removed === 0 ? (
-                  <div className="flex flex-1 items-center justify-center p-8"><EmptyState>两个版本内容相同</EmptyState></div>
+                  <div className="flex flex-1 items-center justify-center p-8"><EmptyState>{t('writer.sameContent')}</EmptyState></div>
                 ) : (
                   <RevisionDiff rows={diffRows} mode={viewMode} />
                 )}
               </>
             ) : (
-              <EmptyState>选择左侧版本查看内容</EmptyState>
+              <EmptyState>{t('writer.selectLeftVersion')}</EmptyState>
             )}
           </main>
         </div>
@@ -2212,11 +2216,12 @@ function ToolbarSelect({ onPick }: { onPick: (prefix: string) => void }) {
 
 // 大纲 ▾ 当前章节标题跳转
 function ToolbarOutline({ outline, onJump }: { outline: { level: number; text: string; offset: number }[]; onJump: (offset: number) => void }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
-      <Tooltip content="大纲">
-        <button type="button" aria-label="大纲" onClick={() => setOpen(!open)}
+      <Tooltip content={t('writer.outline')}>
+        <button type="button" aria-label={t('writer.outline')} onClick={() => setOpen(!open)}
           className="flex items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
           style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
           <OutlineIcon className="h-4 w-4" />
@@ -2225,7 +2230,7 @@ function ToolbarOutline({ outline, onJump }: { outline: { level: number; text: s
       {open && (
         <div className="absolute left-0 top-9 z-20 max-h-80 w-64 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
           {outline.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">暂无标题</p>
+            <p className="px-3 py-2 text-xs text-slate-400">{t('writer.noHeadings')}</p>
           ) : outline.map((h, i) => (
             <button key={`${h.offset}-${i}`} type="button" onClick={() => { onJump(h.offset); setOpen(false) }}
               className="block w-full truncate text-left text-sm text-slate-700 hover:bg-slate-50"
@@ -2272,6 +2277,7 @@ function TreeItems(props: TreeProps) {
 }
 
 function TreeItem(props: TreeProps & { item: Document; depth: number }) {
+  const { t } = useTranslation()
   const {
     item, depth, search, expanded, setExpanded, currentId, chapterPrefix, onSelect, menuFor, onOpenMenu, onCloseMenu,
     dragEnabled, dragId, dragBlocked, dropTarget, onDragStartItem, onDragOverItem, onDropItem, onDragEndItem,
@@ -2314,7 +2320,7 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
         {dropHere && dropTarget!.pos !== 'inside' && <span className={`pointer-events-none absolute inset-x-1.5 z-10 h-0.5 rounded-full bg-primary-500 ${dropTarget!.pos === 'before' ? 'top-0' : 'bottom-0'}`} />}
         {dropHere && dropTarget!.pos === 'inside' && <span className="pointer-events-none absolute inset-0 z-10 rounded-lg ring-2 ring-inset ring-primary-400" />}
         {hasChildren ? (
-          <button type="button" aria-label={isExpanded ? '折叠' : '展开'}
+          <button type="button" aria-label={isExpanded ? t('writer.collapse') : t('writer.expand')}
             onClick={(e) => { e.stopPropagation(); toggleExpand() }}
             className="ml-1 flex h-6 w-5 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-600">
             {isExpanded ? <ChevronDownIcon className="h-3.5 w-3.5" /> : <ChevronRightIcon className="h-3.5 w-3.5" />}
@@ -2329,11 +2335,11 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
         </button>
         <span className="mr-1 hidden shrink-0 items-center group-hover:flex">
           {dragEnabled ? (
-            <Tooltip content="拖拽调整顺序">
+            <Tooltip content={t('writer.dragReorder')}>
               <span className="flex h-6 w-6 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700"><GripIcon className="h-4 w-4" /></span>
             </Tooltip>
           ) : <span className="flex h-6 w-6 cursor-default items-center justify-center rounded text-slate-400"><GripIcon className="h-4 w-4" /></span>}
-          <button type="button" aria-label="章节操作" aria-haspopup="menu" aria-expanded={menuFor === item.id}
+          <button type="button" aria-label={t('writer.chapterActions')} aria-haspopup="menu" aria-expanded={menuFor === item.id}
             onClick={(event) => {
               event.stopPropagation()
               if (menuFor === item.id) {
