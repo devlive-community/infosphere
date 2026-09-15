@@ -4,6 +4,7 @@ import { api } from '@/lib/api'
 import UserAvatar from '@/components/UserAvatar'
 import { formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import type { User } from '@/lib/types'
 import { Button, Loading, useFeedback } from '@/components/ui'
 import ReportButton from '@/components/ReportButton'
@@ -22,6 +23,7 @@ interface CommentItem {
 export default function Comments({ docId, allowComments = true }: { docId: number; allowComments?: boolean }) {
   const { confirmAction, showToast } = useFeedback()
   const { user, site } = useApp()
+  const { t } = useTranslation()
   const commentsOff = site.comments_enabled === 'false'
   const [comments, setComments] = useState<CommentItem[] | null>(null)
   const [content, setContent] = useState('')
@@ -62,12 +64,12 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
   }
 
   async function remove(id: number) {
-    if (!await confirmAction({ title: '删除评论', message: '确定删除该评论吗？此操作不可撤销。', confirmLabel: '删除评论', danger: true })) return
+    if (!await confirmAction({ title: t('comment.deleteTitle'), message: t('comment.deleteConfirm'), confirmLabel: t('comment.delete'), danger: true })) return
     try {
       await api(`/comments/${id}`, { method: 'DELETE' })
       await load()
     } catch (e) {
-      showToast({ title: '删除失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('comment.deleteFailed'), message: (e as Error).message, tone: 'error' })
     }
   }
 
@@ -77,16 +79,16 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
         <UserAvatar user={comment.user} size="h-8 w-8 text-xs" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-slate-900">{comment.user?.username || '佚名'}</span>
+            <span className="font-medium text-slate-900">{comment.user?.username || t('comment.anonymous')}</span>
             <span className="text-xs text-slate-400">{formatDate(comment.created_at)}</span>
             {user?.id === comment.user_id && (
-              <button onClick={() => remove(comment.id)} className="text-xs text-rose-400 hover:text-rose-600">删除</button>
+              <button onClick={() => remove(comment.id)} className="text-xs text-rose-400 hover:text-rose-600">{t('comment.delete')}</button>
             )}
             {user?.id !== comment.user_id && <ReportButton targetType="comment" targetId={comment.id} compact />}
           </div>
           <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{comment.content}</p>
           {user && (
-            <button onClick={() => setReplyTo(comment.id)} className="mt-1 text-xs text-slate-400 hover:text-primary-600">回复</button>
+            <button onClick={() => setReplyTo(comment.id)} className="mt-1 text-xs text-slate-400 hover:text-primary-600">{t('comment.reply')}</button>
           )}
           {(comment.replies || []).length > 0 && (
             <div className="mt-2 space-y-3 border-l border-slate-100 pl-4">
@@ -98,7 +100,7 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
                       <span className="font-medium text-slate-900">{r.user?.username}</span>
                       <span className="text-xs text-slate-400">{formatDate(r.created_at)}</span>
                       {user?.id === r.user_id ? (
-                        <button onClick={() => remove(r.id)} className="text-xs text-rose-400 hover:text-rose-600">删除</button>
+                        <button onClick={() => remove(r.id)} className="text-xs text-rose-400 hover:text-rose-600">{t('comment.delete')}</button>
                       ) : (
                         <ReportButton targetType="comment" targetId={r.id} compact />
                       )}
@@ -116,43 +118,43 @@ export default function Comments({ docId, allowComments = true }: { docId: numbe
 
   return (
     <section className="border-t border-slate-200 pt-8">
-      <h2 className="text-xl font-bold text-slate-900">评论</h2>
+      <h2 className="text-xl font-bold text-slate-900">{t('comment.heading')}</h2>
 
       {commentsOff ? (
-        <p className="py-4 text-sm text-slate-400">站点已关闭评论</p>
+        <p className="py-4 text-sm text-slate-400">{t('comment.siteOff')}</p>
       ) : user && allowComments ? (
         <form onSubmit={(e) => submit(e, replyTo ?? undefined)} className="mt-4">
           {replyTo && (
             <p className="mb-2 text-xs text-slate-400">
-              回复 #{replyTo} <button type="button" onClick={() => setReplyTo(null)} className="text-primary-600 hover:underline">取消</button>
+              {t('comment.replyingTo', { id: replyTo })} <button type="button" onClick={() => setReplyTo(null)} className="text-primary-600 hover:underline">{t('common.actions.cancel')}</button>
             </p>
           )}
           <textarea value={content} onChange={(e) => setContent(e.target.value)} maxLength={2000}
-            placeholder="写下你的想法…" className="min-h-[88px] w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
+            placeholder={t('comment.placeholder')} className="min-h-[88px] w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none" />
           <div className="mt-3 max-w-sm">
             <CaptchaField scene="comment" onChange={setCaptcha} refreshSignal={captchaRefresh} />
           </div>
           {error && <p className="mt-1 text-sm text-rose-500">{error}</p>}
           <div className="mt-2 flex justify-end">
             <Button type="submit" disabled={submitting || !content.trim()}>
-              {submitting ? '发表中…' : '发表评论'}
+              {submitting ? t('comment.submitting') : t('comment.submit')}
             </Button>
           </div>
         </form>
       ) : !allowComments ? (
-        <p className="py-4 text-sm text-slate-400">该章节已关闭评论</p>
+        <p className="py-4 text-sm text-slate-400">{t('comment.chapterOff')}</p>
       ) : (
         <p className="py-4 text-sm text-slate-400">
-          <Link href="/login" className="text-primary-600 hover:underline">登录</Link>后参与评论
+          <Link href="/login" className="text-primary-600 hover:underline">{t('comment.loginLink')}</Link>{t('comment.loginSuffix')}
         </p>
       )}
 
       <div className="mt-6 divide-y divide-slate-100">
         {comments === null ? (
-          <Loading className="py-8" label="正在加载评论…" />
+          <Loading className="py-8" label={t('comment.loading')} />
         ) : comments.map((c) => <CommentNode key={c.id} comment={c} />)}
         {comments !== null && comments.length === 0 && (
-          <p className="py-6 text-center text-sm text-slate-400">还没有评论</p>
+          <p className="py-6 text-center text-sm text-slate-400">{t('comment.empty')}</p>
         )}
       </div>
     </section>
