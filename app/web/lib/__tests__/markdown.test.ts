@@ -117,6 +117,27 @@ describe('M19 扩展', () => {
     expect(html).toContain('href="#h-2"')
   })
 
+  it('<Tabs><Tab title> HTML 标签风格多标签页', () => {
+    const html = renderMarkdown('<Tabs>\n<Tab title="PostgreSQL">\nPG 说明\n</Tab>\n<Tab title="MySQL">\nMySQL 说明\n</Tab>\n</Tabs>')
+    expect(html).toContain('data-md-tab=')
+    expect(html).toContain('role="tablist"')
+    expect(html).toContain('PostgreSQL')
+    expect(html).toContain('PG 说明')
+    expect(html).toContain('MySQL 说明')
+  })
+
+  it('<Note>/<Warning>/<Tip> 提示块与可选加粗标题', () => {
+    const withTitle = renderMarkdown('<Warning>\n**务必备份**\n执行前请备份数据。\n</Warning>')
+    expect(withTitle).toContain('md-alert md-alert-warning')
+    expect(withTitle).toContain('务必备份')
+    expect(withTitle).toContain('执行前请备份数据')
+
+    const noTitle = renderMarkdown('<Tip>\n随手记一笔。\n</Tip>')
+    expect(noTitle).toContain('md-alert md-alert-tip')
+    expect(noTitle).toContain('提示') // 缺省标题
+    expect(noTitle).toContain('随手记一笔')
+  })
+
   it('XSS 载荷被净化', () => {
     const html = renderMarkdown('[点击](javascript:alert(1)) <img src=x onerror=alert(1)>')
     expect(html).not.toContain('onerror')

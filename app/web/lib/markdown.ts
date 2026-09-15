@@ -107,6 +107,31 @@ export function renderMarkdown(source: string | null | undefined): string {
 
 export { bindMarkdownInteractivity } from './markdown-extensions'
 
+// fillChildrenToc 用当前章节的直接子章节替换 [children] 占位（阅读页调用；产出为自身生成的安全 HTML）。
+// 无子章节时移除占位；children 为空数组即视为无子章节。
+export function fillChildrenToc(
+  html: string,
+  children: { slug: string; title: string }[],
+  bookSlug: string,
+  chapterPrefix = '',
+): string {
+  if (!html.includes('data-md-children')) return html
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const replacement = children.length
+    ? '<nav class="my-4 rounded-lg border border-slate-200 bg-slate-50 p-4">' +
+      '<div class="mb-2 text-sm font-semibold text-slate-700">子章节</div>' +
+      '<ul class="space-y-1 text-sm" style="list-style:none;margin:0;padding:0">' +
+      children
+        .map((ch) => {
+          const href = `/book/reader?slug=${encodeURIComponent(bookSlug)}&doc=${encodeURIComponent(ch.slug)}`
+          return `<li><a href="${href}" class="text-slate-600 hover:text-primary-600">${esc(chapterPrefix + ch.title)}</a></li>`
+        })
+        .join('') +
+      '</ul></nav>'
+    : ''
+  return html.replace(/<div[^>]*data-md-children[^>]*>[\s\S]*?<\/div>/g, replacement)
+}
+
 
 export interface Heading {
   level: number
