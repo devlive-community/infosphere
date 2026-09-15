@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import Link from 'next/link'
-import { useState, useRef, useEffect, ReactNode } from 'react'
+import { useState, useRef, useEffect, useMemo, ReactNode } from 'react'
 import { useRouter } from 'next/router'
 import Container from '@/components/Container'
 import { ListBulletIcon, BookIcon, TrashIcon, UserCircleIcon, GridIcon, LogOutIcon } from '@/components/icons'
@@ -10,6 +10,7 @@ import { API_BASE, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { renderMarkdown } from '@/lib/markdown'
 import { Button, ButtonLink, Input, Modal, Tooltip, useFeedback } from '@/components/ui'
+import type { FooterLinkGroup } from '@/lib/types'
 import NotificationBell from '@/components/NotificationBell'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { SearchIcon } from '@/components/icons'
@@ -167,6 +168,27 @@ export default function Layout({ title, children }: { title?: string; children: 
   const siteName = site.site_name || 'InfoSphere'
   const siteLogo = site.site_logo ? resolveMediaUrl(site.site_logo) : '/logo.png'
   const year = new Date().getFullYear()
+
+  // 管理员在后台配置的页脚链接分组（JSON）；解析失败或为空时回退到默认页脚。
+  const customFooterGroups = useMemo<FooterLinkGroup[]>(() => {
+    if (!site.site_footer_links) return []
+    try {
+      const parsed = JSON.parse(site.site_footer_links)
+      if (!Array.isArray(parsed)) return []
+      return parsed
+        .map((g): FooterLinkGroup => ({
+          title: String(g?.title || ''),
+          links: Array.isArray(g?.links)
+            ? g.links.filter((l: unknown): l is { label: string; href: string } => !!l && typeof (l as { href?: unknown }).href === 'string')
+              .map((l: { label?: unknown; href: string }) => ({ label: String(l.label || ''), href: l.href }))
+            : [],
+        }))
+        .filter((g) => g.links.length > 0)
+    } catch {
+      return []
+    }
+  }, [site.site_footer_links])
+
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [release, setRelease] = useState<{ loading: boolean; body: string; url: string } | null>(null)
 
@@ -228,7 +250,11 @@ export default function Layout({ title, children }: { title?: string; children: 
       <main className="w-full flex-1">{children}</main>
 
       <footer className="bg-[#0b1f3f] text-slate-300">
-        <div className="mx-auto grid gap-10 px-4 py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr]" style={{ maxWidth: 'var(--content-max-width)' }}>
+        <div className="mx-auto grid gap-10 px-4 py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr]"
+          style={{
+            maxWidth: 'var(--content-max-width)',
+            ...(customFooterGroups.length ? { gridTemplateColumns: `1.6fr repeat(${customFooterGroups.length}, minmax(0, 1fr))` } : {}),
+          }}>
           <div>
             <div className="flex items-center gap-2.5 text-lg font-bold text-white">
               <img src={siteLogo} alt="" className="h-9 w-9 object-contain" />
@@ -238,18 +264,24 @@ export default function Layout({ title, children }: { title?: string; children: 
               {site.site_footer_text || t('footer.intro.default')}
             </p>
           </div>
-          <FooterColumn title={t('footer.column.product')} links={[
-            { label: t('footer.link.explore'), href: '/explore' },
-            ...(user ? [{ label: t('footer.link.myBooks'), href: '/books' }] : []),
-          ]} />
-          <FooterColumn title={t('footer.column.resources')} links={[
-            { label: t('footer.link.docs'), href: 'https://github.com/devlive-community/infosphere' },
-            { label: t('footer.link.issues'), href: 'https://github.com/devlive-community/infosphere/issues' },
-          ]} />
-          <FooterColumn title={t('footer.column.community')} links={[
-            { label: t('footer.link.github'), href: 'https://github.com/devlive-community/infosphere' },
-            { label: t('footer.link.discussions'), href: 'https://github.com/devlive-community/infosphere/discussions' },
-          ]} />
+          {customFooterGroups.length ? (
+            customFooterGroups.map((g, i) => <FooterColumn key={i} title={g.title} links={g.links} />)
+          ) : (
+            <>
+              <FooterColumn title={t('footer.column.product')} links={[
+                { label: t('footer.link.explore'), href: '/explore' },
+                ...(user ? [{ label: t('footer.link.myBooks'), href: '/books' }] : []),
+              ]} />
+              <FooterColumn title={t('footer.column.resources')} links={[
+                { label: t('footer.link.docs'), href: 'https://github.com/devlive-community/infosphere' },
+                { label: t('footer.link.issues'), href: 'https://github.com/devlive-community/infosphere/issues' },
+              ]} />
+              <FooterColumn title={t('footer.column.community')} links={[
+                { label: t('footer.link.github'), href: 'https://github.com/devlive-community/infosphere' },
+                { label: t('footer.link.discussions'), href: 'https://github.com/devlive-community/infosphere/discussions' },
+              ]} />
+            </>
+          )}
         </div>
         <div className="border-t border-white/10">
           <div className="mx-auto flex flex-col justify-between gap-2 px-4 py-4 text-xs text-slate-400 md:flex-row" style={{ maxWidth: 'var(--content-max-width)' }}>

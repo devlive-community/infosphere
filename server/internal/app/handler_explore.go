@@ -1,6 +1,8 @@
 package app
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -9,6 +11,60 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+type footerLink struct {
+	Label string `json:"label"`
+	Href  string `json:"href"`
+}
+
+type footerLinkGroup struct {
+	Title string       `json:"title"`
+	Links []footerLink `json:"links"`
+}
+
+// normalizeFooterLinks 校验并归一化管理员配置的页脚链接分组（JSON）。
+// 空串或空数组表示清空（前端回退到默认页脚）。上限：8 组、每组 12 条链接。
+func normalizeFooterLinks(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return "", nil
+	}
+	var groups []footerLinkGroup
+	if err := json.Unmarshal([]byte(raw), &groups); err != nil {
+		return "", errors.New("页脚链接格式错误")
+	}
+	if len(groups) > 8 {
+		return "", errors.New("页脚分组不能超过 8 组")
+	}
+	out := make([]footerLinkGroup, 0, len(groups))
+	for _, g := range groups {
+		title := truncateText(strings.TrimSpace(g.Title), 40)
+		if len(g.Links) > 12 {
+			return "", errors.New("每个分组的链接不能超过 12 条")
+		}
+		links := make([]footerLink, 0, len(g.Links))
+		for _, l := range g.Links {
+			label := truncateText(strings.TrimSpace(l.Label), 60)
+			href := truncateText(strings.TrimSpace(l.Href), 500)
+			if label == "" || href == "" {
+				continue // 跳过不完整的链接
+			}
+			links = append(links, footerLink{Label: label, Href: href})
+		}
+		if len(links) == 0 {
+			continue // 跳过无有效链接的分组
+		}
+		out = append(out, footerLinkGroup{Title: title, Links: links})
+	}
+	if len(out) == 0 {
+		return "", nil
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return "", errors.New("页脚链接序列化失败")
+	}
+	return string(b), nil
+}
 
 func (a *App) publicReadableBooks() *gorm.DB {
 	return a.DB.Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
@@ -76,7 +132,7 @@ func (a *App) SiteStats(c *gin.Context) {
 // GetSiteConfig GET /site 公开站点配置
 func (a *App) GetSiteConfig(c *gin.Context) {
 	var rows []models.SiteConfig
-	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "site_logo", "site_favicon", "site_keywords", "site_footer_text", "site_beian", "help_doc_url", "terms_url", "privacy_url", "version", "installation_date", "comments_enabled", "announcement_enabled", "announcement_text", "announcement_tone"}).Find(&rows)
+	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "site_logo", "site_favicon", "site_keywords", "site_footer_text", "site_footer_links", "site_beian", "help_doc_url", "terms_url", "privacy_url", "version", "installation_date", "comments_enabled", "announcement_enabled", "announcement_text", "announcement_tone"}).Find(&rows)
 	cfg := gin.H{}
 	for _, r := range rows {
 		cfg[r.ConfigKey] = r.ConfigValue
@@ -91,6 +147,7 @@ type siteConfigUpdate struct {
 	SiteFavicon         *string `json:"site_favicon"`
 	SiteKeywords        *string `json:"site_keywords"`
 	SiteFooterText      *string `json:"site_footer_text"`
+	SiteFooterLinks     *string `json:"site_footer_links"` // JSON: [{title, links:[{label, href}]}]
 	SiteBeian           *string `json:"site_beian"`
 	HelpDocURL          *string `json:"help_doc_url"`
 	TermsURL            *string `json:"terms_url"`
@@ -125,6 +182,14 @@ func (a *App) UpdateSiteConfig(c *gin.Context) {
 	}
 	if req.SiteFooterText != nil {
 		updates["site_footer_text"] = strings.TrimSpace(*req.SiteFooterText)
+	}
+	if req.SiteFooterLinks != nil {
+		normalized, err := normalizeFooterLinks(*req.SiteFooterLinks)
+		if err != nil {
+			fail(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		updates["site_footer_links"] = normalized
 	}
 	if req.SiteBeian != nil {
 		updates["site_beian"] = strings.TrimSpace(*req.SiteBeian)

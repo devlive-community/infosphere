@@ -129,6 +129,7 @@ export interface SiteConfig {
   site_favicon?: string
   site_keywords?: string
   site_footer_text?: string
+  site_footer_links?: string
   site_beian?: string
   help_doc_url?: string
   terms_url?: string
@@ -139,6 +140,16 @@ export interface SiteConfig {
   announcement_enabled?: string
   announcement_text?: string
   announcement_tone?: string
+}
+
+export interface FooterLink {
+  label: string
+  href: string
+}
+
+export interface FooterLinkGroup {
+  title: string
+  links: FooterLink[]
 }
 
 export interface SetupStatus {
