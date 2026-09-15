@@ -4,6 +4,7 @@ import Head from 'next/head'
 import { authHeaderFrom, isInstalled, serverApi } from '@/lib/server-api'
 import { renderMarkdown } from '@/lib/markdown'
 import { resolveMediaUrl } from '@/lib/media'
+import { useTranslation } from '@/lib/i18n'
 import type { Book, Document } from '@/lib/types'
 
 interface Chapter { id: number; title: string; level: number; html: string }
@@ -45,6 +46,7 @@ export const getServerSideProps: GetServerSideProps<PrintProps> = async ({ req, 
 }
 
 export default function PrintBook({ book, chapters, chapterPrefix, style }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { t } = useTranslation()
   const [ready, setReady] = useState(false)
   useEffect(() => {
     let done = false
@@ -52,8 +54,8 @@ export default function PrintBook({ book, chapters, chapterPrefix, style }: Infe
     const waits = Array.from(document.images).map((img) =>
       img.complete ? Promise.resolve() : new Promise<void>((r) => { img.onload = () => r(); img.onerror = () => r() }))
     Promise.all(waits).then(finish)
-    const t = setTimeout(finish, 5000) // 兜底，避免图片卡住迟迟不打印
-    return () => clearTimeout(t)
+    const timer = setTimeout(finish, 5000) // 兜底，避免图片卡住迟迟不打印
+    return () => clearTimeout(timer)
   }, [])
 
   const cover = resolveMediaUrl(book.cover_image)
@@ -74,7 +76,7 @@ export default function PrintBook({ book, chapters, chapterPrefix, style }: Infe
 
       {style.toc && chapters.length > 0 && (
         <section className="print-toc">
-          <h2>目录</h2>
+          <h2>{t('reader.toc')}</h2>
           <ul>{chapters.map((c) => <li key={c.id} style={{ paddingLeft: c.level * 16 }}>{chapterPrefix}{c.title}</li>)}</ul>
         </section>
       )}
