@@ -262,6 +262,25 @@ export const zh: Record<string, string> = {
   'comment.loading': '正在加载评论…',
   'comment.empty': '还没有评论',
 
+  // 书籍评价与评分
+  'review.title': '评价与评分',
+  'review.count': '{n} 条评价',
+  'review.noReviews': '还没有评价，来写第一条吧。',
+  'review.yourRating': '你的评分',
+  'review.placeholder': '说说你的阅读感受（可选）',
+  'review.submit': '发表评价',
+  'review.update': '更新评价',
+  'review.submitted': '已发表评价',
+  'review.submitFailed': '发表失败',
+  'review.deleted': '已删除评价',
+  'review.deleteFailed': '删除失败',
+  'review.delete': '删除',
+  'review.deleting': '删除中…',
+  'review.loadMore': '加载更多',
+  'review.loginToReview': '登录后可以评价这本书',
+  'review.authorCannot': '不能评价自己的书籍',
+  'review.rateFirst': '请先选择评分',
+
   // 首页
   'home.seo.description': '简单而强大的开源知识管理系统，支持多数据库与多端访问。',
   'home.seo.jsonldDescription': 'InfoSphere 知识管理系统',

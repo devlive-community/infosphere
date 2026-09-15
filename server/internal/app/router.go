@@ -230,6 +230,11 @@ func (a *App) Router() *gin.Engine {
 		api.PUT("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentUpdate), a.UpdateComment)
 		api.DELETE("/comments/:id", a.RequireAuth(), a.RequirePermission(authz.CommentDelete), a.DeleteComment)
 
+		// ── 书籍评价（评分 + 评论，复用 comment:* 权限） ──
+		api.GET("/books/:id/reviews", a.OptionalAuth(), a.ListBookReviews)
+		api.POST("/books/:id/reviews", a.RequireAuth(), a.RequireEmailVerified(), a.RequirePermission(authz.CommentCreate), a.RateLimit(commentRateLimit), a.UpsertBookReview)
+		api.DELETE("/reviews/:id", a.RequireAuth(), a.RequirePermission(authz.CommentDelete), a.DeleteBookReview)
+
 		// ── 内容举报（提交者不可查询举报人队列；管理端路由见 admin 组） ──
 		api.POST("/reports", a.RequireAuth(), a.RequirePermission(authz.ReportCreate), a.RateLimit(reportRateLimit), a.CreateContentReport)
 
