@@ -279,6 +279,13 @@ export const zh: Record<string, string> = {
   'home.section.hot': '热门阅读',
   'home.empty.prefix': '还没有公开的书籍，',
   'home.empty.createLink': '创建第一本',
+  'home.hero.sampleBook': '你的第一本书',
+  'home.hero.sampleMeta': '开始记录你的知识',
+  'home.hero.topicMethodology': '方法论',
+  'home.hero.topicWriting': '写作',
+  'home.hero.topicCoding': '编程',
+  'home.hero.topicDesign': '设计',
+  'home.hero.topicThinking': '思考',
 
   // 发现页
   'explore.hero.eyebrow': '开放知识广场',

@@ -3,34 +3,43 @@ import { API_BASE, formatNumber } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import CoverImage from '@/components/CoverImage'
 import { EyeIcon } from '@/components/icons'
+import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 
 const topicChips = [
-  { label: '方法论', className: 'left-2 top-10 bg-violet-100/90 text-violet-600' },
-  { label: '写作', className: 'left-6 top-40 bg-sky-100/90 text-sky-600' },
-  { label: '编程', className: 'left-1/4 bottom-8 bg-emerald-100/90 text-emerald-600' },
-  { label: '设计', className: 'right-4 top-1/3 bg-amber-100/90 text-amber-600' },
-  { label: '思考', className: 'right-10 bottom-10 bg-emerald-100/90 text-emerald-600' },
+  { key: 'home.hero.topicMethodology', className: 'left-2 top-10 bg-violet-100/90 text-violet-600' },
+  { key: 'home.hero.topicWriting', className: 'left-6 top-40 bg-sky-100/90 text-sky-600' },
+  { key: 'home.hero.topicCoding', className: 'left-1/4 bottom-8 bg-emerald-100/90 text-emerald-600' },
+  { key: 'home.hero.topicDesign', className: 'right-4 top-1/3 bg-amber-100/90 text-amber-600' },
+  { key: 'home.hero.topicThinking', className: 'right-10 bottom-10 bg-emerald-100/90 text-emerald-600' },
 ]
 
 const rankColors = ['text-amber-400', 'text-sky-400', 'text-violet-400', 'text-emerald-400', 'text-slate-400']
 
 function CardFace({ book }: { book?: Book }) {
+  const { t } = useTranslation()
   const cover = resolveMediaUrl(book?.cover_image)
   return (
     <>
       <div className="relative h-20 w-full overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
         {cover && <CoverImage src={cover} alt={book?.title || ''} />}
       </div>
-      <div className="mt-2 truncate text-xs font-medium text-slate-800">{book?.title || '你的第一本书'}</div>
-      <div className="mt-1.5 h-1.5 w-3/4 rounded-full bg-slate-100" />
-      <div className="mt-1 h-1.5 w-1/2 rounded-full bg-slate-100" />
+      <div className="mt-2 truncate text-xs font-medium text-slate-800">{book?.title || t('home.hero.sampleBook')}</div>
+      {book ? (
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-slate-400">
+          <span className="min-w-0 truncate">{book.user?.username || ''}</span>
+          <span className="flex shrink-0 items-center gap-1"><EyeIcon className="h-3 w-3" /> {formatNumber(book.view_count)}</span>
+        </div>
+      ) : (
+        <div className="mt-1.5 truncate text-[11px] text-slate-400">{t('home.hero.sampleMeta')}</div>
+      )}
     </>
   )
 }
 
 // HeroIllustration 首页右侧的知识网络插画：漂浮书卡 + 主题气泡 + 连线
 export default function HeroIllustration({ books }: { books: Book[] }) {
+  const { t } = useTranslation()
   const cards = books.slice(0, 3)
   const positions = [
     'left-6 top-6 w-40 -rotate-3',
@@ -55,9 +64,9 @@ export default function HeroIllustration({ books }: { books: Book[] }) {
 
       {/* 主题气泡 */}
       {topicChips.map((chip) => (
-        <span key={chip.label}
+        <span key={chip.key}
           className={`absolute rounded-full px-3 py-1 text-xs font-medium shadow-sm ${chip.className}`}>
-          {chip.label}
+          {t(chip.key)}
         </span>
       ))}
 
