@@ -54,6 +54,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [isPublic, setIsPublic] = useState(initial?.is_public || false)
   const [loginRequired, setLoginRequired] = useState(initial?.login_required || false)
   const [chapterPrefix, setChapterPrefix] = useState(initial?.chapter_prefix || '')
+  const [childStatusFollowParent, setChildStatusFollowParent] = useState(initial?.child_status_follow_parent === true)
   const [language, setLanguage] = useState(initial?.language || '')
   const [transGroup, setTransGroup] = useState(initial?.trans_group || '')
   const [version, setVersion] = useState(initial?.version || '')
@@ -122,6 +123,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
         is_public: isPublic,
         login_required: isPublic && loginRequired,
         chapter_prefix: chapterPrefix,
+        child_status_follow_parent: childStatusFollowParent,
         language: language.trim(),
         trans_group: transGroup.trim(),
         version: version.trim(),
@@ -237,6 +239,13 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">章节前缀</label>
                 <Select value={chapterPrefix} onChange={setChapterPrefix} options={prefixOptions} />
                 <p className="mt-1.5 text-xs text-slate-400">用于章节标题前的统一前缀</p>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <label className="block text-sm font-medium text-slate-700">子章节状态跟随父章节</label>
+                  <p className="mt-0.5 text-xs text-slate-400">开启后，写作台新建子章节的默认发布状态与父章节一致</p>
+                </div>
+                <Switch checked={childStatusFollowParent} onChange={setChildStatusFollowParent} ariaLabel="子章节状态跟随父章节" />
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">语言</label>

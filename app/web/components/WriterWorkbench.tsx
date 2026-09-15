@@ -161,6 +161,7 @@ export default function Writer({ user }: WriterProps) {
 
   // 书籍设置表单
   const [bookForm, setBookForm] = useState<BookFormState>({ title: '', description: '', status: 'draft', isPublic: false, tags: [] as string[], chapterPrefix: '', childStatusFollowParent: false })
+  const [savingBook, setSavingBook] = useState(false)
   const [tagInput, setTagInput] = useState('')
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -609,6 +610,7 @@ export default function Writer({ user }: WriterProps) {
 
   async function saveBookSettings() {
     if (!book) return
+    setSavingBook(true)
     try {
       const payload = {
         title: bookForm.title.trim(), description: bookForm.description, status: bookForm.status,
@@ -620,7 +622,7 @@ export default function Writer({ user }: WriterProps) {
       setBook(updated)
       setMessage('书籍设置已保存')
       setTimeout(() => setMessage(''), 2000)
-    } catch (e) { setMessage((e as Error).message) }
+    } catch (e) { setMessage((e as Error).message) } finally { setSavingBook(false) }
   }
 
   async function applyRestoredDocument(restored: Document) {
@@ -1263,7 +1265,7 @@ export default function Writer({ user }: WriterProps) {
               <Field label="子章节状态跟随父章节" hint="开启后，新建子章节的默认发布状态与父章节一致。">
                 <Switch ariaLabel="子章节状态跟随父章节" checked={bookForm.childStatusFollowParent} onChange={(v) => setBookForm({ ...bookForm, childStatusFollowParent: v })} />
               </Field>
-              <Button className="w-full" onClick={saveBookSettings}>保存书籍设置</Button>
+              <Button className="w-full" loading={savingBook} onClick={saveBookSettings}>保存书籍设置</Button>
             </div>
           )}
         </aside>

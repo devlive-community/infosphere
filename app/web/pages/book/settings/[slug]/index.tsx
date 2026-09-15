@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 import BookForm from '@/components/BookForm'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { getBookSettingsProps } from '@/lib/book-settings'
-import { Button, Field, Input, useFeedback } from '@/components/ui'
+import { Button, Input, useFeedback } from '@/components/ui'
 import type { Book } from '@/lib/types'
 
 export const getServerSideProps = getBookSettingsProps
@@ -38,15 +38,14 @@ export default function BookSettingsBasic({ book }: InferGetServerSidePropsType<
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-6">
           <h2 className="text-lg font-bold text-slate-900">访问路径</h2>
           <p className="mt-1 text-sm text-slate-500">复制得到的书籍可以修改一次访问路径（URL 中的 slug），<b className="text-amber-700">修改后不可再更改</b>。</p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <Field label="访问路径" hint="仅小写字母、数字与中划线">
-                <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="my-book" />
-              </Field>
+          <div className="mt-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input className="flex-1" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="my-book" />
+              <Button className="shrink-0 sm:w-auto" loading={savingSlug} disabled={!slug.trim() || slug.trim() === book.slug} onClick={saveSlug}>
+                保存访问路径
+              </Button>
             </div>
-            <Button variant="danger" loading={savingSlug} disabled={!slug.trim() || slug.trim() === book.slug} onClick={saveSlug}>
-              保存访问路径
-            </Button>
+            <p className="mt-2 text-xs text-slate-400">仅小写字母、数字与中划线</p>
           </div>
         </div>
       )}
