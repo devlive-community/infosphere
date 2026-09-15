@@ -5,6 +5,7 @@ import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
 import { Button, Input, Textarea, Field, Switch, Select } from '@/components/ui'
 import { TrashIcon } from '@/components/icons'
+import { useTranslation } from '@/lib/i18n'
 import type { FooterLinkGroup } from '@/lib/types'
 
 function parseFooterGroups(raw?: string): FooterLinkGroup[] {
@@ -24,6 +25,7 @@ function parseFooterGroups(raw?: string): FooterLinkGroup[] {
 // 系统设置 · 站点设置：站点名称、描述、Logo 与全站公告（仅管理员）
 export default function SettingsSite() {
   const { site } = useApp()
+  const { t } = useTranslation()
   const [siteName, setSiteName] = useState(site.site_name || '')
   const [siteDesc, setSiteDesc] = useState(site.site_description || '')
   const [siteLogo, setSiteLogo] = useState(site.site_logo || '')
@@ -52,7 +54,7 @@ export default function SettingsSite() {
       fd.append('file', file)
       const res = await fetch(`${API_BASE}/api/v1/upload`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd })
       const payload = await res.json().catch(() => ({}))
-      if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
+      if (!res.ok || payload.success === false) throw new Error(payload.message || t('admin.settings.uploadFailed'))
       setSiteLogo(payload.data.url)
     } catch (e) {
       setMessage((e as Error).message)
@@ -70,7 +72,7 @@ export default function SettingsSite() {
       fd.append('file', file)
       const res = await fetch(`${API_BASE}/api/v1/upload`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd })
       const payload = await res.json().catch(() => ({}))
-      if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
+      if (!res.ok || payload.success === false) throw new Error(payload.message || t('admin.settings.uploadFailed'))
       setSiteFavicon(payload.data.url)
     } catch (e) {
       setMessage((e as Error).message)
@@ -102,7 +104,6 @@ export default function SettingsSite() {
     setSaving(true)
     setMessage('')
     try {
-      // 过滤空链接与空分组，序列化为后端保存的 JSON（为空则清空，前端回退默认页脚）
       const cleaned = footerGroups
         .map((g) => ({ title: g.title.trim(), links: g.links.filter((l) => l.label.trim() && l.href.trim()).map((l) => ({ label: l.label.trim(), href: l.href.trim() })) }))
         .filter((g) => g.links.length > 0)
@@ -113,7 +114,7 @@ export default function SettingsSite() {
         help_doc_url: helpDocUrl, terms_url: termsUrl, privacy_url: privacyUrl,
         announcement_enabled: annEnabled, announcement_text: annText, announcement_tone: annTone,
       } })
-      setMessage('站点设置已保存，刷新页面后全站生效。')
+      setMessage(t('admin.settings.site.saved'))
     } catch (e) {
       setMessage((e as Error).message)
     } finally {
@@ -122,110 +123,110 @@ export default function SettingsSite() {
   }
 
   return (
-    <SettingsLayout active="site" description="维护站点名称与描述，用于页面标题、页脚与社交分享卡片。">
+    <SettingsLayout active="site" description={t('admin.settings.site.description')}>
       <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4">
-          <Field label="站点名称">
+          <Field label={t('admin.settings.site.siteName')}>
             <Input value={siteName} onChange={(e) => setSiteName(e.target.value)} placeholder="InfoSphere" />
           </Field>
-          <Field label="站点描述" hint="将用于首页与搜索引擎摘要">
+          <Field label={t('admin.settings.site.siteDescription')} hint={t('admin.settings.site.siteDescriptionHint')}>
             <Textarea rows={3} value={siteDesc} onChange={(e) => setSiteDesc(e.target.value)}
-              placeholder="开源自托管的知识管理系统" />
+              placeholder={t('admin.settings.site.siteDescriptionPlaceholder')} />
           </Field>
-          <Field label="站点 Logo" hint="显示在页头与页脚；建议使用正方形透明背景图片。留空则使用默认 Logo。">
+          <Field label={t('admin.settings.site.siteLogo')} hint={t('admin.settings.site.siteLogoHint')}>
             <div className="flex items-center gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                <img src={siteLogo ? resolveMediaUrl(siteLogo) : '/logo.png'} alt="站点 Logo" className="h-full w-full object-contain" />
+                <img src={siteLogo ? resolveMediaUrl(siteLogo) : '/logo.png'} alt={t('admin.settings.site.siteLogo')} className="h-full w-full object-contain" />
               </span>
               <label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50">
-                {uploading ? '上传中…' : '上传 Logo'}
+                {uploading ? t('admin.settings.uploading') : t('admin.settings.site.uploadLogo')}
                 <input type="file" accept="image/*" hidden disabled={uploading}
                   onChange={(e) => { void uploadLogo(e.target.files?.[0]); e.target.value = '' }} />
               </label>
-              {siteLogo && <Button type="button" variant="ghost" className="text-slate-500" onClick={() => setSiteLogo('')}>恢复默认</Button>}
+              {siteLogo && <Button type="button" variant="ghost" className="text-slate-500" onClick={() => setSiteLogo('')}>{t('admin.settings.site.restoreDefault')}</Button>}
             </div>
           </Field>
-          <Field label="站点图标 (Favicon)" hint="浏览器标签页与收藏夹显示的小图标；建议 32×32 或 64×64 的 PNG/ICO。留空则使用默认图标。">
+          <Field label={t('admin.settings.site.favicon')} hint={t('admin.settings.site.faviconHint')}>
             <div className="flex items-center gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                <img src={siteFavicon ? resolveMediaUrl(siteFavicon) : '/favicon.png'} alt="站点图标" className="h-8 w-8 object-contain" />
+                <img src={siteFavicon ? resolveMediaUrl(siteFavicon) : '/favicon.png'} alt={t('admin.settings.site.favicon')} className="h-8 w-8 object-contain" />
               </span>
               <label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50">
-                {uploadingFavicon ? '上传中…' : '上传图标'}
+                {uploadingFavicon ? t('admin.settings.uploading') : t('admin.settings.site.uploadFavicon')}
                 <input type="file" accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml" hidden disabled={uploadingFavicon}
                   onChange={(e) => { void uploadFavicon(e.target.files?.[0]); e.target.value = '' }} />
               </label>
-              {siteFavicon && <Button type="button" variant="ghost" className="text-slate-500" onClick={() => setSiteFavicon('')}>恢复默认</Button>}
+              {siteFavicon && <Button type="button" variant="ghost" className="text-slate-500" onClick={() => setSiteFavicon('')}>{t('admin.settings.site.restoreDefault')}</Button>}
             </div>
           </Field>
-          <Field label="站点关键词" hint="用于搜索引擎 meta keywords，多个关键词用英文逗号分隔。">
-            <Input value={siteKeywords} onChange={(e) => setSiteKeywords(e.target.value)} placeholder="知识管理,文档,协作,开源" />
+          <Field label={t('admin.settings.site.keywords')} hint={t('admin.settings.site.keywordsHint')}>
+            <Input value={siteKeywords} onChange={(e) => setSiteKeywords(e.target.value)} placeholder={t('admin.settings.site.keywordsPlaceholder')} />
           </Field>
-          <Field label="页脚介绍" hint="显示在页脚站点名下方的一段简介。留空则使用默认文案。">
+          <Field label={t('admin.settings.site.footerText')} hint={t('admin.settings.site.footerTextHint')}>
             <Textarea rows={2} value={siteFooterText} onChange={(e) => setSiteFooterText(e.target.value)}
-              placeholder="开源自托管的知识管理系统，帮助你沉淀知识、连接思想，与世界分享。" />
+              placeholder={t('admin.settings.site.footerTextPlaceholder')} />
           </Field>
-          <Field label="备案信息" hint="中国大陆网站可填写 ICP 备案号，显示在页脚并链接至工信部备案系统。">
-            <Input value={siteBeian} onChange={(e) => setSiteBeian(e.target.value)} placeholder="例如：京ICP备00000000号-1" />
+          <Field label={t('admin.settings.site.beian')} hint={t('admin.settings.site.beianHint')}>
+            <Input value={siteBeian} onChange={(e) => setSiteBeian(e.target.value)} placeholder={t('admin.settings.site.beianPlaceholder')} />
           </Field>
 
           <div className="border-t border-slate-100 pt-4">
-            <h3 className="mb-1 text-sm font-semibold text-slate-700">页脚链接</h3>
-            <p className="mb-3 text-xs text-slate-400">按分组配置页脚显示的链接。留空则使用默认页脚（产品 / 资源 / 社区）。站内路径以 / 开头，站外链接以 http(s):// 开头。</p>
+            <h3 className="mb-1 text-sm font-semibold text-slate-700">{t('admin.settings.site.footerLinks')}</h3>
+            <p className="mb-3 text-xs text-slate-400">{t('admin.settings.site.footerLinksHint')}</p>
             <div className="space-y-4">
               {footerGroups.map((g, gi) => (
                 <div key={gi} className="rounded-lg border border-slate-200 p-3">
                   <div className="mb-2 flex items-center gap-2">
-                    <Input value={g.title} onChange={(e) => updateGroup(gi, { title: e.target.value })} placeholder="分组标题，如：产品" className="flex-1" />
-                    <Button type="button" variant="ghost" className="shrink-0 text-slate-400 hover:text-rose-500" onClick={() => removeGroup(gi)} aria-label="删除分组">
+                    <Input value={g.title} onChange={(e) => updateGroup(gi, { title: e.target.value })} placeholder={t('admin.settings.site.groupTitlePlaceholder')} className="flex-1" />
+                    <Button type="button" variant="ghost" className="shrink-0 text-slate-400 hover:text-rose-500" onClick={() => removeGroup(gi)} aria-label={t('admin.settings.site.deleteGroup')}>
                       <TrashIcon className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="space-y-2">
                     {g.links.map((l, li) => (
                       <div key={li} className="flex items-center gap-2">
-                        <Input value={l.label} onChange={(e) => updateLink(gi, li, { label: e.target.value })} placeholder="链接文字" className="flex-1" />
-                        <Input value={l.href} onChange={(e) => updateLink(gi, li, { href: e.target.value })} placeholder="/explore 或 https://…" className="flex-[1.4]" />
-                        <Button type="button" variant="ghost" className="shrink-0 text-slate-400 hover:text-rose-500" onClick={() => removeLink(gi, li)} aria-label="删除链接">
+                        <Input value={l.label} onChange={(e) => updateLink(gi, li, { label: e.target.value })} placeholder={t('admin.settings.site.linkLabel')} className="flex-1" />
+                        <Input value={l.href} onChange={(e) => updateLink(gi, li, { href: e.target.value })} placeholder={t('admin.settings.site.linkUrlPlaceholder')} className="flex-[1.4]" />
+                        <Button type="button" variant="ghost" className="shrink-0 text-slate-400 hover:text-rose-500" onClick={() => removeLink(gi, li)} aria-label={t('admin.settings.site.deleteLink')}>
                           <TrashIcon className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
-                    <Button type="button" variant="ghost" className="text-slate-500" onClick={() => addLink(gi)}>+ 添加链接</Button>
+                    <Button type="button" variant="ghost" className="text-slate-500" onClick={() => addLink(gi)}>+ {t('admin.settings.site.addLink')}</Button>
                   </div>
                 </div>
               ))}
-              <Button type="button" variant="ghost" className="text-slate-600" onClick={addGroup}>+ 添加分组</Button>
+              <Button type="button" variant="ghost" className="text-slate-600" onClick={addGroup}>+ {t('admin.settings.site.addGroup')}</Button>
             </div>
           </div>
 
           <div className="border-t border-slate-100 pt-4">
-            <h3 className="mb-1 text-sm font-semibold text-slate-700">法律与帮助文档</h3>
-            <p className="mb-3 text-xs text-slate-400">把内容写成一本书的某个章节，打开该章节复制浏览器地址粘贴到下方即可。留空则不显示对应入口。</p>
+            <h3 className="mb-1 text-sm font-semibold text-slate-700">{t('admin.settings.site.legalDocs')}</h3>
+            <p className="mb-3 text-xs text-slate-400">{t('admin.settings.site.legalDocsHint')}</p>
             <div className="space-y-4">
-              <Field label="编辑器帮助文档" hint="写作台「帮助」按钮打开的章节，通常介绍支持的 Markdown 语法。">
-                <Input value={helpDocUrl} onChange={(e) => setHelpDocUrl(e.target.value)} placeholder="/book/reader/书籍标识/章节标识" />
+              <Field label={t('admin.settings.site.helpDoc')} hint={t('admin.settings.site.helpDocHint')}>
+                <Input value={helpDocUrl} onChange={(e) => setHelpDocUrl(e.target.value)} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
               </Field>
-              <Field label="用户协议" hint="注册页会展示《用户协议》链接指向该章节。">
-                <Input value={termsUrl} onChange={(e) => setTermsUrl(e.target.value)} placeholder="/book/reader/书籍标识/章节标识" />
+              <Field label={t('admin.settings.site.terms')} hint={t('admin.settings.site.termsHint')}>
+                <Input value={termsUrl} onChange={(e) => setTermsUrl(e.target.value)} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
               </Field>
-              <Field label="隐私政策" hint="注册页会展示《隐私政策》链接指向该章节。">
-                <Input value={privacyUrl} onChange={(e) => setPrivacyUrl(e.target.value)} placeholder="/book/reader/书籍标识/章节标识" />
+              <Field label={t('admin.settings.site.privacy')} hint={t('admin.settings.site.privacyHint')}>
+                <Input value={privacyUrl} onChange={(e) => setPrivacyUrl(e.target.value)} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
               </Field>
             </div>
           </div>
 
           <div className="border-t border-slate-100 pt-4">
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">全站公告</h3>
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">{t('admin.settings.site.announcement')}</h3>
             <div className="space-y-4">
-              <Field label="显示公告横幅" hint="开启后在全站顶部显示一条可关闭的公告。">
-                <Switch ariaLabel="显示公告横幅" checked={annEnabled} onChange={setAnnEnabled} />
+              <Field label={t('admin.settings.site.announcementBanner')} hint={t('admin.settings.site.announcementBannerHint')}>
+                <Switch ariaLabel={t('admin.settings.site.announcementBanner')} checked={annEnabled} onChange={setAnnEnabled} />
               </Field>
-              <Field label="公告内容">
-                <Textarea rows={2} value={annText} onChange={(e) => setAnnText(e.target.value)} placeholder="例如：系统将于今晚 22:00 维护，预计 30 分钟。" />
+              <Field label={t('admin.settings.site.announcementContent')}>
+                <Textarea rows={2} value={annText} onChange={(e) => setAnnText(e.target.value)} placeholder={t('admin.settings.site.announcementPlaceholder')} />
               </Field>
-              <Field label="样式">
-                <Select options={[{ value: 'info', label: '普通（蓝）' }, { value: 'warning', label: '警示（琥珀）' }]}
+              <Field label={t('admin.settings.site.style')}>
+                <Select options={[{ value: 'info', label: t('admin.settings.site.styleInfo') }, { value: 'warning', label: t('admin.settings.site.styleWarning') }]}
                   value={annTone} onChange={setAnnTone} />
               </Field>
             </div>
@@ -233,7 +234,7 @@ export default function SettingsSite() {
         </div>
         {message && <div className="mt-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
         <div className="mt-5 flex justify-end">
-          <Button loading={saving} onClick={save}>保存站点设置</Button>
+          <Button loading={saving} onClick={save}>{t('admin.settings.site.save')}</Button>
         </div>
       </div>
     </SettingsLayout>
