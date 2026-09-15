@@ -9,9 +9,11 @@ interface ModalProps {
   children: ReactNode
   footer?: ReactNode
   className?: string
+  /** 提升层级，置于全局对话框/Toast（z-150/160）之上。二次认证等常在确认框之后弹出，需盖过它 */
+  elevated?: boolean
 }
 
-export function Modal({ open, onClose, title, children, footer, className }: ModalProps) {
+export function Modal({ open, onClose, title, children, footer, className, elevated }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export function Modal({ open, onClose, title, children, footer, className }: Mod
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div className={`fixed inset-0 flex items-end justify-center sm:items-center ${elevated ? 'z-[200]' : 'z-50'}`}>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div ref={ref} className={`relative mx-0 flex max-h-[calc(100vh-1rem)] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:mx-4 sm:rounded-2xl ${className || ''}`}
         style={{ borderRadius: 'var(--radius)' }}>

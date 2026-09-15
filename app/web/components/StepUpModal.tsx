@@ -43,6 +43,7 @@ export default function StepUpModal() {
   return (
     <Modal
       open={open}
+      elevated
       onClose={() => finish(false)}
       title="二次认证"
       footer={<>
