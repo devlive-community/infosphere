@@ -8,7 +8,7 @@ import { API_BASE, formatDate, formatNumber, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
-import { ButtonLink } from '@/components/ui'
+import { ButtonLink, Tooltip } from '@/components/ui'
 import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress, getReadingProgress } from '@/lib/reading-progress'
 import { useTranslation } from '@/lib/i18n'
@@ -114,7 +114,6 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const [activeHeading, setActiveHeading] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [readSet, setReadSet] = useState<Set<number>>(new Set(readDocIds))
-  const didInit = useRef(false)
   const contentRef = useRef<HTMLDivElement>(null)
   // M17 扩展交互：tabs 切换 / mermaid 渲染 / lucide 图标（html 变化后重挂）
   useEffect(() => {
@@ -138,14 +137,19 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const headings = useMemo(() => extractHeadings(doc?.content), [doc])
 
   // 默认展开所有含子章节的节点
-  useEffect(() => {
-    if (didInit.current || flat.length === 0) return
-    didInit.current = true
+  // 默认展开所有含子章节的节点；切换语言/版本（book 变化）时同一组件实例会复用，需按 book 重新展开，
+  // 否则会残留上一本书的展开集合，让新书目录看起来是收缩的。
+  const allParentIds = useMemo(() => {
     const ids = new Set<number>()
     const walk = (docs: Document[]) => docs.forEach((d) => { if (d.children?.length) { ids.add(d.id); walk(d.children) } })
     walk(tree)
-    setExpanded(ids)
-  }, [tree, flat.length])
+    return ids
+  }, [tree])
+  useEffect(() => {
+    setExpanded(new Set(allParentIds))
+  }, [book?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const allCollapsed = expanded.size === 0
+  const toggleAll = () => setExpanded(allCollapsed ? new Set(allParentIds) : new Set())
 
   // 记录阅读进度（登录用户按用户名隔离）：打开即标记该章已读并置为最近章节
   useEffect(() => {
@@ -355,7 +359,18 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                 </ButtonLink>
               )}
             </div>
-            <div className="mb-2 mt-2 text-sm font-semibold text-slate-900">{t('reader.toc')}</div>
+            <div className="mb-2 mt-2 flex items-center justify-between">
+              <div className="text-sm font-semibold text-slate-900">{t('reader.toc')}</div>
+              {allParentIds.size > 0 && (
+                <Tooltip content={allCollapsed ? t('reader.expandAll') : t('reader.collapseAll')}>
+                  <button type="button" onClick={toggleAll}
+                    aria-label={allCollapsed ? t('reader.expandAll') : t('reader.collapseAll')}
+                    className="rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                    {allCollapsed ? <ChevronRightIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+                  </button>
+                </Tooltip>
+              )}
+            </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="min-w-max pb-2 pl-4">

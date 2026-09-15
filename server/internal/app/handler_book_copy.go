@@ -111,6 +111,7 @@ func (a *App) CopyBook(c *gin.Context) {
 
 	// 章节：第一遍建档（记录 原 id -> 新 id），第二遍重建父子关系（父章节须同在选中集合内）
 	idMap := make(map[uint]uint, len(chosen))
+	firstDocSlug := ""
 	for idx, d := range chosen {
 		base := d.Slug
 		if base == "" {
@@ -125,6 +126,9 @@ func (a *App) CopyBook(c *gin.Context) {
 			fail(c, http.StatusInternalServerError, "复制章节失败: "+err.Error())
 			return
 		}
+		if idx == 0 {
+			firstDocSlug = nd.Slug // 首个章节，供前端复制后直接进入写作台该章节
+		}
 		idMap[d.ID] = nd.ID
 	}
 	for _, d := range chosen {
@@ -133,5 +137,5 @@ func (a *App) CopyBook(c *gin.Context) {
 		}
 	}
 
-	ok(c, gin.H{"book": newBook, "copied_documents": len(chosen)})
+	ok(c, gin.H{"book": newBook, "copied_documents": len(chosen), "first_doc_slug": firstDocSlug})
 }

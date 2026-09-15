@@ -84,10 +84,14 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
       const body = mode === 'full'
         ? { title: title.trim(), mode: 'full' }
         : { title: title.trim(), mode: 'custom', doc_ids: items.map((x) => x.id) }
-      const d = await api<{ book: { slug: string } }>(`/books/${book.id}/copy`, { method: 'POST', body })
+      const d = await api<{ book: { slug: string }; first_doc_slug?: string }>(`/books/${book.id}/copy`, { method: 'POST', body })
       showToast({ message: '已复制为新的草稿书', tone: 'success' })
       onClose()
-      router.push(`/book/writer/${encodeURIComponent(d.book.slug)}`)
+      // 直接进入首个章节，避免落在无选中章节的写作台导致无法保存/发布
+      const dest = d.first_doc_slug
+        ? `/book/writer/${encodeURIComponent(d.book.slug)}/${encodeURIComponent(d.first_doc_slug)}`
+        : `/book/writer/${encodeURIComponent(d.book.slug)}`
+      router.push(dest)
     } catch (e) {
       showToast({ title: '复制失败', message: (e as Error).message, tone: 'error' })
     } finally {

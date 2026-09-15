@@ -435,6 +435,8 @@ export const en: Record<string, string> = {
   'reader.exitFocus': 'Exit focus',
   'reader.collapse': 'Collapse',
   'reader.expand': 'Expand',
+  'reader.expandAll': 'Expand all',
+  'reader.collapseAll': 'Collapse all',
 
   // Account pages (shared)
   'account.common.home': 'Home',
