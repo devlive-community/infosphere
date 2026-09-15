@@ -137,6 +137,8 @@ func (a *App) GetSiteConfig(c *gin.Context) {
 	for _, r := range rows {
 		cfg[r.ConfigKey] = r.ConfigValue
 	}
+	// 仅暴露翻译是否可用，不泄露 API Key 等敏感配置
+	cfg["translation_enabled"] = a.translationEnabled()
 	ok(c, cfg)
 }
 
