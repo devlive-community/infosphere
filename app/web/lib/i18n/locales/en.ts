@@ -1314,4 +1314,17 @@ export const en: Record<string, string> = {
   'admin.settings.oauth.enableSwitch': 'Enable {label} login',
   'admin.settings.oauth.save': 'Save {label}',
   'admin.settings.oauth.saved': '{label} config saved',
+  // 内容设置
+  'admin.settings.content.description': 'Control image upload size and type limits, and site-wide comment toggle.',
+  'admin.settings.content.loading': 'Loading content settings…',
+  'admin.settings.content.uploadLimit': 'Upload limit',
+  'admin.settings.content.maxFileSize': 'Max file size (MB)',
+  'admin.settings.content.maxFileSizeHint': 'Maximum size per upload file (1-100).',
+  'admin.settings.content.allowedTypes': 'Allowed file types',
+  'admin.settings.content.allowedTypesHint': 'Extensions, comma-separated, e.g. .png,.jpg,.webp. Leave empty for built-in image types.',
+  'admin.settings.content.comments': 'Comments',
+  'admin.settings.content.enableComments': 'Enable site-wide comments',
+  'admin.settings.content.enableCommentsHint': 'When disabled, all chapter comment submissions will be rejected and comment boxes hidden (existing comments remain visible).',
+  'admin.settings.content.save': 'Save config',
+  'admin.settings.content.saved': 'Content settings saved',
 }

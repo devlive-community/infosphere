@@ -1314,4 +1314,17 @@ export const zh: Record<string, string> = {
   'admin.settings.oauth.enableSwitch': '启用 {label} 登录',
   'admin.settings.oauth.save': '保存 {label}',
   'admin.settings.oauth.saved': '{label} 配置已保存',
+  // 内容设置
+  'admin.settings.content.description': '控制图片上传的大小与类型限制，以及全站评论开关。',
+  'admin.settings.content.loading': '正在加载内容设置…',
+  'admin.settings.content.uploadLimit': '上传限制',
+  'admin.settings.content.maxFileSize': '最大文件大小（MB）',
+  'admin.settings.content.maxFileSizeHint': '单个上传文件的大小上限（1-100）。',
+  'admin.settings.content.allowedTypes': '允许的文件类型',
+  'admin.settings.content.allowedTypesHint': '扩展名，逗号分隔，如 .png,.jpg,.webp。留空则用内置图片类型。',
+  'admin.settings.content.comments': '评论',
+  'admin.settings.content.enableComments': '开启全站评论',
+  'admin.settings.content.enableCommentsHint': '关闭后，所有章节的评论提交都会被拒绝，评论框隐藏（已有评论仍可查看）。',
+  'admin.settings.content.save': '保存配置',
+  'admin.settings.content.saved': '内容设置已保存',
 }
