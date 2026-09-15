@@ -1762,4 +1762,7 @@ export const en: Record<string, string> = {
   'user.home.publicAchievements': 'Public Achievements',
   'user.home.publicAchievementsHint': 'Showing {username}\'s pinned or recently unlocked achievements',
   'user.home.achievementTier': 'Tier {tier}',
+  // 全局
+  'global.loadingInfoSphere': 'Loading InfoSphere…',
+  'global.pageLoading': 'Loading page…',
 }
