@@ -26,6 +26,139 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;')
 }
 
+// ── 块级定界扫描（::: 系列与 <Tabs>/<Note> 等 HTML 块共用）─────────────────
+// 旧实现用 indexOf('\n:::') / 非贪婪正则找块尾，不理解 Markdown 结构，
+// 导致代码块中的 :::、=== "x"、</Tabs> 等文本被误判，同名块也无法嵌套。
+// 这里统一为“围栏感知 + 深度计数”的逐行扫描。
+
+const FENCE_OPEN = /^(`{3,}|~{3,})/
+
+// lineFence 根据当前行更新围栏状态：返回 '' 表示不在围栏内，否则为围栏字符（` 或 ~）
+function lineFence(fence: string, line: string): string {
+  if (fence) {
+    if (new RegExp(`^${fence}{3,}[ \\t]*$`).test(line.trim())) return ''
+    return fence
+  }
+  const open = FENCE_OPEN.exec(line)
+  return open ? open[1][0] : fence
+}
+
+// 行区间 [start, end) 在原始字符串中的偏移换算用：把 lines 切回字符串时行间有 '\n'
+function linesOffset(lines: string[], end: number): number {
+  return lines.slice(0, end).join('\n').length + (end > 0 ? 1 : 0)
+}
+
+// scanDelimitedBlock 扫描 ::: 系列块（tabs/grid/diff/katex/mermaid/api）的内容。
+// headerLen 为头部（含换行）长度；带块名的 `:::xxx` 行加深嵌套，单独的 `:::` 行减浅，
+// 外层深度归零时块结束。围栏代码内的 ::: 与 === 均不参与判定。
+function scanDelimitedBlock(src: string, headerLen: number): { content: string; raw: string } | undefined {
+  const lines = src.slice(headerLen).split('\n')
+  let fence = ''
+  let depth = 0
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    fence = lineFence(fence, line)
+    if (fence) continue
+    if (/^:::\s*\S/.test(line)) {
+      depth++
+      continue
+    }
+    if (/^:::\s*$/.test(line)) {
+      if (depth === 0) {
+        const offset = linesOffset(lines, i)
+        return { content: lines.slice(0, i).join('\n'), raw: src.slice(0, headerLen + offset + line.length) }
+      }
+      depth--
+    }
+  }
+  return undefined
+}
+
+interface TagBlockEvent {
+  pos: number
+  len: number
+  open: boolean
+  attrs: string
+}
+
+// collectTagEvents 收集一行内按出现顺序排列的开/闭标签事件（pos 为相对 line 的偏移）
+function collectTagEvents(line: string, tag: string): TagBlockEvent[] {
+  const events: TagBlockEvent[] = []
+  const openRe = new RegExp(`<${tag}(\\s[^>]*)?>`, 'gi')
+  const closeRe = new RegExp(`</${tag}[ \\t]*>`, 'gi')
+  let om: RegExpExecArray | null
+  let cm: RegExpExecArray | null
+  while ((om = openRe.exec(line))) events.push({ pos: om.index, len: om[0].length, open: true, attrs: om[1] || '' })
+  while ((cm = closeRe.exec(line))) events.push({ pos: cm.index, len: cm[0].length, open: false, attrs: '' })
+  return events.sort((a, b) => a.pos - b.pos)
+}
+
+// scanTagBlock 扫描 HTML 标签块（<Tabs>、<Note> 等）的内容，支持同名嵌套，
+// 围栏代码内的闭合标签不参与判定。openMatch 为开头标签的匹配结果。
+function scanTagBlock(src: string, tag: string, openMatch: RegExpExecArray): { content: string; raw: string } | undefined {
+  const bodyStart = openMatch.index + openMatch[0].length
+  const lines = src.slice(bodyStart).split('\n')
+  let fence = ''
+  let depth = 1 // 外层开标签已由 openMatch 消费
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    fence = lineFence(fence, line)
+    if (fence) continue
+    let closeStart = -1
+    let closeLen = 0
+    for (const ev of collectTagEvents(line, tag)) {
+      if (ev.open) depth++
+      else {
+        depth--
+        if (depth === 0) {
+          closeStart = ev.pos
+          closeLen = ev.len
+          break
+        }
+      }
+    }
+    if (closeStart >= 0) {
+      const offset = linesOffset(lines, i)
+      const bodyLen = offset + closeStart
+      return {
+        content: src.slice(bodyStart, bodyStart + bodyLen),
+        raw: src.slice(0, bodyStart + offset + closeLen),
+      }
+    }
+  }
+  return undefined
+}
+
+// extractTagBlocks 从 content 中按顺序提取成对的 <Tag attrs>…</Tag> 子块，
+// 围栏代码内的标签不参与判定，同名嵌套按深度配对（内层块交给后续重新分词处理）。
+function extractTagBlocks(content: string, tag: string): { attrs: string; body: string }[] {
+  const lines = content.split('\n')
+  let fence = ''
+  let depth = 0
+  let pending: { attrs: string; bodyStart: number } | null = null
+  const blocks: { attrs: string; body: string }[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const lineStart = linesOffset(lines, i)
+    fence = lineFence(fence, line)
+    if (fence) continue
+    for (const ev of collectTagEvents(line, tag)) {
+      const abs = lineStart + ev.pos
+      if (ev.open) {
+        if (depth === 0) pending = { attrs: ev.attrs, bodyStart: abs + ev.len }
+        depth++
+      } else if (depth > 0) {
+        depth--
+        if (depth === 0 && pending) {
+          blocks.push({ attrs: pending.attrs, body: content.slice(pending.bodyStart, abs) })
+          pending = null
+        }
+      }
+    }
+  }
+  return blocks
+}
+
 // inInlineCode 旧版规则：占位起始位置之前的反引号数量为奇数时视为处于行内代码中
 function inInlineCode(src: string, index: number): boolean {
   const backticks = src.slice(0, index).match(/`/g)
@@ -48,14 +181,24 @@ const tabsExtension: TokenizerAndRendererExtension = {
   tokenizer(src) {
     const header = /^:::\s*tabs\s*\n/.exec(src)
     if (!header) return undefined
-    const end = src.indexOf('\n:::')
-    if (end === -1) return undefined
-    const content = src.slice(header[0].length, end)
-    const raw = src.slice(0, end + 4)
+    const block = scanDelimitedBlock(src, header[0].length)
+    if (!block) return undefined
 
+    // 围栏感知地切分 === "标题"：代码块内的 === 行不会被误判为新 Tab
     const tabs: { title: string; src: string }[] = []
     let current: { title: string; src: string } | null = null
-    for (const line of content.split('\n')) {
+    let fence = ''
+    for (const line of block.content.split('\n')) {
+      if (fence) {
+        fence = lineFence(fence, line)
+        if (current) current.src += line + '\n'
+        continue
+      }
+      if (FENCE_OPEN.test(line)) {
+        fence = lineFence(fence, line)
+        if (current) current.src += line + '\n'
+        continue
+      }
       const m = /^===\s*"([^"]+)"\s*$/.exec(line.trim())
       if (m) {
         current = { title: m[1], src: '' }
@@ -65,6 +208,7 @@ const tabsExtension: TokenizerAndRendererExtension = {
       if (current) current.src += line + '\n'
     }
     if (tabs.length === 0) return undefined
+    const raw = block.raw
     return {
       type: 'md-tabs',
       raw,
@@ -108,16 +252,18 @@ const tabsTagExtension: TokenizerAndRendererExtension = {
     return src.match(/<Tabs\s*>/i)?.index
   },
   tokenizer(src) {
-    const m = /^<Tabs\s*>\n?([\s\S]*?)<\/Tabs>\s*/i.exec(src)
-    if (!m) return undefined
-    const tabRe = /<Tab\s+title\s*=\s*["']([^"']*)["']\s*>\n?([\s\S]*?)<\/Tab>/gi
+    const open = /<Tabs\s*>/i.exec(src)
+    if (!open) return undefined
+    const block = scanTagBlock(src, 'Tabs', open)
+    if (!block) return undefined
+    // 围栏感知 + 同名嵌套配对地提取 <Tab title="…"> 子块
     const tabs: { title: string; tokens: Tokens.Generic[] }[] = []
-    let tm: RegExpExecArray | null
-    while ((tm = tabRe.exec(m[1])) !== null) {
-      tabs.push({ title: tm[1], tokens: this.lexer.blockTokens(tm[2].trim()) })
+    for (const tab of extractTagBlocks(block.content, 'Tab')) {
+      const titleMatch = /title\s*=\s*["']([^"']*)["']/i.exec(tab.attrs)
+      if (titleMatch) tabs.push({ title: titleMatch[1], tokens: this.lexer.blockTokens(tab.body.trim()) })
     }
     if (tabs.length === 0) return undefined
-    return { type: 'md-tabs-tag', raw: m[0], tabs } as Tokens.Generic
+    return { type: 'md-tabs-tag', raw: block.raw, tabs } as Tokens.Generic
   },
   renderer(token) {
     const tabs = (token as Tokens.Generic & { tabs: MdTab[] }).tabs
@@ -142,9 +288,11 @@ const calloutTagExtension: TokenizerAndRendererExtension = {
     return src.match(/<(Note|Tip|Warning|Info|Caution|Important)\s*>/i)?.index
   },
   tokenizer(src) {
-    const m = /^<(Note|Tip|Warning|Info|Caution|Important)\s*>\n?([\s\S]*?)<\/\1>\s*/i.exec(src)
-    if (!m) return undefined
-    let body = m[2].trim()
+    const open = /<(Note|Tip|Warning|Info|Caution|Important)\s*>/i.exec(src)
+    if (!open) return undefined
+    const block = scanTagBlock(src, open[1], open)
+    if (!block) return undefined
+    let body = block.content.trim()
     let title = ''
     // 可选：开头 **标题** 作为提示块标题
     const tm = /^\*\*(.+?)\*\*[ \t]*\n?/.exec(body)
@@ -154,8 +302,8 @@ const calloutTagExtension: TokenizerAndRendererExtension = {
     }
     return {
       type: 'md-callout-tag',
-      raw: m[0],
-      kind: m[1].toLowerCase() as CalloutKind,
+      raw: block.raw,
+      kind: open[1].toLowerCase() as CalloutKind,
       title,
       tokens: this.lexer.blockTokens(body),
     } as Tokens.Generic
@@ -182,10 +330,10 @@ const gridExtension: TokenizerAndRendererExtension = {
   tokenizer(src) {
     const header = /^:::\s*grid((?:\s+[\w-]+)*)\s*\n/.exec(src)
     if (!header) return undefined
-    const end = src.indexOf('\n:::')
-    if (end === -1) return undefined
-    const content = src.slice(header[0].length, end)
-    const raw = src.slice(0, end + 4)
+    const block = scanDelimitedBlock(src, header[0].length)
+    if (!block) return undefined
+    const content = block.content
+    const raw = block.raw
 
     let cols = 2
     let gap = 4
@@ -200,7 +348,14 @@ const gridExtension: TokenizerAndRendererExtension = {
     const items: string[] = []
     let currentItem: string[] = []
     let collecting = false
+    let itemFence = ''
     for (const line of content.split('\n')) {
+      // 围栏代码内的行不参与列表项切分
+      itemFence = lineFence(itemFence, line)
+      if (itemFence) {
+        if (collecting) currentItem.push(line)
+        continue
+      }
       const marker = line.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/)
       if (marker) {
         if (collecting) items.push(currentItem.join('\n').trim())
@@ -248,10 +403,10 @@ const diffExtension: TokenizerAndRendererExtension = {
   tokenizer(src) {
     const header = /^:::\s*diff((?:\s+[+-][\d,-]+)*)\s*\n/.exec(src)
     if (!header) return undefined
-    const end = src.indexOf('\n:::')
-    if (end === -1) return undefined
-    const content = src.slice(header[0].length, end)
-    const raw = src.slice(0, end + 4)
+    const block = scanDelimitedBlock(src, header[0].length)
+    if (!block) return undefined
+    const content = block.content
+    const raw = block.raw
 
     const addLines = new Set<number>()
     const deleteLines = new Set<number>()
@@ -315,10 +470,9 @@ const katexExtension: TokenizerAndRendererExtension = {
   tokenizer(src) {
     const header = /^:::\s*katex\n/.exec(src)
     if (!header) return undefined
-    const end = src.indexOf('\n:::')
-    if (end === -1) return undefined
-    const content = src.slice(header[0].length, end).trim()
-    return { type: 'md-katex', raw: src.slice(0, end + 4), content } as Tokens.Generic
+    const block = scanDelimitedBlock(src, header[0].length)
+    if (!block) return undefined
+    return { type: 'md-katex', raw: block.raw, content: block.content.trim() } as Tokens.Generic
   },
   renderer(token) {
     const content = (token as Tokens.Generic & { content: string }).content
@@ -341,10 +495,9 @@ const mermaidExtension: TokenizerAndRendererExtension = {
   tokenizer(src) {
     const header = /^:::\s*mermaid\n/.exec(src)
     if (!header) return undefined
-    const end = src.indexOf('\n:::')
-    if (end === -1) return undefined
-    const content = src.slice(header[0].length, end).trim()
-    return { type: 'md-mermaid', raw: src.slice(0, end + 4), content } as Tokens.Generic
+    const block = scanDelimitedBlock(src, header[0].length)
+    if (!block) return undefined
+    return { type: 'md-mermaid', raw: block.raw, content: block.content.trim() } as Tokens.Generic
   },
   renderer(token) {
     const content = escapeHtml((token as Tokens.Generic & { content: string }).content)
@@ -657,10 +810,10 @@ const apiExtension: TokenizerAndRendererExtension = {
   tokenizer(src) {
     const header = /^:::\s*api\s+(GET|POST|PUT|DELETE|PATCH)\s+([^\n]+)\n/.exec(src)
     if (!header) return undefined
-    const end = src.indexOf('\n:::')
-    if (end === -1) return undefined
-    const content = src.slice(header[0].length, end)
-    const raw = src.slice(0, end + 4)
+    const block = scanDelimitedBlock(src, header[0].length)
+    if (!block) return undefined
+    const content = block.content
+    const raw = block.raw
 
     let description: string | null = null
     const sections: { title: string; src: string }[] = []
@@ -675,7 +828,14 @@ const apiExtension: TokenizerAndRendererExtension = {
       else if (text) description = text
     }
 
+    let sectionFence = ''
     for (const line of content.split('\n')) {
+      // 围栏代码内的 === "…" 不参与分节判定
+      sectionFence = lineFence(sectionFence, line)
+      if (sectionFence) {
+        currentContent.push(line)
+        continue
+      }
       const sectionMatch = line.match(/^(\s*)===\s*"([^"]*)"$/)
       if (sectionMatch) {
         flush()
