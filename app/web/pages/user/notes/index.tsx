@@ -4,6 +4,7 @@ import Container from '@/components/Container'
 import Seo from '@/components/Seo'
 import { api, formatDate, API_BASE, getToken } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import { Badge, Button, Card, EmptyState, Loading, Pagination, SegmentedTabs, useFeedback } from '@/components/ui'
 import type { ReadingAnnotation } from '@/lib/reading-annotations'
 
@@ -23,21 +24,11 @@ interface AnnotationPage {
   page_size: number
 }
 
-const filters = [
-  { value: 'all', label: '全部' },
-  { value: 'note', label: '私人笔记', icon: <i className="fa-solid fa-note-sticky" aria-hidden="true" /> },
-  { value: 'highlight', label: '划线', icon: <i className="fa-solid fa-highlighter" aria-hidden="true" /> },
-  { value: 'bookmark', label: '章节书签', icon: <i className="fa-solid fa-bookmark" aria-hidden="true" /> },
-]
-
-function kindLabel(kind: MyAnnotation['kind']) {
-  return kind === 'note' ? '私人笔记' : kind === 'highlight' ? '划线' : '章节书签'
-}
-
 export default function MyNotesPage() {
   const user = useRequireAuth()
   const { site } = useApp()
   const { showToast, confirmAction } = useFeedback()
+  const { t } = useTranslation()
   const [filter, setFilter] = useState<Filter>('all')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<AnnotationPage | null>(null)
@@ -46,7 +37,17 @@ export default function MyNotesPage() {
   const [exporting, setExporting] = useState(false)
   const siteName = site.site_name || 'InfoSphere'
 
-  // exportNotes 下载全部标注为 Markdown（复用书籍导出的 fetch→blob→下载 方式）
+  const filters = [
+    { value: 'all', label: t('user.notes.filterAll') },
+    { value: 'note', label: t('user.notes.filterNote'), icon: <i className="fa-solid fa-note-sticky" aria-hidden="true" /> },
+    { value: 'highlight', label: t('user.notes.filterHighlight'), icon: <i className="fa-solid fa-highlighter" aria-hidden="true" /> },
+    { value: 'bookmark', label: t('user.notes.filterBookmark'), icon: <i className="fa-solid fa-bookmark" aria-hidden="true" /> },
+  ]
+
+  function kindLabel(kind: MyAnnotation['kind']) {
+    return kind === 'note' ? t('user.notes.filterNote') : kind === 'highlight' ? t('user.notes.filterHighlight') : t('user.notes.filterBookmark')
+  }
+
   async function exportNotes() {
     setExporting(true)
     try {
@@ -56,7 +57,7 @@ export default function MyNotesPage() {
       })
       if (!res.ok) {
         const msg = await res.json().then((p) => p.message).catch(() => '')
-        throw new Error(msg || '导出失败，请稍后重试')
+        throw new Error(msg || t('user.notes.exportFailed'))
       }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -66,7 +67,7 @@ export default function MyNotesPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (error) {
-      showToast({ title: '导出失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('user.notes.exportFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setExporting(false)
     }
@@ -82,11 +83,11 @@ export default function MyNotesPage() {
       setData({ ...result, items: result.items || [] })
     } catch (error) {
       setData({ items: [], total: 0, page: 1, page_size: 12 })
-      showToast({ title: '私人笔记加载失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('user.notes.loadFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setLoading(false)
     }
-  }, [filter, page, showToast, user])
+  }, [filter, page, showToast, user, t])
 
   useEffect(() => { void load() }, [load])
 
@@ -98,50 +99,50 @@ export default function MyNotesPage() {
 
   async function remove(item: MyAnnotation) {
     const confirmed = await confirmAction({
-      title: `删除${kindLabel(item.kind)}`,
-      message: '删除后无法恢复，是否继续？',
-      confirmLabel: '删除',
+      title: t('user.notes.deleteConfirmTitle', { kind: kindLabel(item.kind) }),
+      message: t('user.notes.deleteConfirmMessage'),
+      confirmLabel: t('user.notes.delete'),
       danger: true,
     })
     if (!confirmed) return
     setDeleting(item.id)
     try {
       await api(`/annotations/${item.id}`, { method: 'DELETE' })
-      showToast({ message: `${kindLabel(item.kind)}已删除`, tone: 'success' })
+      showToast({ message: t('user.notes.deleteSuccess', { kind: kindLabel(item.kind) }), tone: 'success' })
       if (data?.items.length === 1 && page > 1) setPage((current) => current - 1)
       else await load()
     } catch (error) {
-      showToast({ title: '删除失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('user.notes.deleteFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setDeleting(null)
     }
   }
 
-  if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
+  if (!user) return <Loading className="min-h-[60vh]" label={t('user.notes.verifyingAuth')} />
 
   return (
     <>
-      <Seo siteName={siteName} title="我的笔记" noindex />
+      <Seo siteName={siteName} title={t('user.notes.title')} noindex />
       <Container>
         <div className="flex flex-col justify-between gap-4 pb-6 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-3xl font-bold text-ink">我的笔记</h1>
-            <p className="mt-2 text-sm text-slate-500">集中查看跨设备同步的划线、私人笔记和章节书签。</p>
+            <h1 className="text-3xl font-bold text-ink">{t('user.notes.title')}</h1>
+            <p className="mt-2 text-sm text-slate-500">{t('user.notes.description')}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" disabled={loading} onClick={() => void load()}><i className="fa-solid fa-rotate" aria-hidden="true" />刷新</Button>
-            <Button variant="outline" loading={exporting} disabled={loading || (data?.total ?? 0) === 0} onClick={() => void exportNotes()}><i className="fa-solid fa-file-arrow-down" aria-hidden="true" />导出</Button>
+            <Button variant="outline" disabled={loading} onClick={() => void load()}><i className="fa-solid fa-rotate" aria-hidden="true" />{t('user.notes.refresh')}</Button>
+            <Button variant="outline" loading={exporting} disabled={loading || (data?.total ?? 0) === 0} onClick={() => void exportNotes()}><i className="fa-solid fa-file-arrow-down" aria-hidden="true" />{t('user.notes.export')}</Button>
           </div>
         </div>
 
-        <SegmentedTabs className="mb-5" value={filter} items={filters} ariaLabel="笔记类型" onChange={switchFilter} />
+        <SegmentedTabs className="mb-5" value={filter} items={filters} ariaLabel={t('user.notes.filterLabel')} onChange={switchFilter} />
 
         {loading || data === null ? (
-          <Loading className="py-20" label="正在加载私人笔记…" />
+          <Loading className="py-20" label={t('user.notes.loading')} />
         ) : data.items.length === 0 ? (
           <EmptyState>
             <i className="fa-regular fa-note-sticky mb-3 block text-2xl text-slate-300" aria-hidden="true" />
-            暂无{filter === 'all' ? '阅读标注' : kindLabel(filter as MyAnnotation['kind'])}，阅读章节时选中正文即可创建。
+            {t('user.notes.empty', { kind: filter === 'all' ? t('user.notes.annotations') : kindLabel(filter as MyAnnotation['kind']) })}
           </EmptyState>
         ) : (
           <>
@@ -152,8 +153,8 @@ export default function MyNotesPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={item.kind === 'note' ? 'primary' : item.kind === 'highlight' ? 'amber' : 'slate'}>{kindLabel(item.kind)}</Badge>
-                        {item.anchor_status === 'orphaned' && <Badge tone="rose">原文位置已失效</Badge>}
-                        {item.anchor_status === 'relocated' && <Badge tone="slate">已重新定位</Badge>}
+                        {item.anchor_status === 'orphaned' && <Badge tone="rose">{t('user.notes.orphaned')}</Badge>}
+                        {item.anchor_status === 'relocated' && <Badge tone="slate">{t('user.notes.relocated')}</Badge>}
                       </div>
                       <Link href={`/book/reader/${encodeURIComponent(item.book_slug)}/${encodeURIComponent(item.document_slug)}`}
                         className="mt-3 block truncate font-semibold text-slate-900 hover:text-primary-600">
@@ -162,12 +163,12 @@ export default function MyNotesPage() {
                       <p className="mt-1 truncate text-xs text-slate-400">《{item.book_title}》</p>
                     </div>
                     <Button size="sm" variant="ghost" loading={deleting === item.id} onClick={() => void remove(item)} className="shrink-0 text-rose-600 hover:bg-rose-50">
-                      <i className="fa-solid fa-trash" aria-hidden="true" />删除
+                      <i className="fa-solid fa-trash" aria-hidden="true" />{t('user.notes.delete')}
                     </Button>
                   </div>
                   {item.quote && <blockquote className="mt-4 line-clamp-4 border-l-2 border-primary-300 pl-3 text-sm leading-6 text-slate-600">{item.quote}</blockquote>}
                   {item.note && <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-sm leading-6 text-slate-800">{item.note}</p>}
-                  <p className="mt-auto pt-4 text-xs text-slate-400">更新于 {formatDate(item.updated_at)}</p>
+                  <p className="mt-auto pt-4 text-xs text-slate-400">{t('user.notes.updatedAt')} {formatDate(item.updated_at)}</p>
                 </Card>
               ))}
             </div>
