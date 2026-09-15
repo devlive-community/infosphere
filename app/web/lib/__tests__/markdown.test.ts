@@ -138,6 +138,29 @@ describe('M19 扩展', () => {
     expect(noTitle).toContain('随手记一笔')
   })
 
+  it('<AccordionGroup>/<Accordion> 折叠面板', () => {
+    const html = renderMarkdown('<AccordionGroup>\n<Accordion title="没有文件锁">\n请改用其他方案。\n</Accordion>\n</AccordionGroup>')
+    expect(html).toContain('<details')
+    expect(html).toContain('<summary')
+    expect(html).toContain('没有文件锁')
+    expect(html).toContain('请改用其他方案')
+  })
+
+  it('<Steps>/<Step> 编号步骤', () => {
+    const html = renderMarkdown('<Steps>\n<Step title="安装 Git LFS">\n运行安装命令。\n</Step>\n<Step title="初始化">\n完成初始化。\n</Step>\n</Steps>')
+    expect(html).toContain('<ol')
+    expect(html).toContain('安装 Git LFS')
+    expect(html).toContain('完成初始化')
+  })
+
+  it('块可递归组合：Tab 内嵌代码块与 Tip', () => {
+    const html = renderMarkdown('<Tabs>\n<Tab title="PostgreSQL">\n```sql\nSELECT 1;\n```\n\n<Tip>\n记得建索引\n</Tip>\n</Tab>\n</Tabs>')
+    expect(html).toContain('data-md-tab=')
+    expect(html).toContain('md-code-block') // 内层代码块被解析
+    expect(html).toContain('md-alert md-alert-tip') // 内层 Tip 被解析
+    expect(html).toContain('记得建索引')
+  })
+
   it('XSS 载荷被净化', () => {
     const html = renderMarkdown('[点击](javascript:alert(1)) <img src=x onerror=alert(1)>')
     expect(html).not.toContain('onerror')
