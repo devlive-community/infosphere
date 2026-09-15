@@ -80,7 +80,7 @@ export default function AdminSystem() {
       api<AdminActivity>('/admin/activity').then(setActivity),
       api<{ items?: unknown[] }>('/admin/configs').then((c) => setConfigCount(c?.items?.length ?? 0)),
     ]).finally(() => setLoading(false))
-  }, [isAdmin])
+  }, [isAdmin, t])
 
   const dbName = DB_LABEL[dbType] || dbType || '—'
   const nodeVer = health?.node ? `Node.js ${health.node.replace(/^v/, '')}` : '—'

@@ -136,6 +136,7 @@ function ActivationBanner() {
 // AnnouncementBanner 全站公告：管理员在站点设置配置；可关闭，公告内容变化后重新出现。
 function AnnouncementBanner() {
   const { site } = useApp()
+  const { t } = useTranslation()
   const text = (site.announcement_text || '').trim()
   const enabled = site.announcement_enabled === 'true'
   const warning = site.announcement_tone === 'warning'

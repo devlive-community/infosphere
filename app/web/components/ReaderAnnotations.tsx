@@ -55,7 +55,7 @@ function unwrapMarks(root: HTMLElement) {
   root.normalize()
 }
 
-function wrapRange(root: HTMLElement, start: number, end: number, annotation: ReadingAnnotation) {
+function wrapRange(root: HTMLElement, start: number, end: number, annotation: ReadingAnnotation, t: (key: string, vars?: Record<string, string | number>) => string) {
   let cursor = 0
   const targets = textNodes(root).map((node) => {
     const value = { node, start: cursor, end: cursor + node.data.length }
@@ -103,7 +103,7 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
     } finally {
       setLoading(false)
     }
-  }, [doc.id, showToast, user])
+  }, [doc.id, showToast, t, user])
 
   useEffect(() => { void load() }, [load])
 
@@ -115,7 +115,7 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
     const next = items.map((item) => item.kind === 'bookmark' ? item : { ...item, ...relocateAnnotation(item, text) })
     next.filter((item) => item.kind !== 'bookmark' && item.anchor_status !== 'orphaned')
       .sort((a, b) => b.start_offset - a.start_offset)
-      .forEach((item) => wrapRange(root, item.start_offset, item.end_offset, item))
+      .forEach((item) => wrapRange(root, item.start_offset, item.end_offset, item, t))
     const changed = next.filter((item, index) => item.start_offset !== items[index].start_offset || item.end_offset !== items[index].end_offset || item.anchor_status !== items[index].anchor_status)
     if (changed.length) {
       setItems(next)
@@ -125,7 +125,7 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
         } }).catch(() => undefined)
       })
     }
-  }, [contentRef, items])
+  }, [contentRef, items, t])
 
   useEffect(() => {
     const root = contentRef.current
