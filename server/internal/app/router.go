@@ -235,6 +235,9 @@ func (a *App) Router() *gin.Engine {
 		api.POST("/books/:id/reviews", a.RequireAuth(), a.RequireEmailVerified(), a.RequirePermission(authz.CommentCreate), a.RateLimit(commentRateLimit), a.UpsertBookReview)
 		api.DELETE("/reviews/:id", a.RequireAuth(), a.RequirePermission(authz.CommentDelete), a.DeleteBookReview)
 
+		// ── 翻译（写作台调用后台配置的翻译方式） ──
+		api.POST("/translate", a.RequireAuth(), a.RateLimit(commentRateLimit), a.Translate)
+
 		// ── 内容举报（提交者不可查询举报人队列；管理端路由见 admin 组） ──
 		api.POST("/reports", a.RequireAuth(), a.RequirePermission(authz.ReportCreate), a.RateLimit(reportRateLimit), a.CreateContentReport)
 
@@ -290,6 +293,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminSaveOAuth)
 			admin.GET("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminGetMail)
 			admin.PUT("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminSaveMail)
+			admin.GET("/translation", a.RequirePermission(authz.SiteUpdate), a.AdminGetTranslation)
+			admin.PUT("/translation", a.RequirePermission(authz.SiteUpdate), a.AdminSaveTranslation)
 			admin.GET("/storage", a.RequirePermission(authz.SiteUpdate), a.AdminGetStorage)
 			admin.PUT("/storage", a.RequirePermission(authz.SiteUpdate), a.AdminSaveStorage)
 			admin.GET("/registration", a.RequirePermission(authz.SiteUpdate), a.GetRegistrationSettings)

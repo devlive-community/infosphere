@@ -128,6 +128,8 @@ export default function Writer({ user }: WriterProps) {
   const [chapterMenu, setChapterMenu] = useState<ChapterMenuState | null>(null)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
   const [insertMenuOpen, setInsertMenuOpen] = useState(false)
+  const [translateMenuOpen, setTranslateMenuOpen] = useState(false)
+  const [translating, setTranslating] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'inside' | 'after' } | null>(null)
   const [creatingUnder, setCreatingUnder] = useState<number | null>(null) // 新建期间保持高亮的父章节
@@ -790,6 +792,54 @@ export default function Writer({ user }: WriterProps) {
     setInsertMenuOpen(false)
   }
 
+  // 可选目标语言（后台翻译服务负责实际转换）
+  const TRANSLATE_TARGETS: { code: string; label: string }[] = [
+    { code: 'en', label: 'English' },
+    { code: 'zh-CN', label: '简体中文' },
+    { code: 'zh-TW', label: '繁體中文' },
+    { code: 'ja', label: '日本語' },
+    { code: 'ko', label: '한국어' },
+    { code: 'fr', label: 'Français' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'es', label: 'Español' },
+    { code: 'ru', label: 'Русский' },
+  ]
+  // 翻译：有选区则译选区并原地替换；否则译整章内容（替换前需确认，避免误覆盖）。
+  async function translateContent(target: string, label: string) {
+    setTranslateMenuOpen(false)
+    const el = textareaRef.current
+    if (!el) return
+    const hasSelection = el.selectionStart !== el.selectionEnd
+    const source = hasSelection ? el.value.slice(el.selectionStart, el.selectionEnd) : el.value
+    if (!source.trim()) { showToast({ message: '没有可翻译的内容', tone: 'error' }); return }
+    if (!hasSelection) {
+      const okToReplace = await confirmAction({
+        title: `翻译为${label}`,
+        message: '将翻译整章内容并替换当前正文，是否继续？（可先选中部分文字仅翻译选区）',
+        confirmLabel: '翻译并替换',
+      })
+      if (!okToReplace) return
+    }
+    const selStart = el.selectionStart
+    const selEnd = el.selectionEnd
+    setTranslating(true)
+    try {
+      const d = await api<{ text: string }>('/translate', { method: 'POST', body: { text: source, target_lang: target, target_label: label } })
+      if (hasSelection) {
+        const next = el.value.slice(0, selStart) + d.text + el.value.slice(selEnd)
+        setContent(next)
+        requestAnimationFrame(() => { el.focus(); el.setSelectionRange(selStart, selStart + d.text.length) })
+      } else {
+        setContent(d.text)
+      }
+      showToast({ message: '已翻译', tone: 'success' })
+    } catch (e) {
+      showToast({ title: '翻译失败', message: (e as Error).message, tone: 'error' })
+    } finally {
+      setTranslating(false)
+    }
+  }
+
   function insertCodeBlock() {
     const el = textareaRef.current
     if (!el) return
@@ -1363,6 +1413,24 @@ export default function Writer({ user }: WriterProps) {
                       </>
                     )}
                   </span>
+                  {site.translation_enabled && (
+                    <span className="relative">
+                      <ToolbarButton title={translating ? '翻译中…' : '翻译（选区或整章）'} onClick={() => { if (!translating) setTranslateMenuOpen((v) => !v) }}>
+                        {translating ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> : <GlobeIcon className="h-4 w-4" />}
+                      </ToolbarButton>
+                      {translateMenuOpen && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setTranslateMenuOpen(false)} />
+                          <div className="absolute left-0 top-9 z-20 max-h-72 w-40 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                            {TRANSLATE_TARGETS.map((tg) => (
+                              <button key={tg.code} type="button" onClick={() => void translateContent(tg.code, tg.label)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">{tg.label}</button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </span>
+                  )}
                   <ToolbarDivider />
                   <ToolbarButton title="查找替换 (Ctrl/⌘+F)" onClick={() => setFindOpen((v) => !v)}><SearchIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />

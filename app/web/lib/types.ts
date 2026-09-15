@@ -141,6 +141,7 @@ export interface SiteConfig {
   announcement_enabled?: string
   announcement_text?: string
   announcement_tone?: string
+  translation_enabled?: boolean
 }
 
 export interface BookReviewUser {
