@@ -1303,4 +1303,15 @@ export const zh: Record<string, string> = {
   'admin.settings.storage.uploadHostPlaceholder': 'https://upload.qiniup.com（华东）；华南 https://upload-z2.qiniup.com',
   'admin.settings.storage.save': '保存存储配置',
   'admin.settings.storage.saved': '存储配置已保存',
+  // OAuth 设置
+  'admin.settings.oauth.description': '接入 GitHub / Google / GitLab OAuth 后，用户可用对应账户一键登录。分别填写各平台的 Client ID 与 Secret。',
+  'admin.settings.oauth.loading': '正在加载第三方登录配置…',
+  'admin.settings.oauth.enabled': '已启用',
+  'admin.settings.oauth.disabled': '未启用',
+  'admin.settings.oauth.instruction': '在 {platform} 创建应用后填入凭据，回调地址填写',
+  'admin.settings.oauth.enableStatus': '启用状态',
+  'admin.settings.oauth.enableStatusHint': '停用后登录/注册页不再显示该入口',
+  'admin.settings.oauth.enableSwitch': '启用 {label} 登录',
+  'admin.settings.oauth.save': '保存 {label}',
+  'admin.settings.oauth.saved': '{label} 配置已保存',
 }

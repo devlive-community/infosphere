@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
 import { Button, Input, Field, Switch, Loading } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 import { OAuthProviderConfig } from '@/lib/admin'
 
 // 各 provider 的回调路径说明
@@ -16,6 +17,7 @@ const CALLBACK: Record<string, string> = {
 export default function SettingsOAuth() {
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
+  const { t } = useTranslation()
   const [providers, setProviders] = useState<OAuthProviderConfig[]>([])
   const [message, setMessage] = useState('')
   const [savingKey, setSavingKey] = useState('')
@@ -44,7 +46,7 @@ export default function SettingsOAuth() {
         body: { provider: p.provider, client_id: p.client_id, client_secret: p.client_secret, enabled: p.enabled },
       })
       setProviders(d.providers || [])
-      setMessage(`${p.label} 配置已保存`)
+      setMessage(t('admin.settings.oauth.saved', { label: p.label }))
     } catch (e) {
       setMessage((e as Error).message)
     } finally {
@@ -53,19 +55,19 @@ export default function SettingsOAuth() {
   }
 
   return (
-    <SettingsLayout active="oauth" description="接入 GitHub / Google / GitLab OAuth 后，用户可用对应账户一键登录。分别填写各平台的 Client ID 与 Secret。">
-      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label="正在加载第三方登录配置…" /> : (
+    <SettingsLayout active="oauth" description={t('admin.settings.oauth.description')}>
+      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label={t('admin.settings.oauth.loading')} /> : (
       <div className="max-w-2xl space-y-5">
         {providers.map((p) => (
           <div key={p.provider} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-bold text-slate-900">{p.label}</h3>
               <span className={`rounded-lg px-2.5 py-1 text-xs font-medium ${p.enabled && p.client_id ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                {p.enabled && p.client_id ? '已启用' : '未启用'}
+                {p.enabled && p.client_id ? t('admin.settings.oauth.enabled') : t('admin.settings.oauth.disabled')}
               </span>
             </div>
             <p className="mb-4 text-sm text-slate-500">
-              在 {CALLBACK[p.provider] || p.label} 创建应用后填入凭据，回调地址填写{' '}
+              {t('admin.settings.oauth.instruction', { platform: CALLBACK[p.provider] || p.label })}{' '}
               <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">{siteOrigin || 'https://你的站点'}/api/v1/auth/oauth/{p.provider}/callback</code>。
             </p>
             <div className="space-y-4">
@@ -75,12 +77,12 @@ export default function SettingsOAuth() {
               <Field label="Client Secret">
                 <Input type="password" value={p.client_secret} onChange={(e) => patch(p.provider, { client_secret: e.target.value })} placeholder={`${p.label} OAuth Client Secret`} />
               </Field>
-              <Field label="启用状态" hint="停用后登录/注册页不再显示该入口">
-                <Switch ariaLabel={`启用 ${p.label} 登录`} checked={p.enabled} onChange={(v) => patch(p.provider, { enabled: v })} />
+              <Field label={t('admin.settings.oauth.enableStatus')} hint={t('admin.settings.oauth.enableStatusHint')}>
+                <Switch ariaLabel={t('admin.settings.oauth.enableSwitch', { label: p.label })} checked={p.enabled} onChange={(v) => patch(p.provider, { enabled: v })} />
               </Field>
             </div>
             <div className="mt-5 flex justify-end">
-              <Button loading={savingKey === p.provider} onClick={() => save(p)}>保存 {p.label}</Button>
+              <Button loading={savingKey === p.provider} onClick={() => save(p)}>{t('admin.settings.oauth.save', { label: p.label })}</Button>
             </div>
           </div>
         ))}

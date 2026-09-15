@@ -1303,4 +1303,15 @@ export const en: Record<string, string> = {
   'admin.settings.storage.uploadHostPlaceholder': 'https://upload.qiniup.com (East China); South China https://upload-z2.qiniup.com',
   'admin.settings.storage.save': 'Save storage config',
   'admin.settings.storage.saved': 'Storage config saved',
+  // OAuth 设置
+  'admin.settings.oauth.description': 'After integrating GitHub / Google / GitLab OAuth, users can log in with one click. Enter Client ID and Secret for each platform.',
+  'admin.settings.oauth.loading': 'Loading OAuth config…',
+  'admin.settings.oauth.enabled': 'Enabled',
+  'admin.settings.oauth.disabled': 'Disabled',
+  'admin.settings.oauth.instruction': 'Create an app in {platform} and enter credentials. Callback URL:',
+  'admin.settings.oauth.enableStatus': 'Enable status',
+  'admin.settings.oauth.enableStatusHint': 'When disabled, the login/registration page will not show this entry',
+  'admin.settings.oauth.enableSwitch': 'Enable {label} login',
+  'admin.settings.oauth.save': 'Save {label}',
+  'admin.settings.oauth.saved': '{label} config saved',
 }
