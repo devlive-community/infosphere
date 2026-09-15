@@ -246,6 +246,12 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                 </div>
                 <Switch checked={childStatusFollowParent} onChange={setChildStatusFollowParent} ariaLabel={t('bookForm.label.followChild')} />
               </div>
+            </div>
+          </Section>
+
+          {/* 多语言与版本：语言/翻译分组 一组，版本/版本分组 一组 */}
+          <Section icon={<i className="fa-solid fa-language text-sm" aria-hidden="true" />} title={t('bookForm.section.localization')}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('common.language.label')}</label>
                 <Input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder={t('bookForm.placeholder.language')} maxLength={32} />
