@@ -7,55 +7,15 @@ import { useApp } from '@/lib/auth'
 import { resolveMediaUrl } from '@/lib/media'
 import { Badge, DropdownMenu, EmptyState, Input, Loading, Pagination, Select, useFeedback } from '@/components/ui'
 import { EyeIcon, FileTextIcon, GearIcon, SearchIcon, TrashIcon } from '@/components/icons'
+import { useTranslation } from '@/lib/i18n'
 import type { Book, BookStatus, PageResult } from '@/lib/types'
 
 const PAGE_SIZE = 15
 
-const statusOptions = [
-  { value: '', label: '全部状态' },
-  { value: 'draft', label: '草稿' },
-  { value: 'in_progress', label: '进行中' },
-  { value: 'published', label: '已发布' },
-  { value: 'completed', label: '已完成' },
-  { value: 'archived', label: '已归档' },
-]
-
-const visibilityOptions = [
-  { value: '', label: '全部可见性' },
-  { value: 'public', label: '公开' },
-  { value: 'private', label: '私有' },
-]
-
-const sortOptions = [
-  { value: 'created_at_desc', label: '最新创建' },
-  { value: 'created_at_asc', label: '最早创建' },
-  { value: 'updated_at_desc', label: '最近更新' },
-  { value: 'updated_at_asc', label: '最久未更新' },
-  { value: 'view_count_desc', label: '浏览量从高到低' },
-  { value: 'view_count_asc', label: '浏览量从低到高' },
-]
-
-const rowStatusOptions = statusOptions.filter((option) => option.value)
-const rowVisibilityOptions = visibilityOptions.filter((option) => option.value)
-
-function statusLabel(status: BookStatus): string {
-  const labels: Record<BookStatus, string> = {
-    draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
-  }
-  return labels[status]
-}
-
-function statusTone(status: BookStatus): 'slate' | 'primary' | 'emerald' | 'violet' | 'amber' {
-  const tones: Record<BookStatus, 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'> = {
-    draft: 'slate', in_progress: 'primary', published: 'emerald', completed: 'violet', archived: 'amber',
-  }
-  return tones[status]
-}
-
-// 书籍管理：管理员检索全站书籍并调整状态、可见性或删除书籍。
 export default function AdminBooks() {
   const { user } = useApp()
   const { confirmAction } = useFeedback()
+  const { t } = useTranslation()
   const isAdmin = user?.role === 'admin'
   const [items, setItems] = useState<Book[]>([])
   const [total, setTotal] = useState(0)
@@ -68,6 +28,33 @@ export default function AdminBooks() {
   const [busyId, setBusyId] = useState<number | null>(null)
   const [menuFor, setMenuFor] = useState<number | null>(null)
   const [notice, setNotice] = useState<{ message: string; error?: boolean } | null>(null)
+
+  const statusOptions = [
+    { value: '', label: t('admin.books.status.all') },
+    { value: 'draft', label: t('book.status.draft') },
+    { value: 'in_progress', label: t('book.status.in_progress') },
+    { value: 'published', label: t('book.status.published') },
+    { value: 'completed', label: t('book.status.completed') },
+    { value: 'archived', label: t('book.status.archived') },
+  ]
+
+  const visibilityOptions = [
+    { value: '', label: t('admin.books.visibility.all') },
+    { value: 'public', label: t('admin.books.visibility.public') },
+    { value: 'private', label: t('admin.books.visibility.private') },
+  ]
+
+  const sortOptions = [
+    { value: 'created_at_desc', label: t('admin.books.sort.newest') },
+    { value: 'created_at_asc', label: t('admin.books.sort.oldest') },
+    { value: 'updated_at_desc', label: t('admin.books.sort.recently_updated') },
+    { value: 'updated_at_asc', label: t('admin.books.sort.least_recently_updated') },
+    { value: 'view_count_desc', label: t('admin.books.sort.views_high_to_low') },
+    { value: 'view_count_asc', label: t('admin.books.sort.views_low_to_high') },
+  ]
+
+  const rowStatusOptions = statusOptions.filter((option) => option.value)
+  const rowVisibilityOptions = visibilityOptions.filter((option) => option.value)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -97,7 +84,7 @@ export default function AdminBooks() {
       setItems((current) => current.map((item) => item.id === book.id
         ? { ...item, ...updated, chapter_count: item.chapter_count, tags: item.tags, user: item.user }
         : item))
-      setNotice({ message: `已更新《${book.title}》` })
+      setNotice({ message: t('admin.books.updated', { title: book.title }) })
     } catch (error) {
       setNotice({ message: (error as Error).message, error: true })
     } finally {
@@ -107,9 +94,9 @@ export default function AdminBooks() {
 
   async function removeBook(book: Book) {
     if (!await confirmAction({
-      title: '移入回收站',
-      message: `确定将《${book.title}》及其全部章节移入回收站吗？可在 30 天内恢复。`,
-      confirmLabel: '移入回收站',
+      title: t('admin.books.trash.title'),
+      message: t('admin.books.trash.message', { title: book.title }),
+      confirmLabel: t('admin.books.trash.confirm'),
       danger: true,
     })) return
 
@@ -127,17 +114,31 @@ export default function AdminBooks() {
     }
   }
 
+  function statusLabel(status: BookStatus): string {
+    const labels: Record<BookStatus, string> = {
+      draft: t('book.status.draft'), in_progress: t('book.status.in_progress'), published: t('book.status.published'), completed: t('book.status.completed'), archived: t('book.status.archived'),
+    }
+    return labels[status]
+  }
+
+  function statusTone(status: BookStatus): 'slate' | 'primary' | 'emerald' | 'violet' | 'amber' {
+    const tones: Record<BookStatus, 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'> = {
+      draft: 'slate', in_progress: 'primary', published: 'emerald', completed: 'violet', archived: 'amber',
+    }
+    return tones[status]
+  }
+
   return (
-    <AdminLayout current="books" breadcrumb="书籍管理">
+    <AdminLayout current="books" breadcrumb={t('admin.nav.books')}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">书籍管理</h1>
-        <p className="mt-1.5 text-sm text-slate-500">查看全站公开与私有书籍，管理发布状态、可见性以及异常内容。</p>
+        <h1 className="text-2xl font-bold text-slate-900">{t('admin.nav.books')}</h1>
+        <p className="mt-1.5 text-sm text-slate-500">{t('admin.books.description')}</p>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <form onSubmit={(event) => { event.preventDefault(); setPage(1); load() }} className="w-full max-w-xs">
           <Input value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }}
-            leading={<SearchIcon className="h-4 w-4" />} placeholder="搜索书名、slug 或作者" />
+            leading={<SearchIcon className="h-4 w-4" />} placeholder={t('admin.books.searchPlaceholder')} />
         </form>
         <Select className="w-36" value={status} options={statusOptions}
           onChange={(value) => { setStatus(value); setPage(1) }} />
@@ -145,7 +146,7 @@ export default function AdminBooks() {
           onChange={(value) => { setVisibility(value); setPage(1) }} />
         <Select className="w-48" value={sort} options={sortOptions}
           onChange={(value) => { setSort(value); setPage(1) }} />
-        <span className="ml-auto text-sm text-slate-400">共 {total} 本书籍</span>
+        <span className="ml-auto text-sm text-slate-400">{t('admin.books.total', { total })}</span>
       </div>
 
       {notice && (
@@ -155,9 +156,9 @@ export default function AdminBooks() {
       )}
 
       {loading ? (
-        <Loading className="py-24" label="正在加载书籍…" />
+        <Loading className="py-24" label={t('admin.books.loading')} />
       ) : items.length === 0 ? (
-        <EmptyState>没有符合条件的书籍</EmptyState>
+        <EmptyState>{t('admin.books.empty')}</EmptyState>
       ) : (
         <>
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -165,13 +166,13 @@ export default function AdminBooks() {
               <table className="w-full min-w-[980px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400">
-                    <th className="px-5 py-3">书籍</th>
-                    <th className="px-5 py-3">作者</th>
-                    <th className="px-5 py-3">状态</th>
-                    <th className="px-5 py-3">可见性</th>
-                    <th className="px-5 py-3">数据</th>
-                    <th className="px-5 py-3">更新时间</th>
-                    <th className="px-5 py-3 text-right">操作</th>
+                    <th className="px-5 py-3">{t('admin.books.column.book')}</th>
+                    <th className="px-5 py-3">{t('admin.books.column.author')}</th>
+                    <th className="px-5 py-3">{t('admin.books.column.status')}</th>
+                    <th className="px-5 py-3">{t('admin.books.column.visibility')}</th>
+                    <th className="px-5 py-3">{t('admin.books.column.data')}</th>
+                    <th className="px-5 py-3">{t('admin.books.column.updatedAt')}</th>
+                    <th className="px-5 py-3 text-right">{t('admin.books.column.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -209,7 +210,7 @@ export default function AdminBooks() {
                           <Select className="w-28" value={book.status} disabled={busyId === book.id}
                             options={rowStatusOptions}
                             onChange={(value) => updateBook(book, { status: value as BookStatus })} />
-                          {busyId === book.id && <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" aria-label="处理中" />}
+                          {busyId === book.id && <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" aria-label={t('common.status.processing')} />}
                         </div>
                       </td>
                       <td className="px-5 py-3">
@@ -218,32 +219,32 @@ export default function AdminBooks() {
                           onChange={(value) => updateBook(book, { is_public: value === 'public' })} />
                       </td>
                       <td className="px-5 py-3 text-xs text-slate-500">
-                        <p>{book.chapter_count || 0} 个章节</p>
-                        <p className="mt-1">{formatNumber(book.view_count)} 次浏览</p>
+                        <p>{t('admin.books.chapters', { count: book.chapter_count || 0 })}</p>
+                        <p className="mt-1">{t('admin.books.views', { count: formatNumber(book.view_count) })}</p>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-slate-500">{formatDate(book.updated_at)}</td>
                       <td className="px-5 py-3 text-right">
                         <DropdownMenu open={menuFor === book.id}
-                          onOpenChange={(open) => setMenuFor(open ? book.id : null)} label="书籍操作">
+                          onOpenChange={(open) => setMenuFor(open ? book.id : null)} label={t('admin.books.bookActions')}>
                           <Link role="menuitem" href={`/book/detail/${encodeURIComponent(book.slug)}`}
                             onClick={() => setMenuFor(null)}
                             className="flex items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-                            <EyeIcon className="h-4 w-4 text-slate-400" /> 查看详情
+                            <EyeIcon className="h-4 w-4 text-slate-400" /> {t('admin.books.viewDetails')}
                           </Link>
                           <Link role="menuitem" href={`/book/settings/${encodeURIComponent(book.slug)}`}
                             onClick={() => setMenuFor(null)}
                             className="flex items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-                            <GearIcon className="h-4 w-4 text-slate-400" /> 书籍设置
+                            <GearIcon className="h-4 w-4 text-slate-400" /> {t('admin.books.bookSettings')}
                           </Link>
                           <Link role="menuitem" href={`/admin/documents?book_id=${book.id}`}
                             onClick={() => setMenuFor(null)}
                             className="flex items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-                            <FileTextIcon className="h-4 w-4 text-slate-400" /> 管理章节
+                            <FileTextIcon className="h-4 w-4 text-slate-400" /> {t('admin.books.manageChapters')}
                           </Link>
                           <div className="my-1 border-t border-slate-100" />
                           <button role="menuitem" disabled={busyId === book.id} onClick={() => removeBook(book)}
                             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50 disabled:opacity-50">
-                            <TrashIcon className="h-4 w-4" /> 移入回收站
+                            <TrashIcon className="h-4 w-4" /> {t('admin.books.moveToTrash')}
                           </button>
                         </DropdownMenu>
                       </td>

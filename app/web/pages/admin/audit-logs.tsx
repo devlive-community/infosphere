@@ -4,6 +4,7 @@ import { ActivityIcon, SearchIcon, ShieldCheckIcon } from '@/components/icons'
 import { Badge, Button, DatePicker, EmptyState, Input, Loading, Pagination, Select } from '@/components/ui'
 import { api, formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import type { PageResult } from '@/lib/types'
 
 const PAGE_SIZE = 20
@@ -20,62 +21,74 @@ interface AuditLog {
   created_at: string
 }
 
-const actionOptions = [
-  { value: '', label: '全部操作' },
-  { value: 'user.role_updated', label: '变更用户角色' },
-  { value: 'user.status_updated', label: '启用或停用用户' },
-  { value: 'user.deleted', label: '删除用户' },
-  { value: 'book.moderated', label: '调整书籍发布状态' },
-  { value: 'book.permanently_deleted', label: '永久删除书籍' },
-  { value: 'document.permanently_deleted', label: '永久删除章节' },
-  { value: 'report.resolved', label: '处理内容举报' },
-  { value: 'site.updated', label: '修改站点设置' },
-  { value: 'config.updated', label: '修改系统配置' },
-  { value: 'config.deleted', label: '删除系统配置' },
-  { value: 'mail.updated', label: '修改邮件配置' },
-  { value: 'oauth.updated', label: '修改 OAuth 配置' },
-  { value: 'storage.updated', label: '修改存储配置' },
-  { value: 'system.upgraded', label: '升级系统' },
-  { value: 'task.retried', label: '重新排队异步任务' },
-]
-
-const resourceOptions = [
-  { value: '', label: '全部资源' },
-  { value: 'user', label: '用户' },
-  { value: 'book', label: '书籍' },
-  { value: 'document', label: '章节' },
-  { value: 'report', label: '内容举报' },
-  { value: 'config', label: '配置' },
-  { value: 'site', label: '站点' },
-  { value: 'system', label: '系统' },
-  { value: 'task', label: '异步任务' },
-]
-
 const actionLabels = Object.fromEntries(actionOptions.map((item) => [item.value, item.label]))
 const resourceLabels = Object.fromEntries(resourceOptions.map((item) => [item.value, item.label]))
 
-function displayValue(value: unknown): string {
-  if (typeof value === 'boolean') return value ? '是' : '否'
-  if (value === null || value === undefined || value === '') return '未设置'
+function displayValue(value: unknown, t: (key: string) => string): string {
+  if (typeof value === 'boolean') return value ? t('common.boolean.yes') : t('common.boolean.no')
+  if (value === null || value === undefined || value === '') return t('common.unset')
   return String(value)
 }
 
-function summaryText(summary: Record<string, unknown>): string {
+function summaryText(summary: Record<string, unknown>, t: (key: string) => string): string {
   const fields = summary.changed_fields
-  if (Array.isArray(fields)) return `变更字段：${fields.map(displayValue).join('、')}`
+  if (Array.isArray(fields)) return `${t('admin.audit.changedFields')}${fields.map((f) => displayValue(f, t)).join('、')}`
   const parts = Object.entries(summary).map(([key, value]) => {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const change = value as { from?: unknown; to?: unknown }
-      if ('from' in change || 'to' in change) return `${key}：${displayValue(change.from)} → ${displayValue(change.to)}`
+      if ('from' in change || 'to' in change) return `${key}：${displayValue(change.from, t)} → ${displayValue(change.to, t)}`
     }
-    return `${key}：${displayValue(value)}`
+    return `${key}：${displayValue(value, t)}`
   })
-  return parts.join('；') || '已完成操作'
+  return parts.join('；') || t('admin.audit.completed')
 }
 
 export default function AdminAuditLogs() {
   const { user } = useApp()
+  const { t } = useTranslation()
   const isAdmin = user?.role === 'admin'
+
+  const actionOptions = [
+    { value: '', label: t('admin.audit.action.all') },
+    { value: 'user.role_updated', label: t('admin.audit.action.userRoleUpdated') },
+    { value: 'user.status_updated', label: t('admin.audit.action.userStatusUpdated') },
+    { value: 'user.deleted', label: t('admin.audit.action.userDeleted') },
+    { value: 'book.moderated', label: t('admin.audit.action.bookModerated') },
+    { value: 'book.permanently_deleted', label: t('admin.audit.action.bookPermanentlyDeleted') },
+    { value: 'document.permanently_deleted', label: t('admin.audit.action.documentPermanentlyDeleted') },
+    { value: 'report.resolved', label: t('admin.audit.action.reportResolved') },
+    { value: 'site.updated', label: t('admin.audit.action.siteUpdated') },
+    { value: 'config.updated', label: t('admin.audit.action.configUpdated') },
+    { value: 'config.deleted', label: t('admin.audit.action.configDeleted') },
+    { value: 'mail.updated', label: t('admin.audit.action.mailUpdated') },
+    { value: 'oauth.updated', label: t('admin.audit.action.oauthUpdated') },
+    { value: 'storage.updated', label: t('admin.audit.action.storageUpdated') },
+    { value: 'system.upgraded', label: t('admin.audit.action.systemUpgraded') },
+    { value: 'task.retried', label: t('admin.audit.action.taskRetried') },
+    { value: 'achievement.settings_updated', label: t('admin.audit.action.achievementSettingsUpdated') },
+    { value: 'achievement.created', label: t('admin.audit.action.achievementCreated') },
+    { value: 'achievement.updated', label: t('admin.audit.action.achievementUpdated') },
+    { value: 'achievement.archived', label: t('admin.audit.action.achievementArchived') },
+    { value: 'achievement.recalculated', label: t('admin.audit.action.achievementRecalculated') },
+    { value: 'achievement.icon_uploaded', label: t('admin.audit.action.achievementIconUploaded') },
+    { value: 'achievement.granted', label: t('admin.audit.action.achievementGranted') },
+    { value: 'achievement.revoked', label: t('admin.audit.action.achievementRevoked') },
+  ]
+
+  const resourceOptions = [
+    { value: '', label: t('admin.audit.resource.all') },
+    { value: 'user', label: t('admin.audit.resource.user') },
+    { value: 'book', label: t('admin.audit.resource.book') },
+    { value: 'document', label: t('admin.audit.resource.document') },
+    { value: 'report', label: t('admin.audit.resource.report') },
+    { value: 'config', label: t('admin.audit.resource.config') },
+    { value: 'site', label: t('admin.audit.resource.site') },
+    { value: 'system', label: t('admin.audit.resource.system') },
+    { value: 'task', label: t('admin.audit.resource.task') },
+    { value: 'achievement', label: t('admin.audit.resource.achievement') },
+    { value: 'achievement_asset', label: t('admin.audit.resource.achievementAsset') },
+    { value: 'achievement_grant', label: t('admin.audit.resource.achievementGrant') },
+  ]
   const [items, setItems] = useState<AuditLog[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -127,16 +140,16 @@ export default function AdminAuditLogs() {
   const hasFilters = Boolean(operator || action || resourceType || from || to)
 
   return (
-    <AdminLayout current="audit" breadcrumb="审计日志">
+    <AdminLayout current="audit" breadcrumb={t('admin.nav.audit')}>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-            <ActivityIcon className="h-6 w-6 text-primary-600" />审计日志
+            <ActivityIcon className="h-6 w-6 text-primary-600" />{t('admin.nav.audit')}
           </h1>
-          <p className="mt-1.5 text-sm text-slate-500">追踪管理员对账号、内容、配置和系统执行的高风险操作。</p>
+          <p className="mt-1.5 text-sm text-slate-500">{t('admin.audit.description')}</p>
         </div>
         <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-          <ShieldCheckIcon className="h-4 w-4" />敏感字段仅记录变更摘要
+          <ShieldCheckIcon className="h-4 w-4" />{t('admin.audit.sensitiveNote')}
         </div>
       </div>
 
@@ -144,25 +157,25 @@ export default function AdminAuditLogs() {
         <div className="flex flex-wrap items-center gap-3">
           <form onSubmit={applyOperator} className="w-full sm:w-56">
             <Input value={operatorInput} onChange={(event) => setOperatorInput(event.target.value)}
-              leading={<SearchIcon className="h-4 w-4" />} placeholder="搜索操作人" />
+              leading={<SearchIcon className="h-4 w-4" />} placeholder={t('admin.audit.searchPlaceholder')} />
           </form>
           <Select className="w-48" value={action} options={actionOptions}
             onChange={(value) => { setAction(value); setPage(1) }} />
           <Select className="w-36" value={resourceType} options={resourceOptions}
             onChange={(value) => { setResourceType(value); setPage(1) }} />
-          <DatePicker className="w-40" value={from} onChange={(value) => { setFrom(value); setPage(1) }} placeholder="开始日期" max={to || undefined} ariaLabel="开始日期" />
-          <DatePicker className="w-40" value={to} onChange={(value) => { setTo(value); setPage(1) }} placeholder="结束日期" min={from || undefined} ariaLabel="结束日期" />
-          {hasFilters && <Button variant="ghost" onClick={clearFilters}>清除筛选</Button>}
-          <span className="ml-auto text-sm text-slate-400">共 {total} 条记录</span>
+          <DatePicker className="w-40" value={from} onChange={(value) => { setFrom(value); setPage(1) }} placeholder={t('common.date.from')} max={to || undefined} ariaLabel={t('common.date.from')} />
+          <DatePicker className="w-40" value={to} onChange={(value) => { setTo(value); setPage(1) }} placeholder={t('common.date.to')} min={from || undefined} ariaLabel={t('common.date.to')} />
+          {hasFilters && <Button variant="ghost" onClick={clearFilters}>{t('common.actions.clearFilter')}</Button>}
+          <span className="ml-auto text-sm text-slate-400">{t('admin.audit.totalRecords', { total })}</span>
         </div>
       </div>
 
       {error && <div className="mb-4 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       {loading ? (
-        <Loading className="py-24" label="正在加载审计日志…" />
+        <Loading className="py-24" label={t('admin.audit.loading')} />
       ) : items.length === 0 ? (
-        <EmptyState>没有符合条件的审计记录</EmptyState>
+        <EmptyState>{t('admin.audit.empty')}</EmptyState>
       ) : (
         <>
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -170,11 +183,11 @@ export default function AdminAuditLogs() {
               <table className="w-full min-w-[980px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-xs font-medium text-slate-400">
-                    <th className="px-5 py-3">时间</th>
-                    <th className="px-5 py-3">操作人</th>
-                    <th className="px-5 py-3">操作</th>
-                    <th className="px-5 py-3">资源</th>
-                    <th className="px-5 py-3">变更摘要</th>
+                    <th className="px-5 py-3">{t('admin.audit.column.time')}</th>
+                    <th className="px-5 py-3">{t('admin.audit.column.actor')}</th>
+                    <th className="px-5 py-3">{t('admin.audit.column.action')}</th>
+                    <th className="px-5 py-3">{t('admin.audit.column.resource')}</th>
+                    <th className="px-5 py-3">{t('admin.audit.column.summary')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -190,7 +203,7 @@ export default function AdminAuditLogs() {
                         <p className="font-medium text-slate-700">{item.resource_label || `${resourceLabels[item.resource_type] || item.resource_type} ${item.resource_id}`}</p>
                         <p className="mt-0.5 text-xs text-slate-400">{resourceLabels[item.resource_type] || item.resource_type} · {item.resource_id}</p>
                       </td>
-                      <td className="max-w-lg px-5 py-4 leading-6 text-slate-600">{summaryText(item.summary)}</td>
+                      <td className="max-w-lg px-5 py-4 leading-6 text-slate-600">{summaryText(item.summary, t)}</td>
                     </tr>
                   ))}
                 </tbody>
