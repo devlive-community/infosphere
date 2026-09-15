@@ -20,6 +20,7 @@ import BookTranslations from '@/components/BookTranslations'
 import BookVersions from '@/components/BookVersions'
 import BookCopyDialog from '@/components/BookCopyDialog'
 import ReportButton from '@/components/ReportButton'
+import CoverImage from '@/components/CoverImage'
 import Seo from '@/components/Seo'
 import {
   BookIcon, CalendarIcon, CheckCircleSmallIcon, ChevronRightIcon, EyeIcon,
@@ -374,8 +375,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         <section className="grid min-w-0 grid-cols-1 items-start gap-x-10 gap-y-6 pb-4 sm:gap-y-8 lg:grid-cols-[300px_minmax(0,1fr)_300px] lg:pb-8">
           {/* 左：大封面 */}
           <div className="mx-auto w-36 sm:w-52 lg:mx-0 lg:w-full">
-            <div className="aspect-[3/4] w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF] shadow-md">
-              {cover && <img src={cover} alt={book.title} onError={(e) => { e.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" />}
+            <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF] shadow-md">
+              {cover && <CoverImage src={cover} alt={book.title} />}
             </div>
           </div>
 

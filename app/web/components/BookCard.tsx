@@ -9,6 +9,7 @@ import { ArrowRightIcon, EyeIcon, CalendarIcon } from '@/components/icons'
 import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 import HighlightText from '@/components/HighlightText'
+import CoverImage from '@/components/CoverImage'
 
 // BookCard 全站统一书籍展示卡。
 // 收敛了首页/发现/搜索/收藏/我的书籍/用户主页/相关书籍等全部列表场景，
@@ -81,11 +82,11 @@ function CoverLink({ book, href, view, dark }: { book: Book; href: string; view:
     : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'
   const sizeClass = view === 'grid'
     ? 'relative block aspect-[16/8] w-full overflow-hidden'
-    : 'h-32 w-full shrink-0 overflow-hidden rounded-lg sm:h-20 sm:w-16'
+    : 'relative block h-32 w-full shrink-0 overflow-hidden rounded-lg sm:h-20 sm:w-16'
   return (
     <Link href={href} aria-label={book.title} className={`${sizeClass} ${gradient}`}>
       {cover
-        ? <img src={cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+        ? <CoverImage src={cover} alt={book.title} imgClassName="transition-transform duration-300 group-hover:scale-105" />
         : <span className={`flex h-full w-full items-center justify-center font-bold ${dark ? 'text-white/40' : 'text-white/80'} ${view === 'grid' ? 'text-3xl' : 'text-xl'}`}>{book.title.slice(0, 1)}</span>}
       {view === 'grid' && cover && (
         <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-600 opacity-0 shadow transition-opacity duration-200 group-hover:opacity-100">

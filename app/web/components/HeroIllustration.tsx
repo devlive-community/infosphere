@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { API_BASE, formatNumber } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
+import CoverImage from '@/components/CoverImage'
 import { EyeIcon } from '@/components/icons'
 import type { Book } from '@/lib/types'
 
@@ -18,8 +19,8 @@ function CardFace({ book }: { book?: Book }) {
   const cover = resolveMediaUrl(book?.cover_image)
   return (
     <>
-      <div className={`h-20 w-full rounded-lg ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
-        {cover && <img src={cover} alt="" className="h-full w-full rounded-lg object-cover" />}
+      <div className="relative h-20 w-full overflow-hidden rounded-lg bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
+        {cover && <CoverImage src={cover} alt={book?.title || ''} />}
       </div>
       <div className="mt-2 truncate text-xs font-medium text-slate-800">{book?.title || '你的第一本书'}</div>
       <div className="mt-1.5 h-1.5 w-3/4 rounded-full bg-slate-100" />
@@ -77,8 +78,8 @@ export function HotRankCard({ rank, book }: { rank: number; book: Book }) {
     <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
       className="flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
       <span className={`w-6 shrink-0 text-center text-2xl font-bold ${rankColors[rank - 1] || 'text-slate-400'}`}>{rank}</span>
-      <div className={`h-16 w-12 shrink-0 overflow-hidden rounded-md ${cover ? '' : 'bg-gradient-to-br from-primary-300 to-[#8B8DFF]'}`}>
-        {cover && <img src={cover} alt="" onError={(e) => { e.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" />}
+      <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-primary-300 to-[#8B8DFF]">
+        {cover && <CoverImage src={cover} alt={book.title} />}
       </div>
       <div className="min-w-0">
         <div className="truncate text-sm font-medium text-white">{book.title}</div>
