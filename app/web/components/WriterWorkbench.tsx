@@ -96,6 +96,11 @@ const SLASH_COMMANDS: { key: string; label: string; kw: string }[] = [
   { key: 'quote', label: '引用', kw: 'quote blockquote' },
   { key: 'code', label: '代码块', kw: 'code block pre' },
   { key: 'table', label: '表格', kw: 'table grid' },
+  { key: 'tabs', label: '标签页', kw: 'tabs tab 标签页' },
+  { key: 'note', label: '备注块', kw: 'note 备注' },
+  { key: 'tip', label: '提示块', kw: 'tip 提示' },
+  { key: 'warning', label: '警告块', kw: 'warning warn 警告' },
+  { key: 'children', label: '子章节目录', kw: 'children subchapters toc 子章节 目录' },
   { key: 'hr', label: '分隔线', kw: 'hr rule divider' },
   { key: 'image', label: '上传图片', kw: 'image img upload photo' },
   { key: 'collect', label: '采集网页', kw: 'collect web fetch import scrape 采集 网页' },
@@ -122,6 +127,7 @@ export default function Writer({ user }: WriterProps) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [chapterMenu, setChapterMenu] = useState<ChapterMenuState | null>(null)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
+  const [insertMenuOpen, setInsertMenuOpen] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'inside' | 'after' } | null>(null)
   const [creatingUnder, setCreatingUnder] = useState<number | null>(null) // 新建期间保持高亮的父章节
@@ -767,6 +773,23 @@ export default function Writer({ user }: WriterProps) {
     insertText('\n| 列 1 | 列 2 |\n| --- | --- |\n| 单元格 | 单元格 |\n')
   }
 
+  // 插入结构化组件片段（Tabs / Note / Warning / Tip）；阅读页与预览均可渲染
+  const COMPONENT_SNIPPETS: Record<string, string> = {
+    tabs: '\n<Tabs>\n<Tab title="标签一">\n\n内容一\n\n</Tab>\n<Tab title="标签二">\n\n内容二\n\n</Tab>\n</Tabs>\n',
+    note: '\n<Note>\n**备注**\n\n在此填写备注内容。\n</Note>\n',
+    tip: '\n<Tip>\n**提示**\n\n在此填写提示内容。\n</Tip>\n',
+    warning: '\n<Warning>\n**警告**\n\n在此填写警告内容。\n</Warning>\n',
+  }
+  function insertComponent(kind: keyof typeof COMPONENT_SNIPPETS) {
+    insertText(COMPONENT_SNIPPETS[kind])
+    setInsertMenuOpen(false)
+  }
+  // 插入「子章节目录」宏；渲染时替换为当前章节的直接子章节链接列表
+  function insertChildrenToc() {
+    insertText('\n[children]\n')
+    setInsertMenuOpen(false)
+  }
+
   function insertCodeBlock() {
     const el = textareaRef.current
     if (!el) return
@@ -898,7 +921,7 @@ export default function Writer({ user }: WriterProps) {
     const value = el.value
     const lineStart = value.lastIndexOf('\n', pos - 1) + 1
     const before = value.slice(lineStart, pos)
-    const m = before.match(/(^|\s)\/([^\s/]*)$/) // 行首或空白后的 "/查询"（查询内无空格）
+    const m = before.match(/(^|\s)(?:\/|\$\.)([^\s/]*)$/) // 行首或空白后的 "/查询" 或 "$.查询" 宏（查询内无空格）
     if (!m) {
       setSlash((s) => (s.open ? { ...s, open: false } : s))
       return
@@ -934,6 +957,11 @@ export default function Writer({ user }: WriterProps) {
         case 'quote': insertAtLineStart('> '); break
         case 'code': insertCodeBlock(); break
         case 'table': insertTable(); break
+        case 'tabs': insertComponent('tabs'); break
+        case 'note': insertComponent('note'); break
+        case 'tip': insertComponent('tip'); break
+        case 'warning': insertComponent('warning'); break
+        case 'children': insertChildrenToc(); break
         case 'hr': insertText('---\n'); break
         case 'image': fileInputRef.current?.click(); break
         case 'collect': void collectWebContent(); break
@@ -1317,6 +1345,24 @@ export default function Writer({ user }: WriterProps) {
                   <ToolbarButton title="有序列表" onClick={() => insertAtLineStart('1. ')}><ListOrderedIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="任务列表" onClick={() => insertAtLineStart('- [ ] ')}><CheckSquareIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title="表格" onClick={insertTable}><TableIcon className="h-4 w-4" /></ToolbarButton>
+                  <span className="relative">
+                    <ToolbarButton title="插入组件（标签页 / 提示块 / 子章节目录）" onClick={() => setInsertMenuOpen((v) => !v)}>
+                      <ColumnsIcon className="h-4 w-4" />
+                    </ToolbarButton>
+                    {insertMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setInsertMenuOpen(false)} />
+                        <div className="absolute left-0 top-9 z-20 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                          <button type="button" onClick={() => insertComponent('tabs')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">标签页 Tabs</button>
+                          <button type="button" onClick={() => insertComponent('note')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">备注 Note</button>
+                          <button type="button" onClick={() => insertComponent('tip')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">提示 Tip</button>
+                          <button type="button" onClick={() => insertComponent('warning')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">警告 Warning</button>
+                          <div className="my-1 h-px bg-slate-100" />
+                          <button type="button" onClick={insertChildrenToc} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">子章节目录</button>
+                        </div>
+                      </>
+                    )}
+                  </span>
                   <ToolbarDivider />
                   <ToolbarButton title="查找替换 (Ctrl/⌘+F)" onClick={() => setFindOpen((v) => !v)}><SearchIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarDivider />

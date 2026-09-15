@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isInstalled, getSSRUser } from '@/lib/server-api'
-import { renderMarkdown, extractHeadings, bindMarkdownInteractivity } from '@/lib/markdown'
+import { renderMarkdown, extractHeadings, bindMarkdownInteractivity, fillChildrenToc } from '@/lib/markdown'
 import { API_BASE, formatDate, formatNumber, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
@@ -94,9 +94,20 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
           serverApi<{ doc_ids: number[] }>(`/books/${book.id}/read-chapters`, { headers: auth }).catch(() => ({ doc_ids: [] })),
         ])
       : [null, { doc_ids: [] }]
+    // [children] 宏：用当前章节的直接子章节填充子章节目录
+    const findNode = (nodes: Document[]): Document | null => {
+      for (const n of nodes) {
+        if (n.id === doc.id) return n
+        const found = n.children ? findNode(n.children) : null
+        if (found) return found
+      }
+      return null
+    }
+    const childDocs = (findNode(tree)?.children || []).map((c) => ({ slug: c.slug, title: c.title }))
+    const html = fillChildrenToc(renderMarkdown(doc.content), childDocs, book.slug, book.chapter_prefix || '')
     return { props: {
       installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc,
-      html: renderMarkdown(doc.content), tree, access, readDocIds: readChapters.doc_ids || [],
+      html, tree, access, readDocIds: readChapters.doc_ids || [],
     } }
   } catch (e) {
     // 404/403 一律按不存在处理：不向未授权访客泄露私有章节的存在

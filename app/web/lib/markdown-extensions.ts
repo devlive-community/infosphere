@@ -72,25 +72,102 @@ const tabsExtension: TokenizerAndRendererExtension = {
     } as Tokens.Generic
   },
   renderer(token) {
-    const gid = `md-tabs-${Math.random().toString(36).slice(2, 9)}`
     const tabs = (token as Tokens.Generic & { tabs: MdTab[] }).tabs
-    const buttons = tabs
-      .map(
-        (t, i) =>
-          `<button type="button" data-md-tab="${gid}" data-md-tab-index="${i}" role="tab" aria-selected="${i === 0}"` +
-          ` class="min-h-10 shrink-0 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus:outline-none` +
-          (i === 0 ? ' border-slate-200 bg-white text-primary-700 shadow-sm' : ' border-transparent text-slate-500 hover:bg-white/70 hover:text-slate-800') +
-          `">${escapeHtml(t.title)}</button>`
-      )
-      .join('')
-    const panels = tabs
-      .map(
-        (t, i) =>
-          `<div data-md-tab-panel="${gid}" data-md-tab-index="${i}" role="tabpanel"` +
-          ` class="pt-4 ${i === 0 ? '' : 'hidden'}">${this.parser.parse(t.tokens)}</div>`
-      )
-      .join('')
-    return `<div class="my-4"><div class="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner" role="tablist">${buttons}</div>${panels}</div>`
+    return tabsMarkup(tabs.map((t) => t.title), tabs.map((t) => this.parser.parse(t.tokens)))
+  },
+}
+
+// tabsMarkup 输出多标签页 HTML（:::tabs 与 <Tabs> 共用）；panelsHtml 为各标签已解析的 HTML。
+function tabsMarkup(titles: string[], panelsHtml: string[]): string {
+  const gid = `md-tabs-${Math.random().toString(36).slice(2, 9)}`
+  const buttons = titles
+    .map(
+      (title, i) =>
+        `<button type="button" data-md-tab="${gid}" data-md-tab-index="${i}" role="tab" aria-selected="${i === 0}"` +
+        ` class="min-h-10 shrink-0 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus:outline-none` +
+        (i === 0 ? ' border-slate-200 bg-white text-primary-700 shadow-sm' : ' border-transparent text-slate-500 hover:bg-white/70 hover:text-slate-800') +
+        `">${escapeHtml(title)}</button>`
+    )
+    .join('')
+  const panels = panelsHtml
+    .map(
+      (html, i) =>
+        `<div data-md-tab-panel="${gid}" data-md-tab-index="${i}" role="tabpanel"` +
+        ` class="pt-4 ${i === 0 ? '' : 'hidden'}">${html}</div>`
+    )
+    .join('')
+  return `<div class="my-4"><div class="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner" role="tablist">${buttons}</div>${panels}</div>`
+}
+
+// ── <Tabs><Tab title="X"> ─────────────────────────────────────────────────
+// HTML 标签风格的多标签页（等价于 :::tabs，便于从其他文档系统迁移）
+const tabsTagExtension: TokenizerAndRendererExtension = {
+  name: 'md-tabs-tag',
+  level: 'block',
+  start(src) {
+    return src.match(/<Tabs\s*>/i)?.index
+  },
+  tokenizer(src) {
+    const m = /^<Tabs\s*>\n?([\s\S]*?)<\/Tabs>\s*/i.exec(src)
+    if (!m) return undefined
+    const tabRe = /<Tab\s+title\s*=\s*["']([^"']*)["']\s*>\n?([\s\S]*?)<\/Tab>/gi
+    const tabs: { title: string; tokens: Tokens.Generic[] }[] = []
+    let tm: RegExpExecArray | null
+    while ((tm = tabRe.exec(m[1])) !== null) {
+      tabs.push({ title: tm[1], tokens: this.lexer.blockTokens(tm[2].trim()) })
+    }
+    if (tabs.length === 0) return undefined
+    return { type: 'md-tabs-tag', raw: m[0], tabs } as Tokens.Generic
+  },
+  renderer(token) {
+    const tabs = (token as Tokens.Generic & { tabs: MdTab[] }).tabs
+    return tabsMarkup(tabs.map((t) => t.title), tabs.map((t) => this.parser.parse(t.tokens)))
+  },
+}
+
+// ── <Note> / <Tip> / <Warning> / <Info> / <Caution> / <Important> ─────────
+// HTML 标签风格的提示块；首个 **加粗** 视为标题（可省略，省略时用默认标题）
+type CalloutKind = 'note' | 'tip' | 'warning' | 'info' | 'caution' | 'important'
+const calloutStyle: Record<CalloutKind, string> = {
+  note: 'note', tip: 'tip', warning: 'warning', info: 'note', caution: 'caution', important: 'important',
+}
+const calloutDefaultTitle: Record<CalloutKind, string> = {
+  note: '备注', tip: '提示', warning: '警告', info: '信息', caution: '注意', important: '重要',
+}
+
+const calloutTagExtension: TokenizerAndRendererExtension = {
+  name: 'md-callout-tag',
+  level: 'block',
+  start(src) {
+    return src.match(/<(Note|Tip|Warning|Info|Caution|Important)\s*>/i)?.index
+  },
+  tokenizer(src) {
+    const m = /^<(Note|Tip|Warning|Info|Caution|Important)\s*>\n?([\s\S]*?)<\/\1>\s*/i.exec(src)
+    if (!m) return undefined
+    let body = m[2].trim()
+    let title = ''
+    // 可选：开头 **标题** 作为提示块标题
+    const tm = /^\*\*(.+?)\*\*[ \t]*\n?/.exec(body)
+    if (tm) {
+      title = tm[1].trim()
+      body = body.slice(tm[0].length).trim()
+    }
+    return {
+      type: 'md-callout-tag',
+      raw: m[0],
+      kind: m[1].toLowerCase() as CalloutKind,
+      title,
+      tokens: this.lexer.blockTokens(body),
+    } as Tokens.Generic
+  },
+  renderer(token) {
+    const t = token as Tokens.Generic & { kind: CalloutKind; title: string }
+    const style = calloutStyle[t.kind] || 'note'
+    const title = t.title || calloutDefaultTitle[t.kind] || t.kind
+    return `<div class="md-alert md-alert-${style}">
+      <div class="md-alert-title">${escapeHtml(title)}</div>
+      <div class="md-alert-body">${this.parser.parse(token.tokens ?? [])}</div>
+    </div>`
   },
 }
 
@@ -290,6 +367,24 @@ const tocExtension: TokenizerAndRendererExtension = {
   },
   renderer() {
     return '<div data-md-toc="1" class="my-4"></div>'
+  },
+}
+
+// ── [children] 子章节目录 ─────────────────────────────────────────────────
+// 占位符：阅读页用当前章节的直接子章节链接填充；编辑器预览保留占位提示。
+const childrenTocExtension: TokenizerAndRendererExtension = {
+  name: 'md-children',
+  level: 'block',
+  start(src) {
+    return src.match(/^\[children\]\s*$/im)?.index
+  },
+  tokenizer(src) {
+    const m = /^\[children\]\s*\n?/i.exec(src)
+    if (!m) return undefined
+    return { type: 'md-children', raw: m[0] } as Tokens.Generic
+  },
+  renderer() {
+    return '<div data-md-children="1" class="my-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">子章节目录</div>'
   },
 }
 
@@ -647,11 +742,14 @@ const apiExtension: TokenizerAndRendererExtension = {
 // markdownExtensions 注册进 marked 的扩展集合
 export const markdownExtensions: TokenizerAndRendererExtension[] = [
   tabsExtension,
+  tabsTagExtension,
+  calloutTagExtension,
   gridExtension,
   diffExtension,
   katexExtension,
   mermaidExtension,
   tocExtension,
+  childrenTocExtension,
   buttonExtension,
   tipExtension,
   switchExtension,
