@@ -5,6 +5,9 @@ import { API_BASE, api, formatDate, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Button, Loading } from '@/components/ui'
 import { BellIcon } from '@/components/icons'
+import { useTranslation } from '@/lib/i18n'
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string
 
 interface NotificationItem {
   id: number
@@ -16,20 +19,21 @@ interface NotificationItem {
 }
 
 // timeAgo 简易相对时间；超过 7 天回退到日期
-function timeAgo(input: string): string {
+function timeAgo(input: string, t: TFn): string {
   const diff = Date.now() - new Date(input).getTime()
   const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes} 分钟前`
+  if (minutes < 1) return t('notifyBell.justNow')
+  if (minutes < 60) return t('notifyBell.minutesAgo', { n: minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} 小时前`
+  if (hours < 24) return t('notifyBell.hoursAgo', { n: hours })
   const days = Math.floor(hours / 24)
-  if (days < 7) return `${days} 天前`
+  if (days < 7) return t('notifyBell.daysAgo', { n: days })
   return formatDate(input)
 }
 
 // NotificationBell 导航栏通知铃铛：未读徽标 + 下拉面板 + SSE 实时刷新
 export default function NotificationBell() {
+  const { t } = useTranslation()
   const { user } = useApp()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -117,7 +121,7 @@ export default function NotificationBell() {
 
   return (
     <div className="relative" ref={rootRef}>
-      <button onClick={() => setOpen(!open)} aria-label="通知"
+      <button onClick={() => setOpen(!open)} aria-label={t('notifyBell.aria')}
         className="relative flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
         style={{ width: 'var(--control-height)', height: 'var(--control-height)' }}>
         <BellIcon className="h-5 w-5" />
@@ -131,16 +135,16 @@ export default function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-12 z-40 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-            <span className="text-sm font-semibold text-slate-900">通知</span>
+            <span className="text-sm font-semibold text-slate-900">{t('notifyBell.title')}</span>
             {unread > 0 && (
-              <Button variant="ghost" size="sm" loading={marking} onClick={markAllRead}>全部已读</Button>
+              <Button variant="ghost" size="sm" loading={marking} onClick={markAllRead}>{t('notifyBell.markAllRead')}</Button>
             )}
           </div>
           <div className="max-h-96 overflow-y-auto">
             {!loaded ? (
-              <Loading className="py-10" label="正在加载通知…" />
+              <Loading className="py-10" label={t('notifyBell.loading')} />
             ) : items.length === 0 ? (
-              <p className="py-10 text-center text-sm text-slate-400">暂无通知</p>
+              <p className="py-10 text-center text-sm text-slate-400">{t('notifyBell.empty')}</p>
             ) : (
               items.map((n) => (
                 <button key={n.id} onClick={() => openItem(n)}
@@ -150,14 +154,14 @@ export default function NotificationBell() {
                     <span className={`block text-sm leading-5 ${n.read_at ? 'text-slate-500' : 'font-medium text-slate-900'}`}>
                       {n.title}
                     </span>
-                    <span className="mt-0.5 block text-xs text-slate-400">{timeAgo(n.created_at)}</span>
+                    <span className="mt-0.5 block text-xs text-slate-400">{timeAgo(n.created_at, t)}</span>
                   </span>
                 </button>
               ))
             )}
           </div>
           <div className="border-t border-slate-100 px-4 py-2.5 text-center">
-            <Link href="/notifications" className="text-sm text-primary-600 hover:underline">查看全部</Link>
+            <Link href="/notifications" className="text-sm text-primary-600 hover:underline">{t('notifyBell.viewAll')}</Link>
           </div>
         </div>
       )}

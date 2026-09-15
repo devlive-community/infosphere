@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, setStepUpHandler } from '@/lib/api'
 import { Modal, Button, Input } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 
 // StepUpModal 全局二次认证弹窗：任意接口返回 TWO_FACTOR_REQUIRED 时弹出，
 // 用户输入动态码/备用码验证通过后，原请求由 api() 自动重试。
 export default function StepUpModal() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
@@ -34,7 +36,7 @@ export default function StepUpModal() {
       await api('/auth/2fa/verify', { method: 'POST', body: { code: code.trim() } })
       finish(true)
     } catch (e) {
-      setError((e as Error).message || '验证失败')
+      setError((e as Error).message || t('stepup.verifyFailed'))
     } finally {
       setLoading(false)
     }
@@ -45,16 +47,16 @@ export default function StepUpModal() {
       open={open}
       elevated
       onClose={() => finish(false)}
-      title="二次认证"
+      title={t('auth.twofactor.title')}
       footer={<>
-        <Button variant="ghost" onClick={() => finish(false)}>取消</Button>
-        <Button loading={loading} disabled={!code.trim()} onClick={verify}>验证</Button>
+        <Button variant="ghost" onClick={() => finish(false)}>{t('common.actions.cancel')}</Button>
+        <Button loading={loading} disabled={!code.trim()} onClick={verify}>{t('stepup.verify')}</Button>
       </>}
     >
-      <p className="text-sm leading-6 text-slate-500">该操作需要二次认证。请输入身份验证器 App 中的 6 位动态码，或一条备用码。</p>
+      <p className="text-sm leading-6 text-slate-500">{t('stepup.desc')}</p>
       <div className="mt-4">
-        <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="6 位动态码 / 备用码"
-          autoComplete="one-time-code" autoFocus aria-label="二次认证码"
+        <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('stepup.placeholder')}
+          autoComplete="one-time-code" autoFocus aria-label={t('stepup.ariaCode')}
           onKeyDown={(e) => { if (e.key === 'Enter') void verify() }} />
       </div>
       {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
