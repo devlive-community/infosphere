@@ -786,12 +786,12 @@ export default function Writer({ user }: WriterProps) {
 
   // 插入结构化组件片段（Tabs / Note / Warning / Tip / Accordion / Steps）；阅读页与预览均可渲染
   const COMPONENT_SNIPPETS: Record<string, string> = {
-    tabs: '\n<Tabs>\n<Tab title="标签一">\n\n内容一\n\n</Tab>\n<Tab title="标签二">\n\n内容二\n\n</Tab>\n</Tabs>\n',
-    note: '\n<Note>\n**备注**\n\n在此填写备注内容。\n</Note>\n',
-    tip: '\n<Tip>\n**提示**\n\n在此填写提示内容。\n</Tip>\n',
-    warning: '\n<Warning>\n**警告**\n\n在此填写警告内容。\n</Warning>\n',
-    accordion: '\n<AccordionGroup>\n<Accordion title="标题一">\n\n内容一\n\n</Accordion>\n<Accordion title="标题二">\n\n内容二\n\n</Accordion>\n</AccordionGroup>\n',
-    steps: '\n<Steps>\n<Step title="第一步">\n\n步骤说明\n\n</Step>\n<Step title="第二步">\n\n步骤说明\n\n</Step>\n</Steps>\n',
+    tabs: `\n<Tabs>\n<Tab title="${t('writer.snip.tabTitle1')}">\n\n${t('writer.snip.content1')}\n\n</Tab>\n<Tab title="${t('writer.snip.tabTitle2')}">\n\n${t('writer.snip.content2')}\n\n</Tab>\n</Tabs>\n`,
+    note: `\n<Note>\n**${t('writer.snip.noteTitle')}**\n\n${t('writer.snip.noteBody')}\n</Note>\n`,
+    tip: `\n<Tip>\n**${t('writer.snip.tipTitle')}**\n\n${t('writer.snip.tipBody')}\n</Tip>\n`,
+    warning: `\n<Warning>\n**${t('writer.snip.warnTitle')}**\n\n${t('writer.snip.warnBody')}\n</Warning>\n`,
+    accordion: `\n<AccordionGroup>\n<Accordion title="${t('writer.snip.accTitle1')}">\n\n${t('writer.snip.content1')}\n\n</Accordion>\n<Accordion title="${t('writer.snip.accTitle2')}">\n\n${t('writer.snip.content2')}\n\n</Accordion>\n</AccordionGroup>\n`,
+    steps: `\n<Steps>\n<Step title="${t('writer.snip.stepTitle1')}">\n\n${t('writer.snip.stepBody')}\n\n</Step>\n<Step title="${t('writer.snip.stepTitle2')}">\n\n${t('writer.snip.stepBody')}\n\n</Step>\n</Steps>\n`,
   }
   function insertComponent(kind: keyof typeof COMPONENT_SNIPPETS) {
     insertText(COMPONENT_SNIPPETS[kind])
