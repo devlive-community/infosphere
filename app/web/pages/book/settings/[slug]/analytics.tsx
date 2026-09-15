@@ -5,6 +5,7 @@ import Link from 'next/link'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { getBookSettingsProps } from '@/lib/book-settings'
 import { api, formatNumber } from '@/lib/api'
+import { useTranslation } from '@/lib/i18n'
 import { Card, EmptyState, Loading, SegmentedTabs, useFeedback } from '@/components/ui'
 import { CheckCircleSmallIcon, EyeIcon, FileTextIcon, UsersIcon } from '@/components/icons'
 
@@ -53,14 +54,18 @@ interface AnalyticsResult {
 }
 
 const PERIODS = [
-  { value: '7', label: '近 7 天' },
-  { value: '30', label: '近 30 天' },
-  { value: '90', label: '近 90 天' },
-  { value: '180', label: '近 180 天' },
+  { value: '7', labelKey: 'bookSettings.analytics.period.7' },
+  { value: '30', labelKey: 'bookSettings.analytics.period.30' },
+  { value: '90', labelKey: 'bookSettings.analytics.period.90' },
+  { value: '180', labelKey: 'bookSettings.analytics.period.180' },
 ]
 
-const SOURCE_LABELS: Record<string, string> = {
-  direct: '直接访问', internal: '站内跳转', search: '搜索引擎', social: '社交媒体', external: '其他网站',
+const SOURCE_KEYS: Record<string, string> = {
+  direct: 'bookSettings.analytics.source.direct',
+  internal: 'bookSettings.analytics.source.internal',
+  search: 'bookSettings.analytics.source.search',
+  social: 'bookSettings.analytics.source.social',
+  external: 'bookSettings.analytics.source.external',
 }
 
 function MetricCard({ label, value, hint, icon }: { label: string; value: string; hint: string; icon: ReactNode }) {
@@ -76,15 +81,16 @@ function MetricCard({ label, value, hint, icon }: { label: string; value: string
 }
 
 function TrendChart({ points }: { points: TrendPoint[] }) {
+  const { t } = useTranslation()
   const max = Math.max(1, ...points.map((point) => point.views))
   const total = points.reduce((sum, point) => sum + point.views, 0)
-  if (total === 0) return <EmptyState>所选周期内还没有访问记录</EmptyState>
+  if (total === 0) return <EmptyState>{t('bookSettings.analytics.empty.trend')}</EmptyState>
   return (
     <div>
-      <div className="flex h-52 items-end gap-1 border-b border-slate-200 px-1" role="img" aria-label="每日浏览趋势柱状图">
+      <div className="flex h-52 items-end gap-1 border-b border-slate-200 px-1" role="img" aria-label={t('bookSettings.analytics.aria.trendChart')}>
         {points.map((point) => (
           <span key={point.date} className="group relative flex min-w-0 flex-1 items-end justify-center" style={{ height: '100%' }}
-            aria-label={`${point.date}，${point.views} 次浏览`}>
+            aria-label={t('bookSettings.analytics.aria.trendPoint', { date: point.date, count: point.views })}>
             <span className="w-full min-w-[2px] rounded-t bg-primary-200 transition-colors group-hover:bg-primary-500"
               style={{ height: `${Math.max(point.views > 0 ? 4 : 0, (point.views / max) * 100)}%` }} />
           </span>
@@ -99,6 +105,7 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
 
 export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<typeof getBookSettingsProps>) {
   const { showToast } = useFeedback()
+  const { t } = useTranslation()
   const [days, setDays] = useState('30')
   const [data, setData] = useState<AnalyticsResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -108,7 +115,7 @@ export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<
     try {
       setData(await api<AnalyticsResult>(`/books/${book.id}/analytics?days=${nextDays}`))
     } catch (error) {
-      showToast({ title: '分析数据加载失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('bookSettings.analytics.error.load.title'), message: (error as Error).message, tone: 'error' })
     } finally {
       setLoading(false)
     }
@@ -123,36 +130,36 @@ export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<
       <div className="space-y-5">
         <Card className="flex flex-wrap items-center justify-between gap-3 p-6">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">数据分析</h2>
-            <p className="mt-1 text-sm text-slate-500">查看浏览趋势、热门章节、访问来源和登录读者完成率。</p>
+            <h2 className="text-lg font-bold text-slate-900">{t('bookSettings.analytics.title')}</h2>
+            <p className="mt-1 text-sm text-slate-500">{t('bookSettings.analytics.desc')}</p>
           </div>
-          <SegmentedTabs size="sm" value={days} items={PERIODS} ariaLabel="数据统计周期" onChange={setDays} />
+          <SegmentedTabs size="sm" value={days} items={PERIODS.map((p) => ({ value: p.value, label: t(p.labelKey) }))} ariaLabel={t('bookSettings.analytics.aria.period')} onChange={setDays} />
         </Card>
 
         {loading || !data ? (
-          <Card><Loading label="正在汇总分析数据…" /></Card>
+          <Card><Loading label={t('bookSettings.analytics.loading')} /></Card>
         ) : (
           <>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="累计浏览" value={formatNumber(data.lifetime_views)} hint="书籍详情与章节累计"
+              <MetricCard label={t('bookSettings.analytics.metric.lifetime')} value={formatNumber(data.lifetime_views)} hint={t('bookSettings.analytics.metric.lifetimeHint')}
                 icon={<EyeIcon className="h-5 w-5" />} />
-              <MetricCard label={`${data.days} 天浏览`} value={formatNumber(data.period_views)}
-                hint={data.growth_percent === null ? '上一周期暂无数据' : `较上一周期 ${data.growth_percent >= 0 ? '+' : ''}${data.growth_percent}%`}
+              <MetricCard label={t('bookSettings.analytics.metric.period', { days: data.days })} value={formatNumber(data.period_views)}
+                hint={data.growth_percent === null ? t('bookSettings.analytics.metric.periodHintNull') : t('bookSettings.analytics.metric.periodHint', { percent: `${data.growth_percent >= 0 ? '+' : ''}${data.growth_percent}` })}
                 icon={<i className="fa-solid fa-chart-line text-base" aria-hidden="true" />} />
-              <MetricCard label="登录读者" value={formatNumber(data.registered_readers)} hint="保存过阅读进度的读者"
+              <MetricCard label={t('bookSettings.analytics.metric.readers')} value={formatNumber(data.registered_readers)} hint={t('bookSettings.analytics.metric.readersHint')}
                 icon={<UsersIcon className="h-5 w-5" />} />
-              <MetricCard label="阅读完成率" value={`${data.completion_rate}%`}
-                hint={`${data.completed_readers} 位读者已读完当前全部已发布章节`}
+              <MetricCard label={t('bookSettings.analytics.metric.completion')} value={`${data.completion_rate}%`}
+                hint={t('bookSettings.analytics.metric.completionHint', { count: data.completed_readers })}
                 icon={<CheckCircleSmallIcon className="h-5 w-5" />} />
             </div>
 
             <Card className="p-6">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-bold text-slate-900">每日浏览趋势</h3>
-                  <p className="mt-1 text-xs text-slate-400">聚合数据最多保留 {data.retention_days} 天</p>
+                  <h3 className="font-bold text-slate-900">{t('bookSettings.analytics.trend.title')}</h3>
+                  <p className="mt-1 text-xs text-slate-400">{t('bookSettings.analytics.trend.retention', { days: data.retention_days })}</p>
                 </div>
-                <span className="text-sm text-slate-500">上一周期 {formatNumber(data.previous_views)} 次</span>
+                <span className="text-sm text-slate-500">{t('bookSettings.analytics.trend.previous', { count: formatNumber(data.previous_views) })}</span>
               </div>
               <TrendChart points={data.trend} />
             </Card>
@@ -160,10 +167,10 @@ export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<
             <div className="grid gap-5 xl:grid-cols-2">
               <Card className="overflow-hidden">
                 <div className="border-b border-slate-100 px-6 py-5">
-                  <h3 className="font-bold text-slate-900">热门章节</h3>
-                  <p className="mt-1 text-xs text-slate-400">按所选周期的章节浏览量排序</p>
+                  <h3 className="font-bold text-slate-900">{t('bookSettings.analytics.popular.title')}</h3>
+                  <p className="mt-1 text-xs text-slate-400">{t('bookSettings.analytics.popular.desc')}</p>
                 </div>
-                {data.popular_chapters.length === 0 ? <EmptyState>暂无章节访问记录</EmptyState> : (
+                {data.popular_chapters.length === 0 ? <EmptyState>{t('bookSettings.analytics.popular.empty')}</EmptyState> : (
                   <ol className="divide-y divide-slate-100">
                     {data.popular_chapters.map((chapter, index) => (
                       <li key={chapter.id} className="flex items-center gap-3 px-6 py-3.5">
@@ -179,14 +186,14 @@ export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<
               </Card>
 
               <Card className="p-6">
-                <h3 className="font-bold text-slate-900">访问来源</h3>
-                <p className="mt-1 text-xs text-slate-400">仅保留来源类别，不保存原始网址或访客身份</p>
-                {data.sources.length === 0 ? <EmptyState>暂无来源数据</EmptyState> : (
+                <h3 className="font-bold text-slate-900">{t('bookSettings.analytics.sources.title')}</h3>
+                <p className="mt-1 text-xs text-slate-400">{t('bookSettings.analytics.sources.desc')}</p>
+                {data.sources.length === 0 ? <EmptyState>{t('bookSettings.analytics.sources.empty')}</EmptyState> : (
                   <div className="mt-5 space-y-4">
                     {data.sources.map((source) => (
                       <div key={source.source}>
                         <div className="mb-1.5 flex items-center justify-between text-sm">
-                          <span className="text-slate-600">{SOURCE_LABELS[source.source] || source.source}</span>
+                          <span className="text-slate-600">{SOURCE_KEYS[source.source] ? t(SOURCE_KEYS[source.source]) : source.source}</span>
                           <span className="text-slate-400">{formatNumber(source.view_count)} · {source.percentage}%</span>
                         </div>
                         <div className="h-2 overflow-hidden rounded-full bg-slate-100">
@@ -201,10 +208,10 @@ export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<
 
             <Card className="overflow-hidden">
               <div className="border-b border-slate-100 px-6 py-5">
-                <h3 className="font-bold text-slate-900">章节到达漏斗</h3>
-                <p className="mt-1 text-xs text-slate-400">按章节顺序展示读过该章的去重读者数，条形与百分比相对首章，直观看出读者在哪一章流失</p>
+                <h3 className="font-bold text-slate-900">{t('bookSettings.analytics.funnel.title')}</h3>
+                <p className="mt-1 text-xs text-slate-400">{t('bookSettings.analytics.funnel.desc')}</p>
               </div>
-              {data.chapter_funnel.length === 0 ? <EmptyState>暂无章节阅读记录</EmptyState> : (
+              {data.chapter_funnel.length === 0 ? <EmptyState>{t('bookSettings.analytics.funnel.empty')}</EmptyState> : (
                 <ol className="divide-y divide-slate-100">
                   {data.chapter_funnel.map((chapter, index) => {
                     const first = data.chapter_funnel[0]?.readers || 0
@@ -216,7 +223,7 @@ export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<
                           <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${encodeURIComponent(chapter.slug)}`}
                             className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700 hover:text-primary-600">{chapter.title}</Link>
                           <span className="shrink-0 text-sm text-slate-400">
-                            {formatNumber(chapter.readers)} 人{first > 0 && index > 0 ? ` · ${Math.round(ratio)}%` : ''}
+                            {t('bookSettings.analytics.funnel.readers', { count: formatNumber(chapter.readers) })}{first > 0 && index > 0 ? ` · ${Math.round(ratio)}%` : ''}
                           </span>
                         </div>
                         <div className="h-2 overflow-hidden rounded-full bg-slate-100">

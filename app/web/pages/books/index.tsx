@@ -5,6 +5,7 @@ import Container from '@/components/Container'
 import Link from 'next/link'
 import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { isQueuedTask, waitForTask, type QueuedTask } from '@/lib/background-tasks'
+import { useTranslation } from '@/lib/i18n'
 import { useRequireAuth , useApp} from '@/lib/auth'
 import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
@@ -17,32 +18,32 @@ import {
 import type { Book, Document, PageResult } from '@/lib/types'
 
 const statusTabs = [
-  { key: '', label: '全部' },
-  { key: 'in_progress', label: '进行中' },
-  { key: 'published', label: '已发布' },
-  { key: 'completed', label: '已完成' },
-  { key: 'draft', label: '草稿' },
-  { key: 'archived', label: '已归档' },
+  { key: '', labelKey: 'books.status.all' },
+  { key: 'in_progress', labelKey: 'books.status.in_progress' },
+  { key: 'published', labelKey: 'books.status.published' },
+  { key: 'completed', labelKey: 'books.status.completed' },
+  { key: 'draft', labelKey: 'books.status.draft' },
+  { key: 'archived', labelKey: 'books.status.archived' },
 ]
 
 type SortKey = 'updated' | 'created' | 'views' | 'title'
 
 const sortOptions = [
-  { value: 'updated', label: '最近更新' },
-  { value: 'created', label: '创建时间' },
-  { value: 'views', label: '浏览最多' },
-  { value: 'title', label: '标题排序' },
+  { value: 'updated', labelKey: 'books.sort.updated' },
+  { value: 'created', labelKey: 'books.sort.created' },
+  { value: 'views', labelKey: 'books.sort.views' },
+  { value: 'title', labelKey: 'books.sort.title' },
 ]
 
-function relativeUpdated(input: string | null | undefined): string {
+function relativeUpdated(t: (key: string, vars?: Record<string, string | number>) => string, input: string | null | undefined): string {
   if (!input) return '-'
   const diff = Date.now() - new Date(input).getTime()
   const day = 86400000
-  if (diff < 3600000) return '刚刚更新'
-  if (diff < day) return `${Math.floor(diff / 3600000)} 小时前更新`
-  if (diff < day * 2) return '1 天前更新'
-  if (diff < day * 30) return `${Math.floor(diff / day)} 天前更新`
-  return `${fmtDay(input)} 更新`
+  if (diff < 3600000) return t('books.updated.justNow')
+  if (diff < day) return t('books.updated.hoursAgo', { count: Math.floor(diff / 3600000) })
+  if (diff < day * 2) return t('books.updated.oneDayAgo')
+  if (diff < day * 30) return t('books.updated.daysAgo', { count: Math.floor(diff / day) })
+  return t('books.updated.on', { date: fmtDay(input) })
 }
 
 function fmtDay(input: string | null | undefined): string {
@@ -58,6 +59,7 @@ export default function MyBooks() {
   const user = useRequireAuth()
   const router = useRouter()
   const { site } = useApp()
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
   const [status, setStatus] = useState('')
   const scope: 'owned' | 'collaborating' = router.query.scope === 'collaborating' ? 'collaborating' : 'owned'
@@ -83,7 +85,7 @@ export default function MyBooks() {
       const summary = await api<Record<string, number>>('/books/status-counts', { params: { scope } }).catch(() => null)
       if (summary) setCounts(summary)
     } catch (e) {
-      showToast({ title: '书籍加载失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('books.error.load'), message: (e as Error).message, tone: 'error' })
     } finally {
       setLoading(false)
     }
@@ -108,16 +110,16 @@ export default function MyBooks() {
 
   async function remove(book: Book) {
     if (!await confirmAction({
-      title: '移入回收站',
-      message: `确定将「${book.title}」及其全部章节移入回收站吗？可在 30 天内恢复。`,
-      confirmLabel: '移入回收站',
+      title: t('books.delete.title'),
+      message: t('books.delete.message', { title: book.title }),
+      confirmLabel: t('books.delete.confirm'),
       danger: true,
     })) return
     try {
       await api(`/books/${book.id}`, { method: 'DELETE' })
       load()
     } catch (e) {
-      showToast({ title: '删除失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('books.error.delete'), message: (e as Error).message, tone: 'error' })
     }
   }
 
@@ -125,89 +127,90 @@ export default function MyBooks() {
     const url = `${window.location.origin}/book/detail/${encodeURIComponent(book.slug)}`
     try {
       await navigator.clipboard.writeText(url)
-      showToast({ message: '访问链接已复制', tone: 'success' })
+      showToast({ message: t('books.link.copied'), tone: 'success' })
     } catch {
-      await requestInput({ title: '复制访问链接', label: '访问链接', defaultValue: url, confirmLabel: '关闭' })
+      await requestInput({ title: t('books.link.copyTitle'), label: t('books.link.linkLabel'), defaultValue: url, confirmLabel: t('books.link.close') })
     }
     setMenuFor(null)
   }
 
   async function leaveCollaboration(book: Book) {
     if (!user || !await confirmAction({
-      title: '退出书籍协作',
-      message: `确定退出《${book.title}》的协作吗？退出后将无法继续访问这本私有书籍。`,
-      confirmLabel: '确认退出',
+      title: t('books.leave.title'),
+      message: t('books.leave.message', { title: book.title }),
+      confirmLabel: t('books.leave.confirm'),
       danger: true,
     })) return
     try {
       await api(`/books/${book.id}/collaborators/${user.id}`, { method: 'DELETE' })
-      showToast({ message: '已退出书籍协作', tone: 'success' })
+      showToast({ message: t('books.leave.success'), tone: 'success' })
       await load()
     } catch (e) {
-      showToast({ title: '退出失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('books.error.leave'), message: (e as Error).message, tone: 'error' })
     }
   }
 
-  if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
+  if (!user) return <Loading className="min-h-[60vh]" label={t('books.authChecking')} />
 
   const hasBooks = (data.items || []).length > 0
 
   return (
     <>
-      <Seo siteName={siteName} title="我的书籍" noindex />
+      <Seo siteName={siteName} title={t('books.title')} noindex />
       <Container>
       {/* 页头 */}
       <div className="pb-8 pt-2">
-        <p className="text-sm text-slate-400">个人知识库</p>
+        <p className="text-sm text-slate-400">{t('books.kicker')}</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-ink md:text-4xl">我的书籍</h1>
-            <p className="mt-2 text-[15px] text-slate-500">在这里继续写作、整理章节，或者发布你的下一本知识作品。</p>
+            <h1 className="text-3xl font-bold text-ink md:text-4xl">{t('books.title')}</h1>
+            <p className="mt-2 text-[15px] text-slate-500">{t('books.subtitle')}</p>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
             <ButtonLink href="/user/trash" variant="ghost" className="px-3 text-sm sm:px-4 sm:text-base">
-              <i className="fa-regular fa-trash-can" aria-hidden="true" /> 回收站
+              <i className="fa-regular fa-trash-can" aria-hidden="true" /> {t('books.action.trash')}
             </ButtonLink>
             <Button variant="outline" className="px-3 text-sm sm:px-5 sm:text-base" onClick={() => setImportOpen(true)}>
-              <UploadIcon className="h-5 w-5" /> 导入书籍
+              <UploadIcon className="h-5 w-5" /> {t('books.action.import')}
             </Button>
             <ButtonLink href="/books/create" className="col-span-2 px-3 text-sm sm:px-5 sm:text-base">
-              <PlusIcon className="h-5 w-5" /> 新建书籍
+              <PlusIcon className="h-5 w-5" /> {t('books.action.create')}
             </ButtonLink>
           </div>
         </div>
       </div>
 
       <div className="mb-5">
-        <SegmentedTabs value={scope} ariaLabel="书籍范围"
+        <SegmentedTabs value={scope} ariaLabel={t('books.scopeAria')}
           onChange={(value) => changeScope(value as 'owned' | 'collaborating')} items={[
-            { value: 'owned', label: '我创建的' },
-            { value: 'collaborating', label: '与我协作的' },
+            { value: 'owned', label: t('books.scope.owned') },
+            { value: 'collaborating', label: t('books.scope.collaborating') },
           ]} />
       </div>
 
       {/* 筛选行 */}
       <div className="flex flex-col gap-3 border-y border-slate-200 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
         <div className="w-full overflow-x-auto pb-1 lg:w-auto lg:pb-0">
-          <SegmentedTabs className="min-w-max" value={status} ariaLabel="书籍状态" onChange={(value) => { setStatus(value); setPage(1) }}
+          <SegmentedTabs className="min-w-max" value={status} ariaLabel={t('books.statusAria')} onChange={(value) => { setStatus(value); setPage(1) }}
             items={statusTabs.map((tab) => ({
               value: tab.key,
-              label: <>{tab.label}{counts[tab.key] !== undefined && <span className="ml-1 text-xs text-slate-400">{counts[tab.key]}</span>}</>,
+              label: <>{t(tab.labelKey)}{counts[tab.key] !== undefined && <span className="ml-1 text-xs text-slate-400">{counts[tab.key]}</span>}</>,
             }))} />
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
           <Input className="w-full sm:w-56" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1) }}
-            leading={<SearchIcon className="h-4 w-4" />} placeholder="搜索我的书籍" />
-          <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setSort(v as SortKey); setPage(1) }} options={sortOptions} />
-          <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"
+            leading={<SearchIcon className="h-4 w-4" />} placeholder={t('books.searchPlaceholder')} />
+          <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setSort(v as SortKey); setPage(1) }}
+            options={sortOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))} />
+          <SegmentedTabs iconOnly value={view} ariaLabel={t('books.viewAria')}
             onChange={(value) => setView(value as 'grid' | 'list')} items={[
-              { value: 'grid', label: '网格视图', icon: <GridIcon className="h-4 w-4" /> },
-              { value: 'list', label: '列表视图', icon: <ListIcon className="h-4 w-4" /> },
+              { value: 'grid', label: t('books.view.grid'), icon: <GridIcon className="h-4 w-4" /> },
+              { value: 'list', label: t('books.view.list'), icon: <ListIcon className="h-4 w-4" /> },
             ]} />
         </div>
       </div>
 
-      <p className="py-4 text-sm text-slate-400">共 {data.total} 本书籍</p>
+      <p className="py-4 text-sm text-slate-400">{t('books.total', { count: data.total })}</p>
 
       {loading ? (
         <Loading />
@@ -223,8 +226,8 @@ export default function MyBooks() {
       ) : (
         <EmptyState>
           {scope === 'owned' ? <>
-            还没有书籍，<Link href="/books/create" className="text-primary-600 hover:underline">创建第一本</Link>
-          </> : '还没有已接受的书籍协作，新的邀请会显示在通知中心'}
+            {t('books.empty.owned')}<Link href="/books/create" className="text-primary-600 hover:underline">{t('books.empty.createLink')}</Link>
+          </> : t('books.empty.collaborating')}
         </EmptyState>
       )}
 
@@ -257,6 +260,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<ImportResult | null>(null)
+  const { t } = useTranslation()
 
   useEffect(() => {
     api<{ available: boolean }>('/import/browser-available')
@@ -283,17 +287,17 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
       body: form,
     })
     const payload = await response.json().catch(() => ({}))
-    if (!response.ok || payload.success === false) throw new Error(payload.message || `导入失败 (${response.status})`)
+    if (!response.ok || payload.success === false) throw new Error(payload.message || t('books.import.failed', { status: response.status }))
     return payload.data as ImportResult | QueuedTask<ImportResult>
   }
 
   async function submit() {
     if (kind !== 'web' && !file) {
-      setError(`请选择要导入的 ${kind === 'pdf' ? 'PDF' : 'ZIP'} 文件`)
+      setError(t('books.import.needFile', { type: kind === 'pdf' ? 'PDF' : 'ZIP' }))
       return
     }
     if (kind === 'web' && !url.trim()) {
-      setError('请输入要导入的网页地址')
+      setError(t('books.import.needUrl'))
       return
     }
     setSubmitting(true)
@@ -313,21 +317,21 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
   }
 
   const loadingLabel = kind === 'pdf'
-    ? 'PDF 已安全上传，正在后台解析并构建章节…'
+    ? t('books.import.loading.pdf')
     : kind === 'web'
-      ? renderMode === 'static' ? '正在抓取并解析网页…' : '正在抓取网页，必要时会启动浏览器渲染…'
-      : 'ZIP 已安全上传，正在后台还原书籍…'
+      ? renderMode === 'static' ? t('books.import.loading.static') : t('books.import.loading.browser')
+      : t('books.import.loading.zip')
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/30 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
-      role="dialog" aria-modal="true" aria-label="导入书籍" onMouseDown={(event) => { if (!submitting && event.target === event.currentTarget) onClose() }}>
+      role="dialog" aria-modal="true" aria-label={t('books.import.aria')} onMouseDown={(event) => { if (!submitting && event.target === event.currentTarget) onClose() }}>
       <div className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
         <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5 sm:px-7">
           <div>
-            <h2 className="text-xl font-bold text-ink">导入并构建书籍</h2>
-            <p className="mt-1 text-sm text-slate-500">导入结果会保存为仅自己可见的草稿，确认内容后再发布。</p>
+            <h2 className="text-xl font-bold text-ink">{t('books.import.title')}</h2>
+            <p className="mt-1 text-sm text-slate-500">{t('books.import.desc')}</p>
           </div>
-          <button type="button" aria-label="关闭" disabled={submitting} onClick={onClose}
+          <button type="button" aria-label={t('books.import.close')} disabled={submitting} onClick={onClose}
             className="flex shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <CloseIcon className="h-5 w-5" />
@@ -335,11 +339,11 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
         </div>
 
         <div className="px-6 py-6 sm:px-7">
-          <SegmentedTabs fullWidth value={kind} ariaLabel="导入内容类型"
+          <SegmentedTabs fullWidth value={kind} ariaLabel={t('books.import.typeAria')}
             onChange={(value) => switchKind(value as ImportKind)} items={[
-              { value: 'pdf', label: 'PDF 文档', icon: <FileTextIcon className="h-4 w-4" /> },
-              { value: 'web', label: '网页内容', icon: <GlobeIcon className="h-4 w-4" /> },
-              { value: 'zip', label: '书籍压缩包', icon: <UploadIcon className="h-4 w-4" /> },
+              { value: 'pdf', label: t('books.import.kind.pdf'), icon: <FileTextIcon className="h-4 w-4" /> },
+              { value: 'web', label: t('books.import.kind.web'), icon: <GlobeIcon className="h-4 w-4" /> },
+              { value: 'zip', label: t('books.import.kind.zip'), icon: <UploadIcon className="h-4 w-4" /> },
             ]} />
 
           {result ? (
@@ -347,29 +351,29 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                 <CheckIcon className="h-6 w-6" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">书籍已构建完成</h3>
-              <p className="mt-2 text-sm text-slate-500">{result.message || `《${result.book.title}》已保存为草稿`}</p>
+              <h3 className="mt-4 text-lg font-semibold text-slate-900">{t('books.import.doneTitle')}</h3>
+              <p className="mt-2 text-sm text-slate-500">{result.message || t('books.import.doneMessage', { title: result.book.title })}</p>
               <div className="mt-6 flex justify-center gap-3">
-                <Button variant="outline" onClick={onClose}>完成</Button>
-                <ButtonLink href={`/book/writer/${encodeURIComponent(result.book.slug)}`}>进入编辑</ButtonLink>
+                <Button variant="outline" onClick={onClose}>{t('books.import.done')}</Button>
+                <ButtonLink href={`/book/writer/${encodeURIComponent(result.book.slug)}`}>{t('books.import.goEdit')}</ButtonLink>
               </div>
             </div>
           ) : (
             <div className="mt-6 space-y-5">
               {kind === 'web' ? (
                 <>
-                  <Field label="网页地址">
+                  <Field label={t('books.import.urlLabel')}>
                     <Input type="url" value={url} onChange={(event) => setURL(event.target.value)} placeholder="https://example.com/article"
                       leading={<GlobeIcon className="h-4 w-4" />} />
                   </Field>
                   <fieldset>
-                    <legend className="text-sm font-medium text-slate-700">解析方式</legend>
+                    <legend className="text-sm font-medium text-slate-700">{t('books.import.renderMode')}</legend>
                     <div className="mt-2 grid gap-2 sm:grid-cols-3">
                       {([
-                        ['auto', '自动识别', '优先快速抓取，检测到单页应用后自动渲染'],
-                        ['static', '静态抓取', '适合服务端直接输出正文的网页'],
-                        ...(browserAvailable ? [['browser', '浏览器渲染', '适合必须运行 JavaScript 才显示正文的网页'] as const] : []),
-                      ] as const).map(([value, label, help]) => (
+                        ['auto', t('books.import.mode.auto'), t('books.import.mode.autoHelp')],
+                        ['static', t('books.import.mode.static'), t('books.import.mode.staticHelp')],
+                        ...(browserAvailable ? [['browser', t('books.import.mode.browser'), t('books.import.mode.browserHelp')] as [WebRenderMode, string, string]] : []),
+                      ] as [WebRenderMode, string, string][]).map(([value, label, help]) => (
                         <label key={value} className={`cursor-pointer rounded-xl border p-3 transition-colors ${renderMode === value ? 'border-primary-400 bg-primary-50/60' : 'border-slate-200 hover:border-slate-300'}`}>
                           <input className="sr-only" type="radio" name="render-mode" value={value} checked={renderMode === value} onChange={() => setRenderMode(value)} />
                           <span className="block text-sm font-medium text-slate-800">{label}</span>
@@ -377,33 +381,33 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
                         </label>
                       ))}
                     </div>
-                    {!browserAvailable && <p className="mt-2 text-xs leading-5 text-amber-600">浏览器渲染需管理员在后台「插件」中安装无头浏览器插件；当前仅可静态抓取。</p>}
-                    {browserAvailable && renderMode !== 'static' && <p className="mt-2 text-xs leading-5 text-slate-400">检测到需要 JavaScript 渲染的网页时会调用无头浏览器插件，耗时会比静态抓取更长。</p>}
+                    {!browserAvailable && <p className="mt-2 text-xs leading-5 text-amber-600">{t('books.import.noBrowser')}</p>}
+                    {browserAvailable && renderMode !== 'static' && <p className="mt-2 text-xs leading-5 text-slate-400">{t('books.import.browserHint')}</p>}
                   </fieldset>
                 </>
               ) : (
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700">选择文件</span>
+                  <span className="text-sm font-medium text-slate-700">{t('books.import.fileLabel')}</span>
                   <span className="mt-2 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-6 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/40">
                     <UploadIcon className="h-7 w-7 text-primary-500" />
-                    <span className="mt-3 text-sm font-medium text-slate-700">{file ? file.name : `点击选择 ${kind === 'pdf' ? 'PDF 文档' : 'ZIP 压缩包'}`}</span>
-                    <span className="mt-1 text-xs text-slate-400">{kind === 'pdf' ? '最大 64MB；自动重建标题、段落与列表，扫描版需预先 OCR' : '用于恢复从 InfoSphere 导出的完整书籍'}</span>
+                    <span className="mt-3 text-sm font-medium text-slate-700">{file ? file.name : kind === 'pdf' ? t('books.import.choosePdf') : t('books.import.chooseZip')}</span>
+                    <span className="mt-1 text-xs text-slate-400">{kind === 'pdf' ? t('books.import.pdfHint') : t('books.import.zipHint')}</span>
                     <input type="file" accept={kind === 'pdf' ? '.pdf,application/pdf' : '.zip,application/zip'} className="sr-only"
                       onChange={(event) => { setFile(event.target.files?.[0] || null); setError('') }} />
                   </span>
                 </label>
               )}
 
-              <Field label={<>书籍名称 <span className="font-normal text-slate-400">（可选）</span></>}>
-                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === 'web' ? '留空则使用网页标题' : '留空则使用文件名称'} />
+              <Field label={<>{t('books.import.nameLabel')} <span className="font-normal text-slate-400">{t('books.import.optional')}</span></>}>
+                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === 'web' ? t('books.import.namePlaceholderWeb') : t('books.import.namePlaceholderFile')} />
               </Field>
 
               {error && <div role="alert" className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-600 [overflow-wrap:anywhere]">{error}</div>}
               {submitting && <div className="rounded-xl border border-primary-100 bg-primary-50/50 px-4 py-4"><Loading className="py-1" label={loadingLabel} /></div>}
 
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
-                <Button variant="outline" disabled={submitting} onClick={onClose}>取消</Button>
-                <Button loading={submitting} onClick={submit}>开始导入</Button>
+                <Button variant="outline" disabled={submitting} onClick={onClose}>{t('common.actions.cancel')}</Button>
+                <Button loading={submitting} onClick={submit}>{t('books.import.start')}</Button>
               </div>
             </div>
           )}
@@ -427,13 +431,14 @@ function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy
   onCopyBook: () => void
   onLeave: () => void
 }) {
+  const { t } = useTranslation()
   const detailUrl = `/book/detail/${encodeURIComponent(book.slug)}`
 
   // 章节计数与相对更新时间作为自定义元信息槽（含浏览量由统一卡片接管）
   const metaSlot = (
     <>
-      <span className="flex items-center gap-1"><FileTextIcon className="h-3.5 w-3.5" /> {book.chapter_count ?? 0} 个章节</span>
-      <span className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> {relativeUpdated(book.updated_at)}</span>
+      <span className="flex items-center gap-1"><FileTextIcon className="h-3.5 w-3.5" /> {t('books.meta.chapters', { count: book.chapter_count ?? 0 })}</span>
+      <span className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> {relativeUpdated(t, book.updated_at)}</span>
     </>
   )
 
@@ -441,31 +446,31 @@ function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy
     <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
       <Link role="menuitem" href={detailUrl} onClick={() => setMenuOpen(false)}
         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-        <EyeIcon className="h-4 w-4 text-slate-400" /> 查看详情
+        <EyeIcon className="h-4 w-4 text-slate-400" /> {t('books.menu.viewDetail')}
       </Link>
       {!collaborating && <>
         <Link role="menuitem" href={`/book/settings/${encodeURIComponent(book.slug)}`} onClick={() => setMenuOpen(false)}
           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-          <GearIcon className="h-4 w-4 text-slate-400" /> 书籍设置
+          <GearIcon className="h-4 w-4 text-slate-400" /> {t('books.menu.settings')}
         </Link>
         <button role="menuitem" onClick={() => { setMenuOpen(false); onImportPDF() }}
           className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-          <i className="fa-solid fa-file-pdf w-4 text-center text-slate-400" aria-hidden="true" /> 导入 PDF
+          <i className="fa-solid fa-file-pdf w-4 text-center text-slate-400" aria-hidden="true" /> {t('books.menu.importPdf')}
         </button>
       </>}
       <button role="menuitem" onClick={onCopy}
         className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-        <LinkIcon2 className="h-4 w-4 text-slate-400" /> 复制访问链接
+        <LinkIcon2 className="h-4 w-4 text-slate-400" /> {t('books.menu.copyLink')}
       </button>
       <button role="menuitem" onClick={() => { setMenuOpen(false); onCopyBook() }}
         className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-        <i className="fa-regular fa-copy w-4 text-center text-slate-400" aria-hidden="true" /> 复制书籍
+        <i className="fa-regular fa-copy w-4 text-center text-slate-400" aria-hidden="true" /> {t('books.menu.copyBook')}
       </button>
       <div className="my-1 border-t border-slate-100" />
       <button role="menuitem" onClick={() => { setMenuOpen(false); collaborating ? onLeave() : onDelete() }}
         className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50">
         {collaborating ? <i className="fa-solid fa-arrow-right-from-bracket w-4 text-center" aria-hidden="true" /> : <TrashIcon className="h-4 w-4" />}
-        {collaborating ? '退出协作' : '移入回收站'}
+        {collaborating ? t('books.menu.leave') : t('books.menu.trash')}
       </button>
     </DropdownMenu>
   )
@@ -484,8 +489,8 @@ function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy
       showStatus
       showVisibility={!collaborating}
       badge={collaborating ? <>
-        <Badge tone="slate">协作可见</Badge>
-        <Badge tone={book.collaborator_role === 'editor' ? 'emerald' : 'sky'}>{book.collaborator_role === 'editor' ? '编辑者' : '访问者'}</Badge>
+        <Badge tone="slate">{t('books.badge.collabVisible')}</Badge>
+        <Badge tone={book.collaborator_role === 'editor' ? 'emerald' : 'sky'}>{book.collaborator_role === 'editor' ? t('books.role.editor') : t('books.role.viewer')}</Badge>
       </> : undefined}
       tagsMax={3}
       tagsLink={false}
@@ -497,6 +502,7 @@ function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy
 }
 
 function PDFImportDialog({ book, onClose, onImported }: { book: Book; onClose: () => void; onImported: () => Promise<void> }) {
+  const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -516,11 +522,11 @@ function PDFImportDialog({ book, onClose, onImported }: { book: Book; onClose: (
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
                 <i className="fa-solid fa-file-pdf" aria-hidden="true" />
               </span>
-              <h2 id="pdf-import-dialog-title" className="truncate text-xl font-bold text-ink">导入 PDF 到《{book.title}》</h2>
+              <h2 id="pdf-import-dialog-title" className="truncate text-xl font-bold text-ink">{t('books.pdf.title', { title: book.title })}</h2>
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-500">解析 PDF 为 Markdown 章节，可追加到目录末尾或覆盖现有章节。</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">{t('books.pdf.desc')}</p>
           </div>
-          <button type="button" aria-label="关闭 PDF 导入" disabled={busy} onClick={onClose}
+          <button type="button" aria-label={t('books.pdf.close')} disabled={busy} onClick={onClose}
             className="flex shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
             style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <CloseIcon className="h-5 w-5" />
@@ -535,20 +541,21 @@ function PDFImportDialog({ book, onClose, onImported }: { book: Book; onClose: (
 }
 
 function ActionRow({ book, menu, canManage, canEdit }: { book: Book; menu: React.ReactNode; canManage: boolean; canEdit: boolean }) {
+  const { t } = useTranslation()
   const isNew = !book.description
   const [chaptersOpen, setChaptersOpen] = useState(false)
   return (
     <div className="flex items-center justify-between">
       <Link href={canEdit ? `/book/writer/${encodeURIComponent(book.slug)}` : `/book/detail/${encodeURIComponent(book.slug)}`} className="text-sm font-medium text-primary-600 hover:underline">
-        {canEdit ? (isNew ? '开始写作' : '继续写作') : '查看书籍'}
+        {canEdit ? (isNew ? t('books.row.start') : t('books.row.continue')) : t('books.row.view')}
       </Link>
       <div className="relative flex items-center gap-1">
-        <Tooltip content="章节列表"><button type="button" onClick={() => setChaptersOpen(!chaptersOpen)}
+        <Tooltip content={t('books.tooltip.chapters')}><button type="button" onClick={() => setChaptersOpen(!chaptersOpen)}
           className={`flex items-center justify-center rounded-lg transition-colors ${chaptersOpen ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
           style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <FileTextIcon className="h-4 w-4" />
           </button></Tooltip>
-        {canManage && <Tooltip content="书籍设置"><Link href={`/book/settings/${encodeURIComponent(book.slug)}`}
+        {canManage && <Tooltip content={t('books.tooltip.settings')}><Link href={`/book/settings/${encodeURIComponent(book.slug)}`}
             className="flex items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
             style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <GearIcon className="h-4 w-4" />
@@ -562,6 +569,7 @@ function ActionRow({ book, menu, canManage, canEdit }: { book: Book; menu: React
 
 // ChapterPanel 书籍章节弹出列表：懒加载文档树，点击进阅读，铅笔进编辑
 function ChapterPanel({ book, canEdit, onClose }: { book: Book; canEdit: boolean; onClose: () => void }) {
+  const { t } = useTranslation()
   const [docs, setDocs] = useState<Document[] | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -576,13 +584,13 @@ function ChapterPanel({ book, canEdit, onClose }: { book: Book; canEdit: boolean
       <div className="fixed inset-0 z-30" onClick={onClose} />
       <div className="absolute bottom-10 right-0 z-40 w-80 max-w-[85vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
-          <span className="text-sm font-semibold text-slate-900">章节列表</span>
-          <span className="text-xs text-slate-400">{docs ? `${rows.length} 个` : ''}</span>
+          <span className="text-sm font-semibold text-slate-900">{t('books.chapters.title')}</span>
+          <span className="text-xs text-slate-400">{docs ? t('books.chapters.count', { count: rows.length }) : ''}</span>
         </div>
         <div className="max-h-72 overflow-y-auto">
           {error && <p className="px-4 py-3 text-sm text-rose-500">{error}</p>}
-          {!error && docs === null && <Loading className="py-6" label="正在加载章节…" />}
-          {docs !== null && rows.length === 0 && <p className="px-4 py-6 text-center text-sm text-slate-400">暂无章节</p>}
+          {!error && docs === null && <Loading className="py-6" label={t('books.chapters.loading')} />}
+          {docs !== null && rows.length === 0 && <p className="px-4 py-6 text-center text-sm text-slate-400">{t('books.chapters.empty')}</p>}
           {rows.map((row) => (
             <div key={row.doc.id} className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50">
               <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${row.doc.slug}`}
@@ -601,7 +609,7 @@ function ChapterPanel({ book, canEdit, onClose }: { book: Book; canEdit: boolean
         </div>
         {canEdit && <div className="border-t border-slate-100 px-4 py-2">
           <Link href={`/book/writer/${encodeURIComponent(book.slug)}`} onClick={onClose}
-            className="text-sm font-medium text-primary-600 hover:underline">在编辑器中管理全部章节</Link>
+            className="text-sm font-medium text-primary-600 hover:underline">{t('books.chapters.manageAll')}</Link>
         </div>}
       </div>
     </>
