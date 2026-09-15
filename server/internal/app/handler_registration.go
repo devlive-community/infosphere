@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"math/big"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -275,6 +277,7 @@ func (a *App) VerifyEmail(c *gin.Context) {
 	}
 	a.DB.Model(&t).Update("used_at", currentTime())
 	a.DB.Model(&models.User{}).Where("id = ?", t.UserID).Update("email_verified", true)
+	a.recordAchievementEvent(t.UserID, "account.email_verified", "user", strconv.FormatUint(uint64(t.UserID), 10), fmt.Sprintf("account.email_verified:%d", t.UserID))
 	ok(c, gin.H{"verified": true})
 }
 

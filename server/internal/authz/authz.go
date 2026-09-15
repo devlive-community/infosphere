@@ -109,6 +109,12 @@ const (
 
 	// 插件
 	PluginManage Permission = "plugin:manage" // 管理后台插件安装/卸载（仅管理员）
+
+	// 成就
+	AchievementRead   Permission = "achievement:read"   // 查看自己的成就与进度
+	AchievementUpdate Permission = "achievement:update" // 修改自己的公开陈列设置
+	AchievementManage Permission = "achievement:manage" // 管理成就定义、规则与模块设置（仅管理员）
+	AchievementGrant  Permission = "achievement:grant"  // 人工授予或撤销成就（仅管理员）
 )
 
 // All 全部权限，admin 角色默认拥有
@@ -133,6 +139,7 @@ var All = []Permission{
 	UploadCreate,
 	SystemRead, SystemUpgrade,
 	PluginManage,
+	AchievementRead, AchievementUpdate, AchievementManage, AchievementGrant,
 }
 
 // userPermissions 普通用户（user 角色）拥有的权限
@@ -154,6 +161,7 @@ var userPermissions = []Permission{
 	UserRead, UserUpdate,
 	SiteRead, StatsRead,
 	UploadCreate,
+	AchievementRead, AchievementUpdate,
 }
 
 // rolePermissions 角色 → 权限映射

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -88,7 +89,14 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 
 	// 记录该章节已读（每用户每章一条，重复读不重复插入）
 	read := models.ReadChapter{UserID: u.ID, BookID: book.ID, DocID: doc.ID}
-	a.DB.Where("user_id = ? AND doc_id = ?", u.ID, doc.ID).FirstOrCreate(&read)
+	readResult := a.DB.Where("user_id = ? AND doc_id = ?", u.ID, doc.ID).FirstOrCreate(&read)
+	if readResult.Error == nil && readResult.RowsAffected > 0 {
+		a.recordAchievementEvent(u.ID, "chapter.read", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("chapter.read:%d", read.ID))
+	}
+	if dailyDelta > 0 {
+		bucket := currentTime().Unix() / 300
+		a.recordAchievementEvent(u.ID, "reading.time", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("reading.time:%d:%d", u.ID, bucket))
+	}
 
 	ok(c, progress)
 }

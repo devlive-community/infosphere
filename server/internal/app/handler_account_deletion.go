@@ -54,6 +54,7 @@ func (a *App) deleteUserCompletely(uid uint) error {
 			&models.Comment{}, &models.Reaction{}, &models.ReadingProgress{}, &models.ReadChapter{},
 			&models.ReadingAnnotation{}, &models.UserExportSetting{}, &models.UserReadingGoal{},
 			&models.ReadingDailyTime{}, &models.UserThemeSetting{},
+			&models.UserAchievementProgress{}, &models.UserAchievement{}, &models.AchievementEvent{},
 		} {
 			if err := tx.Unscoped().Where("user_id = ?", uid).Delete(m).Error; err != nil {
 				return err

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -214,28 +215,28 @@ func (a *App) ListBooks(c *gin.Context) {
 }
 
 type bookPayload struct {
-	Title              *string  `json:"title"`
-	Description        *string  `json:"description"`
-	CoverImage         *string  `json:"cover_image"`
-	Slug               *string  `json:"slug"`
-	Status             *string  `json:"status"`
-	IsPublic           *bool    `json:"is_public"`
-	LoginRequired      *bool    `json:"login_required"`
-	OrderCol           *string  `json:"order_col"`
-	OrderDir           *string  `json:"order_dir"`
-	ChapterPrefix      *string  `json:"chapter_prefix"`
-	ChildStatusFollowParent *bool `json:"child_status_follow_parent"`
-	Language           *string  `json:"language"`
-	TransGroup         *string  `json:"trans_group"`
-	Version            *string  `json:"version"`
-	VersionGroup       *string  `json:"version_group"`
-	WatermarkEnabled   *bool    `json:"watermark_enabled"`
-	WatermarkText      *string  `json:"watermark_text"`
-	ExportEnabled      *bool    `json:"export_enabled"`
-	GuestExportEnabled *bool    `json:"guest_export_enabled"`
-	ExportStyleShared  *bool    `json:"export_style_shared"`
-	ExportFormats      *string  `json:"export_formats"`
-	Tags               []string `json:"tags"`
+	Title                   *string  `json:"title"`
+	Description             *string  `json:"description"`
+	CoverImage              *string  `json:"cover_image"`
+	Slug                    *string  `json:"slug"`
+	Status                  *string  `json:"status"`
+	IsPublic                *bool    `json:"is_public"`
+	LoginRequired           *bool    `json:"login_required"`
+	OrderCol                *string  `json:"order_col"`
+	OrderDir                *string  `json:"order_dir"`
+	ChapterPrefix           *string  `json:"chapter_prefix"`
+	ChildStatusFollowParent *bool    `json:"child_status_follow_parent"`
+	Language                *string  `json:"language"`
+	TransGroup              *string  `json:"trans_group"`
+	Version                 *string  `json:"version"`
+	VersionGroup            *string  `json:"version_group"`
+	WatermarkEnabled        *bool    `json:"watermark_enabled"`
+	WatermarkText           *string  `json:"watermark_text"`
+	ExportEnabled           *bool    `json:"export_enabled"`
+	GuestExportEnabled      *bool    `json:"guest_export_enabled"`
+	ExportStyleShared       *bool    `json:"export_style_shared"`
+	ExportFormats           *string  `json:"export_formats"`
+	Tags                    []string `json:"tags"`
 }
 
 const maxWatermarkLength = 80
@@ -402,6 +403,7 @@ func (a *App) CreateBook(c *gin.Context) {
 			return
 		}
 	}
+	a.recordAchievementEvent(u.ID, "book.created", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.created:%d", book.ID))
 	ok(c, book)
 }
 
@@ -562,6 +564,7 @@ func (a *App) UpdateBook(c *gin.Context) {
 			"owner_id":  book.UserID,
 		})
 	}
+	a.recordAchievementEvent(book.UserID, "book.updated", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.updated:%d:%d", book.ID, book.UpdatedAt.UnixNano()))
 	ok(c, book)
 }
 
@@ -628,6 +631,8 @@ func (a *App) IncrementBookView(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "查询浏览量失败")
 		return
 	}
+	bucket := currentTime().Unix() / 300
+	a.recordAchievementEvent(book.UserID, "book.viewed", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.viewed:%d:%d", book.UserID, bucket))
 	ok(c, gin.H{"view_count": viewCount})
 }
 

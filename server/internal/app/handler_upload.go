@@ -69,7 +69,13 @@ func (a *App) ServeUploads(r *gin.Engine) {
 		fmt.Println("创建上传目录失败:", err)
 		return
 	}
-	r.Static("/uploads", dir)
+	uploads := r.Group("/uploads")
+	uploads.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+		c.Next()
+	})
+	uploads.StaticFS("/", http.Dir(dir))
 }
 
 // M22 存储驱动配置（local | qiniu），凭据存站点配置表，不出现在公开 /site

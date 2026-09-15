@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -408,10 +409,13 @@ func oauthUsername(a *App, login string) string {
 }
 
 func (a *App) createBinding(userID uint, provider string, info *oauthUserInfo, accessToken string) {
-	a.DB.Create(&models.UserAuthentication{
+	binding := models.UserAuthentication{
 		UserID: userID, Provider: provider, ProviderID: info.ID,
 		ProviderUsername: info.Login, ProviderEmail: info.Email, AccessToken: accessToken,
-	})
+	}
+	if err := a.DB.Create(&binding).Error; err == nil {
+		a.recordAchievementEvent(userID, "account.oauth_bound", "user_authentication", strconv.FormatUint(uint64(binding.ID), 10), fmt.Sprintf("account.oauth_bound:%d", binding.ID))
+	}
 }
 
 // oauthFinish 签发令牌（含 Cookie）并回跳前端落地页

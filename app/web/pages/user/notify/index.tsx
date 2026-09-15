@@ -14,6 +14,7 @@ interface Prefs {
   collaboration: boolean
   moderation: boolean
   system: boolean
+  achievement: boolean
 }
 
 const ITEMS: { key: keyof Prefs; labelKey: string; hintKey: string }[] = [
@@ -22,6 +23,7 @@ const ITEMS: { key: keyof Prefs; labelKey: string; hintKey: string }[] = [
   { key: 'collaboration', labelKey: 'notify.itemCollaborationLabel', hintKey: 'notify.itemCollaborationHint' },
   { key: 'moderation', labelKey: 'notify.itemModerationLabel', hintKey: 'notify.itemModerationHint' },
   { key: 'system', labelKey: 'notify.itemSystemLabel', hintKey: 'notify.itemSystemHint' },
+  { key: 'achievement', labelKey: 'notify.itemAchievementLabel', hintKey: 'notify.itemAchievementHint' },
 ]
 
 export default function NotifyPrefs() {
@@ -38,7 +40,7 @@ export default function NotifyPrefs() {
     if (!user) return
     api<{ email_enabled: boolean; prefs: Prefs }>('/auth/notification-prefs')
       .then((d) => { setPrefs(d.prefs); setEmailEnabled(d.email_enabled) })
-      .catch(() => setPrefs({ comment: true, reaction: true, collaboration: true, moderation: true, system: true }))
+      .catch(() => setPrefs({ comment: true, reaction: true, collaboration: true, moderation: true, system: true, achievement: true }))
   }, [user])
 
   if (!user) return <Loading className="min-h-[60vh]" label={t('account.common.loadingInfo')} />

@@ -86,6 +86,7 @@ func (a *App) CreateDocumentAnnotation(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "保存标注失败")
 		return
 	}
+	a.recordAchievementEvent(u.ID, "annotation.created", "annotation", strconv.FormatUint(uint64(annotation.ID), 10), fmt.Sprintf("annotation.created:%d", annotation.ID))
 	ok(c, annotation)
 }
 
