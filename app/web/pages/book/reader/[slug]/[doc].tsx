@@ -11,6 +11,7 @@ import UserAvatar from '@/components/UserAvatar'
 import { ButtonLink } from '@/components/ui'
 import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress, getReadingProgress } from '@/lib/reading-progress'
+import { useTranslation } from '@/lib/i18n'
 import Comments from '@/components/Comments'
 import ReaderAnnotations from '@/components/ReaderAnnotations'
 import ReportButton from '@/components/ReportButton'
@@ -103,6 +104,7 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
 }
 
 export default function Reader({ site, siteUrl, user, book, doc, html, tree, access, readDocIds }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
   const chapterPrefix = book?.chapter_prefix || ''
 
@@ -264,7 +266,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   if (!book || !doc) {
     return (
       <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 shadow-sm" style={{ marginTop: '4rem' }}>
-        该章节仅对作者可见，请<Link href="/login" className="mx-1 text-primary-600">登录</Link>后查看。
+        {t('reader.authorOnlyPrefix')}<Link href="/login" className="mx-1 text-primary-600">{t('reader.authorOnlyLogin')}</Link>{t('reader.authorOnlySuffix')}。
       </div>
     )
   }
@@ -317,7 +319,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
           <span className="text-slate-300">/</span>
           <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
             className="flex shrink-0 items-center gap-1 text-slate-500 hover:text-primary-600">
-            <ChevronRightIcon className="h-4 w-4 rotate-180" /> 返回书籍
+            <ChevronRightIcon className="h-4 w-4 rotate-180" /> {t('reader.backToBook')}
           </Link>
         </div>
         <div className="hidden min-w-0 truncate text-sm font-medium text-slate-900 md:block">
@@ -341,19 +343,19 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
               <div className="mt-1.5 flex items-center justify-between text-sm text-slate-500">
                 <span className="flex items-center gap-1.5">
                   <UserAvatar user={author} size="h-5 w-5" />
-                  {author?.username || '佚名'}
+                  {author?.username || t('reader.anonymous')}
                 </span>
-                <span className="text-xs text-slate-400">{flat.length} 个章节</span>
+                <span className="text-xs text-slate-400">{t('reader.chaptersCount', { n: flat.length })}</span>
               </div>
               <div className="mt-3 flex flex-col gap-2"><BookTranslations bookId={book.id} linkTo="reader" /><BookVersions bookId={book.id} linkTo="reader" /></div>
               {canEdit && (
                 <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}/${doc ? encodeURIComponent(doc.slug) : ''}`}
                   className="mt-3 w-full">
-                  <PencilIcon className="h-4 w-4" /> 写作
+                  <PencilIcon className="h-4 w-4" /> {t('reader.write')}
                 </ButtonLink>
               )}
             </div>
-            <div className="mb-2 mt-2 text-sm font-semibold text-slate-900">目录</div>
+            <div className="mb-2 mt-2 text-sm font-semibold text-slate-900">{t('reader.toc')}</div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="min-w-max pb-2 pl-4">
@@ -378,14 +380,14 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                   <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">{doc.title}</h1>
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-400">
                     <UserAvatar user={author} size="h-6 w-6" />
-                    <span className="text-slate-600">{author?.username || '佚名'}</span>
-                    <span>· 更新于 {formatDate(doc.updated_at).slice(0, 10)}</span>
-                    <span>· 阅读 {readingMin} 分钟</span>
-                    <span>· {formatNumber(docViews)} 次阅读</span>
+                    <span className="text-slate-600">{author?.username || t('reader.anonymous')}</span>
+                    <span>· {t('reader.updatedAt', { date: formatDate(doc.updated_at).slice(0, 10) })}</span>
+                    <span>· {t('reader.readingMin', { n: readingMin })}</span>
+                    <span>· {t('reader.readCount', { n: formatNumber(docViews) })}</span>
                     {canEdit && (
                       <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${encodeURIComponent(doc.slug)}`}
                         className="flex items-center gap-1 text-primary-600 transition-colors hover:text-primary-700">
-                        <i className="fa-solid fa-pen-to-square text-xs" aria-hidden="true" /> 编辑
+                        <i className="fa-solid fa-pen-to-square text-xs" aria-hidden="true" /> {t('reader.edit')}
                       </Link>
                     )}
                     <ReportButton targetType="document" targetId={doc.id} />
@@ -399,14 +401,14 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                 {canEdit && (
                   <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${doc.slug}`}
                     className="mt-6 inline-flex items-center gap-1.5 text-sm text-primary-600 hover:underline">
-                    <PencilIcon className="h-3.5 w-3.5" /> 编辑本章
+                    <PencilIcon className="h-3.5 w-3.5" /> {t('reader.editChapter')}
                   </Link>
                 )}
                 </article>
               ) : (
                 <div className="py-24 text-center text-slate-400">
-                  <p>请从左侧目录选择章节开始阅读</p>
-                  {flat.length === 0 && <p className="mt-2 text-xs">本书暂无已发布章节</p>}
+                  <p>{t('reader.pickChapter')}</p>
+                  {flat.length === 0 && <p className="mt-2 text-xs">{t('reader.noPublished')}</p>}
                 </div>
               )}
             </div>
@@ -417,20 +419,20 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
             <nav className="flex shrink-0 items-start justify-between gap-3 border-t border-slate-200 bg-white px-8 py-3 lg:px-14">
               {prev ? (
                 <div className="group flex min-w-0 flex-col gap-1.5 text-sm">
-                  <span className="text-xs text-slate-400">上一篇</span>
+                  <span className="text-xs text-slate-400">{t('reader.prev')}</span>
                   <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${prev.slug}`}
                     className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{prev.title}</Link>
                   <AuthorAvatars users={book.user ? [book.user] : []} />
                 </div>
-              ) : <span className="text-xs text-slate-300">已经是第一章了</span>}
+              ) : <span className="text-xs text-slate-300">{t('reader.firstChapter')}</span>}
               {next ? (
                 <div className="group flex min-w-0 flex-col items-end gap-1.5 text-right text-sm">
-                  <span className="text-xs text-slate-400">下一篇</span>
+                  <span className="text-xs text-slate-400">{t('reader.next')}</span>
                   <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${next.slug}`}
                     className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{next.title}</Link>
                   <AuthorAvatars users={book.user ? [book.user] : []} />
                 </div>
-              ) : <span className="text-xs text-slate-300">已经是最后一章了</span>}
+              ) : <span className="text-xs text-slate-300">{t('reader.lastChapter')}</span>}
             </nav>
           )}
         </main>
@@ -442,7 +444,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
             <div className="min-h-0 flex-1 overflow-y-auto">
               {headings.length > 0 ? (
                 <div>
-                  <h2 className="mb-3 text-sm font-semibold text-slate-900">本章目录</h2>
+                  <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('reader.chapterToc')}</h2>
                   <ul className="space-y-1 border-l border-slate-100">
                     {headings.map((h) => (
                       <li key={h.id}>
@@ -457,21 +459,21 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                   </ul>
                 </div>
               ) : (
-                <p className="px-1 py-2 text-xs text-slate-400">本章暂无目录</p>
+                <p className="px-1 py-2 text-xs text-slate-400">{t('reader.noChapterToc')}</p>
               )}
             </div>
 
             {/* 阅读设置：固定 */}
             <div className="shrink-0 border-t border-slate-100 pt-5">
-              <h2 className="mb-3 text-sm font-semibold text-slate-900">阅读设置</h2>
+              <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('reader.settings')}</h2>
               <div className="grid grid-cols-3 gap-2">
-                <SettingButton label="减小字号" onClick={() => setFontIdx((i) => Math.max(0, i - 1))} disabled={fontIdx === 0}>
+                <SettingButton label={t('reader.fontDown')} onClick={() => setFontIdx((i) => Math.max(0, i - 1))} disabled={fontIdx === 0}>
                   <span className="text-base font-semibold">A-</span>
                 </SettingButton>
-                <SettingButton label="增大字号" onClick={() => setFontIdx((i) => Math.min(FONT_SIZES.length - 1, i + 1))} disabled={fontIdx === FONT_SIZES.length - 1}>
+                <SettingButton label={t('reader.fontUp')} onClick={() => setFontIdx((i) => Math.min(FONT_SIZES.length - 1, i + 1))} disabled={fontIdx === FONT_SIZES.length - 1}>
                   <span className="text-lg font-semibold">A+</span>
                 </SettingButton>
-                <SettingButton label="专注模式" active={focus} onClick={() => setFocus((f) => !f)}>
+                <SettingButton label={t('reader.focusMode')} active={focus} onClick={() => setFocus((f) => !f)}>
                   <FocusIcon className="h-5 w-5" />
                 </SettingButton>
               </div>
@@ -492,7 +494,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                 <Link href={`/user/${encodeURIComponent(author.username)}`}
                   className="mt-3 flex w-full items-center justify-center rounded-lg border border-primary-500 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50"
                   style={{ height: 'var(--control-height)' }}>
-                  查看作者主页
+                  {t('reader.viewAuthor')}
                 </Link>
               </div>
             )}
@@ -503,7 +505,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
         {focus && (
           <button onClick={() => setFocus(false)}
             className="fixed right-6 top-20 z-20 flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 shadow-sm hover:text-primary-600">
-            <FocusIcon className="h-4 w-4" /> 退出专注
+            <FocusIcon className="h-4 w-4" /> {t('reader.exitFocus')}
           </button>
         )}
       </div>
@@ -537,6 +539,7 @@ interface ReaderTreeProps {
 }
 
 function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExpanded, readSet, depth = 0 }: ReaderTreeProps) {
+  const { t } = useTranslation()
   return (
     <ul className={depth === 0 ? 'min-w-max space-y-0.5' : 'ml-4 min-w-max space-y-0.5 border-l border-slate-100 pl-1'}>
       {items.map((item) => {
@@ -549,7 +552,7 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
             <div className={`group relative flex items-center rounded-lg text-sm ${active ? 'bg-primary-50' : 'hover:bg-slate-50'}`}>
               {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-0.5 rounded-full bg-primary-500" />}
               {hasChildren ? (
-                <button type="button" aria-label={isExpanded ? '折叠' : '展开'}
+                <button type="button" aria-label={isExpanded ? t('reader.collapse') : t('reader.expand')}
                   onClick={() => { const n = new Set(expanded); n.has(item.id) ? n.delete(item.id) : n.add(item.id); setExpanded(n) }}
                   className="ml-1 flex h-6 w-5 shrink-0 items-center justify-center rounded text-slate-400 hover:text-slate-600">
                   {isExpanded ? <ChevronDownIcon className="h-3.5 w-3.5" /> : <ChevronRightIcon className="h-3.5 w-3.5" />}
