@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
 import { Button, Input, Field, Select, Loading } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 
 interface TranslationConfig {
   provider: string
@@ -24,6 +25,7 @@ const HINTS: Record<string, { base: string; model: string }> = {
 export default function SettingsTranslation() {
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
+  const { t } = useTranslation()
   const [cfg, setCfg] = useState<TranslationConfig>(emptyConfig)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
@@ -42,7 +44,7 @@ export default function SettingsTranslation() {
     setMessage('')
     try {
       await api('/translation', { method: 'PUT', body: cfg })
-      setMessage('翻译配置已保存，刷新后写作台生效。')
+      setMessage(t('admin.settings.translation.saved'))
     } catch (e) {
       setMessage((e as Error).message)
     } finally {
@@ -54,30 +56,30 @@ export default function SettingsTranslation() {
   const isAI = cfg.provider === 'openai' || cfg.provider === 'claude'
 
   return (
-    <SettingsLayout active="translation" description="配置写作台「翻译」按钮使用的翻译方式；AI 方式适配 OpenAI 与 Claude 协议，凭据仅管理员可见，不会出现在公开配置中。">
-      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label="正在加载翻译配置…" /> : (
+    <SettingsLayout active="translation" description={t('admin.settings.translation.description')}>
+      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label={t('admin.settings.translation.loading')} /> : (
       <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4">
-          <Field label="翻译方式">
+          <Field label={t('admin.settings.translation.provider')}>
             <Select
               options={[
-                { value: 'none', label: '不启用' },
-                { value: 'google', label: 'Google 翻译' },
-                { value: 'openai', label: 'OpenAI 协议（含兼容端点）' },
-                { value: 'claude', label: 'Claude 协议' },
+                { value: 'none', label: t('admin.settings.translation.providerNone') },
+                { value: 'google', label: t('admin.settings.translation.providerGoogle') },
+                { value: 'openai', label: t('admin.settings.translation.providerOpenai') },
+                { value: 'claude', label: t('admin.settings.translation.providerClaude') },
               ]}
               value={cfg.provider} onChange={(v) => setCfg({ ...cfg, provider: v })} />
           </Field>
           {cfg.provider !== 'none' && (
             <>
-              <Field label="API Key" hint="翻译服务的密钥；仅管理员可见。">
+              <Field label="API Key" hint={t('admin.settings.translation.apiKeyHint')}>
                 <Input type="password" value={cfg.api_key} onChange={(e) => setCfg({ ...cfg, api_key: e.target.value })} placeholder="sk-… 或服务密钥" />
               </Field>
-              <Field label="API 地址" hint={hint ? `留空则使用默认：${hint.base}` : '留空使用默认地址'}>
+              <Field label={t('admin.settings.translation.apiBase')} hint={hint ? t('admin.settings.translation.apiBaseHintWithDefault', { default: hint.base }) : t('admin.settings.translation.apiBaseHint')}>
                 <Input value={cfg.api_base} onChange={(e) => setCfg({ ...cfg, api_base: e.target.value })} placeholder={hint?.base} />
               </Field>
               {isAI && (
-                <Field label="模型" hint={hint ? `留空则使用默认：${hint.model}` : ''}>
+                <Field label={t('admin.settings.translation.model')} hint={hint ? t('admin.settings.translation.modelHintWithDefault', { default: hint.model }) : ''}>
                   <Input value={cfg.model} onChange={(e) => setCfg({ ...cfg, model: e.target.value })} placeholder={hint?.model} />
                 </Field>
               )}
@@ -86,7 +88,7 @@ export default function SettingsTranslation() {
         </div>
         {message && <div className="mt-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
         <div className="mt-5 flex justify-end">
-          <Button loading={saving} onClick={save}>保存翻译配置</Button>
+          <Button loading={saving} onClick={save}>{t('admin.settings.translation.save')}</Button>
         </div>
       </div>
       )}
