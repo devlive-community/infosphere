@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
 import { Button, Field, Select, Switch, Loading } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 
 interface RegistrationSettings {
   mode: string
@@ -10,21 +11,22 @@ interface RegistrationSettings {
   require_activation: boolean
 }
 
-const MODE_OPTIONS = [
-  { value: 'open', label: '开放注册（邀请码可填可不填）' },
-  { value: 'open_invite', label: '开放注册 + 邀请码（必须填邀请码）' },
-  { value: 'invite', label: '仅邀请码（只能通过邀请码注册）' },
-  { value: 'closed', label: '关闭注册（含第三方登录也不能注册新号）' },
-]
-
 // 系统设置 · 注册设置：注册方式 / 绑定邮箱 / 激活邮箱（仅管理员）
 export default function SettingsRegistration() {
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
+  const { t } = useTranslation()
   const [cfg, setCfg] = useState<RegistrationSettings>({ mode: 'open', require_email: false, require_activation: false })
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  const MODE_OPTIONS = [
+    { value: 'open', label: t('admin.settings.registration.modeOpen') },
+    { value: 'open_invite', label: t('admin.settings.registration.modeOpenInvite') },
+    { value: 'invite', label: t('admin.settings.registration.modeInvite') },
+    { value: 'closed', label: t('admin.settings.registration.modeClosed') },
+  ]
 
   useEffect(() => {
     if (!isAdmin) return
@@ -40,7 +42,7 @@ export default function SettingsRegistration() {
     try {
       const saved = await api<RegistrationSettings>('/registration', { method: 'PUT', body: cfg })
       setCfg(saved)
-      setMessage('注册设置已保存')
+      setMessage(t('admin.settings.registration.saved'))
     } catch (e) {
       setMessage((e as Error).message)
     } finally {
@@ -49,26 +51,26 @@ export default function SettingsRegistration() {
   }
 
   return (
-    <SettingsLayout active="registration" description="控制新用户如何注册：注册方式、是否必须绑定邮箱、以及是否必须激活邮箱后才能创建内容。">
-      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label="正在加载注册设置…" /> : (
+    <SettingsLayout active="registration" description={t('admin.settings.registration.description')}>
+      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label={t('admin.settings.registration.loading')} /> : (
       <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-5">
-          <Field label="注册方式" hint="邀请码为每个用户专属，可在个人中心查看并分享。">
+          <Field label={t('admin.settings.registration.mode')} hint={t('admin.settings.registration.modeHint')}>
             <Select options={MODE_OPTIONS} value={cfg.mode} onChange={(v) => setCfg({ ...cfg, mode: v })} />
           </Field>
 
-          <Field label="注册必须绑定邮箱" hint="开启后注册必须填写邮箱；关闭则邮箱可留空。">
-            <Switch ariaLabel="注册必须绑定邮箱" checked={cfg.require_email} onChange={(v) => setCfg({ ...cfg, require_email: v })} />
+          <Field label={t('admin.settings.registration.requireEmail')} hint={t('admin.settings.registration.requireEmailHint')}>
+            <Switch ariaLabel={t('admin.settings.registration.requireEmail')} checked={cfg.require_email} onChange={(v) => setCfg({ ...cfg, require_email: v })} />
           </Field>
 
-          <Field label="注册后必须激活邮箱" hint="需先开启「绑定邮箱」才生效。开启后，未激活邮箱的用户只能只读浏览，激活后才能创建书籍、发表评论等。">
-            <Switch ariaLabel="注册后必须激活邮箱" checked={cfg.require_activation} disabled={!cfg.require_email} onChange={(v) => setCfg({ ...cfg, require_activation: v })} />
+          <Field label={t('admin.settings.registration.requireActivation')} hint={t('admin.settings.registration.requireActivationHint')}>
+            <Switch ariaLabel={t('admin.settings.registration.requireActivation')} checked={cfg.require_activation} disabled={!cfg.require_email} onChange={(v) => setCfg({ ...cfg, require_activation: v })} />
           </Field>
         </div>
 
         {message && <div className="mt-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
         <div className="mt-5 flex justify-end">
-          <Button loading={saving} onClick={save}>保存配置</Button>
+          <Button loading={saving} onClick={save}>{t('admin.settings.registration.save')}</Button>
         </div>
       </div>
       )}
