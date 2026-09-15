@@ -5,6 +5,7 @@ import { serverApi, getSiteConfig, siteUrlFrom, authHeaderFrom, excerptFrom, isI
 import { API_BASE, formatNumber } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { useApp } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useRef, useState } from 'react'
@@ -105,6 +106,7 @@ function countChapters(docs: Document[]): { chapters: number; sections: number }
 export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree, related, needsAuth, access }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { requestInput, showToast, confirmAction } = useFeedback()
   const { user, authReady } = useApp()
+  const { t } = useTranslation()
   const router = useRouter()
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
   // 私有/草稿书 SSR 无令牌取不到，挂载后携带本地令牌客户端重试（避免默认空白）
@@ -124,8 +126,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
     ;(async () => {
       try {
         const b = await api<Book>(`/books/slug/${encodeURIComponent(slug)}`)
-        const t = await api<Document[]>(`/books/${b.id}/documents`).catch(() => [] as Document[])
-        if (!cancelled) { setBook(b); setTree(t) }
+        const docs = await api<Document[]>(`/books/${b.id}/documents`).catch(() => [] as Document[])
+        if (!cancelled) { setBook(b); setTree(docs) }
       } catch { /* 无权限：保持 null，交给 ClientFallback 提示 */ }
       finally { if (!cancelled) setFetching(false) }
     })()
@@ -190,14 +192,14 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         setLikeCount(null)
         setFavorited(false)
         setFavoriteCount(null)
-        setReactionError((error as Error).message || '互动状态加载失败')
+        setReactionError((error as Error).message || t('detail.reactionLoadFailed'))
       })
       .finally(() => {
         if (!cancelled) setReactionsReady(true)
       })
 
     return () => { cancelled = true }
-  }, [authReady, user, book])
+  }, [authReady, user, book]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 阅读进度：登录用户读过的章节 ID 集合，用于目录标记与整体进度
   const [readSet, setReadSet] = useState<Set<number>>(new Set())
@@ -214,7 +216,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const canEdit = access?.can_edit_content === true || canManage
 
   if (fetching) {
-    return <Container><Loading className="min-h-[60vh]" label="正在加载书籍…" /></Container>
+    return <Container><Loading className="min-h-[60vh]" label={t('detail.loading')} /></Container>
   }
   if (!book) {
     return <ClientFallback slug={slug} />
@@ -236,7 +238,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const readCount = allDocIds.filter((id) => readSet.has(id)).length
   const progressPct = totalChapters > 0 ? Math.round((readCount / totalChapters) * 100) : 0
 
-  // 重新拉取已读章节与进度（重置/标记读完后刷新展示）
+  // 重新拉取已读章节与进度（重置/{t('detail.markRead')}后刷新展示）
   const refreshReading = async () => {
     try {
       const r = await api<{ doc_ids: number[] }>(`/books/${book.id}/read-chapters`)
@@ -249,18 +251,18 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
     try {
       await api(`/reading-progress/${book.id}/complete`, { method: 'POST' })
       await refreshReading()
-      showToast({ message: '已标记为读完', tone: 'success' })
+      showToast({ message: t('detail.markReadDone'), tone: 'success' })
     } catch (e) {
-      showToast({ message: (e as Error)?.message || '操作失败', tone: 'error' })
+      showToast({ message: (e as Error)?.message || t('detail.opFailed'), tone: 'error' })
     } finally {
       setProgressBusy(null)
     }
   }
   const handleResetProgress = async () => {
     const confirmed = await confirmAction({
-      title: '重置阅读进度',
-      message: '将清除本书的逐章已读记录与阅读进度（不影响你的笔记与收藏），确定吗？',
-      confirmLabel: '重置',
+      title: t('detail.resetTitle'),
+      message: t('detail.resetConfirm'),
+      confirmLabel: t('detail.reset'),
       danger: true,
     })
     if (!confirmed) return
@@ -269,9 +271,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       await api(`/reading-progress/${book.id}`, { method: 'DELETE' })
       setReadSet(new Set())
       setProgress(null)
-      showToast({ message: '阅读进度已重置', tone: 'success' })
+      showToast({ message: t('detail.resetDone'), tone: 'success' })
     } catch (e) {
-      showToast({ message: (e as Error)?.message || '操作失败', tone: 'error' })
+      showToast({ message: (e as Error)?.message || t('detail.opFailed'), tone: 'error' })
     } finally {
       setProgressBusy(null)
     }
@@ -281,12 +283,12 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
     {
       '@context': 'https://schema.org', '@type': 'Book', name: book.title,
       description: book.description || undefined,
-      author: { '@type': 'Person', name: author?.username || '佚名' },
+      author: { '@type': 'Person', name: author?.username || t('detail.anonymous') },
       url: bookUrl, inLanguage: 'zh-CN',
     },
     { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: siteName, item: siteUrl },
-      { '@type': 'ListItem', position: 2, name: '发现', item: `${siteUrl}/explore` },
+      { '@type': 'ListItem', position: 2, name: t('detail.breadcrumbExplore'), item: `${siteUrl}/explore` },
       { '@type': 'ListItem', position: 3, name: book.title, item: bookUrl },
     ] },
   ]
@@ -294,9 +296,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   async function share() {
     try {
       await navigator.clipboard.writeText(bookUrl)
-      showToast({ message: '链接已复制到剪贴板', tone: 'success' })
+      showToast({ message: t('detail.linkCopied'), tone: 'success' })
     } catch {
-      await requestInput({ title: '分享书籍', label: '书籍链接', defaultValue: bookUrl, confirmLabel: '关闭' })
+      await requestInput({ title: t('detail.shareTitle'), label: t('detail.shareLabel'), defaultValue: bookUrl, confirmLabel: t('detail.close') })
     }
   }
 
@@ -335,7 +337,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         setFavorited(wasActive)
         setFavoriteCount(previousCount)
       }
-      setReactionError((error as Error).message || `${type === 'like' ? '点赞' : '收藏'}操作失败，请稍后重试`)
+      setReactionError((error as Error).message || t(type === 'like' ? 'detail.likeFailed' : 'detail.favoriteFailed'))
     } finally {
       setReactBusy(null)
     }
@@ -346,7 +348,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       <Seo
         siteName={siteName}
         title={book.title}
-        description={excerptFrom(book.description || `${book.title} — ${author?.username || ''} 的知识书籍`, 160)}
+        description={excerptFrom(book.description || t('detail.seoBookOf', { title: book.title, author: author?.username || '' }), 160)}
         url={bookUrl}
         image={book.cover_image || undefined}
         jsonLd={jsonLd}
@@ -355,7 +357,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       <Container className="!py-0">
         {/* 面包屑 */}
         <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden py-3 text-sm text-slate-500">
-          <Link href="/explore" className="shrink-0 hover:text-primary-600">发现</Link>
+          <Link href="/explore" className="shrink-0 hover:text-primary-600">{t('detail.breadcrumbExplore')}</Link>
           {(book.tags || []).slice(0, 1).map((t) => (
             <span key={t.id} className="flex min-w-0 items-center gap-1.5">
               <span className="text-slate-300">/</span>
@@ -400,37 +402,35 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                   </span>
                 </Link>
                 <Link href={`/user/${encodeURIComponent(author.username)}`}
-                  className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm text-slate-700 transition-colors hover:border-primary-400 hover:text-primary-600">
-                  查看作者主页
-                </Link>
+                  className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm text-slate-700 transition-colors hover:border-primary-400 hover:text-primary-600">{t('detail.viewAuthor')}</Link>
               </div>
             )}
 
             {/* 统计条 */}
             <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 text-sm text-slate-500 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
-              <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {chapters} 个章节</span>
-              <span className="flex items-center gap-1.5"><ClockIcon className="h-4 w-4" /> 约 {readingMin} 分钟</span>
-              <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {formatNumber(bookViews)} 次阅读</span>
-              <span className="flex items-center gap-1.5"><CalendarIcon className="h-4 w-4" /> 更新于 {fmtDate(book.updated_at)}</span>
+              <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {t('detail.chaptersCount', { n: chapters })}</span>
+              <span className="flex items-center gap-1.5"><ClockIcon className="h-4 w-4" /> {t('detail.readingMin', { n: readingMin })}</span>
+              <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {t('detail.readCount', { n: formatNumber(bookViews) })}</span>
+              <span className="flex items-center gap-1.5"><CalendarIcon className="h-4 w-4" /> {t('detail.updatedAt', { date: fmtDate(book.updated_at) })}</span>
             </div>
 
             {/* 操作 */}
             {/* 上次阅读（有进度且不是第一章时显示） */}
             {progress && progress.docSlug !== readDocSlug && readDocSlug && (
               <p className="mt-5 text-sm text-slate-500">
-                上次阅读：{progress.chapterPrefix}{progress.docTitle}
+                {t('detail.lastRead')}{progress.chapterPrefix}{progress.docTitle}
                 <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}`}
-                  className="ml-3 font-medium text-primary-600 hover:underline">继续阅读</Link>
+                  className="ml-3 font-medium text-primary-600 hover:underline">{t('detail.continue')}</Link>
               </p>
             )}
 
             <div className="mt-6 min-w-0 space-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3 sm:space-y-0">
               {readUrl ? (
                 <ButtonLink href={progress && progress.docSlug !== readDocSlug ? `/book/reader/${encodeURIComponent(book.slug)}/${progress.docSlug}` : readUrl} className="w-full px-7 text-base sm:w-auto">
-                  <BookIcon className="h-5 w-5" /> {progress && progress.docSlug !== readDocSlug ? '继续阅读' : '开始阅读'}
+                  <BookIcon className="h-5 w-5" /> {progress && progress.docSlug !== readDocSlug ? t('detail.continue') : t('detail.startRead')}
                 </ButtonLink>
               ) : (
-                <span className="text-sm text-slate-400">暂无已发布章节</span>
+                <span className="text-sm text-slate-400">{t('detail.noPublished')}</span>
               )}
               <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
                 <Button type="button" variant="outline" onClick={() => toggleReaction('like')}
@@ -441,8 +441,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                     : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
                   <HeartIcon className="h-4 w-4" />
                   {!authReady || (!!user && !reactionsReady) || reactBusy === 'like'
-                    ? '处理中…'
-                    : `${liked ? '已点赞' : '点赞'}${likeCount !== null ? ` ${formatNumber(likeCount)}` : ''}`}
+                    ? t('detail.processing')
+                    : `${liked ? t('detail.liked') : t('detail.like')}${likeCount !== null ? ` ${formatNumber(likeCount)}` : ''}`}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => toggleReaction('favorite')}
                   disabled={!authReady || (!!user && !reactionsReady) || reactBusy !== null}
@@ -452,26 +452,26 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                     : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
                   <BookmarkIcon className="h-4 w-4" />
                   {!authReady || (!!user && !reactionsReady) || reactBusy === 'favorite'
-                    ? '处理中…'
-                    : `${favorited ? '已收藏' : '收藏'}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
+                    ? t('detail.processing')
+                    : `${favorited ? t('detail.favorited') : t('detail.favorite')}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
                 </Button>
               </div>
               <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
-                <Tooltip content="分享" className="w-full sm:w-auto"><Button type="button" variant="outline" onClick={share}
+                <Tooltip content={t('detail.share')} className="w-full sm:w-auto"><Button type="button" variant="outline" onClick={share}
                   className="w-full !px-0 text-slate-500 sm:w-[var(--control-height)]">
                     <ShareIcon className="h-4 w-4" />
                   </Button></Tooltip>
                 <BookExportButton book={book} className="w-full sm:w-auto" />
               </div>
               {user && (
-                <Button type="button" variant="outline" onClick={() => setCopyOpen(true)} className="w-full sm:w-auto">复制</Button>
+                <Button type="button" variant="outline" onClick={() => setCopyOpen(true)} className="w-full sm:w-auto">{t('detail.copy')}</Button>
               )}
               {(canManage || canEdit) && (
                 <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
-                  {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="w-full sm:w-auto">写作</ButtonLink>}
+                  {canEdit && <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`} variant="outline" className="w-full sm:w-auto">{t('detail.write')}</ButtonLink>}
                   {canManage && (
                     <ButtonLink href={`/book/settings/${encodeURIComponent(book.slug)}`} variant="outline" className="w-full sm:w-auto">
-                      <GearIcon className="h-4 w-4" /> 设置
+                      <GearIcon className="h-4 w-4" /> {t('detail.settings')}
                     </ButtonLink>
                   )}
                 </div>
@@ -483,13 +483,13 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
           {/* 右：书籍信息卡 */}
           <aside className="min-w-0 space-y-5">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-4 font-bold text-slate-900">书籍信息</h2>
+              <h2 className="mb-4 font-bold text-slate-900">{t('detail.infoHeading')}</h2>
               <dl className="space-y-3 text-sm">
-                <InfoRow icon={<CheckCircleSmallIcon className="h-4 w-4" />} label="状态" value={statusName(book.status)} />
-                <InfoRow icon={<GlobeIcon className="h-4 w-4" />} label="可见性" value={book.is_public ? '公开' : '私密'} />
-                <InfoRow icon={<CalendarIcon className="h-4 w-4" />} label="创建时间" value={fmtDate(book.created_at)} />
-                <InfoRow icon={<CalendarIcon className="h-4 w-4" />} label="最近更新" value={fmtDate(book.updated_at)} />
-                <InfoRow icon={<LinkIcon className="h-4 w-4" />} label="访问路径" value={`/${book.slug}`} mono />
+                <InfoRow icon={<CheckCircleSmallIcon className="h-4 w-4" />} label={t('detail.infoStatus')} value={t(`book.status.${book.status}`)} />
+                <InfoRow icon={<GlobeIcon className="h-4 w-4" />} label={t('detail.infoVisibility')} value={book.is_public ? t('detail.infoPublic') : t('detail.infoPrivate')} />
+                <InfoRow icon={<CalendarIcon className="h-4 w-4" />} label={t('detail.infoCreatedAt')} value={fmtDate(book.created_at)} />
+                <InfoRow icon={<CalendarIcon className="h-4 w-4" />} label={t('detail.infoUpdatedAt')} value={fmtDate(book.updated_at)} />
+                <InfoRow icon={<LinkIcon className="h-4 w-4" />} label={t('detail.infoPath')} value={`/${book.slug}`} mono />
               </dl>
             </div>
 
@@ -497,7 +497,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               className="w-full border border-rose-300 text-rose-600 hover:bg-rose-50" />
 
             <div className="flex min-w-0 items-start gap-1.5 text-sm text-slate-500">
-              <HelpCircleIcon className="mt-0.5 h-4 w-4 shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere]">发现内容问题？请使用上方的举报入口。</span>
+              <HelpCircleIcon className="mt-0.5 h-4 w-4 shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere]">{t('detail.reportHint')}</span>
             </div>
           </aside>
         </section>
@@ -507,23 +507,23 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       <Container>
         <section className="border-t border-slate-200 py-10">
           <div className="max-w-3xl">
-            <h2 className="text-xl font-bold text-slate-900">关于这本书</h2>
+            <h2 className="text-xl font-bold text-slate-900">{t('detail.about')}</h2>
             <div className="mt-4 min-w-0 space-y-3 text-[15px] leading-7 text-slate-600">
-              {(book.description || '暂无简介').split('\n').filter(Boolean).map((para, i) => <p key={i} className="max-w-full [overflow-wrap:anywhere]">{para}</p>)}
+              {(book.description || t('detail.noDescription')).split('\n').filter(Boolean).map((para, i) => <p key={i} className="max-w-full [overflow-wrap:anywhere]">{para}</p>)}
             </div>
 
             <div className="mb-4 mt-10 flex items-baseline gap-3">
-              <h2 className="text-xl font-bold text-slate-900">目录</h2>
-              <span className="text-sm text-slate-400">共 {chapters} 个章节</span>
+              <h2 className="text-xl font-bold text-slate-900">{t('detail.toc')}</h2>
+              <span className="text-sm text-slate-400">{t('detail.tocCount', { n: chapters })}</span>
             </div>
 
             {user && totalChapters > 0 && (
               <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
                 <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
-                  <span className="font-medium text-slate-700">我的阅读进度</span>
+                  <span className="font-medium text-slate-700">{t('detail.myProgress')}</span>
                   <span className="text-slate-500">
-                    已读 {readCount} / {totalChapters} 章 · {progressPct}%
-                    {progress?.readSeconds ? <span className="text-slate-400"> · 阅读 {fmtReadTime(progress.readSeconds)}</span> : null}
+                    {t('detail.readProgress', { read: readCount, total: totalChapters, pct: progressPct })}
+                    {progress?.readSeconds ? <span className="text-slate-400"> · {t('detail.readTimeLabel', { time: fmtReadTime(progress.readSeconds, t) })}</span> : null}
                   </span>
                 </div>
                 <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
@@ -532,12 +532,12 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 <div className="mt-3 flex flex-wrap gap-2">
                   {progressPct < 100 && (
                     <Button variant="ghost" size="sm" loading={progressBusy === 'complete'} disabled={progressBusy !== null} onClick={handleMarkRead}>
-                      标记读完
+                      {t('detail.markRead')}
                     </Button>
                   )}
                   {readCount > 0 && (
                     <Button variant="ghost" size="sm" loading={progressBusy === 'reset'} disabled={progressBusy !== null} onClick={handleResetProgress}>
-                      重置进度
+                      {t('detail.resetProgress')}
                     </Button>
                   )}
                 </div>
@@ -548,7 +548,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               {tree.length === 0 ? (
-                <p className="py-10 text-center text-sm text-slate-400">暂无章节</p>
+                <p className="py-10 text-center text-sm text-slate-400">{t('detail.noChapters')}</p>
               ) : (
                 <ul className="divide-y divide-slate-100">
                   {tree.map((doc, i) => (
@@ -573,7 +573,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                           )}
                         </span>
                         {(doc.children?.length || 0) > 0 && (
-                          <span className="hidden shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 sm:inline-flex">{doc.children!.length} 节</span>
+                          <span className="hidden shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 sm:inline-flex">{t('detail.sectionCount', { n: doc.children!.length })}</span>
                         )}
                         <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-primary-500" />
                       </Link>
@@ -590,7 +590,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       {related.length > 0 && (
         <section className="border-t border-slate-200 bg-white py-10">
           <Container>
-            <h2 className="mb-6 text-xl font-bold text-slate-900">你可能也喜欢</h2>
+            <h2 className="mb-6 text-xl font-bold text-slate-900">{t('detail.related')}</h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {related.map((b) => <BookCard key={b.id} book={b} showStatus tagsMax={2} tagsLink={false} dateField="created" />)}
             </div>
@@ -616,22 +616,16 @@ function InfoRow({ icon, label, value, mono }: { icon: React.ReactNode; label: s
   )
 }
 
-function statusName(status: string): string {
-  return ({
-    draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
-  } as Record<string, string>)[status] || status
-}
-
 function fmtDate(input: string | null | undefined): string {
   if (!input) return '-'
   return input.slice(0, 10)
 }
 
 // fmtReadTime 累计阅读秒数格式化为「N 分钟 / N.N 小时」
-function fmtReadTime(seconds: number | undefined): string {
-  if (!seconds || seconds < 60) return '不足 1 分钟'
+function fmtReadTime(seconds: number | undefined, t: (k: string, v?: Record<string, string | number>) => string): string {
+  if (!seconds || seconds < 60) return t('detail.readTimeLessMinute')
   const minutes = Math.round(seconds / 60)
-  return minutes < 60 ? `${minutes} 分钟` : `${(minutes / 60).toFixed(1)} 小时`
+  return minutes < 60 ? t('detail.readTimeMinutes', { n: minutes }) : t('detail.readTimeHours', { n: (minutes / 60).toFixed(1) })
 }
 
 function flatFirst(docs: Document[]): Document | null {
@@ -654,17 +648,18 @@ function flatWords(docs: Document[]): number {
 
 function ClientFallback({ slug }: { slug: string }) {
   const { user } = useApp()
+  const { t } = useTranslation()
   if (!user) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 text-center text-sm text-slate-500">
-        请<Link href="/login" className="mx-1 text-primary-600">登录</Link>后查看该书籍。
+        {t('detail.fallbackLoginPrefix')}<Link href="/login" className="mx-1 text-primary-600">{t('detail.fallbackLoginLink')}</Link>{t('detail.fallbackLoginSuffix')}
       </div>
     )
   }
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 text-center text-sm text-slate-500">
-      该书籍仅对作者可见。
-      <a href={`/book/detail/${encodeURIComponent(slug)}`} className="ml-1 text-primary-600">刷新重试</a>
+      {t('detail.fallbackAuthorOnly')}
+      <a href={`/book/detail/${encodeURIComponent(slug)}`} className="ml-1 text-primary-600">{t('detail.fallbackRefresh')}</a>
     </div>
   )
 }
