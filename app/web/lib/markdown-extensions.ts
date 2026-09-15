@@ -338,6 +338,98 @@ const calloutTagExtension: TokenizerAndRendererExtension = {
   },
 }
 
+// ── <AccordionGroup> / <Accordion title="…"> ─────────────────────────────
+// 可折叠面板；内容递归解析（可嵌套代码块、Tabs、Tip 等任意块）。用原生 <details> 实现，无需 JS。
+const accordionExtension: TokenizerAndRendererExtension = {
+  name: 'md-accordion',
+  level: 'block',
+  start(src) {
+    return src.match(/<Accordion(?=[\s>])/i)?.index
+  },
+  tokenizer(src) {
+    const open = /<Accordion(\s[^>]*)?>/i.exec(src)
+    if (!open || open.index !== 0) return undefined
+    const block = scanTagBlock(src, 'Accordion', open)
+    if (!block) return undefined
+    const titleMatch = /title\s*=\s*["']([^"']*)["']/i.exec(open[1] || '')
+    return {
+      type: 'md-accordion',
+      raw: block.raw,
+      title: titleMatch ? titleMatch[1] : '',
+      tokens: this.lexer.blockTokens(dedentBlock(block.content).trim()),
+    } as Tokens.Generic
+  },
+  renderer(token) {
+    const t = token as Tokens.Generic & { title: string }
+    return (
+      '<details class="group my-2 overflow-hidden rounded-lg border border-slate-200">' +
+      '<summary class="flex cursor-pointer list-none items-center justify-between gap-2 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">' +
+      `<span>${escapeHtml(t.title)}</span>` +
+      '<i class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true"></i>' +
+      `</summary><div class="px-4 py-3">${this.parser.parse(token.tokens ?? [])}</div></details>`
+    )
+  },
+}
+
+const accordionGroupExtension: TokenizerAndRendererExtension = {
+  name: 'md-accordion-group',
+  level: 'block',
+  start(src) {
+    return src.match(/<AccordionGroup\s*>/i)?.index
+  },
+  tokenizer(src) {
+    const open = /<AccordionGroup\s*>/i.exec(src)
+    if (!open || open.index !== 0) return undefined
+    const block = scanTagBlock(src, 'AccordionGroup', open)
+    if (!block) return undefined
+    // 内容里的 <Accordion> 由 accordionExtension 递归解析
+    return {
+      type: 'md-accordion-group',
+      raw: block.raw,
+      tokens: this.lexer.blockTokens(dedentBlock(block.content).trim()),
+    } as Tokens.Generic
+  },
+  renderer(token) {
+    return `<div class="my-4 space-y-2">${this.parser.parse(token.tokens ?? [])}</div>`
+  },
+}
+
+// ── <Steps> / <Step title="…"> ────────────────────────────────────────────
+// 有序步骤列表；每步内容递归解析。Steps 自行提取 Step 子块以便编号。
+const stepsExtension: TokenizerAndRendererExtension = {
+  name: 'md-steps',
+  level: 'block',
+  start(src) {
+    return src.match(/<Steps\s*>/i)?.index
+  },
+  tokenizer(src) {
+    const open = /<Steps\s*>/i.exec(src)
+    if (!open || open.index !== 0) return undefined
+    const block = scanTagBlock(src, 'Steps', open)
+    if (!block) return undefined
+    const steps: { title: string; tokens: Tokens.Generic[] }[] = []
+    for (const step of extractTagBlocks(block.content, 'Step')) {
+      const titleMatch = /title\s*=\s*["']([^"']*)["']/i.exec(step.attrs)
+      steps.push({ title: titleMatch ? titleMatch[1] : '', tokens: this.lexer.blockTokens(dedentBlock(step.body).trim()) })
+    }
+    if (steps.length === 0) return undefined
+    return { type: 'md-steps', raw: block.raw, steps } as Tokens.Generic
+  },
+  renderer(token) {
+    const steps = (token as Tokens.Generic & { steps: MdTab[] }).steps
+    const items = steps
+      .map((s, i) => (
+        '<li class="relative pb-5 pl-9 last:pb-0">' +
+        (i < steps.length - 1 ? '<span class="absolute left-[13px] top-7 h-[calc(100%-1.5rem)] w-px bg-slate-200" aria-hidden="true"></span>' : '') +
+        `<span class="absolute left-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary-700">${i + 1}</span>` +
+        (s.title ? `<div class="mb-1 pt-1 text-sm font-semibold text-slate-900">${escapeHtml(s.title)}</div>` : '') +
+        `<div class="text-sm leading-6 text-slate-600">${this.parser.parse(s.tokens)}</div></li>`
+      ))
+      .join('')
+    return `<ol class="my-4 list-none space-y-0 pl-0">${items}</ol>`
+  },
+}
+
 // ── :::grid ──────────────────────────────────────────────────────────────
 
 const gridExtension: TokenizerAndRendererExtension = {
@@ -923,6 +1015,9 @@ export const markdownExtensions: TokenizerAndRendererExtension[] = [
   tabsExtension,
   tabsTagExtension,
   calloutTagExtension,
+  accordionGroupExtension,
+  accordionExtension,
+  stepsExtension,
   gridExtension,
   diffExtension,
   katexExtension,
