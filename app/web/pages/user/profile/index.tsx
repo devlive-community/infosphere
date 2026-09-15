@@ -6,6 +6,7 @@ import AccountSettingsLayout from '@/components/AccountSettingsLayout'
 import { api, API_BASE, getToken } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { useRequireAuth, useApp } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import { Button, Input, Textarea, Field, Loading } from '@/components/ui'
 import { EyeIcon, SaveIcon } from '@/components/icons'
 import UserAvatar from '@/components/UserAvatar'
@@ -17,6 +18,7 @@ export default function Profile() {
   const siteName = site.site_name || 'InfoSphere'
   const user = useRequireAuth()
   const { refreshUser } = useApp()
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [avatar, setAvatar] = useState('')
   const [bio, setBio] = useState('')
@@ -43,7 +45,7 @@ export default function Profile() {
     }
   }, [user])
 
-  if (!user) return <Loading className="min-h-[60vh]" label="正在加载账户资料…" />
+  if (!user) return <Loading className="min-h-[60vh]" label={t('user.profile.loading')} />
 
   const avatarSrc = resolveMediaUrl(avatar)
 
@@ -56,7 +58,7 @@ export default function Profile() {
       fd.append('file', file)
       const res = await fetch(`${API_BASE}/api/v1/upload`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd })
       const payload = await res.json().catch(() => ({}))
-      if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
+      if (!res.ok || payload.success === false) throw new Error(payload.message || t('user.profile.uploadFailed'))
       setAvatar(payload.data.url)
     } catch (err) {
       setError((err as Error).message)
@@ -76,7 +78,7 @@ export default function Profile() {
         body: { email, avatar, bio, github_url: githubUrl, nickname, website, location, company },
       })
       await refreshUser()
-      setMessage('资料已更新')
+      setMessage(t('user.profile.saved'))
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -86,24 +88,24 @@ export default function Profile() {
 
   return (
     <>
-      <Seo siteName={siteName} title="账户设置" noindex />
+      <Seo siteName={siteName} title={t('user.profile.title')} noindex />
       <Container>
         {/* 页头 */}
         <nav className="flex items-center gap-1.5 py-4 text-sm text-slate-500">
-          <Link href="/" className="hover:text-primary-600">首页</Link>
+          <Link href="/" className="hover:text-primary-600">{t('user.profile.home')}</Link>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-900">账户设置</span>
+          <span className="text-slate-900">{t('user.profile.title')}</span>
         </nav>
         <div className="pb-6">
-          <h1 className="text-3xl font-bold text-ink">账户设置</h1>
-          <p className="mt-2 text-[15px] text-slate-500">管理你的个人信息与登录安全</p>
+          <h1 className="text-3xl font-bold text-ink">{t('user.profile.title')}</h1>
+          <p className="mt-2 text-[15px] text-slate-500">{t('user.profile.description')}</p>
         </div>
 
         <AccountSettingsLayout user={user} active="profile" onAvatarChange={setAvatar}>
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 p-6">
-              <h2 className="text-xl font-bold text-slate-900">个人资料</h2>
-              <p className="mt-1 text-sm text-slate-500">管理你的公开资料与账户联系方式。</p>
+              <h2 className="text-xl font-bold text-slate-900">{t('user.profile.personalInfo')}</h2>
+              <p className="mt-1 text-sm text-slate-500">{t('user.profile.personalInfoHint')}</p>
             </div>
 
             <form onSubmit={submit}>
@@ -113,34 +115,34 @@ export default function Profile() {
 
                 {/* 头像 */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-[120px_1fr]">
-                  <label className="pt-1 text-sm font-medium text-slate-700">头像</label>
+                  <label className="pt-1 text-sm font-medium text-slate-700">{t('user.profile.avatar')}</label>
                   <div className="flex items-start gap-4">
                     <UserAvatar user={{ username: user.username, avatar }} size="h-20 w-20 text-2xl" link={false} />
                     <div className="space-y-2">
                       <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50">
-                        {uploadingAvatar ? '上传中…' : '上传头像'}
+                        {uploadingAvatar ? t('user.profile.uploading') : t('user.profile.uploadAvatar')}
                         <input type="file" accept="image/*" hidden disabled={uploadingAvatar}
                           onChange={(e) => { void uploadAvatar(e.target.files?.[0]); e.target.value = '' }} />
                       </label>
-                      <p className="text-xs text-slate-400">支持 JPG、PNG，建议使用正方形图片；也可在下方粘贴图片地址</p>
+                      <p className="text-xs text-slate-400">{t('user.profile.avatarHint')}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* 头像地址 */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-[120px_1fr]">
-                  <label className="pt-2.5 text-sm font-medium text-slate-700">头像地址</label>
+                  <label className="pt-2.5 text-sm font-medium text-slate-700">{t('user.profile.avatarUrl')}</label>
                   <Input value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder="https://images.example.com/avatar.jpg" />
                 </div>
 
                 {/* 基本信息 */}
                 <div className="border-t border-slate-100 pt-6">
-                  <h3 className="mb-4 text-lg font-semibold text-slate-900">基本信息</h3>
+                  <h3 className="mb-4 text-lg font-semibold text-slate-900">{t('user.profile.basicInfo')}</h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field label="用户名" hint="用户名暂不支持修改">
+                    <Field label={t('user.profile.username')} hint={t('user.profile.usernameHint')}>
                       <Input value={user.username} disabled />
                     </Field>
-                    <Field label="电子邮箱">
+                    <Field label={t('user.profile.email')}>
                       <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                     </Field>
                   </div>
@@ -148,26 +150,26 @@ export default function Profile() {
 
                 {/* 公开资料 */}
                 <div className="border-t border-slate-100 pt-6">
-                  <h3 className="mb-4 text-lg font-semibold text-slate-900">公开资料</h3>
+                  <h3 className="mb-4 text-lg font-semibold text-slate-900">{t('user.profile.publicInfo')}</h3>
                   <div className="space-y-4">
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label="昵称" hint="展示名，留空则显示用户名">
-                        <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="你的昵称" maxLength={50} />
+                      <Field label={t('user.profile.nickname')} hint={t('user.profile.nicknameHint')}>
+                        <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={t('user.profile.nicknamePlaceholder')} maxLength={50} />
                       </Field>
-                      <Field label="所在地">
-                        <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="如 上海" maxLength={100} />
+                      <Field label={t('user.profile.location')}>
+                        <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('user.profile.locationPlaceholder')} maxLength={100} />
                       </Field>
-                      <Field label="公司 / 组织">
-                        <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="如 DevLive" maxLength={100} />
+                      <Field label={t('user.profile.company')}>
+                        <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={t('user.profile.companyPlaceholder')} maxLength={100} />
                       </Field>
-                      <Field label="个人网站">
+                      <Field label={t('user.profile.website')}>
                         <Input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" maxLength={255} />
                       </Field>
                     </div>
-                    <Field label="个人简介">
+                    <Field label={t('user.profile.bio')}>
                       <div className="relative">
                         <Textarea maxLength={MAX_BIO} value={bio} onChange={(e) => setBio(e.target.value)}
-                          placeholder="介绍一下自己，让读者认识你" className="pb-6" />
+                          placeholder={t('user.profile.bioPlaceholder')} className="pb-6" />
                         <span className="pointer-events-none absolute bottom-2 right-3 text-xs text-slate-400">{bio.length} / {MAX_BIO}</span>
                       </div>
                     </Field>
@@ -188,20 +190,20 @@ export default function Profile() {
                 {/* 公开主页预览 */}
                 <div className="flex items-center gap-4 rounded-xl bg-emerald-50/70 px-5 py-4 ring-1 ring-inset ring-emerald-100">
                   <span className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                    <EyeIcon className="h-4 w-4" /> 公开主页预览
+                    <EyeIcon className="h-4 w-4" /> {t('user.profile.preview')}
                   </span>
                   <UserAvatar user={{ username: user.username, avatar }} size="h-11 w-11" link={false} />
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-slate-900">{user.username}</div>
-                    <div className="truncate text-xs text-slate-500">{bio || '简介会显示在这里'}</div>
+                    <div className="truncate text-xs text-slate-500">{bio || t('user.profile.bioPlaceholder')}</div>
                   </div>
                 </div>
               </div>
 
               {/* 底部操作 */}
               <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
-                <Button variant="outline" type="button" onClick={() => { setEmail(user.email || ''); setAvatar(user.avatar || ''); setBio(user.bio || ''); setGithubUrl(user.github_url || '') }}>取消</Button>
-                <Button type="submit" loading={saving}><SaveIcon className="h-4 w-4" /> 保存资料</Button>
+                <Button variant="outline" type="button" onClick={() => { setEmail(user.email || ''); setAvatar(user.avatar || ''); setBio(user.bio || ''); setGithubUrl(user.github_url || '') }}>{t('user.profile.cancel')}</Button>
+                <Button type="submit" loading={saving}><SaveIcon className="h-4 w-4" /> {t('user.profile.save')}</Button>
               </div>
             </form>
           </div>
