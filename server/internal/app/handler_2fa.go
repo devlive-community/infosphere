@@ -6,9 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"image/png"
 	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -230,6 +232,7 @@ func (a *App) EnableTwoFactor(c *gin.Context) {
 		"two_factor_enabled": true,
 		"two_factor_ops":     strings.Join([]string{tfOpLogin, tfOpCredentials, tfOpDelete, tfOpUnbindExport}, ","),
 	})
+	a.recordAchievementEvent(u.ID, "account.two_factor_enabled", "user", strconv.FormatUint(uint64(u.ID), 10), fmt.Sprintf("account.two_factor_enabled:%d", u.ID))
 	// 不再授予 step-up 宽限窗口：开启后所有勾选的操作立即要求二次认证，避免“只有登录生效”的错觉。
 	ok(c, gin.H{"enabled": true, "backup_codes": a.issueBackupCodes(u.ID)})
 }

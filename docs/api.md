@@ -85,6 +85,10 @@ Authorization: Bearer <token>
 | `system:read` | 查看系统版本信息 | ❌ | ✅ |
 | `system:upgrade` | 触发在线升级 | ❌ | ✅ |
 | `plugin:manage` | 管理后台插件安装/卸载 | ❌ | ✅ |
+| `achievement:read` | 查看自己的成就与进度 | ✅ | ✅ |
+| `achievement:update` | 修改自己的成就公开与置顶设置 | ✅ | ✅ |
+| `achievement:manage` | 管理成就模块、定义、规则与图标 | ❌ | ✅ |
+| `achievement:grant` | 人工授予或撤销用户成就 | ❌ | ✅ |
 
 补充规则：
 
@@ -164,7 +168,7 @@ Authorization: Bearer <token>
 | POST | `/auth/email/resend` | 登录用户重发激活邮件 | 登录 |
 | GET/POST/DELETE | `/auth/invite-code` | 邀请码 opt-in：GET 返回 `{invite_code, enabled}`；POST 开启（首次可选自定义 `{code}`，4-20 位字母数字、全站唯一、只能设置一次，不传则自动生成）；DELETE 停用（保留邀请码，再开启仍是同一个）。仅启用中的邀请码可用于注册 | 登录 |
 | GET | `/auth/invited` | 我邀请的用户列表 `{items:[{username,avatar,created_at}],total}`（关闭邀请码后仍可查看） | 登录 |
-| GET/PUT | `/auth/notification-prefs` | 邮件通知偏好：GET 返回 `{email_enabled(站点总开关), prefs:{comment,reaction,collaboration,moderation,system}}`；PUT 保存 `prefs`（缺省全开） | 登录 |
+| GET/PUT | `/auth/notification-prefs` | 邮件通知偏好：GET 返回 `{email_enabled(站点总开关), prefs:{comment,reaction,collaboration,moderation,system,achievement}}`；PUT 保存 `prefs`（缺省全开） | 登录 |
 | GET | `/auth/2fa` | 二次认证状态 `{enabled, operations:[login\|credentials\|delete\|unbind_export]}` | 登录 |
 | POST | `/auth/2fa/setup` | 预配置 TOTP：返回 `{secret, otpauth_url, qr(data-uri)}`（尚未开启） | 登录 |
 | POST | `/auth/2fa/enable` | 校验 `{code}` 后开启，默认勾选全部敏感操作，返回一次性 `backup_codes` | 登录 |
@@ -208,7 +212,7 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 说明 | 语义权限 |
 | --- | --- | --- | --- |
-| GET | `/site` | 站点公开配置（site_name/site_description/site_logo/site_favicon/site_keywords/site_footer_text/site_beian/help_doc_url/terms_url/privacy_url/version/comments_enabled/announcement_*） | `site:read` |
+| GET | `/site` | 站点公开配置（site_name/site_description/site_logo/site_favicon/site_keywords/site_footer_text/site_beian/help_doc_url/terms_url/privacy_url/version/comments_enabled/announcement_*，以及字符串形式的 `achievements_enabled`） | `site:read` |
 | PUT | `/site` | 更新站点配置：`site_name`、`site_description`、`site_logo`、`site_favicon`（浏览器标签图标 URL）、`site_keywords`（SEO 关键词）、`site_footer_text`（页脚介绍）、`site_beian`（ICP 备案号）、`help_doc_url`（写作台帮助文档链接）、`terms_url`（用户协议链接）、`privacy_url`（隐私政策链接，三者通常指向某本书的某个章节 reader 链接），以及全站公告 `announcement_enabled`/`announcement_text`/`announcement_tone`(info\|warning)。图片经 `/upload` 上传，遵循当前存储驱动（local\|qiniu） | `site:update` |
 | GET | `/stats` | 公开站点统计；书籍、章节、标签和浏览量仅统计公开且处于可阅读状态（进行中/已发布/已完成）的内容 | `stats:read` |
 
@@ -228,6 +232,19 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/users/:username` | 用户公开资料（含 nickname/website/location/company/github_url/bio）与公开书籍数 | `user:read` |
 | GET | `/users/:username/books?page=` | 该用户的公开书籍（分页） | `user:read` |
+| GET | `/users/:username/achievements` | 该用户允许公开的已解锁成就；模块或公开陈列关闭时返回 `{enabled:false,items:[]}` | 匿名，语义 `achievement:read` |
+
+## 成就模块
+
+成就模块默认关闭。定义支持 `draft|active|paused|archived` 状态、阅读/创作/社区/账号/特殊分类、普通/稀有/史诗/传奇稀有度、FA/图片/净化 SVG 图标、系列等级，以及最多 10 条 `all|any` 白名单指标规则。规则只接受服务端指标目录，不接受 SQL 或脚本。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/achievements/settings` | 公开模块状态 `{enabled,public_profile_enabled,showcase_limit}` | 匿名 |
+| GET | `/users/me/achievements` | 返回本人全部 active 成就、后台计算的规则进度与授予记录；隐藏成就解锁前不返回真实规则、进度和图标 | `achievement:read` |
+| PUT | `/users/me/achievements/:id/display` | 修改本人已解锁成就 `{is_public?,showcase_order?}` | `achievement:update` |
+
+时间窗口支持 `lifetime|calendar_day|calendar_week|calendar_month|rolling_days`（具体以 `GET /admin/achievement-metrics` 返回的每指标 `windows` 为准）；比较方式支持 `gte|eq|between`。
 
 ## 书籍
 
@@ -347,7 +364,7 @@ Authorization: Bearer <token>
 | POST | `/notifications/read` | 标记已读：`{ids:[]}` 或 `{all:true}`，返回最新 `unread_count` | `notification:update` |
 | GET | `/notifications/stream` | SSE 实时流：连接即推 `{"unread_count":n}`，新通知实时推送；25s 心跳。**鉴权支持 `?token=`**（EventSource 无法带 Authorization 头） | `notification:read` |
 
-- 通知类型：`comment`（评论/回复）、`reaction`（点赞/收藏）、`collaboration`（协作邀请）、`moderation`（举报处理结果）、`system`（升级完成等）
+- 通知类型：`comment`（评论/回复）、`reaction`（点赞/收藏）、`collaboration`（协作邀请）、`moderation`（举报处理结果）、`achievement`（成就解锁/授予）、`system`（升级完成等）
 - `payload` 为 JSON 对象，含 `link`（点击跳转地址）等扩展字段
 - 触发规则：他人评论你的章节/回复你的评论、他人点赞/收藏你的书（重复操作不重复通知）、服务启动检测到版本变化时通知管理员
 
@@ -430,7 +447,7 @@ Authorization: Bearer <token>
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |
 | GET | `/admin/audit-logs?page=&page_size=&actor=&action=&resource_type=&from=&to=` | 分页查询管理员高风险操作；支持操作人、动作、资源类型与日期区间筛选，日期格式为 `YYYY-MM-DD` | `audit:read` |
-| GET | `/admin/tasks?page=&page_size=&status=&type=` | 分页查询异步任务；状态支持 pending/running/retrying/succeeded/failed，类型包含 `email.send`、`content.import.pdf`、`content.import.zip`、`maintenance.cleanup`，加密任务载荷永不返回 | `task:read` |
+| GET | `/admin/tasks?page=&page_size=&status=&type=` | 分页查询异步任务；状态支持 pending/running/retrying/succeeded/failed，类型包含 `email.send`、`content.import.pdf`、`content.import.zip`、`maintenance.cleanup`、`achievement.recalculate`，加密任务载荷永不返回 | `task:read` |
 | POST | `/admin/tasks/:id/retry` | 将最终失败任务清空旧错误和尝试次数后重新排队；重复操作返回 409 | `task:retry` |
 | GET | `/admin/reports?page=&page_size=&status=&target_type=&reason=&q=` | 举报队列与处理记录；`q` 匹配目标摘要、举报人用户名或邮箱；举报人身份仅此管理员接口返回 | `report:read` |
 | PUT | `/admin/reports/:id` | 处理待审举报：`{resolution:"reject"\|"takedown",note?}`；下架会将书籍转为私有归档、章节归档或评论隐藏，并通知举报人 | `report:update` |
@@ -440,6 +457,14 @@ Authorization: Bearer <token>
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |
+| GET/PUT | `/admin/achievement-settings` | 读取/保存模块总开关、公开主页展示、解锁通知、允许用户隐藏和陈列数量 | `achievement:manage` |
+| GET | `/admin/achievement-metrics` | 返回白名单指标目录、单位、聚合方式、支持的时间窗口和过滤条件 | `achievement:manage` |
+| GET/POST | `/admin/achievements` | 分页查询或创建成就定义；列表支持 `q/status/category` | `achievement:manage` |
+| GET/PUT/DELETE | `/admin/achievements/:id` | 查看、版本化更新、删除草稿或归档已有生命周期的定义 | `achievement:manage` |
+| POST | `/admin/achievements/:id/recalculate` | 把指定 active 自动成就加入后台全用户重算队列，返回 202 与 task | `achievement:manage` |
+| POST | `/admin/achievement-icons` | multipart `file`，最大 512KB；支持 PNG/JPEG/GIF/WebP 与白名单净化 SVG | `achievement:manage` |
+| GET/POST | `/admin/achievement-grants` | 分页查询授予记录，或按 `{username,achievement_id,reason?,is_public?}` 人工授予 | `achievement:grant` |
+| POST | `/admin/achievement-grants/:id/revoke` | 按 `{reason}` 撤销授予，记录保留并写审计 | `achievement:grant` |
 
 审计日志响应项包含 `actor_id/actor_username/action/resource_type/resource_id/resource_label/summary/created_at`。`summary` 只保存脱敏变更摘要；密码、令牌、OAuth Secret、存储密钥与通用配置值不进入审计记录。
 举报处理统一写入 `report.resolved` 审计动作，摘要只记录目标类型、目标 ID 与处理结果，不复制举报人身份或举报正文。

@@ -142,6 +142,114 @@ export interface SiteConfig {
   announcement_text?: string
   announcement_tone?: string
   translation_enabled?: boolean
+  achievements_enabled?: string
+}
+
+export type AchievementCategory = 'reading' | 'creation' | 'community' | 'account' | 'special'
+export type AchievementStatus = 'draft' | 'active' | 'paused' | 'archived'
+export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary'
+
+export interface AchievementAsset {
+  id: number
+  kind: 'image' | 'svg'
+  url: string
+  mime_type: string
+  width: number
+  height: number
+}
+
+export interface AchievementRule {
+  id?: number
+  achievement_id?: number
+  metric_key: string
+  operator: 'gte' | 'eq' | 'between'
+  target_value: number
+  target_max: number
+  window_type: 'lifetime' | 'calendar_day' | 'calendar_week' | 'calendar_month' | 'rolling_days'
+  window_value: number
+  distinct_by: string
+  filters: string | Record<string, unknown>
+  sort_order?: number
+}
+
+export interface AchievementDefinition {
+  id: number
+  key: string
+  name: string
+  name_en: string
+  description: string
+  description_en: string
+  locked_hint: string
+  locked_hint_en: string
+  category: AchievementCategory
+  status: AchievementStatus
+  rarity: AchievementRarity
+  icon_type: 'fa' | 'image' | 'svg'
+  icon_value: string
+  asset_id: number | null
+  asset?: AchievementAsset | null
+  series_key: string
+  tier: number
+  supersedes_previous: boolean
+  rule_logic: 'all' | 'any'
+  grant_mode: 'auto' | 'manual'
+  visibility: 'public' | 'private' | 'hidden'
+  progress_mode: 'aggregate' | 'primary' | 'hidden'
+  active_from: string | null
+  active_until: string | null
+  version: number
+  sort_order: number
+  rules: AchievementRule[]
+  created_at: string
+  updated_at: string
+}
+
+export interface AchievementProgress {
+  id: number
+  current_value: number
+  percent: number
+  rule_values: string
+  status: 'pending' | 'unlocked'
+  last_evaluated_at: string
+}
+
+export interface AchievementGrant {
+  id: number
+  user_id: number
+  achievement_id: number
+  achievement?: AchievementDefinition
+  source: 'auto' | 'manual'
+  reason: string
+  is_public: boolean
+  showcase_order: number
+  unlocked_at: string
+  revoked_at?: string | null
+}
+
+export interface UserAchievementItem {
+  definition: AchievementDefinition
+  progress: AchievementProgress | null
+  grant: AchievementGrant | null
+  unlocked: boolean
+}
+
+export interface AchievementSettings {
+  enabled: boolean
+  public_profile_enabled: boolean
+  notifications_enabled: boolean
+  allow_user_hide: boolean
+  showcase_limit: number
+}
+
+export interface AchievementMetric {
+  key: string
+  label: string
+  category: AchievementCategory
+  description: string
+  aggregation: string
+  unit: string
+  windows: string[]
+  allowed_filters: string[]
 }
 
 export interface BookReviewUser {

@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"infosphere/server/internal/auth"
@@ -120,6 +121,10 @@ func (a *App) Register(c *gin.Context) {
 	// 邀请码为用户自主开启（opt-in），注册时不自动生成
 	if a.regRequireActivation() {
 		a.sendActivationEmail(c, &u)
+	}
+	a.recordAchievementEvent(u.ID, "account.registered", "user", strconv.FormatUint(uint64(u.ID), 10), fmt.Sprintf("account.registered:%d", u.ID))
+	if inviter != nil {
+		a.recordAchievementEvent(inviter.ID, "account.invited_user", "user", strconv.FormatUint(uint64(u.ID), 10), fmt.Sprintf("account.invited_user:%d", u.ID))
 	}
 	a.issueToken(c, &u)
 }

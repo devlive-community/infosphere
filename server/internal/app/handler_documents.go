@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"sort"
@@ -217,6 +218,7 @@ func (a *App) CreateDocument(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "创建失败: "+err.Error())
 		return
 	}
+	a.recordAchievementEvent(u.ID, "document.created", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.created:%d", doc.ID))
 	ok(c, doc)
 }
 
@@ -298,6 +300,8 @@ func (a *App) IncrementDocumentView(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "更新浏览量失败")
 		return
 	}
+	bucket := currentTime().Unix() / 300
+	a.recordAchievementEvent(book.UserID, "book.viewed", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.viewed:%d:%d", book.UserID, bucket))
 	ok(c, gin.H{"view_count": viewCount})
 }
 
@@ -436,6 +440,7 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
 	}
+	a.recordAchievementEvent(doc.UserID, "document.updated", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.updated:%d:%d", doc.ID, doc.UpdatedAt.UnixNano()))
 	ok(c, doc)
 }
 

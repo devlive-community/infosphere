@@ -8,14 +8,14 @@ import (
 
 // User 用户
 type User struct {
-	ID              uint                 `gorm:"primaryKey" json:"id"`
-	Username        string               `gorm:"size:50;uniqueIndex" json:"username"`
-	Email           string               `gorm:"size:100;uniqueIndex" json:"email"`
-	Password        string               `gorm:"size:255" json:"-"`
-	Role            string               `gorm:"size:20;default:user" json:"role"`
-	Avatar          string               `gorm:"size:500" json:"avatar"`
-	Bio             string               `gorm:"size:1000" json:"bio"`
-	GithubURL       string               `gorm:"size:255;column:github_url" json:"github_url"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	Username  string `gorm:"size:50;uniqueIndex" json:"username"`
+	Email     string `gorm:"size:100;uniqueIndex" json:"email"`
+	Password  string `gorm:"size:255" json:"-"`
+	Role      string `gorm:"size:20;default:user" json:"role"`
+	Avatar    string `gorm:"size:500" json:"avatar"`
+	Bio       string `gorm:"size:1000" json:"bio"`
+	GithubURL string `gorm:"size:255;column:github_url" json:"github_url"`
 	// 扩展资料
 	Nickname string `gorm:"size:50" json:"nickname"`  // 昵称/展示名
 	Website  string `gorm:"size:255" json:"website"`  // 个人网站
@@ -171,6 +171,7 @@ type UserNotificationPref struct {
 	Collaboration bool `gorm:"default:true" json:"collaboration"`
 	Moderation    bool `gorm:"default:true" json:"moderation"`
 	System        bool `gorm:"default:true" json:"system"`
+	Achievement   bool `gorm:"default:true" json:"achievement"`
 }
 
 // LoginLockout 登录失败锁定计数（每账户一条，多实例共享）。
@@ -219,6 +220,132 @@ type BackgroundJob struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
+// AchievementAsset 成就专用图标资源。SVG 只保存经过服务端安全校验后的内容。
+type AchievementAsset struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	Kind       string    `gorm:"size:20;not null" json:"kind"` // image | svg
+	URL        string    `gorm:"size:500;not null" json:"url"`
+	MimeType   string    `gorm:"size:100;not null" json:"mime_type"`
+	Width      int       `gorm:"default:0" json:"width"`
+	Height     int       `gorm:"default:0" json:"height"`
+	SHA256     string    `gorm:"size:64;uniqueIndex;not null" json:"sha256"`
+	UploadedBy uint      `gorm:"index;not null" json:"uploaded_by"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// AchievementDefinition 成就定义；规则单独存表，避免把可查询配置塞进站点 JSON。
+type AchievementDefinition struct {
+	ID                 uint              `gorm:"primaryKey" json:"id"`
+	Key                string            `gorm:"column:achievement_key;size:80;uniqueIndex;not null" json:"key"`
+	Name               string            `gorm:"size:120;not null" json:"name"`
+	NameEn             string            `gorm:"size:120" json:"name_en"`
+	Description        string            `gorm:"size:500" json:"description"`
+	DescriptionEn      string            `gorm:"size:500" json:"description_en"`
+	LockedHint         string            `gorm:"size:255" json:"locked_hint"`
+	LockedHintEn       string            `gorm:"size:255" json:"locked_hint_en"`
+	Category           string            `gorm:"size:30;index;not null" json:"category"`
+	Status             string            `gorm:"size:20;index;default:draft" json:"status"` // draft | active | paused | archived
+	Rarity             string            `gorm:"size:20;default:common" json:"rarity"`
+	IconType           string            `gorm:"size:20;default:fa" json:"icon_type"` // fa | image | svg
+	IconValue          string            `gorm:"size:500" json:"icon_value"`
+	AssetID            *uint             `gorm:"index" json:"asset_id"`
+	Asset              *AchievementAsset `gorm:"foreignKey:AssetID" json:"asset,omitempty"`
+	SeriesKey          string            `gorm:"size:80;index" json:"series_key"`
+	Tier               int               `gorm:"default:1" json:"tier"`
+	SupersedesPrevious bool              `gorm:"default:false" json:"supersedes_previous"`
+	RuleLogic          string            `gorm:"size:10;default:all" json:"rule_logic"`    // all | any
+	GrantMode          string            `gorm:"size:20;default:auto" json:"grant_mode"`   // auto | manual
+	Visibility         string            `gorm:"size:20;default:public" json:"visibility"` // public | private | hidden
+	ProgressMode       string            `gorm:"size:20;default:aggregate" json:"progress_mode"`
+	ActiveFrom         *time.Time        `gorm:"index" json:"active_from"`
+	ActiveUntil        *time.Time        `gorm:"index" json:"active_until"`
+	Version            int               `gorm:"default:1" json:"version"`
+	SortOrder          int               `gorm:"default:0;index" json:"sort_order"`
+	CreatedBy          uint              `gorm:"index;not null" json:"created_by"`
+	UpdatedBy          uint              `gorm:"index;not null" json:"updated_by"`
+	Rules              []AchievementRule `gorm:"foreignKey:AchievementID" json:"rules"`
+	CreatedAt          time.Time         `json:"created_at"`
+	UpdatedAt          time.Time         `json:"updated_at"`
+}
+
+// AchievementRule 是后端白名单指标上的单条条件，不允许保存 SQL 或脚本。
+type AchievementRule struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	AchievementID uint      `gorm:"index;not null" json:"achievement_id"`
+	MetricKey     string    `gorm:"size:80;index;not null" json:"metric_key"`
+	Operator      string    `gorm:"size:20;default:gte" json:"operator"` // gte | eq | between
+	TargetValue   int64     `gorm:"not null" json:"target_value"`
+	TargetMax     int64     `gorm:"default:0" json:"target_max"`
+	WindowType    string    `gorm:"size:20;default:lifetime" json:"window_type"`
+	WindowValue   int       `gorm:"default:0" json:"window_value"`
+	DistinctBy    string    `gorm:"size:30" json:"distinct_by"`
+	Filters       string    `gorm:"type:text" json:"filters"`
+	SortOrder     int       `gorm:"default:0" json:"sort_order"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// AchievementDefinitionVersion 保存每次发布后可审计的完整定义与规则快照。
+type AchievementDefinitionVersion struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	AchievementID uint      `gorm:"uniqueIndex:uk_achievement_version;index;not null" json:"achievement_id"`
+	Version       int       `gorm:"uniqueIndex:uk_achievement_version;not null" json:"version"`
+	Snapshot      string    `gorm:"type:text;not null" json:"snapshot"`
+	CreatedBy     uint      `gorm:"index;not null" json:"created_by"`
+	CreatedAt     time.Time `gorm:"index" json:"created_at"`
+}
+
+// UserAchievementProgress 保存用户对某个成就的最近一次可解释评估结果。
+type UserAchievementProgress struct {
+	ID                uint      `gorm:"primaryKey" json:"id"`
+	UserID            uint      `gorm:"uniqueIndex:uk_user_achievement_progress;not null" json:"user_id"`
+	AchievementID     uint      `gorm:"uniqueIndex:uk_user_achievement_progress;index;not null" json:"achievement_id"`
+	DefinitionVersion int       `gorm:"not null" json:"definition_version"`
+	CurrentValue      int64     `gorm:"default:0" json:"current_value"`
+	Percent           int       `gorm:"default:0" json:"percent"`
+	RuleValues        string    `gorm:"type:text" json:"rule_values"`
+	Status            string    `gorm:"size:20;default:pending;index" json:"status"` // pending | unlocked
+	LastEvaluatedAt   time.Time `gorm:"index" json:"last_evaluated_at"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+// UserAchievement 是授予事实；撤销保留记录和原因，不物理删除。
+type UserAchievement struct {
+	ID                uint                   `gorm:"primaryKey" json:"id"`
+	UserID            uint                   `gorm:"uniqueIndex:uk_user_achievement;index;not null" json:"user_id"`
+	AchievementID     uint                   `gorm:"uniqueIndex:uk_user_achievement;index;not null" json:"achievement_id"`
+	Achievement       *AchievementDefinition `gorm:"foreignKey:AchievementID" json:"achievement,omitempty"`
+	DefinitionVersion int                    `gorm:"not null" json:"definition_version"`
+	Source            string                 `gorm:"size:20;default:auto" json:"source"` // auto | manual
+	GrantorID         uint                   `gorm:"index;default:0" json:"grantor_id"`
+	Reason            string                 `gorm:"size:500" json:"reason"`
+	MetricsSnapshot   string                 `gorm:"type:text" json:"metrics_snapshot"`
+	IsPublic          bool                   `gorm:"index" json:"is_public"`
+	ShowcaseOrder     int                    `gorm:"default:0;index" json:"showcase_order"`
+	UnlockedAt        time.Time              `gorm:"index;not null" json:"unlocked_at"`
+	NotifiedAt        *time.Time             `json:"notified_at"`
+	RevokedAt         *time.Time             `gorm:"index" json:"revoked_at"`
+	RevokedBy         uint                   `gorm:"index;default:0" json:"revoked_by"`
+	RevokeReason      string                 `gorm:"size:500" json:"revoke_reason"`
+	CreatedAt         time.Time              `json:"created_at"`
+	UpdatedAt         time.Time              `json:"updated_at"`
+}
+
+// AchievementEvent 是成就评估的持久化触发记录；唯一键保证业务重试不会重复排队。
+type AchievementEvent struct {
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	DedupeKey   string     `gorm:"size:160;uniqueIndex;not null" json:"-"`
+	UserID      uint       `gorm:"index;not null" json:"user_id"`
+	Type        string     `gorm:"size:80;index;not null" json:"type"`
+	SourceType  string     `gorm:"size:40" json:"source_type"`
+	SourceID    string     `gorm:"size:100" json:"source_id"`
+	EnqueuedAt  *time.Time `gorm:"index" json:"enqueued_at"`
+	ProcessedAt *time.Time `gorm:"index" json:"processed_at"`
+	LastError   string     `gorm:"type:text" json:"last_error"`
+	CreatedAt   time.Time  `gorm:"index" json:"created_at"`
+}
+
 // Book 书籍
 type Book struct {
 	ID          uint   `gorm:"primaryKey" json:"id"`
@@ -227,15 +354,15 @@ type Book struct {
 	CoverImage  string `gorm:"size:500" json:"cover_image"`
 	Slug        string `gorm:"size:255;uniqueIndex;not null" json:"slug"`
 	// SlugEditable 是否还允许修改访问路径（slug）。复制出的书籍为 true，修改一次后自动置为 false（只能改一次）。
-	SlugEditable bool `gorm:"default:false" json:"slug_editable"`
-	UserID       uint `gorm:"index;not null" json:"user_id"`
-	Status      string `gorm:"size:20;default:draft;index" json:"status"` // draft | in_progress | published | completed | archived
-	IsPublic    bool   `gorm:"default:false;index" json:"is_public"`
+	SlugEditable bool   `gorm:"default:false" json:"slug_editable"`
+	UserID       uint   `gorm:"index;not null" json:"user_id"`
+	Status       string `gorm:"size:20;default:draft;index" json:"status"` // draft | in_progress | published | completed | archived
+	IsPublic     bool   `gorm:"default:false;index" json:"is_public"`
 	// LoginRequired 公开书籍是否仅限登录用户阅读/发现：开启后未登录游客既看不到也读不到，登录用户不受限
-	LoginRequired    bool   `gorm:"default:false;index" json:"login_required"`
-	ViewCount        int    `gorm:"default:0" json:"view_count"`
-	OrderCol         string `gorm:"size:50;default:created_at" json:"order_col"`
-	OrderDir         string `gorm:"size:10;default:desc" json:"order_dir"`
+	LoginRequired bool   `gorm:"default:false;index" json:"login_required"`
+	ViewCount     int    `gorm:"default:0" json:"view_count"`
+	OrderCol      string `gorm:"size:50;default:created_at" json:"order_col"`
+	OrderDir      string `gorm:"size:10;default:desc" json:"order_dir"`
 	ChapterPrefix string `gorm:"size:20;default:''" json:"chapter_prefix"`
 	// ChildStatusFollowParent 新建子章节时默认发布状态跟随父章节（写作台创建时生效）
 	ChildStatusFollowParent bool `gorm:"default:false" json:"child_status_follow_parent"`
@@ -544,13 +671,13 @@ func All(db *gorm.DB) error {
 		&Plugin{},
 		&UserExportSetting{},
 		&UserReadingGoal{},
-	&ReadingDailyTime{},
+		&ReadingDailyTime{},
 		&EmailVerificationToken{},
 		&TwoFactorBackupCode{},
 		&CaptchaChallenge{},
-	&OAuthState{},
-	&LoginChallenge{},
-	&RateLimitCounter{},
+		&OAuthState{},
+		&LoginChallenge{},
+		&RateLimitCounter{},
 		&TwoFactorStepUp{},
 		&LoginLockout{},
 		&UserNotificationPref{},
@@ -564,5 +691,12 @@ func All(db *gorm.DB) error {
 		&BookCollaborator{},
 		&PasswordResetToken{},
 		&BackgroundJob{},
+		&AchievementAsset{},
+		&AchievementDefinition{},
+		&AchievementRule{},
+		&AchievementDefinitionVersion{},
+		&UserAchievementProgress{},
+		&UserAchievement{},
+		&AchievementEvent{},
 	)
 }

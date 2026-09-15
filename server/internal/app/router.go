@@ -88,14 +88,14 @@ func (a *App) Router() *gin.Engine {
 			authed := authGroup.Group("", a.RequireAuth())
 			{
 				authed.GET("/me", a.Me)
-				authed.GET("/permissions", a.CurrentPermissions) // 当前用户权限列表
-				authed.GET("/invite-code", a.MyInviteCode)          // 我的邀请码（未开启为空）
-				authed.POST("/invite-code", a.EnableInviteCode)     // 开启专属邀请码
-				authed.DELETE("/invite-code", a.DisableInviteCode)  // 关闭邀请码
-				authed.GET("/invited", a.MyInvitedUsers)            // 我邀请的用户列表
+				authed.GET("/permissions", a.CurrentPermissions)   // 当前用户权限列表
+				authed.GET("/invite-code", a.MyInviteCode)         // 我的邀请码（未开启为空）
+				authed.POST("/invite-code", a.EnableInviteCode)    // 开启专属邀请码
+				authed.DELETE("/invite-code", a.DisableInviteCode) // 关闭邀请码
+				authed.GET("/invited", a.MyInvitedUsers)           // 我邀请的用户列表
 				authed.GET("/notification-prefs", a.GetNotificationPrefs)
 				authed.PUT("/notification-prefs", a.UpdateNotificationPrefs)
-				authed.POST("/email/resend", a.ResendActivation)    // 重新发送激活邮件
+				authed.POST("/email/resend", a.ResendActivation) // 重新发送激活邮件
 				// ── 二次认证（TOTP） ──
 				authed.GET("/2fa", a.GetTwoFactor)
 				authed.POST("/2fa/setup", a.SetupTwoFactor)
@@ -129,6 +129,8 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/explore/latest", a.ExploreLatest)
 			public.GET("/users/:username", a.GetUserProfile)
 			public.GET("/users/:username/books", a.GetUserBooks)
+			public.GET("/users/:username/achievements", a.PublicUserAchievements)
+			public.GET("/achievements/settings", a.PublicAchievementSettings)
 
 			public.GET("/books", a.ListBooks) // mine=true 时要求登录
 			public.GET("/books/:id", a.GetBook)
@@ -275,6 +277,13 @@ func (a *App) Router() *gin.Engine {
 			annotations.GET("/users/me/annotations/export", a.RequirePermission(authz.AnnotationRead), a.ExportMyAnnotations)
 		}
 
+		// ── 成就（本人完整进度；公开陈列见 public 组） ──
+		achievements := api.Group("/users/me/achievements", a.RequireAuth())
+		{
+			achievements.GET("", a.RequirePermission(authz.AchievementRead), a.MyAchievements)
+			achievements.PUT("/:id/display", a.RequirePermission(authz.AchievementUpdate), a.UpdateMyAchievementDisplay)
+		}
+
 		// ── 上传 ──
 		api.POST("/upload", a.RequireAuth(), a.RequireEmailVerified(), a.RequirePermission(authz.UploadCreate), a.RateLimit(uploadRateLimit), a.Upload)
 
@@ -335,6 +344,21 @@ func (a *App) Router() *gin.Engine {
 			admin.GET("/admin/plugins", a.RequirePermission(authz.PluginManage), a.AdminListPlugins)
 			admin.POST("/admin/plugins/:key/install", a.RequirePermission(authz.PluginManage), a.AdminInstallPlugin)
 			admin.POST("/admin/plugins/:key/uninstall", a.RequirePermission(authz.PluginManage), a.AdminUninstallPlugin)
+
+			// 成就管理：模块设置、指标目录、定义、重算与人工授予
+			admin.GET("/admin/achievement-settings", a.RequirePermission(authz.AchievementManage), a.AdminGetAchievementSettings)
+			admin.PUT("/admin/achievement-settings", a.RequirePermission(authz.AchievementManage), a.AdminUpdateAchievementSettings)
+			admin.GET("/admin/achievement-metrics", a.RequirePermission(authz.AchievementManage), a.AdminAchievementMetrics)
+			admin.GET("/admin/achievements", a.RequirePermission(authz.AchievementManage), a.AdminListAchievements)
+			admin.POST("/admin/achievements", a.RequirePermission(authz.AchievementManage), a.AdminCreateAchievement)
+			admin.GET("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminGetAchievement)
+			admin.PUT("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminUpdateAchievement)
+			admin.DELETE("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminDeleteAchievement)
+			admin.POST("/admin/achievements/:id/recalculate", a.RequirePermission(authz.AchievementManage), a.AdminRecalculateAchievement)
+			admin.POST("/admin/achievement-icons", a.RequirePermission(authz.AchievementManage), a.AdminUploadAchievementIcon)
+			admin.GET("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminListAchievementGrants)
+			admin.POST("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminGrantAchievement)
+			admin.POST("/admin/achievement-grants/:id/revoke", a.RequirePermission(authz.AchievementGrant), a.AdminRevokeAchievement)
 		}
 
 		// 插件操作日志 SSE（自行按 query token 鉴权，EventSource 无法带请求头）

@@ -179,6 +179,10 @@ func (a *App) CreateComment(c *gin.Context) {
 				map[string]any{"link": readerLink})
 		}
 	}
+	a.recordAchievementEvent(u.ID, "comment.created", "comment", strconv.FormatUint(uint64(comment.ID), 10), fmt.Sprintf("comment.given:%d", comment.ID))
+	if book.UserID != u.ID {
+		a.recordAchievementEvent(book.UserID, "comment.received", "comment", strconv.FormatUint(uint64(comment.ID), 10), fmt.Sprintf("comment.received:%d", comment.ID))
+	}
 	ok(c, publicCommentItem(comment))
 }
 

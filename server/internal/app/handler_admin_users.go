@@ -165,6 +165,7 @@ func (a *App) AdminDeleteUser(c *gin.Context) {
 			&models.Comment{}, &models.Reaction{}, &models.ReadingProgress{}, &models.ReadChapter{},
 			&models.ReadingAnnotation{}, &models.UserExportSetting{}, &models.UserReadingGoal{},
 			&models.ReadingDailyTime{}, &models.UserThemeSetting{},
+			&models.UserAchievementProgress{}, &models.UserAchievement{}, &models.AchievementEvent{},
 		}
 		for _, m := range related {
 			if err := tx.Unscoped().Where("user_id = ?", u.ID).Delete(m).Error; err != nil {
