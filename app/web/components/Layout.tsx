@@ -8,6 +8,7 @@ import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { API_BASE, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
+import { renderMarkdown } from '@/lib/markdown'
 import { Button, ButtonLink, Input, Modal, Tooltip, useFeedback } from '@/components/ui'
 import NotificationBell from '@/components/NotificationBell'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
@@ -281,11 +282,12 @@ export default function Layout({ title, children }: { title?: string; children: 
           <div className="bg-slate-50 px-4 py-3" style={{ borderRadius: 'var(--radius)' }}>
             <p className="mb-2 text-sm font-medium text-slate-700">{t('footer.release.notes')}</p>
             {release?.loading ? (
-              <p className="text-sm text-slate-400">正在加载发布日志…</p>
+              <p className="text-sm text-slate-400">{t('footer.release.loading')}</p>
             ) : release?.body ? (
-              <div className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{release.body}</div>
+              <div className="markdown-body max-h-72 overflow-y-auto break-words text-sm leading-6 text-slate-600"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(release.body) }} />
             ) : (
-              <p className="text-sm text-slate-500">暂无该版本的详细发布日志，可点击下方查看完整发布日志。</p>
+              <p className="text-sm text-slate-500">{t('footer.release.empty')}</p>
             )}
           </div>
           <a
@@ -295,7 +297,7 @@ export default function Layout({ title, children }: { title?: string; children: 
             className="block w-full border border-slate-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             style={{ borderRadius: 'var(--radius)' }}
           >
-            查看完整发布日志
+            {t('footer.release.viewAll')}
           </a>
         </div>
       </Modal>
