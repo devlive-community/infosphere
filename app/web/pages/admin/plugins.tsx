@@ -3,6 +3,7 @@ import { api, API_BASE, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
 import { Badge, Button, Loading, useFeedback } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 
 interface Plugin {
   key: string
@@ -22,6 +23,7 @@ export default function AdminPlugins() {
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
   const { showToast, confirmAction } = useFeedback()
+  const { t } = useTranslation()
   const [items, setItems] = useState<Plugin[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [logs, setLogs] = useState<Record<string, LogLine[]>>({})
@@ -69,21 +71,21 @@ export default function AdminPlugins() {
       openLogs(p.key)
       load()
     } catch (e) {
-      showToast({ title: '安装失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('admin.plugins.installFailed'), message: (e as Error).message, tone: 'error' })
     } finally {
       setBusy(null)
     }
   }
 
   async function uninstall(p: Plugin) {
-    if (!(await confirmAction({ title: '卸载插件', message: `确定卸载「${p.name}」？将删除已下载的文件。`, confirmLabel: '卸载', danger: true }))) return
+    if (!(await confirmAction({ title: t('admin.plugins.uninstallTitle'), message: t('admin.plugins.uninstallMessage', { name: p.name }), confirmLabel: t('admin.plugins.uninstallConfirm'), danger: true }))) return
     setBusy(p.key)
     try {
       openLogs(p.key)
       await api(`/admin/plugins/${p.key}/uninstall`, { method: 'POST' })
       load()
     } catch (e) {
-      showToast({ title: '卸载失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('admin.plugins.uninstallFailed'), message: (e as Error).message, tone: 'error' })
     } finally {
       setBusy(null)
     }
@@ -99,23 +101,23 @@ export default function AdminPlugins() {
   }
 
   function statusBadge(p: Plugin) {
-    if (p.status === 'downloading') return <Badge tone="amber">安装中…</Badge>
-    if (p.installed) return <Badge tone="emerald">已安装{p.version ? ` · v${p.version}` : ''}</Badge>
-    if (p.status === 'failed') return <Badge tone="rose">安装失败</Badge>
-    return <Badge tone="slate">未安装</Badge>
+    if (p.status === 'downloading') return <Badge tone="amber">{t('admin.plugins.status.installing')}</Badge>
+    if (p.installed) return <Badge tone="emerald">{t('admin.plugins.status.installed', { version: p.version })}</Badge>
+    if (p.status === 'failed') return <Badge tone="rose">{t('admin.plugins.status.failed')}</Badge>
+    return <Badge tone="slate">{t('admin.plugins.status.notInstalled')}</Badge>
   }
 
   const levelColor: Record<string, string> = { info: 'text-slate-300', success: 'text-emerald-400', error: 'text-rose-400' }
 
   return (
-    <AdminLayout current="plugins" breadcrumb="插件">
+    <AdminLayout current="plugins" breadcrumb={t('admin.nav.plugins')}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">插件</h1>
-        <p className="mt-1.5 text-sm text-slate-500">安装后台功能插件；部分功能（如 PDF 导出）依赖插件，未安装则不可用。</p>
+        <h1 className="text-2xl font-bold text-slate-900">{t('admin.nav.plugins')}</h1>
+        <p className="mt-1.5 text-sm text-slate-500">{t('admin.plugins.description')}</p>
       </div>
 
       {items === null ? (
-        <Loading className="py-16" label="正在加载插件…" />
+        <Loading className="py-16" label={t('admin.plugins.loading')} />
       ) : (
         <div className="space-y-4">
           {items.map((p) => {
@@ -133,12 +135,12 @@ export default function AdminPlugins() {
                     {p.status === 'failed' && p.error && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-600">{p.error}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => toggleLogs(p.key)}>{logOpen[p.key] ? '隐藏日志' : '查看日志'}</Button>
+                    <Button variant="ghost" size="sm" onClick={() => toggleLogs(p.key)}>{logOpen[p.key] ? t('admin.plugins.hideLogs') : t('admin.plugins.viewLogs')}</Button>
                     {p.installed ? (
-                      <Button variant="outline" disabled={busy === p.key} onClick={() => uninstall(p)}>卸载</Button>
+                      <Button variant="outline" disabled={busy === p.key} onClick={() => uninstall(p)}>{t('admin.plugins.uninstall')}</Button>
                     ) : (
                       <Button loading={busy === p.key || p.status === 'downloading'} disabled={p.status === 'downloading'} onClick={() => install(p)}>
-                        {p.status === 'downloading' ? '安装中…' : '安装'}
+                        {p.status === 'downloading' ? t('admin.plugins.status.installing') : t('admin.plugins.install')}
                       </Button>
                     )}
                   </div>
@@ -147,7 +149,7 @@ export default function AdminPlugins() {
                 {logOpen[p.key] && (
                   <div className="mt-4 max-h-60 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs leading-6">
                     {pluginLogs.length === 0 ? (
-                      <span className="text-slate-500">暂无日志…</span>
+                      <span className="text-slate-500">{t('admin.plugins.noLogs')}</span>
                     ) : pluginLogs.map((l, i) => (
                       <div key={i} className={levelColor[l.level] || 'text-slate-300'}>
                         <span className="text-slate-500">{l.time}</span> {l.text}
