@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Button, Input, Select, Badge, EmptyState, Loading, useFeedback } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
+import { useTranslation } from '@/lib/i18n'
 import type { Book, User } from '@/lib/types'
 
 interface Collaborator {
@@ -14,11 +15,11 @@ interface Collaborator {
   user?: Pick<User, 'id' | 'username' | 'avatar'>
 }
 
-const ROLE_LABELS: Record<string, string> = { editor: '编辑者', viewer: '访问者' }
-const STATUS_LABELS: Record<string, string> = { pending: '等待确认', accepted: '已加入', rejected: '已拒绝' }
-
 // CollaboratorManager 书籍设置页的协作者管理：所有者可增删，协作者可查看与自己退出
 export default function CollaboratorManager({ book }: { book: Book }) {
+  const { t } = useTranslation()
+  const ROLE_LABELS: Record<string, string> = { editor: t('collab.roleEditor'), viewer: t('collab.roleViewer') }
+  const STATUS_LABELS: Record<string, string> = { pending: t('collab.statusPending'), accepted: t('collab.statusAccepted'), rejected: t('collab.statusRejected') }
   const { confirmAction } = useFeedback()
   const { user } = useApp()
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
@@ -50,7 +51,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
     setError('')
     try {
       await api(`/books/${book.id}/collaborators`, { method: 'POST', body: { username: username.trim(), role } })
-      setMessage(`已向「${username.trim()}」发送${ROLE_LABELS[role]}邀请，确认后才会获得权限`)
+      setMessage(t('collab.inviteSent', { name: username.trim(), role: ROLE_LABELS[role] }))
       setUsername('')
       await load()
     } catch (err) {
@@ -63,9 +64,9 @@ export default function CollaboratorManager({ book }: { book: Book }) {
   async function remove(userId: number, name: string) {
     const self = user?.id === userId
     if (!await confirmAction({
-      title: self ? '退出书籍协作' : '移除协作者',
-      message: self ? `确定退出《${book.title}》的协作吗？` : `确定移除协作者「${name}」吗？`,
-      confirmLabel: self ? '确认退出' : '确认移除',
+      title: self ? t('collab.leaveTitle') : t('collab.removeTitle'),
+      message: self ? t('collab.leaveConfirm', { title: book.title }) : t('collab.removeConfirm', { name }),
+      confirmLabel: self ? t('collab.leaveBtn') : t('collab.removeBtn'),
       danger: true,
     })) return
     setRemovingId(userId)
@@ -73,7 +74,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
     setError('')
     try {
       await api(`/books/${book.id}/collaborators/${userId}`, { method: 'DELETE' })
-      setMessage(self ? '已退出协作' : `已移除「${name}」`)
+      setMessage(self ? t('collab.left') : t('collab.removed', { name }))
       await load()
     } catch (err) {
       setError((err as Error).message)
