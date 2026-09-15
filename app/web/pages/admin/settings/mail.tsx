@@ -3,12 +3,14 @@ import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
 import { Button, Input, Field, Select, Switch, Loading } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 import { MailConfig, emptyMail } from '@/lib/admin'
 
 // 系统设置 · 邮件服务：SMTP 配置与找回密码发信（仅管理员）
 export default function SettingsMail() {
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
+  const { t } = useTranslation()
   const [mail, setMail] = useState<MailConfig>(emptyMail)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
@@ -27,7 +29,7 @@ export default function SettingsMail() {
     setMessage('')
     try {
       await api('/mail', { method: 'PUT', body: mail })
-      setMessage('邮件配置已保存')
+      setMessage(t('admin.settings.mail.saved'))
     } catch (e) {
       setMessage((e as Error).message)
     } finally {
@@ -36,49 +38,49 @@ export default function SettingsMail() {
   }
 
   return (
-    <SettingsLayout active="mail" description="配置 SMTP 后用户可通过邮箱找回密码；「日志驱动」不真实发信，重置链接会输出到后端日志（开发期使用）。">
-      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label="正在加载邮件配置…" /> : (
+    <SettingsLayout active="mail" description={t('admin.settings.mail.description')}>
+      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label={t('admin.settings.mail.loading')} /> : (
       <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="发信驱动">
+            <Field label={t('admin.settings.mail.driver')}>
               <Select
-                options={[{ value: 'log', label: '日志驱动（开发）' }, { value: 'smtp', label: 'SMTP' }]}
+                options={[{ value: 'log', label: t('admin.settings.mail.driverLog') }, { value: 'smtp', label: 'SMTP' }]}
                 value={mail.driver || 'log'} onChange={(v) => setMail({ ...mail, driver: v })} />
             </Field>
-            <Field label="SMTP 端口" hint="465 使用隐式 TLS，587 自动 STARTTLS">
+            <Field label={t('admin.settings.mail.smtpPort')} hint={t('admin.settings.mail.smtpPortHint')}>
               <Input type="number" value={mail.port || ''} onChange={(e) => setMail({ ...mail, port: Number(e.target.value) })} />
             </Field>
           </div>
-          <Field label="站点访问地址" hint="找回密码邮件中的链接将以此为前缀，例如 https://kb.example.com">
+          <Field label={t('admin.settings.mail.siteUrl')} hint={t('admin.settings.mail.siteUrlHint')}>
             <Input value={mail.site_url || ''} onChange={(e) => setMail({ ...mail, site_url: e.target.value })}
               placeholder="https://kb.example.com" />
           </Field>
-          <Field label="SMTP 主机">
+          <Field label={t('admin.settings.mail.smtpHost')}>
             <Input value={mail.host || ''} onChange={(e) => setMail({ ...mail, host: e.target.value })}
               placeholder="smtp.example.com" />
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="SMTP 用户名">
+            <Field label={t('admin.settings.mail.smtpUsername')}>
               <Input value={mail.username || ''} onChange={(e) => setMail({ ...mail, username: e.target.value })} />
             </Field>
-            <Field label="SMTP 密码">
-              <Input type="password" value={mail.password || ''} onChange={(e) => setMail({ ...mail, password: e.target.value })} placeholder="SMTP 授权码 / 密码" />
+            <Field label={t('admin.settings.mail.smtpPassword')}>
+              <Input type="password" value={mail.password || ''} onChange={(e) => setMail({ ...mail, password: e.target.value })} placeholder={t('admin.settings.mail.smtpPasswordPlaceholder')} />
             </Field>
           </div>
-          <Field label="发件人地址">
+          <Field label={t('admin.settings.mail.fromAddress')}>
             <Input value={mail.from || ''} onChange={(e) => setMail({ ...mail, from: e.target.value })}
               placeholder="noreply@example.com" />
           </Field>
           <div className="border-t border-slate-100 pt-4">
-            <Field label="邮件通知总开关" hint="开启后，站内通知（评论/点赞/协作邀请等）会同时给已绑定邮箱的用户发邮件；用户可在账户设置里逐类型关闭。需先配置好 SMTP。">
-              <Switch ariaLabel="邮件通知总开关" checked={!!mail.notifications_enabled} onChange={(v) => setMail({ ...mail, notifications_enabled: v })} />
+            <Field label={t('admin.settings.mail.notificationsEnabled')} hint={t('admin.settings.mail.notificationsEnabledHint')}>
+              <Switch ariaLabel={t('admin.settings.mail.notificationsEnabled')} checked={!!mail.notifications_enabled} onChange={(v) => setMail({ ...mail, notifications_enabled: v })} />
             </Field>
           </div>
         </div>
         {message && <div className="mt-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
         <div className="mt-5 flex justify-end">
-          <Button loading={saving} onClick={save}>保存邮件配置</Button>
+          <Button loading={saving} onClick={save}>{t('admin.settings.mail.save')}</Button>
         </div>
       </div>
       )}
