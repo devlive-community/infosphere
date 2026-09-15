@@ -591,7 +591,7 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
                 <span className={`whitespace-nowrap ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
                 {hasRead && (
                   <span className="ml-auto flex shrink-0 items-center gap-1 pl-2 text-[11px] font-medium text-emerald-600">
-                    <CheckCircleSmallIcon className="h-3.5 w-3.5" /> 已读
+                    <CheckCircleSmallIcon className="h-3.5 w-3.5" /> {t('reader.readBadge')}
                   </span>
                 )}
               </Link>

@@ -281,6 +281,98 @@ export const en: Record<string, string> = {
   'review.authorCannot': "You can't review your own book",
   'review.rateFirst': 'Please select a rating first',
 
+  // Common (extra)
+  'common.uploadFailed': 'Upload failed',
+
+  // Component: in-book search
+  'bookSearch.clear': 'Clear search',
+  'bookSearch.placeholder': 'Search chapter titles or content in this book…',
+  'bookSearch.searching': 'Searching this book…',
+  'bookSearch.noResults': 'No chapters in this book match “{q}”',
+  'bookSearch.hitCount': '{n} chapters matched in this book',
+
+  // Component: step-up 2FA modal
+  'stepup.verifyFailed': 'Verification failed',
+  'stepup.verify': 'Verify',
+  'stepup.desc': 'This action requires two-factor authentication. Enter the 6-digit code from your authenticator app, or a backup code.',
+  'stepup.placeholder': '6-digit code / backup code',
+  'stepup.ariaCode': 'Two-factor code',
+
+  // Component: export button
+  'exportBtn.formatEpub': 'EPUB (e-book)',
+  'exportBtn.failedRetry': 'Export failed, please try again later',
+  'exportBtn.failedTitle': 'Export failed',
+  'exportBtn.exporting': 'Exporting…',
+  'exportBtn.export': 'Export',
+  'exportBtn.pluginMissing': ' (plugin not installed)',
+  'exportBtn.exportFormat': 'Export {fmt}',
+  'exportBtn.authorStyle': "Use author's style",
+  'exportBtn.myStyle': 'Use my style',
+
+  // Component: notification bell
+  'notifyBell.justNow': 'just now',
+  'notifyBell.minutesAgo': '{n} min ago',
+  'notifyBell.hoursAgo': '{n} h ago',
+  'notifyBell.daysAgo': '{n} d ago',
+  'notifyBell.aria': 'Notifications',
+  'notifyBell.title': 'Notifications',
+  'notifyBell.markAllRead': 'Mark all read',
+  'notifyBell.loading': 'Loading notifications…',
+  'notifyBell.empty': 'No notifications',
+  'notifyBell.viewAll': 'View all',
+
+  // Component: copy book dialog
+  'copyDialog.copySuffix': 'copy',
+  'copyDialog.copied': 'Copied as a new draft book',
+  'copyDialog.failed': 'Copy failed',
+  'copyDialog.title': 'Copy book',
+  'copyDialog.copyAll': 'Copy all {n} chapters',
+  'copyDialog.copySelected': 'Copy {n} selected chapters',
+  'copyDialog.newTitle': 'New book title',
+  'copyDialog.titlePlaceholder': 'Copy title',
+  'copyDialog.hint': 'The copy becomes a private draft under your account, including metadata and the selected chapters',
+  'copyDialog.modeFull': 'Full copy',
+  'copyDialog.modeCustom': 'Custom copy',
+  'copyDialog.modeFullHint': 'Copy all chapters in the current structure and order',
+  'copyDialog.modeCustomHint': 'Select, reorder or remove chapters to copy',
+  'copyDialog.emptyKeep': 'All chapters removed — keep at least one',
+  'copyDialog.removeChapter': 'Remove chapter (with sub-chapters)',
+
+  // Component: report
+  'report.reasonSpam': 'Spam or advertising',
+  'report.reasonHarassment': 'Harassment or personal attack',
+  'report.reasonCopyright': 'Copyright infringement',
+  'report.reasonIllegal': 'Illegal content',
+  'report.reasonMisleading': 'False or misleading information',
+  'report.reasonOther': 'Other issue',
+  'report.selectReason': 'Please select a reason',
+  'report.submitted': 'Report submitted',
+  'report.submittedMsg': "We'll notify you of the outcome once an admin reviews it.",
+  'report.button': 'Report',
+  'report.title': 'Report content',
+  'report.submit': 'Submit report',
+  'report.desc': "Pick the most fitting reason. We only share reports with admins; the author won't see your identity.",
+  'report.reasonLabel': 'Reason',
+  'report.descLabel': 'Details',
+  'report.descHint': '{n}/1000, optional',
+  'report.descPlaceholder': 'Describe the issue to help admins judge faster',
+
+  // Component: PDF re-import
+  'pdfReimport.modeAppend': 'Append after existing chapters',
+  'pdfReimport.modeReplace': 'Replace all existing chapters',
+  'pdfReimport.selectFile': 'Please select a PDF file to re-import',
+  'pdfReimport.failed': 'Re-import failed ({status})',
+  'pdfReimport.heading': 'Re-import PDF',
+  'pdfReimport.desc': 'Re-parse the PDF and rebuild Markdown chapters. Appending leaves existing content untouched; replacing is good for fixing bad imports.',
+  'pdfReimport.choosePdf': 'Choose PDF file',
+  'pdfReimport.doReplace': 'Replace import',
+  'pdfReimport.doAppend': 'Append import',
+  'pdfReimport.replaceWarn': 'Replacing deletes old chapters with their comments, versions and reading progress, and turns the book into a private draft.',
+  'pdfReimport.appendWarn': 'New chapters are appended to the end as drafts; existing chapters and publish state are unchanged.',
+  'pdfReimport.confirmReplace': 'Replace all existing chapters? Old content cannot be recovered from chapter history afterwards.',
+  'pdfReimport.confirmReplaceBtn': 'Confirm replace',
+  'pdfReimport.uploading': 'PDF uploaded; parsing and rebuilding Markdown chapters in the background. Leaving the page will not interrupt the task.',
+
   // Home
   'home.seo.description': 'A simple yet powerful open-source knowledge platform with multi-database and multi-device support.',
   'home.seo.jsonldDescription': 'InfoSphere knowledge platform',
@@ -459,6 +551,7 @@ export const en: Record<string, string> = {
   'reader.expand': 'Expand',
   'reader.expandAll': 'Expand all',
   'reader.collapseAll': 'Collapse all',
+  'reader.readBadge': 'Read',
 
   // Account pages (shared)
   'account.common.home': 'Home',

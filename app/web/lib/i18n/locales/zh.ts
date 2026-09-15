@@ -281,6 +281,98 @@ export const zh: Record<string, string> = {
   'review.authorCannot': '不能评价自己的书籍',
   'review.rateFirst': '请先选择评分',
 
+  // 通用（补充）
+  'common.uploadFailed': '上传失败',
+
+  // 组件：本书搜索
+  'bookSearch.clear': '清空搜索',
+  'bookSearch.placeholder': '在本书内搜索章节标题或内容…',
+  'bookSearch.searching': '正在搜索本书章节…',
+  'bookSearch.noResults': '本书内未找到与「{q}」相关的章节',
+  'bookSearch.hitCount': '本书内命中 {n} 个章节',
+
+  // 组件：二次认证弹窗
+  'stepup.verifyFailed': '验证失败',
+  'stepup.verify': '验证',
+  'stepup.desc': '该操作需要二次认证。请输入身份验证器 App 中的 6 位动态码，或一条备用码。',
+  'stepup.placeholder': '6 位动态码 / 备用码',
+  'stepup.ariaCode': '二次认证码',
+
+  // 组件：导出按钮
+  'exportBtn.formatEpub': 'EPUB (电子书)',
+  'exportBtn.failedRetry': '导出失败，请稍后重试',
+  'exportBtn.failedTitle': '导出失败',
+  'exportBtn.exporting': '导出中…',
+  'exportBtn.export': '导出',
+  'exportBtn.pluginMissing': '（插件未安装）',
+  'exportBtn.exportFormat': '导出 {fmt}',
+  'exportBtn.authorStyle': '使用作者样式',
+  'exportBtn.myStyle': '使用我的样式',
+
+  // 组件：通知铃铛
+  'notifyBell.justNow': '刚刚',
+  'notifyBell.minutesAgo': '{n} 分钟前',
+  'notifyBell.hoursAgo': '{n} 小时前',
+  'notifyBell.daysAgo': '{n} 天前',
+  'notifyBell.aria': '通知',
+  'notifyBell.title': '通知',
+  'notifyBell.markAllRead': '全部已读',
+  'notifyBell.loading': '正在加载通知…',
+  'notifyBell.empty': '暂无通知',
+  'notifyBell.viewAll': '查看全部',
+
+  // 组件：复制书籍
+  'copyDialog.copySuffix': '副本',
+  'copyDialog.copied': '已复制为新的草稿书',
+  'copyDialog.failed': '复制失败',
+  'copyDialog.title': '复制书籍',
+  'copyDialog.copyAll': '复制全部 {n} 章',
+  'copyDialog.copySelected': '复制所选 {n} 章',
+  'copyDialog.newTitle': '新书标题',
+  'copyDialog.titlePlaceholder': '副本标题',
+  'copyDialog.hint': '复制的书籍将作为你名下的私有草稿，含元数据与所选章节',
+  'copyDialog.modeFull': '完整复制',
+  'copyDialog.modeCustom': '自定义复制',
+  'copyDialog.modeFullHint': '按当前结构与顺序复制全部章节',
+  'copyDialog.modeCustomHint': '选择、拖拽重排或移除要复制的章节',
+  'copyDialog.emptyKeep': '已移除全部章节，请至少保留一章',
+  'copyDialog.removeChapter': '移除章节（含子章节）',
+
+  // 组件：举报
+  'report.reasonSpam': '垃圾信息或广告',
+  'report.reasonHarassment': '骚扰或人身攻击',
+  'report.reasonCopyright': '侵犯版权',
+  'report.reasonIllegal': '违法违规内容',
+  'report.reasonMisleading': '虚假或误导信息',
+  'report.reasonOther': '其他问题',
+  'report.selectReason': '请选择举报原因',
+  'report.submitted': '举报已提交',
+  'report.submittedMsg': '管理员处理后会通过站内通知告知结果。',
+  'report.button': '举报',
+  'report.title': '举报内容',
+  'report.submit': '提交举报',
+  'report.desc': '请选择最符合的原因。我们只会将举报信息提供给管理员，内容作者不会看到你的身份。',
+  'report.reasonLabel': '举报原因',
+  'report.descLabel': '补充说明',
+  'report.descHint': '{n}/1000，可选',
+  'report.descPlaceholder': '请说明具体问题，帮助管理员更快判断',
+
+  // 组件：重新导入 PDF
+  'pdfReimport.modeAppend': '追加到现有章节之后',
+  'pdfReimport.modeReplace': '覆盖全部现有章节',
+  'pdfReimport.selectFile': '请选择要重新导入的 PDF 文件',
+  'pdfReimport.failed': '重新导入失败 ({status})',
+  'pdfReimport.heading': '重新导入 PDF',
+  'pdfReimport.desc': '重新解析 PDF 并重建 Markdown 章节。追加不会影响现有内容；覆盖适合修正错误导入。',
+  'pdfReimport.choosePdf': '选择 PDF 文件',
+  'pdfReimport.doReplace': '覆盖导入',
+  'pdfReimport.doAppend': '追加导入',
+  'pdfReimport.replaceWarn': '覆盖会删除旧章节及其评论、版本和阅读进度，并将书籍转为私有草稿。',
+  'pdfReimport.appendWarn': '新章节会以草稿状态追加到目录末尾，现有章节和发布状态保持不变。',
+  'pdfReimport.confirmReplace': '确定覆盖全部现有章节吗？该操作完成后无法从章节历史恢复旧内容。',
+  'pdfReimport.confirmReplaceBtn': '确认覆盖',
+  'pdfReimport.uploading': 'PDF 已上传，正在后台解析并重建 Markdown 章节；离开页面不会中断任务。',
+
   // 首页
   'home.seo.description': '简单而强大的开源知识管理系统，支持多数据库与多端访问。',
   'home.seo.jsonldDescription': 'InfoSphere 知识管理系统',
@@ -459,6 +551,7 @@ export const zh: Record<string, string> = {
   'reader.expand': '展开',
   'reader.expandAll': '全部展开',
   'reader.collapseAll': '全部收起',
+  'reader.readBadge': '已读',
 
   // 账户页通用
   'account.common.home': '首页',

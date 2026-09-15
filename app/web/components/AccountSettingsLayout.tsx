@@ -34,7 +34,7 @@ export default function AccountSettingsLayout({ user, active, onAvatarChange, ch
         body: fd,
       })
       const payload = await res.json().catch(() => ({}))
-      if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
+      if (!res.ok || payload.success === false) throw new Error(payload.message || t('common.uploadFailed'))
       onAvatarChange(payload.data.url)
     } catch (e) {
       showToast({ title: t('account.avatar.failed'), message: (e as Error).message, tone: 'error' })

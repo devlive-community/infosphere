@@ -1,5 +1,6 @@
 import type { Document } from '@/lib/types'
 import type { ReactNode } from 'react'
+import { useTranslation } from '@/lib/i18n'
 
 interface DocTreeProps {
   items?: Document[]
@@ -9,8 +10,9 @@ interface DocTreeProps {
 
 // DocTree 递归渲染文档树；itemRender(item) 返回每个节点的展示内容
 export default function DocTree({ items, activeId, itemRender }: DocTreeProps) {
+  const { t } = useTranslation()
   if (!items || items.length === 0) {
-    return <p className="py-6 text-center text-sm text-slate-400">暂无章节</p>
+    return <p className="py-6 text-center text-sm text-slate-400">{t('detail.noChapters')}</p>
   }
   return <ul className="space-y-0.5">{renderItems(items, activeId, itemRender)}</ul>
 }
