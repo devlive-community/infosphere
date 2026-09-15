@@ -143,6 +143,29 @@ export interface SiteConfig {
   announcement_tone?: string
 }
 
+export interface BookReviewUser {
+  id: number
+  username: string
+  avatar?: string
+  role?: string
+}
+
+export interface BookReview {
+  id: number
+  user_id: number
+  user: BookReviewUser
+  rating: number
+  content: string
+  created_at: string
+  updated_at: string
+}
+
+export interface BookReviewSummary {
+  average: number
+  count: number
+  distribution: Record<string, number>
+}
+
 export interface FooterLink {
   label: string
   href: string

@@ -19,6 +19,7 @@ import BookSearch from '@/components/BookSearch'
 import BookTranslations from '@/components/BookTranslations'
 import BookVersions from '@/components/BookVersions'
 import BookCopyDialog from '@/components/BookCopyDialog'
+import BookReviews from '@/components/BookReviews'
 import ReportButton from '@/components/ReportButton'
 import CoverImage from '@/components/CoverImage'
 import Seo from '@/components/Seo'
@@ -584,6 +585,14 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               )}
             </div>
           </div>
+        </section>
+      </Container>
+
+      {/* 评价与评分 */}
+      <Container>
+        <section className="border-t border-slate-200 py-10">
+          <h2 className="mb-6 text-xl font-bold text-slate-900">{t('review.title')}</h2>
+          <BookReviews bookId={book.id} authorId={book.user_id} />
         </section>
       </Container>
 

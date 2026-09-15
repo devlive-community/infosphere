@@ -262,6 +262,25 @@ export const en: Record<string, string> = {
   'comment.loading': 'Loading comments…',
   'comment.empty': 'No comments yet',
 
+  // Book reviews & ratings
+  'review.title': 'Ratings & reviews',
+  'review.count': '{n} reviews',
+  'review.noReviews': 'No reviews yet — be the first to write one.',
+  'review.yourRating': 'Your rating',
+  'review.placeholder': 'Share your thoughts (optional)',
+  'review.submit': 'Post review',
+  'review.update': 'Update review',
+  'review.submitted': 'Review posted',
+  'review.submitFailed': 'Failed to post',
+  'review.deleted': 'Review deleted',
+  'review.deleteFailed': 'Failed to delete',
+  'review.delete': 'Delete',
+  'review.deleting': 'Deleting…',
+  'review.loadMore': 'Load more',
+  'review.loginToReview': 'Sign in to review this book',
+  'review.authorCannot': "You can't review your own book",
+  'review.rateFirst': 'Please select a rating first',
+
   // Home
   'home.seo.description': 'A simple yet powerful open-source knowledge platform with multi-database and multi-device support.',
   'home.seo.jsonldDescription': 'InfoSphere knowledge platform',

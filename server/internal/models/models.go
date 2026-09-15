@@ -293,6 +293,19 @@ type Comment struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+// BookReview 书籍评价：每位用户对每本书一条（评分 1-5 + 可选文字），用于详情页评分与评论。
+type BookReview struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	BookID    uint      `gorm:"index;not null;uniqueIndex:uk_book_user_review" json:"book_id"`
+	UserID    uint      `gorm:"index;not null;uniqueIndex:uk_book_user_review" json:"user_id"`
+	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Rating    int       `gorm:"not null" json:"rating"` // 1-5
+	Content   string    `gorm:"type:text" json:"content"`
+	Status    string    `gorm:"size:20;default:published;index" json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // ContentReport 用户对书籍、章节或评论提交的内容举报及管理员处理记录。
 type ContentReport struct {
 	ID             uint       `gorm:"primaryKey" json:"id"`
@@ -544,6 +557,7 @@ func All(db *gorm.DB) error {
 		&BookExportSetting{},
 		&UserThemeSetting{},
 		&Comment{},
+		&BookReview{},
 		&ContentReport{},
 		&Reaction{},
 		&Notification{},
