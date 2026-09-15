@@ -1762,4 +1762,7 @@ export const zh: Record<string, string> = {
   'user.home.publicAchievements': '公开成就',
   'user.home.publicAchievementsHint': '展示 {username} 置顶或最近解锁的成就',
   'user.home.achievementTier': '第 {tier} 级',
+  // 全局
+  'global.loadingInfoSphere': '正在加载 InfoSphere…',
+  'global.pageLoading': '页面加载中…',
 }
