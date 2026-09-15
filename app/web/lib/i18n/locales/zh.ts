@@ -224,6 +224,16 @@ export const zh: Record<string, string> = {
   'book.variant.language': '语言',
   'book.variant.version': '版本',
 
+  // 书籍状态 / 可见性（多页共用）
+  'book.status.draft': '草稿',
+  'book.status.in_progress': '进行中',
+  'book.status.published': '已发布',
+  'book.status.completed': '已完成',
+  'book.status.archived': '已归档',
+  'book.visibility.public': '公开',
+  'book.visibility.private': '仅自己可见',
+  'book.card.noDescription': '暂无简介',
+
   // 首页
   'home.seo.description': '简单而强大的开源知识管理系统，支持多数据库与多端访问。',
   'home.seo.jsonldDescription': 'InfoSphere 知识管理系统',

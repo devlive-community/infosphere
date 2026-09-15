@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui'
 import TagChips from '@/components/TagChips'
 import UserAvatar from '@/components/UserAvatar'
 import { ArrowRightIcon, EyeIcon, CalendarIcon } from '@/components/icons'
+import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 import HighlightText from '@/components/HighlightText'
 
@@ -14,15 +15,13 @@ import HighlightText from '@/components/HighlightText'
 // 通过开关组合表达各页差异，避免各页自定义卡片导致视觉不一致。
 // 根节点恒为 div（内部含多个 Link），避免嵌套 <a> 破坏水合。
 
-const statusNames: Record<string, string> = {
-  draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
-}
 const statusTones: Record<string, 'slate' | 'primary' | 'emerald' | 'violet' | 'amber'> = {
   draft: 'slate', in_progress: 'primary', published: 'emerald', completed: 'violet', archived: 'amber',
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  return <Badge tone={statusTones[status] || 'slate'}>{statusNames[status] || status}</Badge>
+  const { t } = useTranslation()
+  return <Badge tone={statusTones[status] || 'slate'}>{t(`book.status.${status}`)}</Badge>
 }
 
 export interface BookCardProps {
@@ -118,6 +117,7 @@ export default function BookCard({
   tagsMax,
   highlight,
 }: BookCardProps) {
+  const { t } = useTranslation()
   const detailHref = href || `/book/detail/${encodeURIComponent(book.slug)}`
   const { resolvedTagsMax } = useDefaults(book, view, tagsMax)
   const showTags = resolvedTagsMax > 0 && (book.tags?.length ?? 0) > 0
@@ -183,7 +183,7 @@ export default function BookCard({
       {showStatus && <StatusBadge status={book.status} />}
       {showVisibility && (
         <Badge tone={book.is_public ? 'sky' : 'slate'}>
-          {book.is_public ? '公开' : '仅自己可见'}
+          {book.is_public ? t('book.visibility.public') : t('book.visibility.private')}
         </Badge>
       )}
       {badge}
@@ -192,7 +192,7 @@ export default function BookCard({
 
   const descBlock = showDescription && (
     <p className={`text-sm leading-6 text-slate-500 ${view === 'grid' ? 'line-clamp-2' : 'line-clamp-2'}`}>
-      <HighlightText text={book.description || '暂无简介'} query={highlight} />
+      <HighlightText text={book.description || t('book.card.noDescription')} query={highlight} />
     </p>
   )
 
@@ -208,7 +208,7 @@ export default function BookCard({
             {showStatus && <StatusBadge status={book.status} />}
           </div>
           {showVisibility && (
-            <div className="flex items-center gap-2"><Badge tone={book.is_public ? 'sky' : 'slate'}>{book.is_public ? '公开' : '仅自己可见'}</Badge>{badge}</div>
+            <div className="flex items-center gap-2"><Badge tone={book.is_public ? 'sky' : 'slate'}>{book.is_public ? t('book.visibility.public') : t('book.visibility.private')}</Badge>{badge}</div>
           )}
           {!showVisibility && badge && <div className="flex items-center gap-2">{badge}</div>}
           {descBlock}
