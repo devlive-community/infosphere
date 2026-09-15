@@ -486,6 +486,8 @@ type Document struct {
 	SortOrder int    `gorm:"default:0" json:"sort_order"`
 	ViewCount int    `gorm:"default:0" json:"view_count"`
 	Status    string `gorm:"size:20;default:draft;index" json:"status"`
+	// Icon 目录树图标：从正文 <!-- icon: xxx --> 元数据提取的 FontAwesome 图标名，替换默认文档/文件夹图标
+	Icon string `gorm:"size:64" json:"icon"`
 	// 公开后允许评论；指针型保证显式 false 能写入（列默认 true）
 	AllowComments *bool          `gorm:"default:true" json:"allow_comments"`
 	CreatedAt     time.Time      `json:"created_at"`

@@ -5,6 +5,7 @@ import { api, formatDate, API_BASE, getToken } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
 import { renderMarkdown, bindMarkdownInteractivity, headingPlainText } from '@/lib/markdown'
 import Seo from '@/components/Seo'
+import DocTreeIcon from '@/components/DocTreeIcon'
 import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Switch, Tooltip, Modal, useFeedback } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
@@ -2154,9 +2155,7 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
         )}
         <button type="button" onClick={() => onSelect(item.slug)}
           className="flex flex-1 items-center gap-1.5 py-2 pl-1 pr-1 text-left">
-          {hasChildren
-            ? <FolderIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />
-            : <FileTextIcon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-500' : 'text-slate-400'}`} />}
+          <DocTreeIcon icon={item.icon} hasChildren={hasChildren} colorClass={active ? 'text-primary-500' : 'text-slate-400'} />
           <span className={`whitespace-nowrap ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
         </button>
         <span className="mr-1 hidden shrink-0 items-center group-hover:flex">
