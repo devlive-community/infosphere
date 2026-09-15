@@ -46,6 +46,7 @@ export const en: Record<string, string> = {
   'nav.menu.analytics': 'Author analytics',
   'nav.menu.reading': 'Reading',
   'nav.menu.notes': 'My notes',
+  'nav.menu.achievements': 'Achievements',
   'nav.menu.profile': 'Profile',
   'nav.menu.console': 'Console',
   'nav.menu.trash': 'Trash',
@@ -406,6 +407,7 @@ export const en: Record<string, string> = {
   'annot.editNoteTitle': 'Edit private note',
   'annot.addNoteTitle': 'Add private note',
   'annot.notePlaceholder': 'Jot down your thoughts — visible only to you',
+  'annot.action.saveNote': 'Save note',
 
   // Component: collaborator manager
   'collab.roleEditor': 'Editor',
@@ -645,6 +647,8 @@ export const en: Record<string, string> = {
   'notify.itemModerationHint': 'Your report has been handled',
   'notify.itemSystemLabel': 'System notices',
   'notify.itemSystemHint': 'Version upgrades and other system messages',
+  'notify.itemAchievementLabel': 'Achievement notifications',
+  'notify.itemAchievementHint': 'Achievement unlocks and manual grants',
 
   // Danger zone
   'danger.title': 'Danger zone',
@@ -691,4 +695,72 @@ export const en: Record<string, string> = {
   'invite.copied': 'Invite code copied',
   'invite.copyFailed': 'Copy failed, please copy manually',
   'invite.linkCopied': 'Invite link copied—opening it pre-fills the code at registration',
+
+  // Book settings
+  'bookSettings.nav.basic': 'Basic info',
+  'bookSettings.nav.chapters': 'Chapters',
+  'bookSettings.nav.analytics': 'Analytics',
+  'bookSettings.nav.collaborators': 'Collaborators',
+  'bookSettings.nav.export': 'Export',
+  'bookSettings.nav.data': 'Import / Export',
+  'bookSettings.nav.danger': 'Danger zone',
+  'bookSettings.action.write': 'Write',
+  'bookSettings.action.viewDetail': 'View book detail',
+
+  // Admin
+  'admin.title': 'Admin',
+  'admin.nav.system': 'System overview',
+  'admin.nav.users': 'Users',
+  'admin.nav.books': 'Books',
+  'admin.nav.documents': 'Chapters',
+  'admin.nav.achievements': 'Achievements',
+  'admin.nav.reports': 'Reports',
+  'admin.nav.audit': 'Audit logs',
+  'admin.nav.tasks': 'Async tasks',
+  'admin.nav.settings': 'Settings',
+  'admin.nav.plugins': 'Plugins',
+  'admin.nav.upgrade': 'Upgrade',
+  'admin.action.backToSite': 'Back to site',
+  'admin.loading.auth': 'Verifying admin access…',
+  'admin.aria.openMenu': 'Open menu',
+  'admin.search.placeholder': 'Search settings or features',
+
+  // Settings
+  'admin.settings.site': 'Site',
+  'admin.settings.registration': 'Registration',
+  'admin.settings.captcha': 'Captcha',
+  'admin.settings.loginSecurity': 'Login security',
+  'admin.settings.content': 'Content',
+  'admin.settings.storage': 'Storage',
+  'admin.settings.mail': 'Email',
+  'admin.settings.translation': 'Translation',
+  'admin.settings.oauth': 'OAuth',
+  'admin.settings.title': 'System settings',
+  'admin.settings.ariaLabel': 'Settings categories',
+
+  // Notifications
+  'notify.pageTitle': 'Notifications',
+  'notify.filter.aria': 'Filter notifications',
+  'notify.tab.all': 'All',
+  'notify.tab.unread': 'Unread',
+  'notify.collabPendingTitle': 'Pending collaboration invites',
+  'notify.pendingCount': '{count} pending',
+  'notify.collabLoading': 'Loading collaboration invites…',
+  'notify.collabEmpty': 'No pending collaboration invites',
+  'notify.adminDefault': 'Book admin',
+  'notify.collabInviteText': ' invited you to collaborate',
+  'notify.collabRoleLabel': 'Role: ',
+  'notify.collabRoleEditor': 'Editor, can manage chapter content',
+  'notify.collabRoleViewer': 'Viewer, can read book content',
+  'notify.collabAccept': 'Accept invite',
+  'notify.emptyUnread': 'No unread notifications',
+  'notify.inviteLoadFailed': 'Failed to load invitations',
+  'notify.collabAccepted': 'Joined collaboration',
+  'notify.collabRejected': 'Invitation rejected',
+  'notify.collabAccessGranted': 'You can now access "{title}"',
+  'notify.collabDismissed': 'Invitation removed from pending list',
+  'notify.inviteActionFailed': 'Failed to process invitation',
+
+  // Common (extra)
+  'common.announcement.close': 'Close announcement',
 }

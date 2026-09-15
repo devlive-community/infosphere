@@ -6,34 +6,23 @@ import { useApp } from '@/lib/auth'
 import { API_BASE } from '@/lib/api'
 import NotificationBell from '@/components/NotificationBell'
 import { ButtonLink, Input, Loading } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 import {
   GridIcon, GearIcon, UsersIcon, CloudIcon, BookIcon, CodeIcon,
   SearchIcon, ArrowLeftIcon, ChevronDownIcon, ListBulletIcon,
   ActivityIcon, ClockIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'reports' | 'audit' | 'tasks' | 'settings' | 'plugins' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'achievements' | 'reports' | 'audit' | 'tasks' | 'settings' | 'plugins' | 'upgrade'
 
 function ReportIcon({ className }: { className?: string }) {
   return <i className={`fa-solid fa-flag ${className || ''}`.trim()} aria-hidden="true" />
 }
 
-const NAV: { key: AdminNavKey; label: string; href: string; icon: (p: { className?: string }) => JSX.Element }[] = [
-  { key: 'system', label: '系统概览', href: '/admin/system', icon: GridIcon },
-  { key: 'users', label: '用户管理', href: '/admin/users', icon: UsersIcon },
-  { key: 'books', label: '书籍管理', href: '/admin/books', icon: BookIcon },
-  { key: 'documents', label: '章节管理', href: '/admin/documents', icon: ListBulletIcon },
-  { key: 'reports', label: '内容审核', href: '/admin/reports', icon: ReportIcon },
-  { key: 'audit', label: '审计日志', href: '/admin/audit-logs', icon: ActivityIcon },
-  { key: 'tasks', label: '异步任务', href: '/admin/tasks', icon: ClockIcon },
-  { key: 'settings', label: '系统设置', href: '/admin/settings/site', icon: GearIcon },
-  { key: 'plugins', label: '插件', href: '/admin/plugins', icon: CodeIcon },
-  { key: 'upgrade', label: '版本更新', href: '/admin/upgrade', icon: CloudIcon },
-]
-
 // 控制台顶栏用户菜单：头像 + 退出登录 / 返回站点
 function AdminUserMenu() {
   const { user, logout } = useApp()
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -57,10 +46,10 @@ function AdminUserMenu() {
       </button>
       {open && (
         <div className="absolute right-0 z-30 mt-2 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          <Link href="/user/profile" onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">个人资料</Link>
-          <Link href="/" onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">返回站点</Link>
+          <Link href="/user/profile" onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">{t('account.nav.profile')}</Link>
+          <Link href="/" onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">{t('admin.action.backToSite')}</Link>
           <button onClick={() => { setOpen(false); logout() }}
-            className="block w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50">退出登录</button>
+            className="block w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50">{t('nav.menu.logout')}</button>
         </div>
       )}
     </div>
@@ -69,13 +58,29 @@ function AdminUserMenu() {
 
 function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?: () => void }) {
   const { site } = useApp()
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
+
+  const NAV: { key: AdminNavKey; labelKey: string; href: string; icon: (p: { className?: string }) => JSX.Element }[] = [
+    { key: 'system', labelKey: 'admin.nav.system', href: '/admin/system', icon: GridIcon },
+    { key: 'users', labelKey: 'admin.nav.users', href: '/admin/users', icon: UsersIcon },
+    { key: 'books', labelKey: 'admin.nav.books', href: '/admin/books', icon: BookIcon },
+    { key: 'documents', labelKey: 'admin.nav.documents', href: '/admin/documents', icon: ListBulletIcon },
+    { key: 'achievements', labelKey: 'admin.nav.achievements', href: '/admin/achievements', icon: ({ className }) => <i className={`fa-solid fa-trophy ${className || ''}`} aria-hidden="true" /> },
+    { key: 'reports', labelKey: 'admin.nav.reports', href: '/admin/reports', icon: ReportIcon },
+    { key: 'audit', labelKey: 'admin.nav.audit', href: '/admin/audit-logs', icon: ActivityIcon },
+    { key: 'tasks', labelKey: 'admin.nav.tasks', href: '/admin/tasks', icon: ClockIcon },
+    { key: 'settings', labelKey: 'admin.nav.settings', href: '/admin/settings/site', icon: GearIcon },
+    { key: 'plugins', labelKey: 'admin.nav.plugins', href: '/admin/plugins', icon: CodeIcon },
+    { key: 'upgrade', labelKey: 'admin.nav.upgrade', href: '/admin/upgrade', icon: CloudIcon },
+  ]
+
   return (
     <div className="flex h-full flex-col">
       <Link href="/admin/system" className="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-100 px-5">
         <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
         <span className="text-base font-bold text-slate-900">{siteName}</span>
-        <span className="text-xs font-medium text-slate-400">管理后台</span>
+        <span className="text-xs font-medium text-slate-400">{t('admin.title')}</span>
       </Link>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
@@ -87,7 +92,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
                 active ? 'bg-primary-50 text-primary-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`}>
               <Icon className="h-5 w-5 shrink-0" />
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           )
         })}
@@ -96,7 +101,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
         <Link href="/" onClick={onNavigate}
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
           <ArrowLeftIcon className="h-5 w-5 shrink-0" />
-          返回站点
+          {t('admin.action.backToSite')}
         </Link>
       </div>
     </div>
@@ -112,6 +117,7 @@ interface AdminLayoutProps {
 // AdminLayout 管理控制台布局：侧边导航 + 顶栏（仅管理员可访问）
 export default function AdminLayout({ current, breadcrumb, children }: AdminLayoutProps) {
   const { user, authReady, site } = useApp()
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
   const [drawer, setDrawer] = useState(false)
   const router = useRouter()
@@ -122,7 +128,7 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
   if (!authReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loading label="正在验证管理权限…" />
+        <Loading label={t('admin.loading.auth')} />
       </div>
     )
   }
@@ -134,9 +140,9 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
         <Head><title>404</title><meta name="robots" content="noindex, nofollow" /></Head>
         <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50">
           <h1 className="text-6xl font-bold text-slate-300">404</h1>
-          <p className="mt-4 text-slate-500">页面不存在或已被移除</p>
+          <p className="mt-4 text-slate-500">{t('error.notfound.message')}</p>
           <ButtonLink href="/" className="mt-6">
-            返回首页
+            {t('error.notfound.backHome')}
           </ButtonLink>
         </div>
       </>
@@ -145,7 +151,7 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      <Head><title>{`${breadcrumb} - ${siteName} 管理后台`}</title></Head>
+      <Head><title>{`${breadcrumb} - ${siteName} ${t('admin.title')}`}</title></Head>
 
       {/* 侧边栏（桌面固定） */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden border-r border-slate-200 bg-white md:block" style={{ width: 'var(--sidebar-width)' }}>
@@ -165,18 +171,18 @@ export default function AdminLayout({ current, breadcrumb, children }: AdminLayo
       <div className="flex min-w-0 flex-1 flex-col md:pl-[var(--sidebar-width)]">
         {/* 顶栏 */}
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6" style={{ height: 'var(--nav-height)' }}>
-          <button onClick={() => setDrawer(true)} aria-label="打开菜单"
+          <button onClick={() => setDrawer(true)} aria-label={t('admin.aria.openMenu')}
             className="flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 md:hidden"
             style={{ width: 'var(--control-height)', height: 'var(--control-height)' }}>
             <ListBulletIcon className="h-5 w-5" />
           </button>
           <nav className="flex items-center gap-2 text-sm text-slate-400">
-            <span className="hidden sm:inline">管理后台</span>
+            <span className="hidden sm:inline">{t('admin.title')}</span>
             <span className="hidden sm:inline">/</span>
             <span className="font-medium text-slate-700">{breadcrumb}</span>
           </nav>
           <div className="ml-auto hidden w-full max-w-sm lg:block">
-            <Input type="search" placeholder="搜索设置或功能" leading={<SearchIcon className="h-4 w-4" />} />
+            <Input type="search" placeholder={t('admin.search.placeholder')} leading={<SearchIcon className="h-4 w-4" />} />
           </div>
           <div className="ml-auto flex items-center gap-1.5 lg:ml-0">
             <NotificationBell />

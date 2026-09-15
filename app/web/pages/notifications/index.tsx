@@ -6,6 +6,7 @@ import { Badge, Button, EmptyState, Loading, Pagination, SegmentedTabs, useFeedb
 import { BellIcon, FileTextIcon, HeartIcon, UsersIcon, InfoCircleIcon } from '@/components/icons'
 import Seo from '@/components/Seo'
 import Container from '@/components/Container'
+import { useTranslation } from '@/lib/i18n'
 import type { CollaborationInvitation } from '@/lib/types'
 
 interface NotificationItem {
@@ -36,6 +37,7 @@ function typeIcon(type: string) {
 export default function NotificationsPage() {
   const { showToast } = useFeedback()
   const { site } = useApp()
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
   const user = useRequireAuth()
   const router = useRouter()
@@ -76,11 +78,11 @@ export default function NotificationsPage() {
     setInvitationLoading(true)
     api<{ invitations: CollaborationInvitation[] }>('/collaboration/invitations')
       .then((data) => setInvitations(data.invitations || []))
-      .catch((e) => showToast({ title: '邀请加载失败', message: (e as Error).message, tone: 'error' }))
+      .catch((e) => showToast({ title: t('notify.inviteLoadFailed'), message: (e as Error).message, tone: 'error' }))
       .finally(() => setInvitationLoading(false))
   }, [user, showToast])
 
-  if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
+  if (!user) return <Loading className="min-h-[60vh]" label={t('account.common.verifying')} />
 
   async function markRead(ids: number[]) {
     try {
@@ -111,12 +113,12 @@ export default function NotificationsPage() {
       await api(`/collaboration/invitations/${invitation.id}/${action}`, { method: 'POST' })
       setInvitations((items) => items.filter((item) => item.id !== invitation.id))
       showToast({
-        title: action === 'accept' ? '已加入协作' : '已拒绝邀请',
-        message: action === 'accept' ? `现在可以访问《${invitation.book_title}》了` : '该邀请已从待处理列表移除',
+        title: action === 'accept' ? t('notify.collabAccepted') : t('notify.collabRejected'),
+        message: action === 'accept' ? t('notify.collabAccessGranted', { title: invitation.book_title }) : t('notify.collabDismissed'),
         tone: action === 'accept' ? 'success' : 'info',
       })
     } catch (e) {
-      showToast({ title: '处理邀请失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('notify.inviteActionFailed'), message: (e as Error).message, tone: 'error' })
     } finally {
       setWorkingInvitation(null)
     }
@@ -124,28 +126,28 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <Seo siteName={siteName} title="通知中心" noindex />
+      <Seo siteName={siteName} title={t('notify.seoTitle')} noindex />
       <Container>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold text-ink">通知中心</h1>
+          <h1 className="text-2xl font-bold text-ink">{t('notify.pageTitle')}</h1>
           <div className="flex flex-wrap items-center gap-2">
-            <SegmentedTabs value={tab} ariaLabel="通知筛选" onChange={(value) => { setTab(value as 'all' | 'unread'); setPage(1) }} items={[
-              { value: 'all', label: '全部' },
-              { value: 'unread', label: `未读${unread > 0 ? `（${unread}）` : ''}` },
+            <SegmentedTabs value={tab} ariaLabel={t('notify.filter.aria')} onChange={(value) => { setTab(value as 'all' | 'unread'); setPage(1) }} items={[
+              { value: 'all', label: t('notify.tab.all') },
+              { value: 'unread', label: `${t('notify.tab.unread')}${unread > 0 ? `（${unread}）` : ''}` },
             ]} />
-            {unread > 0 && <Button variant="outline" onClick={markAllRead}>全部已读</Button>}
+            {unread > 0 && <Button variant="outline" onClick={markAllRead}>{t('notifyBell.markAllRead')}</Button>}
           </div>
         </div>
 
         <section className="mt-6" aria-labelledby="collaboration-invitations-title">
           <div className="mb-3 flex items-center justify-between">
-            <h2 id="collaboration-invitations-title" className="text-sm font-semibold text-slate-800">待确认的协作邀请</h2>
-            {!invitationLoading && invitations.length > 0 && <Badge tone="primary">{invitations.length} 个待处理</Badge>}
+            <h2 id="collaboration-invitations-title" className="text-sm font-semibold text-slate-800">{t('notify.collabPendingTitle')}</h2>
+            {!invitationLoading && invitations.length > 0 && <Badge tone="primary">{t('notify.pendingCount', { count: invitations.length })}</Badge>}
           </div>
           {invitationLoading ? (
-            <Loading className="rounded-xl border border-slate-200 bg-white py-8" label="正在加载协作邀请…" />
+            <Loading className="rounded-xl border border-slate-200 bg-white py-8" label={t('notify.collabLoading')} />
           ) : invitations.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-5 text-sm text-slate-400">当前没有待确认的协作邀请</div>
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-5 text-sm text-slate-400">{t('notify.collabEmpty')}</div>
           ) : (
             <ul className="space-y-3">
               {invitations.map((invitation) => (
@@ -154,16 +156,16 @@ export default function NotificationsPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-primary-700">
                         <UsersIcon className="h-4 w-4" />
-                        <span className="text-sm font-semibold">{invitation.inviter_username || '书籍管理员'}邀请你协作</span>
+                        <span className="text-sm font-semibold">{invitation.inviter_username || t('notify.adminDefault')}{t('notify.collabInviteText')}</span>
                       </div>
                       <p className="mt-2 truncate font-medium text-slate-900">《{invitation.book_title}》</p>
-                      <p className="mt-1 text-xs text-slate-500">角色：{invitation.role === 'editor' ? '编辑者，可管理章节内容' : '访问者，可阅读书籍内容'}</p>
+                      <p className="mt-1 text-xs text-slate-500">{t('notify.collabRoleLabel')}{invitation.role === 'editor' ? t('notify.collabRoleEditor') : t('notify.collabRoleViewer')}</p>
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <Button variant="ghost" size="sm" disabled={workingInvitation === invitation.id}
-                        onClick={() => respondInvitation(invitation, 'reject')}>拒绝</Button>
+                        onClick={() => respondInvitation(invitation, 'reject')}>{t('common.actions.reject')}</Button>
                       <Button size="sm" loading={workingInvitation === invitation.id}
-                        onClick={() => respondInvitation(invitation, 'accept')}>接受邀请</Button>
+                        onClick={() => respondInvitation(invitation, 'accept')}>{t('notify.collabAccept')}</Button>
                     </div>
                   </div>
                 </li>
@@ -180,7 +182,7 @@ export default function NotificationsPage() {
           ) : items.length === 0 ? (
             <EmptyState>
               <BellIcon className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-              {tab === 'unread' ? '没有未读通知' : '暂无通知'}
+              {tab === 'unread' ? t('notify.emptyUnread') : t('notifyBell.empty')}
             </EmptyState>
           ) : (
             <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm">

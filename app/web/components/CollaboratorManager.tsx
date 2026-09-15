@@ -85,20 +85,20 @@ export default function CollaboratorManager({ book }: { book: Book }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
-      <h2 className="font-semibold text-slate-900">协作者管理</h2>
+      <h2 className="font-semibold text-slate-900">{t('collab.heading')}</h2>
       <p className="mt-1 text-sm text-slate-500">
         {isOwner
-          ? '邀请其他用户协作：编辑者可管理章节内容，访问者仅可阅读这本私有书籍。'
-          : '编辑者可管理章节内容，访问者仅可阅读这本私有书籍。'}
+          ? t('collab.descOwner')
+          : t('collab.descOther')}
       </p>
       {message && <div className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{message}</div>}
       {error && <div className="mt-3 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
 
       {!loaded ? (
-        <Loading className="py-8" label="正在加载协作者…" />
+        <Loading className="py-8" label={t('collab.loading')} />
       ) : collaborators.length === 0 ? (
         <div className="mt-4">
-          <EmptyState>还没有协作者，通过下方输入框邀请</EmptyState>
+          <EmptyState>{t('collab.empty')}</EmptyState>
         </div>
       ) : (
         <ul className="mt-4 divide-y divide-slate-100">
@@ -120,7 +120,7 @@ export default function CollaboratorManager({ book }: { book: Book }) {
               </div>
               <Button variant="ghost" size="sm" loading={removingId === c.user_id} disabled={removingId !== null}
                 onClick={() => remove(c.user_id, c.user?.username || '')}>
-                {user?.id === c.user_id ? '退出' : '移除'}
+                {user?.id === c.user_id ? t('collab.leave') : t('collab.remove')}
               </Button>
             </li>
           ))}
@@ -130,12 +130,12 @@ export default function CollaboratorManager({ book }: { book: Book }) {
       {isOwner && (
         <form onSubmit={add} className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
           <Input className="flex-1" value={username} onChange={(e) => setUsername(e.target.value)}
-            placeholder="对方用户名" />
+            placeholder={t('collab.usernamePlaceholder')} />
           <Select
             className="sm:w-32"
-            options={[{ value: 'editor', label: '编辑者' }, { value: 'viewer', label: '访问者' }]}
+            options={[{ value: 'editor', label: t('collab.roleEditor') }, { value: 'viewer', label: t('collab.roleViewer') }]}
             value={role} onChange={setRole} />
-          <Button type="submit" loading={adding}>发送邀请</Button>
+          <Button type="submit" loading={adding}>{t('collab.sendInvite')}</Button>
         </form>
       )}
     </div>
