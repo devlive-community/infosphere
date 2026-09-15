@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
 import { Button, Field, Select, Switch, Loading } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
 
 interface CaptchaSettings {
   type: string
@@ -19,6 +20,7 @@ interface CaptchaSettings {
 export default function SettingsCaptcha() {
   const { user } = useApp()
   const isAdmin = user?.role === 'admin'
+  const { t } = useTranslation()
   const [cfg, setCfg] = useState<CaptchaSettings>({
     type: 'image', length: 4, charset: 'alnum', noise: 1, arith_hard: false,
     on_register: false, on_login: false, on_comment: false,
@@ -41,7 +43,7 @@ export default function SettingsCaptcha() {
     try {
       const saved = await api<CaptchaSettings>('/captcha-settings', { method: 'PUT', body: cfg })
       setCfg(saved)
-      setMessage('验证码设置已保存')
+      setMessage(t('admin.settings.captcha.saved'))
     } catch (e) {
       setMessage((e as Error).message)
     } finally {
@@ -56,53 +58,53 @@ export default function SettingsCaptcha() {
   )
 
   return (
-    <SettingsLayout active="captcha" description="内置验证码，无需第三方。选择类型与复杂度，并在注册、登录、评论等场景分别开启；开启后对应操作必须通过验证。">
-      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label="正在加载验证码设置…" /> : (
+    <SettingsLayout active="captcha" description={t('admin.settings.captcha.description')}>
+      {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label={t('admin.settings.captcha.loading')} /> : (
       <div className="max-w-2xl space-y-5">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 font-bold text-slate-900">类型与复杂度</h3>
+          <h3 className="mb-4 font-bold text-slate-900">{t('admin.settings.captcha.typeAndComplexity')}</h3>
           <div className="space-y-5">
-            <Field label="验证码类型">
+            <Field label={t('admin.settings.captcha.type')}>
               <Select
-                options={[{ value: 'image', label: '图形验证码（字符）' }, { value: 'arithmetic', label: '算术题验证码' }]}
+                options={[{ value: 'image', label: t('admin.settings.captcha.typeImage') }, { value: 'arithmetic', label: t('admin.settings.captcha.typeArithmetic') }]}
                 value={cfg.type} onChange={(v) => setCfg({ ...cfg, type: v })} />
             </Field>
 
             {cfg.type === 'image' ? (
               <>
-                <Field label="字符数量">
-                  <Select options={[4, 5, 6].map((n) => ({ value: String(n), label: `${n} 位` }))}
+                <Field label={t('admin.settings.captcha.charCount')}>
+                  <Select options={[4, 5, 6].map((n) => ({ value: String(n), label: `${n} ${t('admin.settings.captcha.chars')}` }))}
                     value={String(cfg.length)} onChange={(v) => setCfg({ ...cfg, length: Number(v) })} />
                 </Field>
-                <Field label="字符集">
-                  <Select options={[{ value: 'alnum', label: '字母 + 数字' }, { value: 'digit', label: '纯数字' }]}
+                <Field label={t('admin.settings.captcha.charset')}>
+                  <Select options={[{ value: 'alnum', label: t('admin.settings.captcha.charsetAlnum') }, { value: 'digit', label: t('admin.settings.captcha.charsetDigit') }]}
                     value={cfg.charset} onChange={(v) => setCfg({ ...cfg, charset: v })} />
                 </Field>
-                <Field label="干扰强度" hint="干扰线越多越难被识别，也越难辨认。">
-                  <Select options={[0, 1, 2, 3].map((n) => ({ value: String(n), label: ['无', '低', '中', '高'][n] }))}
+                <Field label={t('admin.settings.captcha.noise')} hint={t('admin.settings.captcha.noiseHint')}>
+                  <Select options={[0, 1, 2, 3].map((n) => ({ value: String(n), label: [t('admin.settings.captcha.noiseNone'), t('admin.settings.captcha.noiseLow'), t('admin.settings.captcha.noiseMedium'), t('admin.settings.captcha.noiseHigh')][n] }))}
                     value={String(cfg.noise)} onChange={(v) => setCfg({ ...cfg, noise: Number(v) })} />
                 </Field>
               </>
             ) : (
-              <Field label="高难度算术" hint="开启后使用更大的数字并包含乘法。">
-                <Switch ariaLabel="高难度算术" checked={cfg.arith_hard} onChange={(v) => setCfg({ ...cfg, arith_hard: v })} />
+              <Field label={t('admin.settings.captcha.hardArithmetic')} hint={t('admin.settings.captcha.hardArithmeticHint')}>
+                <Switch ariaLabel={t('admin.settings.captcha.hardArithmetic')} checked={cfg.arith_hard} onChange={(v) => setCfg({ ...cfg, arith_hard: v })} />
               </Field>
             )}
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 font-bold text-slate-900">启用位置</h3>
+          <h3 className="mb-4 font-bold text-slate-900">{t('admin.settings.captcha.enablePositions')}</h3>
           <div className="space-y-5">
-            {scene('注册', 'on_register', '注册页要求填写验证码。')}
-            {scene('登录', 'on_login', '登录页要求填写验证码。')}
-            {scene('发表评论', 'on_comment', '章节评论提交时要求填写验证码。')}
+            {scene(t('admin.settings.captcha.sceneRegister'), 'on_register', t('admin.settings.captcha.sceneRegisterHint'))}
+            {scene(t('admin.settings.captcha.sceneLogin'), 'on_login', t('admin.settings.captcha.sceneLoginHint'))}
+            {scene(t('admin.settings.captcha.sceneComment'), 'on_comment', t('admin.settings.captcha.sceneCommentHint'))}
           </div>
         </div>
 
         {message && <div className="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
         <div className="flex justify-end">
-          <Button loading={saving} onClick={save}>保存配置</Button>
+          <Button loading={saving} onClick={save}>{t('admin.settings.captcha.save')}</Button>
         </div>
       </div>
       )}
