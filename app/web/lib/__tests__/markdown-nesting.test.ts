@@ -84,6 +84,45 @@ describe('markdown 组合解析', () => {
     expect(html).toContain('md-code-block')
   })
 
+  it('整体缩进的 <Tab> 内容（迁移自其他文档系统的风格）正确解析', () => {
+    // 模拟 Gogs/MDX 迁移内容：Tab 体、围栏、Tip 均带缩进，且围栏带 theme={null} 后缀
+    const md = [
+      '<Tabs>',
+      '  <Tab title="Standard">',
+      '    Add the following server block to your `Caddyfile` and reload:',
+      '',
+      '    ```caddy theme={null}',
+      '    gogs.example.com {',
+      '        reverse_proxy http://localhost:3000',
+      '    }',
+      '    ```',
+      '',
+      '    Set the matching external URL in `custom/conf/app.ini`:',
+      '',
+      '    ```ini theme={null}',
+      '    [server]',
+      '    EXTERNAL_URL = https://gogs.example.com/',
+      '    ```',
+      '',
+      '    <Tip>',
+      '      Caddy automatically provisions TLS certificates.',
+      '    </Tip>',
+      '  </Tab>',
+      '</Tabs>',
+    ].join('\n')
+    const html = renderMarkdown(md)
+    // 不应整体退化为缩进代码块
+    expect(html).not.toContain('theme={null}')
+    expect(tabButtons(html)).toBe(1)
+    // 两个代码块均正常高亮
+    expect(html.match(/md-code-block/g)?.length).toBe(2)
+    expect(html).toContain('reverse_proxy')
+    expect(html).toContain('EXTERNAL_URL')
+    // Tip 提示块正常渲染
+    expect(html).toContain('md-alert-tip')
+    expect(html).toContain('TLS certificates')
+  })
+
   it(':::grid 内代码块中的列表标记不切分单元格', () => {
     const md = ':::grid cols-2\n- 第一格\n\n```txt\n- 伪列表\n```\n:::'
     const html = renderMarkdown(md)
