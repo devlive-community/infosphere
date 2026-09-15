@@ -4,6 +4,7 @@ import Container from '@/components/Container'
 import Seo from '@/components/Seo'
 import { api, formatDate } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import type { PageResult, TrashItem } from '@/lib/types'
 import { Badge, Button, Card, EmptyState, Loading, Pagination, SegmentedTabs, useFeedback } from '@/components/ui'
 
@@ -17,6 +18,7 @@ export default function TrashPage() {
   const user = useRequireAuth()
   const { site } = useApp()
   const { showToast, confirmAction } = useFeedback()
+  const { t } = useTranslation()
   const [type, setType] = useState<TrashType>('book')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<PageResult<TrashItem> | null>(null)
@@ -32,11 +34,11 @@ export default function TrashPage() {
       setData({ ...result, items: result.items || [] })
     } catch (error) {
       setData({ items: [], total: 0, page: 1, page_size: 10 })
-      showToast({ title: '加载失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('user.trash.loadFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setLoading(false)
     }
-  }, [page, showToast, type, user])
+  }, [page, showToast, type, user, t])
 
   useEffect(() => { load() }, [load])
 
@@ -52,21 +54,21 @@ export default function TrashPage() {
     setBusy(key)
     try {
       await api(`/trash/${item.type === 'book' ? 'books' : 'documents'}/${item.id}/restore`, { method: 'POST' })
-      showToast({ title: '恢复成功', message: item.type === 'book' ? `《${item.title}》及其章节已恢复` : `章节「${item.title}」已恢复`, tone: 'success' })
+      showToast({ title: t('user.trash.restoreSuccess'), message: item.type === 'book' ? t('user.trash.restoreBookSuccess', { title: item.title }) : t('user.trash.restoreDocumentSuccess', { title: item.title }), tone: 'success' })
       await load()
     } catch (error) {
-      showToast({ title: '恢复失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('user.trash.restoreFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setBusy(null)
     }
   }
 
   async function removePermanently(item: TrashItem) {
-    const label = item.type === 'book' ? `《${item.title}》及其全部内容` : `章节「${item.title}」及其子章节`
+    const label = item.type === 'book' ? t('user.trash.bookAndContent', { title: item.title }) : t('user.trash.documentAndChildren', { title: item.title })
     const confirmed = await confirmAction({
-      title: '永久删除',
-      message: `确定永久删除${label}吗？此操作无法撤销。`,
-      confirmLabel: '永久删除',
+      title: t('user.trash.permanentDelete'),
+      message: t('user.trash.permanentDeleteConfirm', { label }),
+      confirmLabel: t('user.trash.permanentDelete'),
       danger: true,
     })
     if (!confirmed) return
@@ -74,49 +76,49 @@ export default function TrashPage() {
     setBusy(key)
     try {
       await api(`/trash/${item.type === 'book' ? 'books' : 'documents'}/${item.id}`, { method: 'DELETE' })
-      showToast({ title: '已永久删除', message: `${item.title}已从回收站移除`, tone: 'success' })
+      showToast({ title: t('user.trash.permanentDeleteSuccess'), message: t('user.trash.removedFromTrash', { title: item.title }), tone: 'success' })
       if (data && data.items.length === 1 && page > 1) setPage(page - 1)
       else await load()
     } catch (error) {
-      showToast({ title: '永久删除失败', message: (error as Error).message, tone: 'error' })
+      showToast({ title: t('user.trash.permanentDeleteFailed'), message: (error as Error).message, tone: 'error' })
     } finally {
       setBusy(null)
     }
   }
 
-  if (!user) return <Loading className="min-h-[60vh]" label="正在验证登录状态…" />
+  if (!user) return <Loading className="min-h-[60vh]" label={t('user.trash.verifyingAuth')} />
 
   return (
     <>
-      <Seo siteName={siteName} title="回收站" noindex />
+      <Seo siteName={siteName} title={t('user.trash.title')} noindex />
       <Container>
         <nav className="flex items-center gap-1.5 pb-4 text-sm text-slate-500">
-          <Link href="/books" className="hover:text-primary-600">我的书籍</Link>
+          <Link href="/books" className="hover:text-primary-600">{t('user.trash.myBooks')}</Link>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-900">回收站</span>
+          <span className="text-slate-900">{t('user.trash.title')}</span>
         </nav>
 
         <div className="flex flex-col justify-between gap-4 pb-6 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-3xl font-bold text-ink">回收站</h1>
-            <p className="mt-2 text-[15px] text-slate-500">删除的内容会保留 30 天，到期后自动永久清理。</p>
+            <h1 className="text-3xl font-bold text-ink">{t('user.trash.title')}</h1>
+            <p className="mt-2 text-[15px] text-slate-500">{t('user.trash.description')}</p>
           </div>
           <Button variant="outline" onClick={load} disabled={loading}>
-            <i className="fa-solid fa-rotate" aria-hidden="true" /> 刷新
+            <i className="fa-solid fa-rotate" aria-hidden="true" /> {t('user.trash.refresh')}
           </Button>
         </div>
 
-        <SegmentedTabs className="mb-5" value={type} ariaLabel="回收站内容类型" onChange={(value) => switchType(value as TrashType)} items={[
-          { value: 'book', label: '书籍', icon: <i className="fa-solid fa-book" aria-hidden="true" /> },
-          { value: 'document', label: '章节', icon: <i className="fa-regular fa-file-lines" aria-hidden="true" /> },
+        <SegmentedTabs className="mb-5" value={type} ariaLabel={t('user.trash.contentType')} onChange={(value) => switchType(value as TrashType)} items={[
+          { value: 'book', label: t('user.trash.books'), icon: <i className="fa-solid fa-book" aria-hidden="true" /> },
+          { value: 'document', label: t('user.trash.chapters'), icon: <i className="fa-regular fa-file-lines" aria-hidden="true" /> },
         ]} />
 
         {loading || data === null ? (
-          <Loading className="py-20" label="正在加载回收站…" />
+          <Loading className="py-20" label={t('user.trash.loading')} />
         ) : data.items.length === 0 ? (
           <EmptyState>
             <i className="fa-regular fa-trash-can mb-3 block text-2xl text-slate-300" aria-hidden="true" />
-            回收站中没有{type === 'book' ? '书籍' : '章节'}
+            {t('user.trash.empty', { type: type === 'book' ? t('user.trash.books') : t('user.trash.chapters') })}
           </EmptyState>
         ) : (
           <div className="space-y-3">
@@ -133,21 +135,21 @@ export default function TrashPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="truncate font-semibold text-slate-900">{item.title}</h2>
-                        <Badge tone={days <= 3 ? 'rose' : days <= 7 ? 'amber' : 'slate'}>剩余 {days} 天</Badge>
+                        <Badge tone={days <= 3 ? 'rose' : days <= 7 ? 'amber' : 'slate'}>{t('user.trash.daysRemaining', { days })}</Badge>
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                        {item.book_title && <span>所属书籍：{item.book_title}</span>}
-                        <span>{item.type === 'book' ? `${item.descendant_count} 个章节` : `${item.descendant_count} 个子章节`}</span>
-                        <span>删除于 {formatDate(item.deleted_at)}</span>
-                        {user.role === 'admin' && item.owner_username && <span>所有者：{item.owner_username}</span>}
+                        {item.book_title && <span>{t('user.trash.belongsTo', { title: item.book_title })}</span>}
+                        <span>{item.type === 'book' ? t('user.trash.chapterCount', { count: item.descendant_count }) : t('user.trash.childCount', { count: item.descendant_count })}</span>
+                        <span>{t('user.trash.deletedAt', { date: formatDate(item.deleted_at) })}</span>
+                        {user.role === 'admin' && item.owner_username && <span>{t('user.trash.owner', { username: item.owner_username })}</span>}
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2 sm:justify-end">
                       <Button variant="outline" loading={busy === restoreKey} disabled={busy !== null} onClick={() => restore(item)}>
-                        <i className="fa-solid fa-rotate-left" aria-hidden="true" /> 恢复
+                        <i className="fa-solid fa-rotate-left" aria-hidden="true" /> {t('user.trash.restore')}
                       </Button>
                       <Button variant="danger" loading={busy === deleteKey} disabled={busy !== null} onClick={() => removePermanently(item)}>
-                        <i className="fa-solid fa-trash" aria-hidden="true" /> 永久删除
+                        <i className="fa-solid fa-trash" aria-hidden="true" /> {t('user.trash.permanentDelete')}
                       </Button>
                     </div>
                   </div>
