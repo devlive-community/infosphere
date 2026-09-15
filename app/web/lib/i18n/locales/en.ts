@@ -279,6 +279,13 @@ export const en: Record<string, string> = {
   'home.section.hot': 'Popular',
   'home.empty.prefix': 'No public books yet—',
   'home.empty.createLink': 'create the first one',
+  'home.hero.sampleBook': 'Your first book',
+  'home.hero.sampleMeta': 'Start capturing your knowledge',
+  'home.hero.topicMethodology': 'Methodology',
+  'home.hero.topicWriting': 'Writing',
+  'home.hero.topicCoding': 'Coding',
+  'home.hero.topicDesign': 'Design',
+  'home.hero.topicThinking': 'Thinking',
 
   // Explore
   'explore.hero.eyebrow': 'Open knowledge square',
