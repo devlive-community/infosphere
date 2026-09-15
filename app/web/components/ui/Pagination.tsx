@@ -9,6 +9,7 @@ export function Pagination({ page, pageSize, total, onChange, size = 'md' }: {
   onChange: (page: number) => void
   size?: ControlSize
 }) {
+  const { t } = useTranslation()
   const pages = Math.max(1, Math.ceil(total / pageSize))
   if (pages <= 1) return null
   const list: number[] = []
@@ -24,7 +25,6 @@ export function Pagination({ page, pageSize, total, onChange, size = 'md' }: {
         : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
     }`
 
-  const { t } = useTranslation()
   return (
     <div className="mt-6 flex items-center justify-center gap-1.5">
       <button disabled={page <= 1} onClick={() => onChange(page - 1)} className={navClass} style={sizedControlStyle(size)}>{t('ui.pagination.prev')}</button>

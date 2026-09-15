@@ -120,7 +120,7 @@ function RetentionSection() {
                 <div key={p.offset} className="flex min-w-0 flex-1 flex-col items-center justify-end" style={{ height: '100%' }}>
                   <span className="mb-1 text-[10px] tabular-nums text-slate-400">{p.value}%</span>
                   <span className="w-full max-w-[40px] rounded-t bg-primary-400" style={{ height: `${Math.max(2, p.value as number)}%` }}
-                    aria-label={t('user.analytics.weekRetention', { week: p.offset, value: p.value })} />
+                    aria-label={t('user.analytics.weekRetention', { week: p.offset, value: p.value ?? 0 })} />
                 </div>
               ))}
             </div>

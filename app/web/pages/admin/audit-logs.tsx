@@ -21,9 +21,6 @@ interface AuditLog {
   created_at: string
 }
 
-const actionLabels = Object.fromEntries(actionOptions.map((item) => [item.value, item.label]))
-const resourceLabels = Object.fromEntries(resourceOptions.map((item) => [item.value, item.label]))
-
 function displayValue(value: unknown, t: (key: string) => string): string {
   if (typeof value === 'boolean') return value ? t('common.boolean.yes') : t('common.boolean.no')
   if (value === null || value === undefined || value === '') return t('common.unset')
@@ -89,6 +86,8 @@ export default function AdminAuditLogs() {
     { value: 'achievement_asset', label: t('admin.audit.resource.achievementAsset') },
     { value: 'achievement_grant', label: t('admin.audit.resource.achievementGrant') },
   ]
+  const actionLabels = Object.fromEntries(actionOptions.map((item) => [item.value, item.label]))
+  const resourceLabels = Object.fromEntries(resourceOptions.map((item) => [item.value, item.label]))
   const [items, setItems] = useState<AuditLog[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)

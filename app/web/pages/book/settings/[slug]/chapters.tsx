@@ -45,7 +45,7 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
 
   const load = useCallback(() => {
     api<Document[]>(`/books/${book.id}/documents`).then((d) => setDocs(d || [])).catch((e) => showToast({ title: t('bookSettings.chapters.error.load'), message: (e as Error).message, tone: 'error' }))
-  }, [book.id, showToast])
+  }, [book.id, showToast, t])
   useEffect(() => { load() }, [load])
 
   const flat = useMemo(() => (docs ? flatten(docs) : []), [docs])

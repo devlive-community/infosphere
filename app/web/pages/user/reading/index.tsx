@@ -55,7 +55,7 @@ interface ActivityData {
   today_met: boolean
 }
 
-function formatReadTime(seconds: number, t: (key: string) => string): string {
+function formatReadTime(seconds: number, t: (key: string, vars?: Record<string, string | number>) => string): string {
   if (!seconds || seconds < 60) return t('user.reading.lessThanMinute')
   const minutes = Math.round(seconds / 60)
   if (minutes < 60) return t('user.reading.minutes', { count: String(minutes) })

@@ -80,7 +80,7 @@ export default function NotificationsPage() {
       .then((data) => setInvitations(data.invitations || []))
       .catch((e) => showToast({ title: t('notify.inviteLoadFailed'), message: (e as Error).message, tone: 'error' }))
       .finally(() => setInvitationLoading(false))
-  }, [user, showToast])
+  }, [user, showToast, t])
 
   if (!user) return <Loading className="min-h-[60vh]" label={t('account.common.verifying')} />
 

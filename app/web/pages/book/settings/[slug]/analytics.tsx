@@ -119,7 +119,7 @@ export default function BookAnalyticsPage({ book }: InferGetServerSidePropsType<
     } finally {
       setLoading(false)
     }
-  }, [book.id, showToast])
+  }, [book.id, showToast, t])
 
   useEffect(() => { void load(days) }, [days, load])
 
