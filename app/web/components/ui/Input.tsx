@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { ControlSize, sizedControlStyle } from './controlSize'
+import { useTranslation } from '../../lib/i18n'
 
 // 输入类控件的基础样式：无 focus 外圈阴影，仅边框颜色变化
 const controlClass =
@@ -77,6 +78,7 @@ const SELECT_VIEWPORT_GAP = 8
 
 // Select 自绘下拉选择：选项层通过 Portal 脱离页面 overflow 与层叠上下文。
 export function Select({ options, value, onChange, className, placeholder, disabled, leading, menuPlacement = 'bottom', size = 'md' }: SelectProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -201,7 +203,7 @@ export function Select({ options, value, onChange, className, placeholder, disab
       >
         <span className="flex min-w-0 items-center gap-2">
           {leading}
-          <span className={`truncate ${selected ? '' : 'text-slate-400'}`}>{selected?.label || placeholder || '请选择'}</span>
+          <span className={`truncate ${selected ? '' : 'text-slate-400'}`}>{selected?.label || placeholder || t('ui.input.selectPlaceholder')}</span>
         </span>
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"
           className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}>

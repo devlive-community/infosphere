@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef } from 'react'
 import { CloseIcon } from '@/components/icons'
+import { useTranslation } from '../../lib/i18n'
 import Tooltip from './Tooltip'
 
 interface ModalProps {
@@ -35,12 +36,7 @@ export function Modal({ open, onClose, title, children, footer, className, eleva
         {title && (
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
             <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-            <Tooltip content="关闭弹窗">
-              <button type="button" aria-label="关闭弹窗" onClick={onClose} className="flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                style={{ width: 'var(--control-height)', height: 'var(--control-height)', borderRadius: 'var(--radius)' }}>
-                <CloseIcon className="h-5 w-5" />
-              </button>
-            </Tooltip>
+            <ModalCloseButton onClose={onClose} />
           </div>
         )}
         <div className="min-h-0 overflow-y-auto px-6 py-4">{children}</div>
@@ -49,5 +45,17 @@ export function Modal({ open, onClose, title, children, footer, className, eleva
         )}
       </div>
     </div>
+  )
+}
+// ModalCloseButton 关闭按钮：独立组件以便使用 useTranslation
+function ModalCloseButton({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <Tooltip content={t('ui.modal.close')}>
+      <button type="button" aria-label={t('ui.modal.close')} onClick={onClose} className="flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        style={{ width: 'var(--control-height)', height: 'var(--control-height)', borderRadius: 'var(--radius)' }}>
+        <CloseIcon className="h-5 w-5" />
+      </button>
+    </Tooltip>
   )
 }

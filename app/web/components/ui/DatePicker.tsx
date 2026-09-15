@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from '@/components/icons'
+import { useTranslation } from '../../lib/i18n'
 import { ControlSize, sizedControlStyle } from './controlSize'
 
 interface DatePickerProps {
@@ -14,8 +15,9 @@ interface DatePickerProps {
   ariaLabel?: string
 }
 
-const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
-const MONTHS = ['1 月', '2 月', '3 月', '4 月', '5 月', '6 月', '7 月', '8 月', '9 月', '10 月', '11 月', '12 月']
+// 星期与月份文案通过 i18n 键取（ui.datepicker.weekday* / month*）
+const WEEKDAY_KEYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const monthKey = (m: number) => `ui.datepicker.month${m + 1}`
 
 function pad(n: number) { return String(n).padStart(2, '0') }
 function toKey(y: number, m: number, d: number) { return `${y}-${pad(m + 1)}-${pad(d)}` }
@@ -30,7 +32,11 @@ function parse(value: string): { y: number; m: number; d: number } | null {
 }
 
 // DatePicker 全站统一的日期选择器：只读输入框 + 弹出月历，值为 'YYYY-MM-DD' 字符串
-export function DatePicker({ value, onChange, placeholder = '选择日期', className = '', size = 'md', min, max, clearable = true, ariaLabel }: DatePickerProps) {
+export function DatePicker({ value, onChange, placeholder, className = '', size = 'md', min, max, clearable = true, ariaLabel }: DatePickerProps) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t('ui.datepicker.placeholder')
+  const weekdays = WEEKDAY_KEYS.map((k) => t(`ui.datepicker.weekday${k}`))
+  const months = Array.from({ length: 12 }, (_, i) => t(monthKey(i)))
   const [open, setOpen] = useState(false)
   const parsed = parse(value)
   // 面板当前浏览的年月（不等于已选中的值）
@@ -85,13 +91,13 @@ export function DatePicker({ value, onChange, placeholder = '选择日期', clas
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-label={ariaLabel || placeholder} aria-haspopup="dialog" aria-expanded={open}
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-label={ariaLabel || resolvedPlaceholder} aria-haspopup="dialog" aria-expanded={open}
         className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-left text-sm text-slate-900 transition-colors hover:border-slate-300 focus:border-primary-500 focus:outline-none"
         style={sizedControlStyle(size)}>
         <CalendarIcon className="h-4 w-4 shrink-0 text-slate-400" />
-        <span className={`flex-1 truncate ${value ? '' : 'text-slate-400'}`}>{value || placeholder}</span>
+        <span className={`flex-1 truncate ${value ? '' : 'text-slate-400'}`}>{value || resolvedPlaceholder}</span>
         {clearable && value && (
-          <span role="button" tabIndex={-1} aria-label="清除日期"
+          <span role="button" tabIndex={-1} aria-label={t('ui.datepicker.clear')}
             onClick={(e) => { e.stopPropagation(); onChange('') }}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600">
             <CloseIcon className="h-3.5 w-3.5" />
@@ -102,14 +108,14 @@ export function DatePicker({ value, onChange, placeholder = '选择日期', clas
       {open && (
         <div className="absolute left-0 z-30 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg" role="dialog">
           <div className="mb-2 flex items-center justify-between">
-            <button type="button" aria-label="上个月" onClick={() => setView((v) => v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 })}
+            <button type="button" aria-label={t('ui.datepicker.prevMonth')} onClick={() => setView((v) => v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 })}
               className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"><ChevronLeftIcon className="h-4 w-4" /></button>
-            <div className="text-sm font-semibold text-slate-800">{view.y} 年 {MONTHS[view.m]}</div>
-            <button type="button" aria-label="下个月" onClick={() => setView((v) => v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 })}
+            <div className="text-sm font-semibold text-slate-800">{t('ui.datepicker.monthYear', { year: view.y, month: months[view.m] })}</div>
+            <button type="button" aria-label={t('ui.datepicker.nextMonth')} onClick={() => setView((v) => v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 })}
               className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"><ChevronRightIcon className="h-4 w-4" /></button>
           </div>
           <div className="mb-1 grid grid-cols-7 gap-0.5">
-            {WEEKDAYS.map((w) => <div key={w} className="flex h-7 items-center justify-center text-xs text-slate-400">{w}</div>)}
+            {weekdays.map((w) => <div key={w} className="flex h-7 items-center justify-center text-xs text-slate-400">{w}</div>)}
           </div>
           <div className="grid grid-cols-7 gap-0.5">
             {cells.map((d, i) => {
@@ -132,9 +138,9 @@ export function DatePicker({ value, onChange, placeholder = '选择日期', clas
           </div>
           <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
             <button type="button" onClick={() => { const key = todayKey; if (!outOfRange(key)) { onChange(key); setOpen(false) } }}
-              className="text-xs text-primary-600 hover:underline">今天</button>
+              className="text-xs text-primary-600 hover:underline">{t('ui.datepicker.today')}</button>
             {clearable && (
-              <button type="button" onClick={() => { onChange(''); setOpen(false) }} className="text-xs text-slate-400 hover:text-slate-600">清除</button>
+              <button type="button" onClick={() => { onChange(''); setOpen(false) }} className="text-xs text-slate-400 hover:text-slate-600">{t('ui.datepicker.clearText')}</button>
             )}
           </div>
         </div>

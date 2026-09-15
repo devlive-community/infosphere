@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { Button } from './Button'
 import { Input } from './Input'
+import { useTranslation } from '../../lib/i18n'
 
 type ToastTone = 'success' | 'error' | 'info'
 
@@ -25,6 +26,7 @@ interface InputOptions {
   defaultValue?: string
   placeholder?: string
   confirmLabel?: string
+  cancelLabel?: string
 }
 
 interface FeedbackContextValue {
@@ -45,6 +47,7 @@ type ActiveDialog =
 const FeedbackContext = createContext<FeedbackContextValue | null>(null)
 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const [dialog, setDialog] = useState<ActiveDialog | null>(null)
   const [inputValue, setInputValue] = useState('')
@@ -113,7 +116,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 {toast.title && <p className="text-sm font-semibold leading-5">{toast.title}</p>}
                 <p className="max-h-28 overflow-y-auto break-words text-[13px] leading-5">{toast.message}</p>
               </div>
-              <button type="button" aria-label="关闭提示" onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
+              <button type="button" aria-label={t('ui.feedback.closeAlert')} onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
                 className="-mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-current opacity-50 transition hover:bg-black/5 hover:opacity-90">
                 <i className="fa-solid fa-xmark text-xs" aria-hidden="true" />
               </button>
@@ -136,7 +139,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 <h2 id="feedback-dialog-title" className="text-lg font-bold text-slate-900">{dialog.title}</h2>
                 {dialog.message && <p className="mt-1 break-words text-sm leading-6 text-slate-500">{dialog.message}</p>}
               </div>
-              <button type="button" aria-label="关闭" onClick={() => closeDialog(false)}
+              <button type="button" aria-label={t('ui.feedback.close')} onClick={() => closeDialog(false)}
                 className="flex shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
@@ -150,10 +153,10 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
               </form>
             )}
             <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
-              <Button type="button" variant="ghost" onClick={() => closeDialog(false)}>{dialog.kind === 'confirm' ? dialog.cancelLabel || '取消' : '取消'}</Button>
+              <Button type="button" variant="ghost" onClick={() => closeDialog(false)}>{dialog.cancelLabel || t('ui.feedback.cancel')}</Button>
               <Button type="button" variant={dialog.kind === 'confirm' && dialog.danger ? 'danger' : 'primary'}
                 disabled={dialog.kind === 'input' && !inputValue.trim()} onClick={() => closeDialog(true)}>
-                {dialog.kind === 'confirm' ? dialog.confirmLabel || '确认' : dialog.confirmLabel || '确定'}
+                {dialog.confirmLabel || (dialog.kind === 'confirm' ? t('ui.feedback.confirm') : t('ui.feedback.ok'))}
               </Button>
             </div>
           </section>
