@@ -846,6 +846,7 @@ export const en: Record<string, string> = {
   'bookForm.orPaste': 'or paste an image URL',
   'bookForm.removeCover': 'Remove Cover',
   'bookForm.section.access': 'Access & Chapters',
+  'bookForm.section.localization': 'Languages & Versions',
   'bookForm.label.slug': 'Slug',
   'bookForm.slug.locked': 'The slug cannot be changed after creation',
   'bookForm.slug.auto': 'Leave empty to generate from the title',
@@ -1026,6 +1027,10 @@ export const en: Record<string, string> = {
 
   // Settings
   'admin.settings.site': 'Site',
+  'admin.settings.footer': 'Footer links',
+  'admin.settings.footer.description': 'Configure grouped footer links; leave empty to use the default footer.',
+  'admin.settings.footer.saved': 'Footer links saved. Refresh to apply site-wide.',
+  'admin.settings.footer.save': 'Save footer links',
   'admin.settings.registration': 'Registration',
   'admin.settings.captcha': 'Captcha',
   'admin.settings.loginSecurity': 'Login security',

@@ -846,6 +846,7 @@ export const zh: Record<string, string> = {
   'bookForm.orPaste': '或粘贴图片地址',
   'bookForm.removeCover': '移除封面',
   'bookForm.section.access': '访问与章节',
+  'bookForm.section.localization': '多语言与版本',
   'bookForm.label.slug': '访问路径',
   'bookForm.slug.locked': '访问路径创建后不可修改',
   'bookForm.slug.auto': '留空将根据标题自动生成',
@@ -1026,6 +1027,10 @@ export const zh: Record<string, string> = {
 
   // 系统设置
   'admin.settings.site': '站点设置',
+  'admin.settings.footer': '页脚链接',
+  'admin.settings.footer.description': '按分组配置站点页脚显示的链接；留空则使用默认页脚。',
+  'admin.settings.footer.saved': '页脚链接已保存，刷新页面后全站生效。',
+  'admin.settings.footer.save': '保存页脚链接',
   'admin.settings.registration': '注册设置',
   'admin.settings.captcha': '验证码',
   'admin.settings.loginSecurity': '登录安全',
