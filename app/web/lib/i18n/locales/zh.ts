@@ -1626,4 +1626,10 @@ export const zh: Record<string, string> = {
   'user.export.statusPublished': '已发布',
   'user.export.statusCompleted': '已完成',
   'user.export.statusArchived': '已归档',
+  // 第三方账号页
+  'user.oauth.title': '第三方账号',
+  'user.oauth.home': '首页',
+  'user.oauth.accountSettings': '账户设置',
+  'user.oauth.description': '管理第三方账号绑定，支持多种登录方式。',
+  'user.oauth.loading': '正在加载账户设置…',
 }
