@@ -11,6 +11,7 @@ import Seo from '@/components/Seo'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
 import { ArrowRightIcon, BookIcon, ClockIcon, EyeIcon, GlobeIcon, GridIcon, ListIcon, SearchIcon } from '@/components/icons'
+import { useTranslation } from '@/lib/i18n'
 import type { Book, PageResult, Tag, User } from '@/lib/types'
 
 interface ExploreProps {
@@ -56,6 +57,7 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
 }
 
 export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [loading, setLoading] = useState(false)
@@ -74,9 +76,9 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
   const activeMode = tag ? '' : rawSort === 'hot' ? 'hot' : rawSort === 'latest' ? 'latest' : 'all'
 
   const browseItems = [
-    { mode: 'all' as const, label: '全部公开书籍', shortLabel: '全部', icon: <BookIcon className="h-4 w-4" />, href: '/explore' },
-    { mode: 'latest' as const, label: '最新发布', shortLabel: '最新', icon: <ClockIcon className="h-4 w-4" />, href: '/explore?sort=latest' },
-    { mode: 'hot' as const, label: '热门阅读', shortLabel: '热门', icon: <i className="fa-solid fa-fire text-sm" aria-hidden="true" />, href: '/explore?sort=hot' },
+    { mode: 'all' as const, label: t('explore.browse.all'), shortLabel: t('explore.browse.allShort'), icon: <BookIcon className="h-4 w-4" />, href: '/explore' },
+    { mode: 'latest' as const, label: t('explore.browse.latest'), shortLabel: t('explore.browse.latestShort'), icon: <ClockIcon className="h-4 w-4" />, href: '/explore?sort=latest' },
+    { mode: 'hot' as const, label: t('explore.browse.hot'), shortLabel: t('explore.browse.hotShort'), icon: <i className="fa-solid fa-fire text-sm" aria-hidden="true" />, href: '/explore?sort=hot' },
   ]
 
   const items = [...(data.items || [])].sort((a, b) => {
@@ -85,7 +87,7 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
     return 0
   })
 
-  const sectionTitle = tag ? `标签「${tagName}」下的书籍` : keyword ? `「${keyword}」的搜索结果` : '全部公开书籍'
+  const sectionTitle = tag ? t('explore.section.byTag', { tag: tagName }) : keyword ? t('explore.section.searchResult', { keyword }) : t('explore.section.allPublic')
 
   const jsonLd = items.length > 0 ? {
     '@context': 'https://schema.org',
@@ -112,8 +114,8 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
     <div className="bg-warm">
       <Seo
         siteName={siteName}
-        title={keyword ? `「${keyword}」的搜索结果` : '发现知识'}
-        description={keyword ? `在 ${siteName} 中搜索「${keyword}」的相关书籍` : `浏览 ${siteName} 中全部公开的知识书籍，从不同作者的经验与思考中获得新的连接。`}
+        title={keyword ? t('explore.section.searchResult', { keyword }) : t('explore.seo.title')}
+        description={keyword ? t('explore.seo.searchDescription', { site: siteName, keyword }) : t('explore.seo.description', { site: siteName })}
         url={`${siteUrl}/explore`}
         jsonLd={jsonLd}
       />
@@ -121,20 +123,20 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
       {/* Hero：居中标题 + 大搜索框 + 热门搜索 */}
       <section className="border-b border-slate-200 bg-gradient-to-b from-primary-50/60 to-warm">
         <Container className="py-8 text-center sm:py-10">
-          <p className="text-sm font-medium tracking-wide text-primary-600">开放知识广场</p>
-          <h1 className="mt-2 text-2xl font-bold text-ink sm:text-3xl md:text-4xl">发现值得反复阅读的知识作品</h1>
-          <p className="mt-3 text-[15px] text-slate-500">浏览社区公开发布的书籍，从不同作者的经验与思考中获得新的连接。</p>
+          <p className="text-sm font-medium tracking-wide text-primary-600">{t('explore.hero.eyebrow')}</p>
+          <h1 className="mt-2 text-2xl font-bold text-ink sm:text-3xl md:text-4xl">{t('explore.hero.title')}</h1>
+          <p className="mt-3 text-[15px] text-slate-500">{t('explore.hero.subtitle')}</p>
 
           <form action="/explore" method="get" className="mx-auto mt-6 flex max-w-2xl flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <Input size="lg" className="pl-11 text-base" name="title" placeholder="搜索书名、主题或作者" defaultValue={keyword} />
+              <Input size="lg" className="pl-11 text-base" name="title" placeholder={t('explore.search.placeholder')} defaultValue={keyword} />
             </div>
-            <Button type="submit" size="lg" className="w-full px-7 sm:w-auto">搜索</Button>
+            <Button type="submit" size="lg" className="w-full px-7 sm:w-auto">{t('explore.search.submit')}</Button>
           </form>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
-            <span className="text-slate-400">热门搜索</span>
+            <span className="text-slate-400">{t('explore.search.hotSearch')}</span>
             {(hotTags || []).slice(0, 4).map((t) => (
               <Link key={t.id} href={`/explore?tag=${encodeURIComponent(t.slug)}`} onClick={() => navLoad(`/explore?tag=${encodeURIComponent(t.slug)}`)}
                 className="rounded-full px-2.5 py-1 text-primary-600 transition-colors hover:bg-primary-50">{t.name}</Link>
@@ -146,7 +148,7 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
       {/* 主体：左栏浏览 + 右内容 */}
       <Container className="grid gap-5 py-6 sm:py-8 lg:grid-cols-[240px_1fr] lg:gap-8">
         <div className="min-w-0 space-y-3 lg:hidden">
-          <SegmentedTabs fullWidth value={activeMode} ariaLabel="浏览内容"
+          <SegmentedTabs fullWidth value={activeMode} ariaLabel={t('explore.browse.aria')}
             items={browseItems.map((item) => ({ value: item.mode, label: item.shortLabel, icon: item.icon }))}
             onChange={(mode) => {
               const item = browseItems.find((entry) => entry.mode === mode)
@@ -161,7 +163,7 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
           </div>}
         </div>
         <aside className="hidden h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-20 lg:block">
-          <h2 className="mb-2 px-2 text-sm font-semibold text-slate-900">浏览内容</h2>
+          <h2 className="mb-2 px-2 text-sm font-semibold text-slate-900">{t('explore.browse.heading')}</h2>
           <ul className="space-y-0.5">
             {browseItems.map((item) => {
               const active = item.mode === activeMode
@@ -179,7 +181,7 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
           </ul>
 
           <div className="mt-4 border-t border-slate-100 pt-4">
-            <h2 className="mb-2 px-2 text-sm font-semibold text-slate-900">热门标签</h2>
+            <h2 className="mb-2 px-2 text-sm font-semibold text-slate-900">{t('explore.tags.heading')}</h2>
             <ul className="space-y-0.5">
               {(hotTags || []).map((t) => (
                 <li key={t.id}>
@@ -192,13 +194,13 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
                   </Link>
                 </li>
               ))}
-              {(hotTags || []).length === 0 && <li className="px-3 py-2 text-xs text-slate-400">暂无标签</li>}
+              {(hotTags || []).length === 0 && <li className="px-3 py-2 text-xs text-slate-400">{t('explore.tags.empty')}</li>}
             </ul>
           </div>
 
           <p className="mt-4 flex items-start gap-1.5 px-2 text-xs leading-5 text-slate-400">
             <GlobeIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            这里只展示公开且处于进行中、已发布或已完成状态的内容
+            {t('explore.notice')}
           </p>
         </aside>
 
@@ -206,17 +208,17 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-baseline gap-3">
               <h2 className="min-w-0 text-xl font-bold text-ink sm:text-2xl">{sectionTitle}</h2>
-              <span className="text-sm text-slate-400">共 {data.total} 本</span>
+              <span className="text-sm text-slate-400">{t('explore.section.count', { total: data.total })}</span>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
               {!tag && (
                 <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setLoading(true); window.location.href = v === 'hot' ? '/explore?sort=hot' : '/explore' }}
-                  options={[{ value: 'latest', label: '最新发布' }, { value: 'hot', label: '热门阅读' }]} />
+                  options={[{ value: 'latest', label: t('explore.browse.latest') }, { value: 'hot', label: t('explore.browse.hot') }]} />
               )}
-              <SegmentedTabs iconOnly value={view} ariaLabel="书籍展示方式"
+              <SegmentedTabs iconOnly value={view} ariaLabel={t('explore.view.aria')}
                 onChange={(value) => setView(value as 'grid' | 'list')} items={[
-                  { value: 'grid', label: '网格视图', icon: <GridIcon className="h-4 w-4" /> },
-                  { value: 'list', label: '列表视图', icon: <ListIcon className="h-4 w-4" /> },
+                  { value: 'grid', label: t('explore.view.grid'), icon: <GridIcon className="h-4 w-4" /> },
+                  { value: 'list', label: t('explore.view.list'), icon: <ListIcon className="h-4 w-4" /> },
                 ]} />
             </div>
           </div>
@@ -225,7 +227,7 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
             <Loading />
           ) : items.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 py-20 text-center text-sm text-slate-400">
-              {keyword ? '没有找到相关书籍' : tag ? '该标签下暂无书籍' : '还没有公开的书籍，创建一本吧！'}
+              {keyword ? t('explore.empty.search') : tag ? t('explore.empty.tag') : t('explore.empty.none')}
             </div>
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>

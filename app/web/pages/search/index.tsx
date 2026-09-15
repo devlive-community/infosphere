@@ -9,6 +9,7 @@ import HighlightText from '@/components/HighlightText'
 import { BookIcon, FileTextIcon, SearchIcon } from '@/components/icons'
 import { useEffect, useState, FormEvent } from 'react'
 import { useRouter } from 'next/router'
+import { useTranslation } from '@/lib/i18n'
 import type { Book, Tag, User } from '@/lib/types'
 
 type SearchType = 'all' | 'book' | 'document'
@@ -95,6 +96,7 @@ export const getServerSideProps: GetServerSideProps<SearchPageProps> = async ({ 
 
 export default function SearchPage({ site, q, filters, tags, result }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter()
+  const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
   const [keyword, setKeyword] = useState(q)
   const [draft, setDraft] = useState(filters)
@@ -132,39 +134,39 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
   }
 
   const typeItems = [
-    { value: 'all', label: `全部 ${result.book_total + result.document_total}` },
-    { value: 'book', label: `书籍 ${result.book_total}` },
-    { value: 'document', label: `章节 ${result.document_total}` },
+    { value: 'all', label: t('search.tab.all', { n: result.book_total + result.document_total }) },
+    { value: 'book', label: t('search.tab.book', { n: result.book_total }) },
+    { value: 'document', label: t('search.tab.document', { n: result.document_total }) },
   ]
 
   return (
     <>
-      <Seo siteName={siteName} title={q ? `「${q}」的搜索结果` : '搜索'} noindex />
+      <Seo siteName={siteName} title={q ? t('search.seo.resultTitle', { q }) : t('search.seo.title')} noindex />
       <Container>
         <div className="py-8">
-          <h1 className="text-2xl font-bold text-ink">搜索</h1>
+          <h1 className="text-2xl font-bold text-ink">{t('search.heading')}</h1>
           <form onSubmit={submit} className="mt-5 space-y-4">
             <div className="flex max-w-3xl flex-col gap-2 sm:flex-row">
               <Input className="flex-1" value={keyword} onChange={(event) => setKeyword(event.target.value)}
-                leading={<SearchIcon className="h-4 w-4" />} placeholder="搜索书籍、章节内容…" maxLength={100} />
-              <Button type="submit" loading={loading} className="w-full sm:w-auto">搜索</Button>
+                leading={<SearchIcon className="h-4 w-4" />} placeholder={t('search.placeholder')} maxLength={100} />
+              <Button type="submit" loading={loading} className="w-full sm:w-auto">{t('search.submit')}</Button>
             </div>
             <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 md:grid-cols-4">
               <Input value={draft.author} onChange={(event) => setDraft({ ...draft, author: event.target.value })}
-                placeholder="作者用户名" maxLength={50} />
+                placeholder={t('search.authorPlaceholder')} maxLength={50} />
               <Select value={draft.tag} onChange={(tag) => setDraft({ ...draft, tag })}
-                options={[{ value: '', label: '全部标签' }, ...tags.map((tag) => ({ value: tag.slug, label: tag.name }))]} />
+                options={[{ value: '', label: t('search.allTags') }, ...tags.map((tag) => ({ value: tag.slug, label: tag.name }))]} />
               <DatePicker value={draft.updatedFrom} onChange={(value) => setDraft({ ...draft, updatedFrom: value })}
-                placeholder="更新开始日期" max={draft.updatedTo || undefined} ariaLabel="更新开始日期" />
+                placeholder={t('search.updatedFrom')} max={draft.updatedTo || undefined} ariaLabel={t('search.updatedFrom')} />
               <DatePicker value={draft.updatedTo} onChange={(value) => setDraft({ ...draft, updatedTo: value })}
-                placeholder="更新结束日期" min={draft.updatedFrom || undefined} ariaLabel="更新结束日期" />
+                placeholder={t('search.updatedTo')} min={draft.updatedFrom || undefined} ariaLabel={t('search.updatedTo')} />
             </div>
           </form>
-          {q && <p className="mt-3 text-sm text-slate-400">「{q}」共 {result.total} 条结果</p>}
+          {q && <p className="mt-3 text-sm text-slate-400">{t('search.resultCount', { q, total: result.total })}</p>}
         </div>
 
         {q && (
-          <SegmentedTabs className="sm:!w-auto" size="sm" fullWidth value={filters.type} items={typeItems} ariaLabel="搜索结果类型"
+          <SegmentedTabs className="sm:!w-auto" size="sm" fullWidth value={filters.type} items={typeItems} ariaLabel={t('search.seo.title')}
             onChange={(value) => navigate({ ...filters, type: value as SearchType }, 1, q)} />
         )}
 
@@ -173,21 +175,21 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
             {!q && (
               <EmptyState>
                 <SearchIcon className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                输入关键词，搜索公开书籍与章节内容
+                {t('search.emptyPrompt')}
               </EmptyState>
             )}
 
             {q && result.total === 0 && (
               <EmptyState>
                 <SearchIcon className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                未找到与「{q}」相关的内容，换个关键词或筛选条件试试
+                {t('search.noResult', { q })}
               </EmptyState>
             )}
 
             {result.books.length > 0 && (
               <section className="mt-6">
                 <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
-                  <BookIcon className="h-5 w-5 text-primary-500" /> 书籍
+                  <BookIcon className="h-5 w-5 text-primary-500" /> {t('search.section.books')}
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {result.books.map((book) => <BookCard key={book.id} book={book} highlight={q} />)}
@@ -198,7 +200,7 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
             {result.documents.length > 0 && (
               <section className="mt-8">
                 <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
-                  <FileTextIcon className="h-5 w-5 text-primary-500" /> 章节
+                  <FileTextIcon className="h-5 w-5 text-primary-500" /> {t('search.section.documents')}
                 </h2>
                 <div className="space-y-3">
                   {result.documents.map((document) => (
@@ -207,7 +209,7 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
                       <span className="block truncate font-medium text-slate-900 group-hover:text-primary-600">
                         <HighlightText text={document.title} query={q} />
                       </span>
-                      <span className="mt-1 block text-xs text-slate-400">来自《{document.book_title}》</span>
+                      <span className="mt-1 block text-xs text-slate-400">{t('search.fromBook', { book: document.book_title })}</span>
                       <span className="mt-1 block line-clamp-2 text-sm leading-6 text-slate-500">
                         <HighlightText text={document.excerpt} query={q} />
                       </span>
