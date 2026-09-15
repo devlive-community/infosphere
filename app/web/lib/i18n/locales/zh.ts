@@ -1750,6 +1750,8 @@ export const zh: Record<string, string> = {
   'admin.reports.thisContent': '该内容',
   // 系统概览
   'admin.system.loading': '正在加载控制台数据…',
+  'admin.system.manage': '管理',
+  'admin.system.noActivity': '暂时无法获取活动数据',
   'admin.system.title': '控制台',
   'admin.system.description': '集中查看服务状态并维护站点运行配置',
   'admin.system.viewSite': '查看站点',
