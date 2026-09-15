@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { InferGetServerSidePropsType } from 'next'
 import { api } from '@/lib/api'
+import { useTranslation } from '@/lib/i18n'
 import { Button, Switch, Checkbox, Field, Select, Input, Loading, useFeedback } from '@/components/ui'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { getBookSettingsProps } from '@/lib/book-settings'
@@ -19,15 +20,16 @@ interface BookStyle {
 const DEFAULT_STYLE: BookStyle = { page_size: 'A4', include_cover: true, include_toc: true, font_size: 15, code_theme: 'light', margin: 'normal', footer: '' }
 
 // 书籍设置 · 导出设置：控制他人能否导出本书、是否共享作者导出样式（仅可管理者）
-const ALL_FORMATS: { key: string; label: string; hint: string }[] = [
-  { key: 'pdf', label: 'PDF', hint: '带排版的文档，适合打印与离线阅读' },
-  { key: 'epub', label: 'EPUB (电子书)', hint: '通用电子书格式，含封面与目录，适配手机 / 电纸书阅读器' },
-  { key: 'docx', label: 'Word (docx)', hint: '可编辑的 Word 文档，含标题样式、表格、代码块与图片' },
-  { key: 'markdown', label: 'Markdown (zip)', hint: '章节 Markdown 与图片打包，可再次导入编辑' },
+const ALL_FORMATS: { key: string; label?: string; labelKey?: string; hintKey: string }[] = [
+  { key: 'pdf', label: 'PDF', hintKey: 'bookSettings.export.format.pdfHint' },
+  { key: 'epub', labelKey: 'bookSettings.export.format.epubLabel', hintKey: 'bookSettings.export.format.epubHint' },
+  { key: 'docx', label: 'Word (docx)', hintKey: 'bookSettings.export.format.docxHint' },
+  { key: 'markdown', labelKey: 'bookSettings.export.format.mdLabel', hintKey: 'bookSettings.export.format.mdHint' },
 ]
 
 export default function BookSettingsExport({ book }: InferGetServerSidePropsType<typeof getBookSettingsProps>) {
   const { showToast } = useFeedback()
+  const { t } = useTranslation()
   const [exportEnabled, setExportEnabled] = useState(book.export_enabled ?? true)
   const [guestExportEnabled, setGuestExportEnabled] = useState(book.guest_export_enabled ?? true)
   const [styleShared, setStyleShared] = useState(book.export_style_shared ?? false)
@@ -51,16 +53,16 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
   async function save() {
     // 插件未安装时不允许开启 PDF 格式
     const effective = pdfAvailable ? formats : formats.filter((f) => f !== 'pdf')
-    if (effective.length === 0) { showToast({ title: '无法保存', message: '至少保留一种可用的导出格式', tone: 'error' }); return }
+    if (effective.length === 0) { showToast({ title: t('bookSettings.export.error.noFormat.title'), message: t('bookSettings.export.error.noFormat.message'), tone: 'error' }); return }
     setSaving(true)
     try {
       // 全选归一化为空串（表示全部），由后端统一处理
       const export_formats = effective.length === ALL_FORMATS.length ? '' : effective.join(',')
       await api(`/books/${book.id}`, { method: 'PUT', body: { export_enabled: exportEnabled, guest_export_enabled: guestExportEnabled, export_style_shared: styleShared, export_formats } })
       await api(`/books/${book.id}/export-style`, { method: 'PUT', body: style })
-      showToast({ title: '已保存', message: '导出设置已更新', tone: 'success' })
+      showToast({ title: t('bookSettings.export.saved.title'), message: t('bookSettings.export.saved.message'), tone: 'success' })
     } catch (e) {
-      showToast({ title: '保存失败', message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('bookSettings.export.error.save.title'), message: (e as Error).message, tone: 'error' })
     } finally {
       setSaving(false)
     }
@@ -70,46 +72,46 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
     <BookSettingsLayout book={book} active="export">
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-6">
-          <h2 className="text-lg font-bold text-slate-900">导出设置</h2>
-          <p className="mt-1 text-sm text-slate-500">控制读者能否导出本书，以及是否向他们共享你的导出样式。水印始终按书籍设置生效。</p>
+          <h2 className="text-lg font-bold text-slate-900">{t('bookSettings.nav.export')}</h2>
+          <p className="mt-1 text-sm text-slate-500">{t('bookSettings.export.desc')}</p>
         </div>
         <div className="space-y-4 p-6">
           <div className="rounded-xl border border-slate-200 p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm font-medium text-slate-900">允许他人导出本书</div>
-                <p className="mt-1 text-xs leading-5 text-slate-500">公开书籍开启后，读者可按下方允许的格式导出本书；关闭则仅作者/协作者可导出。</p>
+                <div className="text-sm font-medium text-slate-900">{t('bookSettings.export.allowExport')}</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookSettings.export.allowExportDesc')}</p>
               </div>
-              <Switch checked={exportEnabled} onChange={setExportEnabled} ariaLabel="允许他人导出本书" />
+              <Switch checked={exportEnabled} onChange={setExportEnabled} ariaLabel={t('bookSettings.export.allowExport')} />
             </div>
             <div className={`mt-4 flex items-center justify-between gap-4 border-t border-slate-100 pt-4 ${exportEnabled ? '' : 'opacity-50'}`}>
               <div>
-                <div className="text-sm font-medium text-slate-900">允许游客（未登录）导出</div>
-                <p className="mt-1 text-xs leading-5 text-slate-500">关闭后仅登录用户可导出本书；游客需登录后才能导出。需先开启上方「允许他人导出」。</p>
+                <div className="text-sm font-medium text-slate-900">{t('bookSettings.export.allowGuest')}</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookSettings.export.allowGuestDesc')}</p>
               </div>
-              <Switch checked={exportEnabled && guestExportEnabled} disabled={!exportEnabled} onChange={setGuestExportEnabled} ariaLabel="允许游客导出" />
+              <Switch checked={exportEnabled && guestExportEnabled} disabled={!exportEnabled} onChange={setGuestExportEnabled} ariaLabel={t('bookSettings.export.allowGuest')} />
             </div>
           </div>
           <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
             <div>
-              <div className="text-sm font-medium text-slate-900">共享我的导出样式</div>
-              <p className="mt-1 text-xs leading-5 text-slate-500">开启后，他人导出本书时可选择使用你的导出样式；否则只能用他们自己的样式。</p>
+              <div className="text-sm font-medium text-slate-900">{t('bookSettings.export.shareStyle')}</div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookSettings.export.shareStyleDesc')}</p>
             </div>
-            <Switch checked={styleShared} onChange={setStyleShared} ariaLabel="共享我的导出样式" />
+            <Switch checked={styleShared} onChange={setStyleShared} ariaLabel={t('bookSettings.export.shareStyle')} />
           </div>
 
           <div className="rounded-xl border border-slate-200 p-4">
-            <div className="text-sm font-medium text-slate-900">允许导出的格式</div>
-            <p className="mt-1 text-xs leading-5 text-slate-500">读者只能选择你允许的格式；全部选中表示不限制。</p>
+            <div className="text-sm font-medium text-slate-900">{t('bookSettings.export.formats')}</div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookSettings.export.formatsDesc')}</p>
             <div className="mt-3 space-y-2">
               {ALL_FORMATS.map((f) => {
                 const disabled = f.key === 'pdf' && !pdfAvailable
                 return (
                   <label key={f.key} className={`flex items-start gap-3 rounded-lg border border-slate-200 p-3 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-primary-300'}`}>
-                    <Checkbox checked={formats.includes(f.key) && !disabled} disabled={disabled} onChange={() => toggleFormat(f.key)} ariaLabel={f.label} />
+                    <Checkbox checked={formats.includes(f.key) && !disabled} disabled={disabled} onChange={() => toggleFormat(f.key)} ariaLabel={f.label || (f.labelKey ? t(f.labelKey) : f.key)} />
                     <span>
-                      <span className="text-sm font-medium text-slate-800">{f.label}</span>
-                      <span className="mt-0.5 block text-xs text-slate-500">{disabled ? '需管理员先在后台「插件」中安装无头浏览器插件' : f.hint}</span>
+                      <span className="text-sm font-medium text-slate-800">{f.label || (f.labelKey ? t(f.labelKey) : '')}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">{disabled ? t('bookSettings.export.pdfUnavailable') : t(f.hintKey)}</span>
                     </span>
                   </label>
                 )
@@ -118,40 +120,40 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
           </div>
 
           <div className="rounded-xl border border-slate-200 p-4">
-            <div className="text-sm font-medium text-slate-900">书籍导出样式</div>
-            <p className="mt-1 text-xs leading-5 text-slate-500">当你共享导出样式时，读者选择「作者样式」将使用这里的设置（未配置则回退到你的个人导出设置）。</p>
+            <div className="text-sm font-medium text-slate-900">{t('bookSettings.export.styleTitle')}</div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookSettings.export.styleDesc')}</p>
             {!styleLoaded ? (
-              <Loading className="py-8" label="正在加载书籍样式…" />
+              <Loading className="py-8" label={t('bookSettings.export.styleLoading')} />
             ) : (
               <div className="mt-3 space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="页面尺寸">
+                  <Field label={t('bookSettings.export.pageSize')}>
                     <Select value={style.page_size} onChange={(v) => setStyle({ ...style, page_size: v })}
                       options={[{ value: 'A4', label: 'A4' }, { value: 'Letter', label: 'Letter' }]} />
                   </Field>
-                  <Field label="页边距">
+                  <Field label={t('bookSettings.export.margin')}>
                     <Select value={style.margin} onChange={(v) => setStyle({ ...style, margin: v })}
-                      options={[{ value: 'narrow', label: '窄' }, { value: 'normal', label: '常规' }, { value: 'wide', label: '宽' }]} />
+                      options={[{ value: 'narrow', label: t('bookSettings.export.margin.narrow') }, { value: 'normal', label: t('bookSettings.export.margin.normal') }, { value: 'wide', label: t('bookSettings.export.margin.wide') }]} />
                   </Field>
-                  <Field label="正文字号" hint="12–20 px">
+                  <Field label={t('bookSettings.export.fontSize')} hint={t('bookSettings.export.fontSizeHint')}>
                     <Select value={String(style.font_size)} onChange={(v) => setStyle({ ...style, font_size: Number(v) })}
                       options={[12, 13, 14, 15, 16, 17, 18, 20].map((n) => ({ value: String(n), label: `${n} px` }))} />
                   </Field>
-                  <Field label="代码配色">
+                  <Field label={t('bookSettings.export.codeTheme')}>
                     <Select value={style.code_theme} onChange={(v) => setStyle({ ...style, code_theme: v })}
-                      options={[{ value: 'light', label: '浅色' }, { value: 'dark', label: '深色' }]} />
+                      options={[{ value: 'light', label: t('bookSettings.export.theme.light') }, { value: 'dark', label: t('bookSettings.export.theme.dark') }]} />
                   </Field>
                 </div>
                 <div className="flex flex-wrap gap-6">
                   <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <Checkbox checked={style.include_cover} onChange={(v) => setStyle({ ...style, include_cover: v })} ariaLabel="包含封面页" /> 包含封面页
+                    <Checkbox checked={style.include_cover} onChange={(v) => setStyle({ ...style, include_cover: v })} ariaLabel={t('bookSettings.export.includeCover')} /> {t('bookSettings.export.includeCover')}
                   </label>
                   <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <Checkbox checked={style.include_toc} onChange={(v) => setStyle({ ...style, include_toc: v })} ariaLabel="包含目录" /> 包含目录
+                    <Checkbox checked={style.include_toc} onChange={(v) => setStyle({ ...style, include_toc: v })} ariaLabel={t('bookSettings.export.includeToc')} /> {t('bookSettings.export.includeToc')}
                   </label>
                 </div>
-                <Field label="每页页脚（Powered by）" hint="留空使用默认「Powered by 站点名」">
-                  <Input value={style.footer} maxLength={100} placeholder="Powered by 站点名"
+                <Field label={t('bookSettings.export.footer')} hint={t('bookSettings.export.footerHint')}>
+                  <Input value={style.footer} maxLength={100} placeholder={t('bookSettings.export.footerPlaceholder')}
                     onChange={(e) => setStyle({ ...style, footer: e.target.value })} />
                 </Field>
               </div>
@@ -159,7 +161,7 @@ export default function BookSettingsExport({ book }: InferGetServerSidePropsType
           </div>
         </div>
         <div className="flex justify-end border-t border-slate-100 px-6 py-4">
-          <Button loading={saving} onClick={save}>保存导出设置</Button>
+          <Button loading={saving} onClick={save}>{t('bookSettings.export.save')}</Button>
         </div>
       </div>
     </BookSettingsLayout>

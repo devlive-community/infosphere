@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, ReactNode, KeyboardEvent } from 'react'
 import { useRouter } from 'next/router'
 import { API_BASE, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
+import { useTranslation } from '@/lib/i18n'
 import { Button, Input, Textarea, Select, Switch } from '@/components/ui'
 import { BookIcon, CheckCircleIcon, CloseIcon, ImageIcon, LinkIcon, UploadIcon, EyeIcon } from '@/components/icons'
 import type { Book, BookStatus } from '@/lib/types'
@@ -13,20 +14,17 @@ const MAX_WATERMARK = 80
 const validSlug = (s: string) => /^[a-z0-9-]+$/.test(s)
 
 const statusOptions = [
-  { value: 'draft', label: '草稿' },
-  { value: 'in_progress', label: '进行中' },
-  { value: 'published', label: '已发布' },
-  { value: 'completed', label: '已完成' },
-  { value: 'archived', label: '已归档' },
+  { value: 'draft', labelKey: 'books.status.draft' },
+  { value: 'in_progress', labelKey: 'books.status.in_progress' },
+  { value: 'published', labelKey: 'books.status.published' },
+  { value: 'completed', labelKey: 'books.status.completed' },
+  { value: 'archived', labelKey: 'books.status.archived' },
 ]
 const prefixOptions = [
-  { value: '', label: '不使用前缀' },
-  { value: '第', label: '第（第一章、第二章…）' },
-  { value: 'Chapter ', label: 'Chapter （Chapter 1…）' },
+  { value: '', labelKey: 'bookForm.prefix.none' },
+  { value: '第', labelKey: 'bookForm.prefix.chapter' },
+  { value: 'Chapter ', labelKey: 'bookForm.prefix.englishChapter' },
 ]
-const statusNames: Record<string, string> = {
-  draft: '草稿', in_progress: '进行中', published: '已发布', completed: '已完成', archived: '已归档',
-}
 
 export interface BookFormProps {
   initial?: Book
@@ -44,6 +42,7 @@ export interface BookFormProps {
 export default function BookForm({ initial, heading, subheading, breadcrumb, submitLabel, showSaveDraft, showHeader = true, onSubmit }: BookFormProps) {
   const router = useRouter()
   const { user } = useApp()
+  const { t } = useTranslation()
   const isEdit = !!initial
 
   const [title, setTitle] = useState(initial?.title || '')
@@ -73,13 +72,13 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   useEffect(() => { setHost(window.location.host) }, [])
 
   const coverSrc = coverImage ? (/^https?:\/\//.test(coverImage) ? coverImage : API_BASE + coverImage) : ''
-  const authorName = user?.username || '你'
+  const authorName = user?.username || t('bookForm.you')
   const authorAvatar = user?.avatar ? (/^https?:\/\//.test(user.avatar) ? user.avatar : API_BASE + user.avatar) : ''
 
   function addTag() {
-    const t = tagInput.trim()
-    if (!t || tags.includes(t) || tags.length >= MAX_TAGS) { setTagInput(''); return }
-    setTags([...tags, t]); setTagInput('')
+    const tag = tagInput.trim()
+    if (!tag || tags.includes(tag) || tags.length >= MAX_TAGS) { setTagInput(''); return }
+    setTags([...tags, tag]); setTagInput('')
   }
   function onTagKey(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') { e.preventDefault(); addTag() }
@@ -98,7 +97,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
         body: fd,
       })
       const payload = await res.json().catch(() => ({}))
-      if (!res.ok || payload.success === false) throw new Error(payload.message || '上传失败')
+      if (!res.ok || payload.success === false) throw new Error(payload.message || t('common.uploadFailed'))
       setCoverImage(payload.data.url)
     } catch (e) {
       setError((e as Error).message)
@@ -109,9 +108,9 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
 
   async function submit(overrideStatus?: BookStatus) {
     setError('')
-    if (!title.trim()) { setError('请填写书籍标题'); return }
-    if (slug && !validSlug(slug)) { setError('访问路径仅支持小写字母、数字和中划线'); return }
-    if (watermarkEnabled && !watermarkText.trim()) { setError('开启水印后请填写水印内容'); return }
+    if (!title.trim()) { setError(t('bookForm.error.title')); return }
+    if (slug && !validSlug(slug)) { setError(t('bookForm.error.slug')); return }
+    if (watermarkEnabled && !watermarkText.trim()) { setError(t('bookForm.error.watermark')); return }
     setSaving(true)
     try {
       await onSubmit({
@@ -144,7 +143,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
       {showHeader && (
         <div className="mb-6">
           <nav className="mb-1 flex items-center gap-1.5 text-sm text-slate-400">
-            <button onClick={() => router.push('/books')} className="hover:text-primary-600">我的书籍</button>
+            <button onClick={() => router.push('/books')} className="hover:text-primary-600">{t('bookForm.breadcrumb')}</button>
             <span>/</span>
             <span className="text-slate-500">{breadcrumb}</span>
           </nav>
@@ -159,39 +158,39 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
       <div>
         <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm">
           {/* 基本信息 */}
-          <Section icon={<BookIcon className="h-4 w-4" />} title="基本信息">
-            <RowField label={<>书籍标题 <span className="text-rose-500">*</span></>}>
+          <Section icon={<BookIcon className="h-4 w-4" />} title={t('bookForm.section.basic')}>
+            <RowField label={<>{t('bookForm.label.title')} <span className="text-rose-500">*</span></>}>
               <div className="relative">
-                <Input value={title} maxLength={MAX_TITLE} onChange={(e) => setTitle(e.target.value)} placeholder="给你的书起个名字"
+                <Input value={title} maxLength={MAX_TITLE} onChange={(e) => setTitle(e.target.value)} placeholder={t('bookForm.placeholder.title')}
                   className="pr-16" />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">{title.length} / {MAX_TITLE}</span>
               </div>
             </RowField>
-            <RowField label="一句话简介">
+            <RowField label={t('bookForm.label.desc')}>
               <div className="relative">
                 <Textarea value={description} maxLength={MAX_DESC} onChange={(e) => setDescription(e.target.value)}
-                  placeholder="用一句话描述这本书的方向" className="min-h-[76px] pb-6" />
+                  placeholder={t('bookForm.placeholder.desc')} className="min-h-[76px] pb-6" />
                 <span className="pointer-events-none absolute bottom-2 right-3 text-xs text-slate-400">{description.length} / {MAX_DESC}</span>
               </div>
             </RowField>
-            <RowField label="标签" hint={`最多添加 ${MAX_TAGS} 个标签`}>
+            <RowField label={t('bookForm.label.tags')} hint={t('bookForm.hint.tags', { count: MAX_TAGS })}>
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition-colors focus-within:border-primary-500">
-                {tags.map((t) => (
-                  <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
-                    {t}
-                    <button type="button" aria-label={`移除 ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}
+                {tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
+                    {tag}
+                    <button type="button" aria-label={t('bookForm.aria.removeTag', { tag })} onClick={() => setTags(tags.filter((x) => x !== tag))}
                       className="text-primary-400 hover:text-primary-700"><CloseIcon className="h-3 w-3" /></button>
                   </span>
                 ))}
                 <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={onTagKey} onBlur={addTag}
-                  placeholder={tags.length >= MAX_TAGS ? '已达上限' : '添加标签，按回车确认'} disabled={tags.length >= MAX_TAGS}
+                  placeholder={tags.length >= MAX_TAGS ? t('bookForm.placeholder.tagFull') : t('bookForm.placeholder.tag')} disabled={tags.length >= MAX_TAGS}
                   className="min-w-[140px] flex-1 border-0 bg-transparent p-0 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-0" />
               </div>
             </RowField>
           </Section>
 
           {/* 封面 */}
-          <Section icon={<ImageIcon className="h-4 w-4" />} title="封面">
+          <Section icon={<ImageIcon className="h-4 w-4" />} title={t('bookForm.section.cover')}>
             <div className="flex gap-4">
               <div className="w-56 shrink-0 self-stretch overflow-hidden rounded-lg border border-slate-200 bg-gradient-to-br from-primary-200 to-[#8B8DFF]">
                 {coverSrc && <img src={coverSrc} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
@@ -200,19 +199,19 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                 <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
                   className="flex w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 bg-slate-50/60 py-6 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/40 disabled:opacity-60">
                   <UploadIcon className="h-5 w-5 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-600">{uploading ? '上传中…' : '上传封面图片'}</span>
-                  <span className="text-xs text-slate-400">建议尺寸 1200 × 1600，支持 JPG、PNG</span>
+                  <span className="text-sm font-medium text-slate-600">{uploading ? t('bookForm.uploading') : t('bookForm.upload')}</span>
+                  <span className="text-xs text-slate-400">{t('bookForm.coverHint')}</span>
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { uploadCover(e.target.files?.[0]); e.target.value = '' }} />
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400">或粘贴图片地址</span>
+                  <span className="text-xs text-slate-400">{t('bookForm.orPaste')}</span>
                   <span className="h-px flex-1 bg-slate-100" />
                 </div>
                 <div className="flex gap-2">
                   <Input value={/^https?:\/\//.test(coverImage) ? coverImage : ''} onChange={(e) => setCoverImage(e.target.value)}
                     placeholder="https://example.com/cover.jpg" />
                   {coverImage && (
-                    <Button variant="outline" type="button" onClick={() => setCoverImage('')} className="shrink-0">移除封面</Button>
+                    <Button variant="outline" type="button" onClick={() => setCoverImage('')} className="shrink-0">{t('bookForm.removeCover')}</Button>
                   )}
                 </div>
               </div>
@@ -220,10 +219,10 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
           </Section>
 
           {/* 访问与章节 */}
-          <Section icon={<LinkIcon className="h-4 w-4" />} title="访问与章节">
+          <Section icon={<LinkIcon className="h-4 w-4" />} title={t('bookForm.section.access')}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">访问路径</label>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.slug')}</label>
                 <div className="flex items-stretch overflow-hidden rounded-lg border border-slate-200 focus-within:border-primary-500"
                   style={{ height: 'var(--control-height)' }}>
                   <span className="flex items-center whitespace-nowrap bg-slate-50 px-3 text-xs text-slate-400">{host || 'infosphere'}/book/</span>
@@ -232,61 +231,61 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                     className="min-w-0 flex-1 border-0 bg-white px-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 disabled:bg-slate-50 disabled:text-slate-400" />
                 </div>
                 <p className={`mt-1.5 text-xs ${!slug ? 'text-slate-400' : validSlug(slug) ? 'text-emerald-600' : 'text-rose-500'}`}>
-                  {isEdit ? '访问路径创建后不可修改' : !slug ? '留空将根据标题自动生成' : validSlug(slug) ? '该路径可用' : '仅支持小写字母、数字和中划线'}
+                  {isEdit ? t('bookForm.slug.locked') : !slug ? t('bookForm.slug.auto') : validSlug(slug) ? t('bookForm.slug.ok') : t('bookForm.slug.invalid')}
                 </p>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">章节前缀</label>
-                <Select value={chapterPrefix} onChange={setChapterPrefix} options={prefixOptions} />
-                <p className="mt-1.5 text-xs text-slate-400">用于章节标题前的统一前缀</p>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.prefix')}</label>
+                <Select value={chapterPrefix} onChange={setChapterPrefix} options={prefixOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))} />
+                <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.prefixHint')}</p>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <label className="block text-sm font-medium text-slate-700">子章节状态跟随父章节</label>
-                  <p className="mt-0.5 text-xs text-slate-400">开启后，写作台新建子章节的默认发布状态与父章节一致</p>
+                  <label className="block text-sm font-medium text-slate-700">{t('bookForm.label.followChild')}</label>
+                  <p className="mt-0.5 text-xs text-slate-400">{t('bookForm.followChildHint')}</p>
                 </div>
-                <Switch checked={childStatusFollowParent} onChange={setChildStatusFollowParent} ariaLabel="子章节状态跟随父章节" />
+                <Switch checked={childStatusFollowParent} onChange={setChildStatusFollowParent} ariaLabel={t('bookForm.label.followChild')} />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">语言</label>
-                <Input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="如 中文 / English" maxLength={32} />
-                <p className="mt-1.5 text-xs text-slate-400">多语言互译时，用于标注本书语言</p>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('common.language.label')}</label>
+                <Input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder={t('bookForm.placeholder.language')} maxLength={32} />
+                <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.languageHint')}</p>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">翻译分组</label>
-                <Input value={transGroup} onChange={(e) => setTransGroup(e.target.value)} placeholder="如 my-book-i18n" maxLength={64} />
-                <p className="mt-1.5 text-xs text-slate-400">填写相同标识的书籍互为翻译，阅读页可切换语言</p>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.transGroup')}</label>
+                <Input value={transGroup} onChange={(e) => setTransGroup(e.target.value)} placeholder={t('bookForm.placeholder.transGroup')} maxLength={64} />
+                <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.transGroupHint')}</p>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">版本</label>
-                <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="如 v1 / 第一版" maxLength={32} />
-                <p className="mt-1.5 text-xs text-slate-400">多版本书组时，用于标注本书版本</p>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.version')}</label>
+                <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder={t('bookForm.placeholder.version')} maxLength={32} />
+                <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.versionHint')}</p>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">版本分组</label>
-                <Input value={versionGroup} onChange={(e) => setVersionGroup(e.target.value)} placeholder="如 my-book-editions" maxLength={64} />
-                <p className="mt-1.5 text-xs text-slate-400">填写相同标识的书籍互为不同版本，阅读页可切换版本</p>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.versionGroup')}</label>
+                <Input value={versionGroup} onChange={(e) => setVersionGroup(e.target.value)} placeholder={t('bookForm.placeholder.versionGroup')} maxLength={64} />
+                <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.versionGroupHint')}</p>
               </div>
             </div>
           </Section>
 
           {/* 阅读水印 */}
-          <Section icon={<i className="fa-solid fa-stamp text-sm" aria-hidden="true" />} title="阅读水印">
+          <Section icon={<i className="fa-solid fa-stamp text-sm" aria-hidden="true" />} title={t('bookForm.section.watermark')}>
             <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
               <div>
-                <div className="text-sm font-medium text-slate-900">在阅读页显示水印</div>
-                <p className="mt-1 text-xs leading-5 text-slate-500">水印会以低透明度重复覆盖章节正文，不影响选择、复制和链接点击。</p>
+                <div className="text-sm font-medium text-slate-900">{t('bookForm.watermark.title')}</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookForm.watermark.desc')}</p>
               </div>
-              <Switch checked={watermarkEnabled} onChange={setWatermarkEnabled} ariaLabel="在阅读页显示水印" />
+              <Switch checked={watermarkEnabled} onChange={setWatermarkEnabled} ariaLabel={t('bookForm.watermark.title')} />
             </div>
             {watermarkEnabled && (
-              <RowField label="水印内容" hint="建议填写站点名、作者名或版权声明，关闭后仍会保留此内容。">
+              <RowField label={t('bookForm.watermark.label')} hint={t('bookForm.watermark.hint')}>
                 <div className="relative">
                   <Input
                     value={watermarkText}
                     maxLength={MAX_WATERMARK}
                     onChange={(e) => setWatermarkText(e.target.value)}
-                    placeholder="例如：InfoSphere · 仅供学习交流"
+                    placeholder={t('bookForm.watermark.placeholder')}
                     className="pr-16"
                   />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -298,22 +297,22 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
           </Section>
 
           {/* 发布设置 */}
-          <Section icon={<SlidersIcon className="h-4 w-4" />} title="发布设置">
+          <Section icon={<SlidersIcon className="h-4 w-4" />} title={t('bookForm.section.publish')}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <VisibilityCard active={!isPublic} onClick={() => { setIsPublic(false); setLoginRequired(false) }}
-                icon={<LockIcon className="h-5 w-5" />} title="仅自己可见" desc="适合尚未完成的内容" />
+                icon={<LockIcon className="h-5 w-5" />} title={t('bookForm.visibility.private.title')} desc={t('bookForm.visibility.private.desc')} />
               <VisibilityCard active={isPublic && loginRequired} onClick={() => { setIsPublic(true); setLoginRequired(true) }}
-                icon={<i className="fa-solid fa-user-lock text-[1.1rem]" aria-hidden="true" />} title="仅登录用户" desc="仅登录用户可发现和阅读" />
+                icon={<i className="fa-solid fa-user-lock text-[1.1rem]" aria-hidden="true" />} title={t('bookForm.visibility.login.title')} desc={t('bookForm.visibility.login.desc')} />
               <VisibilityCard active={isPublic && !loginRequired} onClick={() => { setIsPublic(true); setLoginRequired(false) }}
-                icon={<GlobeIcon className="h-5 w-5" />} title="公开访问" desc="所有访客都可以阅读" />
+                icon={<GlobeIcon className="h-5 w-5" />} title={t('bookForm.visibility.public.title')} desc={t('bookForm.visibility.public.desc')} />
             </div>
             <div className="mt-4 max-w-xs">
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">初始状态</label>
-              <Select value={status} onChange={(v) => setStatus(v as BookStatus)} options={statusOptions} />
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.initialStatus')}</label>
+              <Select value={status} onChange={(v) => setStatus(v as BookStatus)} options={statusOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))} />
             </div>
             <div className="mt-4 flex items-start gap-2 rounded-lg bg-primary-50/70 px-3 py-2.5 text-sm text-primary-700">
               <InfoIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{isEdit ? '保存后可继续在章节编辑页调整这些设置。' : '创建后将进入章节编辑页，你可以随时调整这些设置。'}</span>
+              <span>{isEdit ? t('bookForm.publishHintEdit') : t('bookForm.publishHintCreate')}</span>
             </div>
           </Section>
         </div>
@@ -324,8 +323,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
       {showPreview && (
         <div className="fixed bottom-6 right-6 z-40 max-h-[calc(100vh-7rem)] w-[340px] space-y-4 overflow-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-slate-900">实时预览</h2>
-            <button type="button" onClick={() => setShowPreview(false)} aria-label="关闭预览"
+            <h2 className="font-bold text-slate-900">{t('bookForm.preview.title')}</h2>
+            <button type="button" onClick={() => setShowPreview(false)} aria-label={t('bookForm.preview.close')}
               className="flex items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
               style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
               <CloseIcon className="h-4 w-4" />
@@ -338,13 +337,13 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
             <div className="space-y-2 p-4">
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                  {tags.map((t) => (
-                    <span key={t} className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t}</span>
+                  {tags.map((tag) => (
+                    <span key={tag} className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{tag}</span>
                   ))}
                 </div>
               )}
-              <h3 className="line-clamp-2 text-lg font-bold text-slate-900">{title || '书名将显示在这里'}</h3>
-              <p className="line-clamp-3 text-sm text-slate-500">{description || '一句话简介会显示在这里。'}</p>
+              <h3 className="line-clamp-2 text-lg font-bold text-slate-900">{title || t('bookForm.preview.emptyTitle')}</h3>
+              <p className="line-clamp-3 text-sm text-slate-500">{description || t('bookForm.preview.emptyDesc')}</p>
               <div className="flex items-center gap-2 pt-1">
                 {authorAvatar
                   ? <img src={authorAvatar} alt="" className="h-6 w-6 rounded-full object-cover" />
@@ -353,16 +352,16 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
               </div>
               <div className="flex items-center gap-1.5 pt-1 text-xs text-slate-400">
                 <LockIcon className="h-3.5 w-3.5" />
-                {isPublic ? (loginRequired ? '仅登录用户' : '公开访问') : '仅自己可见'} · {statusNames[status]}
+                {isPublic ? (loginRequired ? t('bookForm.visibility.login.title') : t('bookForm.visibility.public.title')) : t('bookForm.visibility.private.title')} · {statusOptions.find((o) => o.value === status) ? t(statusOptions.find((o) => o.value === status)!.labelKey) : status}
               </div>
             </div>
           </div>
           <div className="rounded-xl border border-slate-200 p-4">
-            <h3 className="mb-3 font-bold text-slate-900">{isEdit ? '你可以' : '创建后你可以'}</h3>
+            <h3 className="mb-3 font-bold text-slate-900">{isEdit ? t('bookForm.preview.youCan') : t('bookForm.preview.youCanNew')}</h3>
             <ul className="space-y-3 text-sm text-slate-600">
-              {['添加并组织章节', '使用 Markdown 写作', '预览并发布内容'].map((t) => (
-                <li key={t} className="flex items-center gap-2.5">
-                  <CheckCircleIcon className="h-5 w-5 text-emerald-500" /> {t}
+              {[t('bookForm.preview.feature1'), t('bookForm.preview.feature2'), t('bookForm.preview.feature3')].map((feature) => (
+                <li key={feature} className="flex items-center gap-2.5">
+                  <CheckCircleIcon className="h-5 w-5 text-emerald-500" /> {feature}
                 </li>
               ))}
             </ul>
@@ -374,13 +373,13 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
       <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
         <button type="button" onClick={() => setShowPreview((v) => !v)}
           className="flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-primary-600">
-          <EyeIcon className="h-4 w-4" /> {showPreview ? '关闭预览' : '实时预览'}
+          <EyeIcon className="h-4 w-4" /> {showPreview ? t('bookForm.preview.close') : t('bookForm.preview.title')}
         </button>
         <div className="flex items-center gap-3">
           {showSaveDraft && (
-            <Button variant="outline" type="button" onClick={() => submit('draft')} disabled={saving}>保存为草稿</Button>
+            <Button variant="outline" type="button" onClick={() => submit('draft')} disabled={saving}>{t('bookForm.saveDraft')}</Button>
           )}
-          <Button variant="outline" type="button" onClick={() => router.back()}>取消</Button>
+          <Button variant="outline" type="button" onClick={() => router.back()}>{t('common.actions.cancel')}</Button>
           <Button onClick={() => submit()} loading={saving}>{submitLabel}</Button>
         </div>
       </div>
