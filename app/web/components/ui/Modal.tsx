@@ -39,7 +39,7 @@ export function Modal({ open, onClose, title, children, footer, className, eleva
             <ModalCloseButton onClose={onClose} />
           </div>
         )}
-        <div className="min-h-0 overflow-y-auto px-6 py-4">{children}</div>
+        <div className="min-h-0 overflow-y-auto overflow-x-auto px-6 py-4">{children}</div>
         {footer && (
           <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-6 py-4">{footer}</div>
         )}
