@@ -1,14 +1,16 @@
 import type { GetServerSideProps } from 'next'
 import { siteUrlFrom } from '@/lib/server-api'
-import { buildSitemapIndex } from '@/lib/sitemap'
+import { ensureSitemapRefresh, getSitemapIndex } from '@/lib/sitemap'
 
-// sitemap index：按公开书籍数分片，分片内容见 /sitemaps/{n}.xml
+// sitemap index：静态文件优先（每日后台重建），缺失/过期时按需构建兜底
 export default function SitemapIndex() {
   return null
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
-  const xml = await buildSitemapIndex(siteUrlFrom(req))
+  const siteUrl = siteUrlFrom(req)
+  ensureSitemapRefresh(siteUrl)
+  const xml = await getSitemapIndex(siteUrl)
   res.setHeader('Content-Type', 'application/xml; charset=utf-8')
   res.setHeader('Cache-Control', 'public, max-age=3600')
   res.write(xml)

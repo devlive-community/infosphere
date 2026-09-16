@@ -1,8 +1,8 @@
 import type { GetServerSideProps } from 'next'
 import { siteUrlFrom } from '@/lib/server-api'
-import { BOOKS_PER_SHARD, buildSitemapShard } from '@/lib/sitemap'
+import { ensureSitemapRefresh, getSitemapShard } from '@/lib/sitemap'
 
-// sitemap 分片：第 n 片 = 公开书籍列表第 n+1 页（每页 100 本）+ 各书公开章节阅读页
+// sitemap 分片：静态文件优先（每日后台重建），缺失/过期时按需构建兜底
 export default function SitemapShard() {
   return null
 }
@@ -16,9 +16,10 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res, params 
     return { props: {} }
   }
 
-  const xml = await buildSitemapShard(shard, siteUrlFrom(req))
+  const siteUrl = siteUrlFrom(req)
+  ensureSitemapRefresh(siteUrl)
+  const xml = await getSitemapShard(shard, siteUrl)
   res.setHeader('Content-Type', 'application/xml; charset=utf-8')
-  // 分片内容服务端已缓存 10 分钟，浏览器/CDN 可更长
   res.setHeader('Cache-Control', 'public, max-age=3600')
   res.write(xml)
   res.end()
