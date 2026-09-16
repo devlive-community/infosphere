@@ -25,7 +25,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
       total = data.total
       for (const book of data.items) {
         bookEntries.push({
-          loc: `${siteUrl}/book/detail?slug=${encodeURIComponent(book.slug)}`,
+          loc: `${siteUrl}/book/detail/${encodeURIComponent(book.slug)}`,
           lastmod: (book.updated_at || book.created_at || '').slice(0, 10),
         })
       }
