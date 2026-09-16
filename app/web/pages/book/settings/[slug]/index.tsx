@@ -54,6 +54,7 @@ export default function BookSettingsBasic({ book }: InferGetServerSidePropsType<
       <BookForm
         initial={book}
         showHeader={false}
+        showLocalization={false}
         heading={t('bookSettings.basic.heading')}
         subheading={t('bookSettings.basic.subheading')}
         breadcrumb={book.title}

@@ -8,7 +8,7 @@ import { ButtonLink } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 
-export type BookSettingsTab = 'basic' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'danger'
+export type BookSettingsTab = 'basic' | 'localization' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'danger'
 
 interface BookSettingsLayoutProps {
   book: Book
@@ -24,6 +24,7 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
 
   const NAV: { key: BookSettingsTab; labelKey: string; icon: (p: { className?: string }) => JSX.Element; sub: string; danger?: boolean }[] = [
     { key: 'basic', labelKey: 'bookSettings.nav.basic', icon: GearIcon, sub: '' },
+    { key: 'localization', labelKey: 'bookSettings.nav.localization', icon: ({ className }) => <i className={`fa-solid fa-language ${className || ''}`} aria-hidden="true" />, sub: 'localization' },
     { key: 'chapters', labelKey: 'bookSettings.nav.chapters', icon: ListIcon, sub: 'chapters' },
     { key: 'analytics', labelKey: 'bookSettings.nav.analytics', icon: ({ className }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" />, sub: 'analytics' },
     { key: 'collaborators', labelKey: 'bookSettings.nav.collaborators', icon: UsersIcon, sub: 'collaborators' },

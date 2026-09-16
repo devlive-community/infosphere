@@ -1114,6 +1114,11 @@ export const en: Record<string, string> = {
 
   // Book settings
   'bookSettings.nav.basic': 'Basic info',
+  'bookSettings.nav.localization': 'Localization & Versions',
+  'bookSettings.localization.heading': 'Localization & Versions',
+  'bookSettings.localization.subheading': 'Configure the book language, translation group, version and version group for multilingual translation and version management.',
+  'bookSettings.localization.saved': 'Localization settings saved',
+  'bookSettings.localization.saveFailed': 'Save failed',
   'bookSettings.nav.chapters': 'Chapters',
   'bookSettings.nav.analytics': 'Analytics',
   'bookSettings.nav.collaborators': 'Collaborators',

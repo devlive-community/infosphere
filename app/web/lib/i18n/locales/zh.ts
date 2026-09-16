@@ -1114,6 +1114,11 @@ export const zh: Record<string, string> = {
 
   // 书籍设置
   'bookSettings.nav.basic': '基本信息',
+  'bookSettings.nav.localization': '多语言与版本',
+  'bookSettings.localization.heading': '多语言与版本',
+  'bookSettings.localization.subheading': '设置书籍语言、翻译分组、版本与版本分组，用于多语言互译与版本管理。',
+  'bookSettings.localization.saved': '多语言与版本设置已保存',
+  'bookSettings.localization.saveFailed': '保存失败',
   'bookSettings.nav.chapters': '章节管理',
   'bookSettings.nav.analytics': '数据分析',
   'bookSettings.nav.collaborators': '协作者',

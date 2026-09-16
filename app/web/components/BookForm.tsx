@@ -35,11 +35,13 @@ export interface BookFormProps {
   showSaveDraft?: boolean
   /** 是否渲染内置页头（面包屑+标题）；设置页由外层布局提供时置 false，仅保留操作按钮 */
   showHeader?: boolean
+  /** 是否渲染"多语言与版本"区块；设置页拆分为独立 tab 时置 false */
+  showLocalization?: boolean
   onSubmit: (payload: Record<string, unknown>) => Promise<void>
 }
 
 // 书籍表单：创建与设置页共用，双栏（分区表单 + 实时预览）
-export default function BookForm({ initial, heading, subheading, breadcrumb, submitLabel, showSaveDraft, showHeader = true, onSubmit }: BookFormProps) {
+export default function BookForm({ initial, heading, subheading, breadcrumb, submitLabel, showSaveDraft, showHeader = true, showLocalization = true, onSubmit }: BookFormProps) {
   const router = useRouter()
   const { user } = useApp()
   const { t } = useTranslation()
@@ -249,7 +251,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
             </div>
           </Section>
 
-          {/* 多语言与版本：语言/翻译分组 一组，版本/版本分组 一组 */}
+          {/* 多语言与版本：语言/翻译分组 一组，版本/版本分组 一组（设置页拆分为独立 tab，可选隐藏） */}
+          {showLocalization && (
           <Section icon={<i className="fa-solid fa-language text-sm" aria-hidden="true" />} title={t('bookForm.section.localization')}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -274,6 +277,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
               </div>
             </div>
           </Section>
+          )}
 
           {/* 阅读水印 */}
           <Section icon={<i className="fa-solid fa-stamp text-sm" aria-hidden="true" />} title={t('bookForm.section.watermark')}>
