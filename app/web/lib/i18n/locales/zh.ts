@@ -2,6 +2,7 @@
 export const zh: Record<string, string> = {
   // 通用动作
   'common.actions.save': '保存',
+  'common.settings': '设置',
   'common.actions.cancel': '取消',
   'common.actions.delete': '删除',
   'common.actions.edit': '编辑',

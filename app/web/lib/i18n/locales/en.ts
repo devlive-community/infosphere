@@ -2,6 +2,7 @@
 export const en: Record<string, string> = {
   // Common actions
   'common.actions.save': 'Save',
+  'common.settings': 'Settings',
   'common.actions.cancel': 'Cancel',
   'common.actions.delete': 'Delete',
   'common.actions.edit': 'Edit',
