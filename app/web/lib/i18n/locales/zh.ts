@@ -1648,7 +1648,6 @@ export const zh: Record<string, string> = {
   'admin.achievements.form.saveSuccess': '成就定义已更新',
   'admin.achievements.form.createSuccess': '成就定义已创建',
   'admin.achievements.form.saveFailed': '保存失败',
-  'admin.achievements.loadFailed': '加载失败',
 
   // 审计日志
   'admin.audit.action.all': '全部操作',

@@ -1282,7 +1282,7 @@ export default function Writer({ user }: WriterProps) {
             </div>
             <div className="min-w-0">
               <div className="truncate font-semibold text-slate-900">{book.title}</div>
-              <div className="mt-1"><Badge tone={STATUS_META[book.status].tone}>{STATUS_META[book.status].label}</Badge></div>
+              <div className="mt-1"><Badge tone={STATUS_META[book.status].tone}>{t(STATUS_META[book.status].labelKey)}</Badge></div>
             </div>
           </div>
 
@@ -2048,7 +2048,7 @@ function RevisionDrawer({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-900">{t(REVISION_REASON_LABEL[detail.reason])}</span>
-                      <Badge tone={STATUS_META[detail.status].tone}>{STATUS_META[detail.status].label}</Badge>
+                      <Badge tone={STATUS_META[detail.status].tone}>{t(STATUS_META[detail.status].labelKey)}</Badge>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">{formatDate(detail.created_at)} · {detail.author?.username || t('writer.unknownUser')}</p>
                   </div>
