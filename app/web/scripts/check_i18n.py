@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""i18n 完整性检测（CI 与本地共用）。
+
+检查项：
+1. zh/en 字典键集完全一致（缺失/多余键均失败）
+2. 无重复键定义（TS 对象重复键会静默覆盖）
+3. 代码中引用的静态键（t('ns.x')、labelKey: 'ns.x' 等字面量）在字典中存在
+4. 已登记的动态键取值域（见 DYNAMIC_KEY_SPACES）在字典中存在
+
+用法：python3 scripts/check_i18n.py   （在 app/web 目录下执行，或传路径参数）
+"""
+import os
+import re
+import sys
+
+WEB_DIR = sys.argv[1] if len(sys.argv) > 1 else '.'
+LOCALES_DIR = os.path.join(WEB_DIR, 'lib', 'i18n', 'locales')
+
+# 动态键取值域登记表：代码用 t(`prefix${var}suffix`) 拼接的键，静态扫描无法覆盖，
+# 必须在此显式登记取值域（新增动态键拼接时请同步维护）。
+DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
+    # BookCard/WriterWorkbench/detail: t(`book.status.${status}`)，BookStatus 共 5 种
+    'book.status.': ['draft', 'in_progress', 'published', 'completed', 'archived'],
+    # DatePicker: t(`ui.datepicker.weekday${k}`) / t(`ui.datepicker.month${m+1}`)
+    'ui.datepicker.weekday': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    'ui.datepicker.month': [str(m) for m in range(1, 13)],
+    # TwoFactorSettings: t(`tfa.op.${key}.label|.hint`)
+    'tfa.op.': ['login', 'credentials', 'delete', 'unbind_export'],
+    # admin achievements: t(`admin.achievements.category.${x}`) / rarity
+    'admin.achievements.category.': ['reading', 'creation', 'community', 'account', 'special'],
+    'admin.achievements.rarity.': ['common', 'rare', 'epic', 'legendary'],
+    # OAuth 错误码: auth.oautherror.${code}（OAuthButtons.OAUTH_ERROR_CODES）
+    'auth.oautherror.': [
+        'unknown', 'not_configured', 'invalid_state', 'missing_code', 'provider_unreachable',
+        'token_exchange_failed', 'profile_fetch_failed', 'account_disabled', 'register_failed',
+        'token_issue_failed', 'unsupported_provider', 'registration_closed',
+        'registration_invite_required', 'already_bound',
+    ],
+    # DocumentRevisionReason: writer.rev.${reason}
+    'writer.rev.': ['create', 'save', 'publish', 'pre_restore', 'restore'],
+}
+
+# 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）
+DYNAMIC_SUFFIXES: dict[str, list[str]] = {
+    'tfa.op.': ['.label', '.hint'],
+}
+
+SKIP_DIRS = {'node_modules', '.next', '.next-build', 'lib/i18n/locales', 'coverage', 'scripts'}
+
+# 已确认不是 i18n 键的字符串字面量（与键前缀同名碰撞的数据值）
+# 新增碰撞时在此登记，并注明出处
+KNOWN_NON_KEYS = {
+    # pages/admin/audit-logs.tsx 审计 action 下拉的 value（数据值，文案键为 admin.audit.action.*）
+    'user.role_updated', 'user.status_updated', 'user.deleted',
+    'book.moderated', 'book.permanently_deleted', 'report.resolved',
+}
+
+KEY_RE = re.compile(r"'([a-zA-Z][\w.]*)'\s*:")
+USED_RE = re.compile(r"'([a-zA-Z][\w.]*)'")
+
+
+def load_dict(name: str) -> tuple[set[str], list[str]]:
+    """返回 (键集合, 重复键列表)"""
+    path = os.path.join(LOCALES_DIR, name)
+    keys: list[str] = []
+    for i, line in enumerate(open(path, encoding='utf-8'), 1):
+        m = KEY_RE.search(line)
+        if m:
+            keys.append(m.group(1))
+    seen: set[str] = set()
+    dups: list[str] = []
+    for k in keys:
+        if k in seen:
+            dups.append(k)
+        seen.add(k)
+    return seen, dups
+
+
+def main() -> int:
+    errors: list[str] = []
+
+    # 1/2. 加载字典并比对
+    zh, zh_dups = load_dict('zh.ts')
+    en, en_dups = load_dict('en.ts')
+    for loc, dups in (('zh', zh_dups), ('en', en_dups)):
+        for d in dups:
+            errors.append(f'[{loc}] 重复键定义: {d}')
+    for k in sorted(zh - en):
+        errors.append(f'[en] 缺失键: {k}')
+    for k in sorted(en - zh):
+        errors.append(f'[zh] 缺失键: {k}')
+
+    # 命名空间前缀集合（用于从代码里识别 i18n 键字面量）
+    prefixes = sorted({k.split('.')[0] for k in zh | en}, key=len, reverse=True)
+    prefix_alt = '|'.join(re.escape(p) for p in prefixes)
+    used_re = re.compile(rf"'(({prefix_alt})\.[\w.]+)'")
+
+    # 3. 扫描代码中的键字面量
+    used: dict[str, str] = {}
+    for root, dirs, files in os.walk(WEB_DIR):
+        rel = os.path.relpath(root, WEB_DIR).replace('\\', '/')
+        if any(rel == s or rel.startswith(s + '/') for s in SKIP_DIRS):
+            continue
+        for f in files:
+            if not f.endswith(('.ts', '.tsx')):
+                continue
+            p = os.path.join(root, f)
+            for i, line in enumerate(open(p, encoding='utf-8'), 1):
+                for m in used_re.finditer(line):
+                    used.setdefault(m.group(1), f'{os.path.relpath(p, WEB_DIR)}:{i}')
+
+    for k in sorted(used):
+        if k not in zh and k not in KNOWN_NON_KEYS:
+            errors.append(f'字典缺失被引用的键: {k}  <- {used[k]}')
+
+    # 4. 动态键取值域展开检查
+    for prefix, values in DYNAMIC_KEY_SPACES.items():
+        suffixes = DYNAMIC_SUFFIXES.get(prefix, [''])
+        for v in values:
+            for sfx in suffixes:
+                key = f'{prefix}{v}{sfx}'
+                if key not in zh:
+                    errors.append(f'动态键缺失: {key}（取值域登记表 DYNAMIC_KEY_SPACES）')
+                if key not in en:
+                    errors.append(f'动态键缺失(en): {key}')
+
+    if errors:
+        print(f'❌ i18n 检查失败，共 {len(errors)} 个问题：')
+        for e in errors:
+            print(f'  - {e}')
+        return 1
+    print(f'✅ i18n 检查通过：zh/en 各 {len(zh)} 键，同步一致；引用 {len(used)} 键全部存在；动态键取值域 {sum(len(v) for v in DYNAMIC_KEY_SPACES.values())} 项全覆盖')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

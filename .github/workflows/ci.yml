@@ -66,6 +66,10 @@ jobs:
         working-directory: app/web
         run: pnpm exec tsc --noEmit
 
+      - name: i18n check
+        working-directory: app/web
+        run: python3 scripts/check_i18n.py
+
       - name: Test
         working-directory: app/web
         run: pnpm test
