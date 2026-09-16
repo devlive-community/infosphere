@@ -2028,7 +2028,7 @@ export const zh: Record<string, string> = {
   'admin.settings.mail.smtpPort': 'SMTP 端口',
   'admin.settings.mail.smtpPortHint': '465 使用隐式 TLS，587 自动 STARTTLS',
   'admin.settings.mail.siteUrl': '站点访问地址',
-  'admin.settings.mail.siteUrlHint': '找回密码邮件中的链接将以此为前缀，例如 https://kb.example.com',
+  'admin.settings.mail.siteUrlHint': '站点对外访问地址，用于邮件中的链接与 sitemap 生成，例如 https://kb.example.com',
   'admin.settings.mail.smtpHost': 'SMTP 主机',
   'admin.settings.mail.smtpUsername': 'SMTP 用户名',
   'admin.settings.mail.smtpPassword': 'SMTP 密码',

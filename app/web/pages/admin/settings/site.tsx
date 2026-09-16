@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, API_BASE, getToken } from '@/lib/api'
+import type { MailConfig } from '@/lib/admin'
 import { resolveMediaUrl } from '@/lib/media'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
@@ -20,6 +21,7 @@ export default function SettingsSite() {
   const [helpDocUrl, setHelpDocUrl] = useState(site.help_doc_url || '')
   const [termsUrl, setTermsUrl] = useState(site.terms_url || '')
   const [privacyUrl, setPrivacyUrl] = useState(site.privacy_url || '')
+  const [siteUrl, setSiteUrl] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadingFavicon, setUploadingFavicon] = useState(false)
   const [annEnabled, setAnnEnabled] = useState(site.announcement_enabled === 'true')
@@ -27,6 +29,20 @@ export default function SettingsSite() {
   const [annTone, setAnnTone] = useState(site.announcement_tone === 'warning' ? 'warning' : 'info')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api<MailConfig>('/mail')
+      .then((m) => setSiteUrl(m.site_url || ''))
+      .catch(() => {})
+  }, [])
+
+  async function saveSiteUrl() {
+    try {
+      await api('/mail', { method: 'PUT', body: { site_url: siteUrl } })
+    } catch (e) {
+      setMessage((e as Error).message)
+    }
+  }
 
   async function uploadLogo(file: File | undefined) {
     if (!file) return
@@ -68,6 +84,7 @@ export default function SettingsSite() {
     setSaving(true)
     setMessage('')
     try {
+      await saveSiteUrl()
       await api('/site', { method: 'PUT', body: {
         site_name: siteName, site_description: siteDesc, site_logo: siteLogo,
         site_favicon: siteFavicon, site_keywords: siteKeywords, site_footer_text: siteFooterText, site_beian: siteBeian,
@@ -88,6 +105,9 @@ export default function SettingsSite() {
         <div className="space-y-4">
           <Field label={t('admin.settings.site.siteName')}>
             <Input value={siteName} onChange={(e) => setSiteName(e.target.value)} placeholder="InfoSphere" />
+          </Field>
+          <Field label={t('admin.settings.mail.siteUrl')} hint={t('admin.settings.mail.siteUrlHint')}>
+            <Input value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} placeholder="https://kb.example.com" />
           </Field>
           <Field label={t('admin.settings.site.siteDescription')} hint={t('admin.settings.site.siteDescriptionHint')}>
             <Textarea rows={3} value={siteDesc} onChange={(e) => setSiteDesc(e.target.value)}

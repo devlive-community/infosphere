@@ -1,16 +1,18 @@
 import type { GetServerSideProps } from 'next'
-import { siteUrlFrom } from '@/lib/server-api'
-import { ensureSitemapRefresh, getSitemapIndex } from '@/lib/sitemap'
+import { readSitemapFile } from '@/lib/sitemap'
 
-// sitemap index：静态文件优先（每日后台重建），缺失/过期时按需构建兜底
+// sitemap index：读取 Go 后台任务生成的静态文件（每日重建）
 export default function SitemapIndex() {
   return null
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
-  const siteUrl = siteUrlFrom(req)
-  ensureSitemapRefresh(siteUrl)
-  const xml = await getSitemapIndex(siteUrl)
+export const getServerSideProps: GetServerSideProps = async ({ res }) => {
+  const xml = readSitemapFile('sitemap.xml')
+  if (!xml) {
+    res.statusCode = 404
+    res.end()
+    return { props: {} }
+  }
   res.setHeader('Content-Type', 'application/xml; charset=utf-8')
   res.setHeader('Cache-Control', 'public, max-age=3600')
   res.write(xml)

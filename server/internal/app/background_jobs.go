@@ -78,6 +78,7 @@ func (a *App) configureJobQueue() error {
 	queue.RegisterResult(pdfImportJobType, a.runPDFImportJob)
 	queue.RegisterResult(zipImportJobType, a.runZIPImportJob)
 	queue.Register(maintenanceJobType, a.runMaintenanceCleanup)
+	queue.Register(sitemapJobType, a.runSitemapGenerate)
 	queue.Register(achievementRecalculateJobType, a.runAchievementRecalculateJob)
 	queue.Register(achievementEvaluateJobType, a.runAchievementEvaluateJob)
 	a.jobsMu.Lock()
@@ -205,6 +206,15 @@ func (a *App) enqueueMaintenanceIfDue(ctx context.Context, queue *jobqueue.Queue
 	}
 	if _, _, err := queue.EnqueueIfDue(ctx, maintenanceJobType, struct{}{}, 5, maintenanceInterval); err != nil {
 		log.Printf("[jobs] enqueue maintenance task failed: %v", err)
+	}
+}
+
+func (a *App) enqueueSitemapIfDue(ctx context.Context, queue *jobqueue.Queue) {
+	if queue == nil {
+		return
+	}
+	if _, _, err := queue.EnqueueIfDue(ctx, sitemapJobType, struct{}{}, 3, sitemapInterval); err != nil {
+		log.Printf("[jobs] enqueue sitemap task failed: %v", err)
 	}
 }
 
@@ -360,10 +370,12 @@ func (a *App) startJobSupervisor(ctx context.Context) {
 			active = queue
 			go queue.Start(workerCtx)
 			a.enqueueMaintenanceIfDue(ctx, queue)
+			a.enqueueSitemapIfDue(ctx, queue)
 			a.enqueuePendingAchievementEvents(queue)
 			nextMaintenanceCheck = currentTime().Add(maintenanceCheckEvery)
 		} else if queue != nil && !currentTime().Before(nextMaintenanceCheck) {
 			a.enqueueMaintenanceIfDue(ctx, queue)
+			a.enqueueSitemapIfDue(ctx, queue)
 			a.enqueuePendingAchievementEvents(queue)
 			nextMaintenanceCheck = currentTime().Add(maintenanceCheckEvery)
 		}

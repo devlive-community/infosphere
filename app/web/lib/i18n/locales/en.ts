@@ -2028,7 +2028,7 @@ export const en: Record<string, string> = {
   'admin.settings.mail.smtpPort': 'SMTP port',
   'admin.settings.mail.smtpPortHint': '465 uses implicit TLS, 87 uses STARTTLS',
   'admin.settings.mail.siteUrl': 'Site URL',
-  'admin.settings.mail.siteUrlHint': 'Password reset emails will use this as prefix, e.g. https://kb.example.com',
+  'admin.settings.mail.siteUrlHint': 'The public site URL used for links in emails and sitemap generation, e.g. https://kb.example.com',
   'admin.settings.mail.smtpHost': 'SMTP host',
   'admin.settings.mail.smtpUsername': 'SMTP username',
   'admin.settings.mail.smtpPassword': 'SMTP password',

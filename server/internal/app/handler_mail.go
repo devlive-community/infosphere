@@ -98,10 +98,12 @@ func (a *App) AdminSaveMail(c *gin.Context) {
 	}
 	if req.SiteURL != nil {
 		fields = append(fields, "site_url")
-		if err := a.setSetting("site_url", *req.SiteURL, "站点访问地址（用于邮件中的链接）"); err != nil {
+		if err := a.setSetting("site_url", *req.SiteURL, "站点访问地址（用于邮件链接与 sitemap 生成）"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
+		// 站点地址变更后立即重建 sitemap，不等下一每日周期
+		a.enqueueSitemapGenerate()
 	}
 	if req.NotificationsEnabled != nil {
 		fields = append(fields, "notifications_enabled")

@@ -52,10 +52,6 @@ export default function SettingsMail() {
               <Input type="number" value={mail.port || ''} onChange={(e) => setMail({ ...mail, port: Number(e.target.value) })} />
             </Field>
           </div>
-          <Field label={t('admin.settings.mail.siteUrl')} hint={t('admin.settings.mail.siteUrlHint')}>
-            <Input value={mail.site_url || ''} onChange={(e) => setMail({ ...mail, site_url: e.target.value })}
-              placeholder="https://kb.example.com" />
-          </Field>
           <Field label={t('admin.settings.mail.smtpHost')}>
             <Input value={mail.host || ''} onChange={(e) => setMail({ ...mail, host: e.target.value })}
               placeholder="smtp.example.com" />

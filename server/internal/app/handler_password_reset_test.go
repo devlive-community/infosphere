@@ -182,6 +182,16 @@ func TestPasswordReset(t *testing.T) {
 	}
 
 	// 9. site_url 配置后邮件链接使用站点地址
+	// 先排空此前累积的后台任务（site_url 变更会触发 sitemap 重建入队），确保随后跑的是邮件任务
+	for {
+		ran, err := a.Jobs.RunOnce(context.Background())
+		if err != nil {
+			t.Fatalf("排空后台任务失败: %v", err)
+		}
+		if !ran {
+			break
+		}
+	}
 	request(http.MethodPost, "/api/v1/auth/password/forgot", map[string]any{"email": "alice@test.local"}, "")
 	runNextJob()
 	if !strings.Contains(recorder.sends[len(recorder.sends)-1], "https://infosphere.example.com/reset-password?token=") {
