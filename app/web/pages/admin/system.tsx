@@ -224,7 +224,7 @@ export default function AdminSystem() {
           status={userCount !== null ? t('admin.system.config.users', { users: userCount, books: fmtNum(bookCount) }) : t('admin.system.config.usersManage')} ok />
         <ConfigCard icon={BookIcon} tone="violet" title={t('admin.nav.books')} href="/admin/books"
           status={bookCount !== null ? t('admin.system.config.books', { count: fmtNum(bookCount) }) : t('admin.system.config.booksManage')} ok />
-        <ConfigCard icon={FileTextIcon} tone="sky" title={t('admin.nav.chapters')} href="/admin/documents"
+        <ConfigCard icon={FileTextIcon} tone="sky" title={t('admin.nav.documents')} href="/admin/documents"
           status={docCount !== null ? t('admin.system.config.chapters', { count: fmtNum(docCount) }) : t('admin.system.config.chaptersManage')} ok />
         <ConfigCard icon={ServerIcon} tone="sky" title={t('admin.settings.storage.title')} href="/admin/settings/storage"
           status={storage ? (storage.driver === 'qiniu' ? t('admin.system.config.qiniu') : t('admin.system.config.localDisk')) : t('admin.system.config.loading')} ok />

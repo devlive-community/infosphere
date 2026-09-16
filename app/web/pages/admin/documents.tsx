@@ -150,9 +150,9 @@ export default function AdminDocuments() {
   }
 
   return (
-    <AdminLayout current="documents" breadcrumb={t('admin.nav.chapters')}>
+    <AdminLayout current="documents" breadcrumb={t('admin.nav.documents')}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t('admin.nav.chapters')}</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t('admin.nav.documents')}</h1>
         <p className="mt-1.5 text-sm text-slate-500">{t('admin.documents.description')}</p>
       </div>
 
