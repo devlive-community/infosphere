@@ -1648,7 +1648,6 @@ export const en: Record<string, string> = {
   'admin.achievements.form.saveSuccess': 'Achievement definition updated',
   'admin.achievements.form.createSuccess': 'Achievement definition created',
   'admin.achievements.form.saveFailed': 'Save failed',
-  'admin.achievements.loadFailed': 'Failed to load',
 
   // Audit logs
   'admin.audit.action.all': 'All actions',

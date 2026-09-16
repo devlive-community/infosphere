@@ -286,6 +286,7 @@ function ConfigCard({ icon: Icon, tone, title, status, href, ok }: {
   icon: (p: { className?: string }) => JSX.Element; tone: Tone; title: string
   status: string; href: string; ok?: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconTone[tone]}`}>
@@ -317,6 +318,7 @@ interface ActivityItem {
 function ActivityCard({ icon, title, items, empty }: {
   icon: React.ReactNode; title: string; items: ActivityItem[] | null; empty: string
 }) {
+  const { t } = useTranslation()
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
