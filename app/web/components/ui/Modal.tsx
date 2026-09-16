@@ -31,7 +31,7 @@ export function Modal({ open, onClose, title, children, footer, className, eleva
   return (
     <div className={`fixed inset-0 flex items-end justify-center sm:items-center ${elevated ? 'z-[200]' : 'z-50'}`}>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div ref={ref} className={`relative mx-0 flex max-h-[calc(100vh-1rem)] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:mx-4 sm:rounded-2xl ${className || ''}`}
+      <div ref={ref} className={`relative mx-0 flex max-h-[calc(100vh-1rem)] w-full flex-col rounded-t-2xl bg-white shadow-2xl sm:mx-4 sm:rounded-2xl ${/max-w-/.test(className || '') ? '' : 'max-w-lg'} ${className || ''}`}
         style={{ borderRadius: 'var(--radius)' }}>
         {title && (
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
