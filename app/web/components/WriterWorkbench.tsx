@@ -2023,7 +2023,7 @@ function RevisionDrawer({
                   <button key={revision.id} type="button" onClick={() => setSelectedId(revision.id)}
                     className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${selectedId === revision.id ? 'border-primary-200 bg-white shadow-sm ring-1 ring-primary-100' : 'border-transparent hover:border-slate-200 hover:bg-white'}`}>
                     <span className="flex items-center justify-between gap-2">
-                      <span className={`text-sm font-semibold ${selectedId === revision.id ? 'text-primary-700' : 'text-slate-800'}`}>{REVISION_REASON_LABEL[revision.reason]}</span>
+                      <span className={`text-sm font-semibold ${selectedId === revision.id ? 'text-primary-700' : 'text-slate-800'}`}>{t(REVISION_REASON_LABEL[revision.reason])}</span>
                       <span className="text-[11px] text-slate-400">{t('writer.charCount', { n: revision.content_length })}</span>
                     </span>
                     <span className="mt-1 block text-xs text-slate-500">{formatDate(revision.created_at)}</span>
