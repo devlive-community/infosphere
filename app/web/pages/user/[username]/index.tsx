@@ -61,7 +61,7 @@ export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ re
   const [books, achievements] = await Promise.all([
     serverApi<PageResult<Book>>(`/users/${encodeURIComponent(username)}/books`, { params: { page, page_size: 9, sort } })
       .catch(() => ({ items: [], total: 0, page: 1, page_size: 9 }) as PageResult<Book>),
-    serverApi<{ enabled: boolean; items: AchievementGrant[] }>(`/users/${encodeURIComponent(username)}/achievements`)
+    serverApi<{ enabled: boolean; items: AchievementGrant[] }>(`/users/${encodeURIComponent(username)}/achievements`, { headers: auth })
       .catch(() => ({ enabled: false, items: [] as AchievementGrant[] })),
   ])
 
@@ -221,7 +221,7 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
               {achievements.items.map((grant) => grant.achievement && (
                 <div key={grant.id} className="flex min-w-0 flex-col items-center rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-center">
                   <AchievementIcon achievement={grant.achievement} size="sm" />
-                  <span className="mt-2 line-clamp-2 text-sm font-medium text-slate-800">{locale === 'en' && grant.achievement.name_en ? grant.achievement.name_en : grant.achievement.name}</span>
+                  <span className="mt-2 line-clamp-2 text-sm font-medium text-slate-800">{grant.achievement.name}</span>
                   {grant.achievement.series_key && <span className="mt-1 text-[11px] text-slate-400">{t('user.home.achievementTier', { tier: String(grant.achievement.tier) })}</span>}
                 </div>
               ))}

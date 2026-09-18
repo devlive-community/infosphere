@@ -3,7 +3,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { SegmentedTabs } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
-export type SettingsTab = 'site' | 'footer' | 'registration' | 'captcha' | 'login-security' | 'content' | 'storage' | 'mail' | 'oauth' | 'translation'
+export type SettingsTab = 'site' | 'footer' | 'registration' | 'captcha' | 'login-security' | 'content' | 'storage' | 'mail' | 'oauth' | 'translation' | 'languages'
 
 interface SettingsLayoutProps {
   active: SettingsTab
@@ -16,6 +16,7 @@ export default function SettingsLayout({ active, description, children }: Settin
   const { t } = useTranslation()
 
   const TABS: { key: SettingsTab; labelKey: string; href: string }[] = [
+    { key: 'languages', labelKey: 'i18n.title', href: '/admin/settings/languages' },
     { key: 'site', labelKey: 'admin.settings.site', href: '/admin/settings/site' },
     { key: 'footer', labelKey: 'admin.settings.footer', href: '/admin/settings/footer' },
     { key: 'registration', labelKey: 'admin.settings.registration', href: '/admin/settings/registration' },

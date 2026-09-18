@@ -50,6 +50,16 @@ func (a *App) Router() *gin.Engine {
 	a.ServeUploads(r)
 
 	api := r.Group("/api/v1", a.installGate())
+	api.GET("/i18n/locales", a.OptionalAuth(), a.I18nLocales)
+	api.GET("/i18n/messages/:locale", a.I18nMessages)
+	api.PUT("/auth/locale", a.RequireAuth(), a.RequirePermission(authz.UserUpdate), a.UpdateUserLocale)
+	i18nAdmin := api.Group("/admin/i18n", a.RequireAuth(), a.RequireAdmin())
+	i18nAdmin.GET("/locales", a.RequirePermission(authz.I18nManage), a.AdminI18nLocales)
+	i18nAdmin.PUT("/locales", a.RequirePermission(authz.I18nManage), a.AdminSaveI18nLocales)
+	i18nAdmin.GET("/messages/:locale", a.RequirePermission(authz.I18nManage), a.AdminI18nMessages)
+	i18nAdmin.PUT("/messages/:locale", a.RequirePermission(authz.I18nManage), a.AdminSaveI18nMessages)
+	i18nAdmin.GET("/resources/:kind/:id", a.RequirePermission(authz.AchievementManage), a.AdminResourceTranslations)
+	i18nAdmin.PUT("/resources/:kind/:id", a.RequirePermission(authz.AchievementManage), a.AdminResourceTranslations)
 	{
 		// ── 安装向导（仅未安装时可用，无业务权限） ──
 		setup := api.Group("/setup")

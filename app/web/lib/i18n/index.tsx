@@ -1,69 +1,76 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { zh } from './locales/zh'
-import { en } from './locales/en'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/router'
+import { api, getToken } from '../api'
+import { DEFAULT_SNAPSHOT, builtinMessages, cookieLocale, formatMessage, normalizeLocale, resolvedMessages, type I18nSnapshot, type SiteLocale } from './runtime'
+export type { I18nSnapshot, SiteLocale } from './runtime'
+export type Locale = string
+export const DEFAULT_LOCALE = 'zh-CN'
 
-// i18n 基础设施。键名格式强制：namespace.function.keyname（见 .claude/memory/conventions.md）
-export type Locale = 'zh' | 'en'
-
-export const DEFAULT_LOCALE: Locale = 'zh'
-export const LOCALES: { value: Locale; labelKey: string }[] = [
-  { value: 'zh', labelKey: 'common.language.zh' },
-  { value: 'en', labelKey: 'common.language.en' },
-]
-
-const DICTS: Record<Locale, Record<string, string>> = { zh, en }
-const STORAGE_KEY = 'infosphere_locale'
-
-// translate 查字典：先当前语言，再回退默认语言，最后回退键本身；{var} 占位替换
 export function translate(locale: Locale, key: string, vars?: Record<string, string | number>): string {
-  const dict = DICTS[locale] || DICTS[DEFAULT_LOCALE]
-  let text = dict[key] ?? DICTS[DEFAULT_LOCALE][key] ?? key
-  if (vars) {
-    for (const [name, value] of Object.entries(vars)) {
-      text = text.split(`{${name}}`).join(String(value))
-    }
-  }
-  return text
+  const messages = builtinMessages[normalizeLocale(locale)] || builtinMessages[DEFAULT_LOCALE]
+  return formatMessage(messages[key] ?? builtinMessages[DEFAULT_LOCALE][key] ?? key, locale, vars)
 }
 
 interface I18nContextValue {
-  locale: Locale
-  setLocale: (locale: Locale) => void
+  locale: string
+  locales: SiteLocale[]
+  defaultLocale: string
+  loading: boolean
+  error: string
+  setLocale: (locale: string) => Promise<void>
+  refreshLanguages: () => Promise<void>
   t: (key: string, vars?: Record<string, string | number>) => string
 }
-
 const I18nContext = createContext<I18nContextValue>({
-  locale: DEFAULT_LOCALE,
-  setLocale: () => {},
-  t: (key) => key,
+  locale: DEFAULT_LOCALE, locales: DEFAULT_SNAPSHOT.items, defaultLocale: DEFAULT_LOCALE,
+  loading: false, error: '', setLocale: async () => {}, refreshLanguages: async () => {}, t: (key) => key,
 })
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  // SSR 与首屏统一用默认语言，避免 hydration 不一致；挂载后再应用用户所选
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE)
+export async function fetchI18nSnapshot(locale?: string): Promise<I18nSnapshot> {
+  const registry = await api<Pick<I18nSnapshot, 'items' | 'default_locale' | 'locale'>>('/i18n/locales', { params: { locale } })
+  const bundle = await api<Pick<I18nSnapshot, 'locale' | 'chain' | 'messages'>>('/i18n/messages/' + encodeURIComponent(registry.locale))
+  return { ...registry, ...bundle }
+}
 
+export function I18nProvider({ children, initial }: { children: ReactNode; initial?: I18nSnapshot }) {
+  const router = useRouter()
+  const [snapshot, setSnapshot] = useState(initial || DEFAULT_SNAPSHOT)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const requestID = useRef(0)
+  useEffect(() => { if (initial) setSnapshot(initial) }, [initial])
   useEffect(() => {
+    let saved: string | null = null
+    try { saved = localStorage.getItem('infosphere_locale') } catch { /* storage unavailable */ }
+    const legacy = !cookieLocale(document.cookie) && saved ? normalizeLocale(saved) : undefined
+    if (legacy) document.cookie = 'infosphere_locale=' + encodeURIComponent(legacy) + '; path=/; max-age=31536000; SameSite=Lax'
+    if (!initial || legacy) void fetchI18nSnapshot(legacy).then(setSnapshot).catch(() => {})
+  }, [initial])
+  useEffect(() => {
+    document.documentElement.lang = snapshot.locale
+    document.documentElement.dir = snapshot.items.find((item) => item.code === snapshot.locale)?.direction || 'ltr'
+  }, [snapshot])
+  const refreshLanguages = useCallback(async () => {
+    setSnapshot(await fetchI18nSnapshot(snapshot.locale))
+  }, [snapshot.locale])
+  const setLocale = useCallback(async (value: string) => {
+    const id = ++requestID.current
+    setLoading(true); setError('')
     try {
-      const saved = localStorage.getItem(STORAGE_KEY) as Locale | null
-      if (saved && DICTS[saved] && saved !== locale) setLocaleState(saved)
-    } catch { /* 忽略 */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    try { document.documentElement.lang = locale } catch { /* 忽略 */ }
-  }, [locale])
-
-  const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next)
-    try { localStorage.setItem(STORAGE_KEY, next) } catch { /* 忽略 */ }
-  }, [])
-
-  const t = useCallback((key: string, vars?: Record<string, string | number>) => translate(locale, key, vars), [locale])
-
-  return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>
+      const next = await fetchI18nSnapshot(normalizeLocale(value))
+      if (id !== requestID.current) return
+      if (getToken()) await api('/auth/locale', { method: 'PUT', body: { locale: next.locale } })
+      if (id !== requestID.current) return
+      document.cookie = 'infosphere_locale=' + encodeURIComponent(next.locale) + '; path=/; max-age=31536000; SameSite=Lax'
+      try { localStorage.setItem('infosphere_locale', next.locale) } catch { /* storage unavailable */ }
+      setSnapshot(next)
+      await router.replace(router.asPath, undefined, { scroll: false })
+    } catch (cause) {
+      if (id === requestID.current) setError((cause as Error).message)
+    } finally { if (id === requestID.current) setLoading(false) }
+  }, [router])
+  const messages = useMemo(() => resolvedMessages(snapshot), [snapshot])
+  const t = useCallback((key: string, vars?: Record<string, string | number>) => formatMessage(messages[key] ?? key, snapshot.locale, vars), [messages, snapshot.locale])
+  return <I18nContext.Provider value={{ locale: snapshot.locale, locales: snapshot.items, defaultLocale: snapshot.default_locale, loading, error, setLocale, refreshLanguages, t }}>{children}</I18nContext.Provider>
 }
-
-export function useTranslation(): I18nContextValue {
-  return useContext(I18nContext)
-}
+export function useTranslation(): I18nContextValue { return useContext(I18nContext) }

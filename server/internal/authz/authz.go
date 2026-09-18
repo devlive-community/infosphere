@@ -10,6 +10,7 @@ type Permission string
 
 // 资源:操作 常量。新增资源时先在此定义，再在路由与 docs/api.md 中登记。
 const (
+	I18nManage Permission = "i18n:manage"
 	// 书籍
 	BookRead          Permission = "book:read"           // 浏览书籍列表与详情（含公开匿名访问）
 	BookCreate        Permission = "book:create"         // 创建书籍
@@ -119,6 +120,7 @@ const (
 
 // All 全部权限，admin 角色默认拥有
 var All = []Permission{
+	I18nManage,
 	BookRead, BookCreate, BookUpdate, BookDelete, BookExport, BookImport, BookAnalyticsRead,
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	DocumentRevisionRead, DocumentRevisionRestore,

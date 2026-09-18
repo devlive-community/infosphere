@@ -1,8 +1,13 @@
 import { Html, Head, Main, NextScript } from 'next/document'
+import type { DocumentProps } from 'next/document'
+import type { I18nSnapshot } from '@/lib/i18n/runtime'
 
-export default function Document() {
+export default function Document(props: DocumentProps) {
+  const i18n = props.__NEXT_DATA__.props.i18n as I18nSnapshot | undefined
+  const locale = i18n?.locale || 'zh-CN'
+  const direction = i18n?.items.find((item) => item.code === locale)?.direction || 'ltr'
   return (
-    <Html lang="zh-CN" suppressHydrationWarning>
+    <Html lang={locale} dir={direction} suppressHydrationWarning>
       <Head>
         <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/logo.png" />

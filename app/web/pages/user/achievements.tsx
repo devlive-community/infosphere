@@ -35,11 +35,11 @@ export default function MyAchievementsPage() {
 
   useEffect(() => {
     if (!user) return
-    api<AchievementPageData>('/users/me/achievements')
+    api<AchievementPageData>('/users/me/achievements', { params: { locale } })
       .then(setData)
       .catch((cause) => { const message = (cause as Error).message || t('myAch.loadFailedMsg'); setError(message); showToast({ title: t('myAch.loadFailed'), message, tone: 'error' }) })
       .finally(() => setLoading(false))
-  }, [showToast, user, t])
+  }, [showToast, user, t, locale])
 
   const items = useMemo(() => {
     const source = data?.items || []
@@ -92,8 +92,8 @@ export default function MyAchievementsPage() {
                   {items.map((item) => {
                     const definition = item.definition
                     const progress = item.progress?.percent || 0
-                    const name = locale === 'en' && definition.name_en ? definition.name_en : definition.name
-                    const description = locale === 'en' && definition.description_en ? definition.description_en : definition.description
+                    const name = definition.name
+                    const description = definition.description
                     return (
                       <Card key={definition.id} className={`p-5 ${item.unlocked ? '' : 'bg-white/70'}`}>
                         <div className="flex items-start gap-4">
@@ -102,7 +102,7 @@ export default function MyAchievementsPage() {
                         </div>
                         <p className="mt-4 min-h-[40px] text-sm leading-5 text-slate-500">{description || definition.locked_hint || t('myAch.lockedHint')}</p>
                         {definition.progress_mode !== 'hidden' && <div className="mt-4"><div className="mb-1.5 flex items-center justify-between text-xs text-slate-400"><span>{item.unlocked ? t('myAch.doneLabel') : t('myAch.currentProgress')}</span><span>{item.unlocked ? 100 : progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><span className="block h-full rounded-full bg-primary-500 transition-all" style={{ width: `${item.unlocked ? 100 : progress}%` }} /></div></div>}
-                        {item.grant && <div className="mt-4 border-t border-slate-100 pt-4"><div className="flex items-center justify-between gap-3"><span className="text-xs text-slate-400">{t('myAch.unlockedAt', { date: new Date(item.grant.unlocked_at).toLocaleDateString(locale === 'en' ? 'en-US' : 'zh-CN') })}</span><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-xs text-slate-500"><span>{definition.visibility !== 'private' ? t('myAch.public') : t('myAch.selfOnly')}</span><Switch ariaLabel={t('myAch.publicAria')} checked={item.grant.is_public} disabled={definition.visibility === 'private' || (!data.allow_user_hide && item.grant.is_public) || updating === item.grant.id} onChange={(value) => updateDisplay(item.grant as AchievementGrant, { is_public: value })} /></label><Button size="sm" variant={item.grant.showcase_order > 0 ? 'primary' : 'outline'} disabled={definition.visibility === 'private'} loading={updating === item.grant.id} onClick={() => updateDisplay(item.grant as AchievementGrant, { showcase_order: item.grant?.showcase_order ? 0 : 1 })}>{item.grant.showcase_order > 0 ? t('myAch.pinned') : t('myAch.pin')}</Button></div></div></div>}
+                        {item.grant && <div className="mt-4 border-t border-slate-100 pt-4"><div className="flex items-center justify-between gap-3"><span className="text-xs text-slate-400">{t('myAch.unlockedAt', { date: new Date(item.grant.unlocked_at).toLocaleDateString(locale) })}</span><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-xs text-slate-500"><span>{definition.visibility !== 'private' ? t('myAch.public') : t('myAch.selfOnly')}</span><Switch ariaLabel={t('myAch.publicAria')} checked={item.grant.is_public} disabled={definition.visibility === 'private' || (!data.allow_user_hide && item.grant.is_public) || updating === item.grant.id} onChange={(value) => updateDisplay(item.grant as AchievementGrant, { is_public: value })} /></label><Button size="sm" variant={item.grant.showcase_order > 0 ? 'primary' : 'outline'} disabled={definition.visibility === 'private'} loading={updating === item.grant.id} onClick={() => updateDisplay(item.grant as AchievementGrant, { showcase_order: item.grant?.showcase_order ? 0 : 1 })}>{item.grant.showcase_order > 0 ? t('myAch.pinned') : t('myAch.pin')}</Button></div></div></div>}
                       </Card>
                     )
                   })}

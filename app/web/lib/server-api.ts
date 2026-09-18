@@ -53,6 +53,8 @@ export function authHeaderFrom(req: { headers: Record<string, string | string[] 
   if (raw) h.Authorization = Array.isArray(raw) ? raw[0] : raw
   const cookie = req.headers['cookie']
   if (cookie) h.Cookie = Array.isArray(cookie) ? cookie[0] : cookie
+  const acceptLanguage = req.headers['accept-language']
+  if (acceptLanguage) h['Accept-Language'] = Array.isArray(acceptLanguage) ? acceptLanguage[0] : acceptLanguage
   return h
 }
 

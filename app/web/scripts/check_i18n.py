@@ -19,6 +19,7 @@ LOCALES_DIR = os.path.join(WEB_DIR, 'lib', 'i18n', 'locales')
 # 动态键取值域登记表：代码用 t(`prefix${var}suffix`) 拼接的键，静态扫描无法覆盖，
 # 必须在此显式登记取值域（新增动态键拼接时请同步维护）。
 DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
+    'i18n.': ['enabled', 'content_enabled', 'ui_enabled', 'is_default'],
     # BookCard/WriterWorkbench/detail: t(`book.status.${status}`)，BookStatus 共 5 种
     'book.status.': ['draft', 'in_progress', 'published', 'completed', 'archived'],
     # DatePicker: t(`ui.datepicker.weekday${k}`) / t(`ui.datepicker.month${m+1}`)

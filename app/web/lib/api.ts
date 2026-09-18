@@ -56,6 +56,10 @@ export async function api<T = any>(
       )
     : ''
   const headers: Record<string, string> = {}
+  if (typeof document !== 'undefined') {
+    const locale = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith('infosphere_locale='))?.split('=')[1]
+    if (locale) { try { headers['X-InfoSphere-Locale'] = decodeURIComponent(locale) } catch { /* invalid cookie */ } }
+  }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const t = token ?? getToken()
   if (t) headers.Authorization = `Bearer ${t}`

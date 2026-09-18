@@ -179,30 +179,31 @@ type achievementRuleRequest struct {
 }
 
 type achievementDefinitionRequest struct {
-	Key                string                   `json:"key"`
-	Name               string                   `json:"name"`
-	NameEn             string                   `json:"name_en"`
-	Description        string                   `json:"description"`
-	DescriptionEn      string                   `json:"description_en"`
-	LockedHint         string                   `json:"locked_hint"`
-	LockedHintEn       string                   `json:"locked_hint_en"`
-	Category           string                   `json:"category"`
-	Status             string                   `json:"status"`
-	Rarity             string                   `json:"rarity"`
-	IconType           string                   `json:"icon_type"`
-	IconValue          string                   `json:"icon_value"`
-	AssetID            *uint                    `json:"asset_id"`
-	SeriesKey          string                   `json:"series_key"`
-	Tier               int                      `json:"tier"`
-	SupersedesPrevious bool                     `json:"supersedes_previous"`
-	RuleLogic          string                   `json:"rule_logic"`
-	GrantMode          string                   `json:"grant_mode"`
-	Visibility         string                   `json:"visibility"`
-	ProgressMode       string                   `json:"progress_mode"`
-	ActiveFrom         *time.Time               `json:"active_from"`
-	ActiveUntil        *time.Time               `json:"active_until"`
-	SortOrder          int                      `json:"sort_order"`
-	Rules              []achievementRuleRequest `json:"rules"`
+	Translations       map[string]resourceTranslation `json:"translations"`
+	Key                string                         `json:"key"`
+	Name               string                         `json:"name"`
+	NameEn             string                         `json:"name_en"`
+	Description        string                         `json:"description"`
+	DescriptionEn      string                         `json:"description_en"`
+	LockedHint         string                         `json:"locked_hint"`
+	LockedHintEn       string                         `json:"locked_hint_en"`
+	Category           string                         `json:"category"`
+	Status             string                         `json:"status"`
+	Rarity             string                         `json:"rarity"`
+	IconType           string                         `json:"icon_type"`
+	IconValue          string                         `json:"icon_value"`
+	AssetID            *uint                          `json:"asset_id"`
+	SeriesKey          string                         `json:"series_key"`
+	Tier               int                            `json:"tier"`
+	SupersedesPrevious bool                           `json:"supersedes_previous"`
+	RuleLogic          string                         `json:"rule_logic"`
+	GrantMode          string                         `json:"grant_mode"`
+	Visibility         string                         `json:"visibility"`
+	ProgressMode       string                         `json:"progress_mode"`
+	ActiveFrom         *time.Time                     `json:"active_from"`
+	ActiveUntil        *time.Time                     `json:"active_until"`
+	SortOrder          int                            `json:"sort_order"`
+	Rules              []achievementRuleRequest       `json:"rules"`
 }
 
 func oneOf(value string, allowed ...string) bool {
@@ -402,6 +403,9 @@ func rulesFromRequest(id uint, requests []achievementRuleRequest) ([]models.Achi
 }
 
 func saveAchievementDefinitionVersion(tx *gorm.DB, definition models.AchievementDefinition, rules []models.AchievementRule, actorID uint) error {
+	if err := attachAchievementTranslations(tx, &definition); err != nil {
+		return err
+	}
 	definition.Rules = rules
 	definition.Asset = nil
 	raw, err := json.Marshal(definition)
@@ -455,6 +459,10 @@ func (a *App) AdminListAchievements(c *gin.Context) {
 		return
 	}
 	for index := range items {
+		if err := attachAchievementTranslations(a.DB, &items[index]); err != nil {
+			fail(c, 500, "读取翻译失败")
+			return
+		}
 		if items[index].Rules == nil {
 			items[index].Rules = []models.AchievementRule{}
 		}
@@ -471,13 +479,22 @@ func (a *App) AdminGetAchievement(c *gin.Context) {
 	if definition.Rules == nil {
 		definition.Rules = []models.AchievementRule{}
 	}
+	if err := attachAchievementTranslations(a.DB, &definition); err != nil {
+		fail(c, 500, "读取翻译失败")
+		return
+	}
 	ok(c, definition)
 }
 
 func (a *App) AdminCreateAchievement(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 	var req achievementDefinitionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	if err := a.prepareAchievementTranslations(&req, 0); err != nil {
+		fail(c, 400, err.Error())
 		return
 	}
 	if err := normalizeAchievementRequest(&req); err != nil {
@@ -492,6 +509,9 @@ func (a *App) AdminCreateAchievement(c *gin.Context) {
 	definition := definitionFromRequest(req, user.ID)
 	err := a.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&definition).Error; err != nil {
+			return err
+		}
+		if err := saveResourceTranslations(tx, "achievement", definition.ID, user.ID, req.Translations); err != nil {
 			return err
 		}
 		rules, err := rulesFromRequest(definition.ID, req.Rules)
@@ -529,6 +549,7 @@ func withParam(c *gin.Context, key, value string) *gin.Context {
 }
 
 func (a *App) AdminUpdateAchievement(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 	var definition models.AchievementDefinition
 	if err := a.DB.First(&definition, c.Param("id")).Error; err != nil {
 		fail(c, http.StatusNotFound, "成就不存在")
@@ -541,6 +562,10 @@ func (a *App) AdminUpdateAchievement(c *gin.Context) {
 	}
 	if definition.Status != "draft" {
 		req.Key = definition.Key
+	}
+	if err := a.prepareAchievementTranslations(&req, definition.ID); err != nil {
+		fail(c, 400, err.Error())
+		return
 	}
 	if err := normalizeAchievementRequest(&req); err != nil {
 		fail(c, http.StatusBadRequest, err.Error())
@@ -559,6 +584,9 @@ func (a *App) AdminUpdateAchievement(c *gin.Context) {
 	updates.Version = version
 	updates.UpdatedBy = user.ID
 	err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := saveResourceTranslations(tx, "achievement", definition.ID, user.ID, req.Translations); err != nil {
+			return err
+		}
 		if err := tx.Model(&definition).Select(
 			"achievement_key", "name", "name_en", "description", "description_en", "locked_hint", "locked_hint_en",
 			"category", "status", "rarity", "icon_type", "icon_value", "asset_id", "series_key", "tier",
@@ -585,7 +613,11 @@ func (a *App) AdminUpdateAchievement(c *gin.Context) {
 		return saveAchievementDefinitionVersion(tx, updates, rules, user.ID)
 	})
 	if err != nil {
-		fail(c, http.StatusBadRequest, "保存成就失败")
+		if err == errTranslationConflict {
+			fail(c, 409, err.Error())
+		} else {
+			fail(c, 400, "保存成就失败："+err.Error())
+		}
 		return
 	}
 	a.recordAudit(c, "achievement.updated", "achievement", auditID(definition.ID), req.Name, map[string]any{"version": version, "status": req.Status})
@@ -612,6 +644,9 @@ func (a *App) AdminDeleteAchievement(c *gin.Context) {
 				return err
 			}
 			if err := tx.Where("achievement_id = ?", definition.ID).Delete(&models.AchievementDefinitionVersion{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("resource_type = ? AND resource_id = ?", "achievement", definition.ID).Delete(&models.LocalizedResourceContent{}).Error; err != nil {
 				return err
 			}
 			return tx.Delete(&definition).Error
@@ -941,6 +976,10 @@ func (a *App) MyAchievements(c *gin.Context) {
 		return
 	}
 	progresses := []models.UserAchievementProgress{}
+	if err := a.localizeAchievements(c, definitions); err != nil {
+		fail(c, 500, "读取翻译失败")
+		return
+	}
 	a.DB.Where("user_id = ?", user.ID).Find(&progresses)
 	progressByID := map[uint]*models.UserAchievementProgress{}
 	for index := range progresses {
@@ -962,8 +1001,11 @@ func (a *App) MyAchievements(c *gin.Context) {
 		}
 		progress := progressByID[definition.ID]
 		if definition.Visibility == "hidden" && !unlocked {
-			definition.Name = "神秘成就"
-			definition.NameEn = "Hidden achievement"
+			definition.Name = definition.LockedHint
+			if definition.Name == "" {
+				definition.Name = "—"
+			}
+			definition.NameEn = ""
 			definition.Description = definition.LockedHint
 			definition.DescriptionEn = definition.LockedHintEn
 			definition.IconType = "fa"
@@ -1033,19 +1075,20 @@ func (a *App) UpdateMyAchievementDisplay(c *gin.Context) {
 }
 
 type publicAchievementDefinition struct {
-	ID            uint                     `json:"id"`
-	Key           string                   `json:"key"`
-	Name          string                   `json:"name"`
-	NameEn        string                   `json:"name_en"`
-	Description   string                   `json:"description"`
-	DescriptionEn string                   `json:"description_en"`
-	Category      string                   `json:"category"`
-	Rarity        string                   `json:"rarity"`
-	IconType      string                   `json:"icon_type"`
-	IconValue     string                   `json:"icon_value"`
-	Asset         *models.AchievementAsset `json:"asset,omitempty"`
-	SeriesKey     string                   `json:"series_key"`
-	Tier          int                      `json:"tier"`
+	ResolvedLocale string                   `json:"resolved_locale"`
+	ID             uint                     `json:"id"`
+	Key            string                   `json:"key"`
+	Name           string                   `json:"name"`
+	NameEn         string                   `json:"name_en"`
+	Description    string                   `json:"description"`
+	DescriptionEn  string                   `json:"description_en"`
+	Category       string                   `json:"category"`
+	Rarity         string                   `json:"rarity"`
+	IconType       string                   `json:"icon_type"`
+	IconValue      string                   `json:"icon_value"`
+	Asset          *models.AchievementAsset `json:"asset,omitempty"`
+	SeriesKey      string                   `json:"series_key"`
+	Tier           int                      `json:"tier"`
 }
 
 type publicAchievementGrant struct {
@@ -1074,6 +1117,26 @@ func (a *App) PublicUserAchievements(c *gin.Context) {
 		return
 	}
 	highestTier := map[string]int{}
+	localized := []models.AchievementDefinition{}
+	for _, grant := range grants {
+		if grant.Achievement != nil {
+			localized = append(localized, *grant.Achievement)
+		}
+	}
+	if err := a.localizeAchievements(c, localized); err != nil {
+		fail(c, 500, "读取翻译失败")
+		return
+	}
+	localizedByID := map[uint]models.AchievementDefinition{}
+	for _, d := range localized {
+		localizedByID[d.ID] = d
+	}
+	for i := range grants {
+		if grants[i].Achievement != nil {
+			d := localizedByID[grants[i].AchievementID]
+			grants[i].Achievement = &d
+		}
+	}
 	for _, grant := range grants {
 		if grant.Achievement != nil && grant.Achievement.SeriesKey != "" && grant.Achievement.SupersedesPrevious && grant.Achievement.Tier > highestTier[grant.Achievement.SeriesKey] {
 			highestTier[grant.Achievement.SeriesKey] = grant.Achievement.Tier
@@ -1089,7 +1152,8 @@ func (a *App) PublicUserAchievements(c *gin.Context) {
 			continue
 		}
 		items = append(items, publicAchievementGrant{ID: grant.ID, UnlockedAt: grant.UnlockedAt, Achievement: publicAchievementDefinition{
-			ID: definition.ID, Key: definition.Key, Name: definition.Name, NameEn: definition.NameEn,
+			ResolvedLocale: definition.ResolvedLocale,
+			ID:             definition.ID, Key: definition.Key, Name: definition.Name, NameEn: definition.NameEn,
 			Description: definition.Description, DescriptionEn: definition.DescriptionEn, Category: definition.Category,
 			Rarity: definition.Rarity, IconType: definition.IconType, IconValue: definition.IconValue,
 			Asset: definition.Asset, SeriesKey: definition.SeriesKey, Tier: definition.Tier,

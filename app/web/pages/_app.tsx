@@ -1,6 +1,8 @@
 import '../styles/globals.css'
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import type { AppProps } from 'next/app'
+import NextApp, { type AppContext } from 'next/app'
+import { fetchI18nSnapshot, type I18nSnapshot } from '@/lib/i18n'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { AppProvider, useApp } from '@/lib/auth'
@@ -74,10 +76,10 @@ function RouteLoading() {
   )
 }
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps, i18n }: AppProps & { i18n?: I18nSnapshot }) {
   return (
     <AppProvider initialSite={pageProps.site ?? null} initialInstalled={pageProps.installed ?? null} initialUser={pageProps.user ?? null}>
-      <I18nProvider>
+      <I18nProvider initial={i18n}>
       <FeedbackProvider>
         <SiteHead />
         <RouteLoading />
@@ -89,4 +91,20 @@ export default function App({ Component, pageProps }: AppProps) {
       </I18nProvider>
     </AppProvider>
   )
+}
+
+// Runtime languages require request-specific HTML, including pages previously auto-static.
+App.getInitialProps = async (context: AppContext) => {
+  const props = await NextApp.getInitialProps(context)
+  if (context.ctx.req) {
+    const { getI18nSnapshot } = await import('@/lib/i18n/server')
+    const i18n = await getI18nSnapshot(context.ctx.req)
+    if (context.ctx.res && !context.ctx.res.headersSent) {
+      context.ctx.res.setHeader('Content-Language', i18n.locale)
+      context.ctx.res.setHeader('Cache-Control', 'private, no-store')
+      context.ctx.res.setHeader('Vary', 'Cookie, Accept-Language, Authorization')
+    }
+    return { ...props, i18n }
+  }
+  return { ...props, i18n: await fetchI18nSnapshot().catch(() => undefined) }
 }

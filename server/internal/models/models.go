@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
@@ -8,14 +9,15 @@ import (
 
 // User 用户
 type User struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	Username  string `gorm:"size:50;uniqueIndex" json:"username"`
-	Email     string `gorm:"size:100;uniqueIndex" json:"email"`
-	Password  string `gorm:"size:255" json:"-"`
-	Role      string `gorm:"size:20;default:user" json:"role"`
-	Avatar    string `gorm:"size:500" json:"avatar"`
-	Bio       string `gorm:"size:1000" json:"bio"`
-	GithubURL string `gorm:"size:255;column:github_url" json:"github_url"`
+	PreferredLocale string `gorm:"size:64" json:"preferred_locale"`
+	ID              uint   `gorm:"primaryKey" json:"id"`
+	Username        string `gorm:"size:50;uniqueIndex" json:"username"`
+	Email           string `gorm:"size:100;uniqueIndex" json:"email"`
+	Password        string `gorm:"size:255" json:"-"`
+	Role            string `gorm:"size:20;default:user" json:"role"`
+	Avatar          string `gorm:"size:500" json:"avatar"`
+	Bio             string `gorm:"size:1000" json:"bio"`
+	GithubURL       string `gorm:"size:255;column:github_url" json:"github_url"`
 	// 扩展资料
 	Nickname string `gorm:"size:50" json:"nickname"`  // 昵称/展示名
 	Website  string `gorm:"size:255" json:"website"`  // 个人网站
@@ -235,6 +237,8 @@ type AchievementAsset struct {
 
 // AchievementDefinition 成就定义；规则单独存表，避免把可查询配置塞进站点 JSON。
 type AchievementDefinition struct {
+	Translations       json.RawMessage   `gorm:"-" json:"translations,omitempty"`
+	ResolvedLocale     string            `gorm:"-" json:"resolved_locale,omitempty"`
 	ID                 uint              `gorm:"primaryKey" json:"id"`
 	Key                string            `gorm:"column:achievement_key;size:80;uniqueIndex;not null" json:"key"`
 	Name               string            `gorm:"size:120;not null" json:"name"`
@@ -654,7 +658,8 @@ type DocumentRevision struct {
 
 // All 执行多数据库迁移
 func All(db *gorm.DB) error {
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
+		&I18nConfig{}, &SiteLocale{}, &UIMessageBundle{}, &LocalizedResourceContent{},
 		&User{},
 		&UserAuthentication{},
 		&SiteConfig{},
@@ -698,5 +703,8 @@ func All(db *gorm.DB) error {
 		&UserAchievementProgress{},
 		&UserAchievement{},
 		&AchievementEvent{},
-	)
+	); err != nil {
+		return err
+	}
+	return SeedI18n(db)
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import LocalizedFields, { type ResourceTranslations } from '@/components/LocalizedFields'
 import AchievementIcon from '@/components/AchievementIcon'
 import UserAvatar from '@/components/UserAvatar'
 import { API_BASE, api, getToken } from '@/lib/api'
@@ -16,13 +17,11 @@ interface GrantRow {
 
 interface FormState {
   id?: number
+  translations: ResourceTranslations
   key: string
   name: string
-  name_en: string
   description: string
-  description_en: string
   locked_hint: string
-  locked_hint_en: string
   category: string
   status: string
   rarity: string
@@ -48,7 +47,7 @@ const emptyRule = (): AchievementRule => ({
 })
 
 const emptyForm = (): FormState => ({
-  key: '', name: '', name_en: '', description: '', description_en: '', locked_hint: '', locked_hint_en: '',
+  key: '', name: '', description: '', locked_hint: '', translations: {},
   category: 'reading', status: 'draft', rarity: 'common', icon_type: 'fa', icon_value: 'fa-trophy', asset_id: null,
   series_key: '', tier: 1, supersedes_previous: false, rule_logic: 'all', grant_mode: 'auto', visibility: 'public',
   progress_mode: 'aggregate', sort_order: 0, rules: [emptyRule()],
@@ -60,6 +59,7 @@ const rarityTone: Record<string, 'slate' | 'sky' | 'violet' | 'amber'> = { commo
 function toForm(definition: AchievementDefinition): FormState {
   return {
     ...definition,
+    translations: Object.fromEntries(Object.entries(definition.translations || {}).map(([code, entry]) => [code, { ...entry, publish: false }])),
     active_from: toLocalDateTimeInput(definition.active_from),
     active_until: toLocalDateTimeInput(definition.active_until),
     rules: (definition.rules || []).map((rule) => ({
@@ -99,7 +99,7 @@ function AchievementPreview({ form }: { form: FormState }) {
 
 export default function AdminAchievements() {
   const { confirmAction, requestInput, showToast } = useFeedback()
-  const { t } = useTranslation()
+  const { t, defaultLocale } = useTranslation()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const categoryLabels: Record<string, string> = { reading: t('admin.achievements.category.reading'), creation: t('admin.achievements.category.creation'), community: t('admin.achievements.category.community'), account: t('admin.achievements.category.account'), special: t('admin.achievements.category.special') }
@@ -119,6 +119,7 @@ export default function AdminAchievements() {
   const [form, setForm] = useState<FormState | null>(null)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [translationBusy, setTranslationBusy] = useState(false)
   const [grantUsername, setGrantUsername] = useState('')
   const [grantAchievementID, setGrantAchievementID] = useState('')
   const [grantReason, setGrantReason] = useState('')
@@ -202,6 +203,7 @@ export default function AdminAchievements() {
       const path = form.id ? `/admin/achievements/${form.id}` : '/admin/achievements'
       await api(path, { method: form.id ? 'PUT' : 'POST', body: {
         ...form,
+        translations: Object.fromEntries(Object.entries(form.translations).filter(([, entry]) => entry.dirty)),
         active_from: form.active_from ? new Date(form.active_from).toISOString() : null,
         active_until: form.active_until ? new Date(form.active_until).toISOString() : null,
       } })
@@ -335,11 +337,18 @@ export default function AdminAchievements() {
         </div>
       )}
 
-      <Modal open={form !== null} onClose={() => setForm(null)} title={form?.id ? t('admin.achievements.form.editTitle') : t('admin.achievements.form.createTitle')} className="max-w-5xl" footer={<><Button variant="outline" onClick={() => setForm(null)}>{t('admin.achievements.form.cancel')}</Button><Button loading={saving} onClick={saveDefinition}>{t('admin.achievements.form.save')}</Button></>}>
+      <Modal open={form !== null} onClose={() => setForm(null)} title={form?.id ? t('admin.achievements.form.editTitle') : t('admin.achievements.form.createTitle')} className="max-w-5xl" footer={<><Button variant="outline" onClick={() => setForm(null)}>{t('admin.achievements.form.cancel')}</Button><Button disabled={translationBusy || uploading} loading={saving} onClick={saveDefinition}>{t('admin.achievements.form.save')}</Button></>}>
         {form && <div className="space-y-6">
           <AchievementPreview form={form} />
-          <div className="grid gap-4 sm:grid-cols-2"><Field label={t('admin.achievements.form.key')} hint={form.id ? t('admin.achievements.form.keyHintPublished') : t('admin.achievements.form.keyHintNew')}><Input disabled={Boolean(form.id && form.status !== 'draft')} value={form.key} onChange={(event) => setForm({ ...form, key: event.target.value })} placeholder={t('admin.achievements.form.keyPlaceholder')} /></Field><Field label={t('admin.achievements.form.nameCn')}><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field><Field label={t('admin.achievements.form.nameEn')}><Input value={form.name_en} onChange={(event) => setForm({ ...form, name_en: event.target.value })} /></Field><Field label={t('admin.achievements.form.category')}><Select value={form.category} onChange={(value) => setForm({ ...form, category: value })} options={Object.entries(categoryLabels).map(([value, label]) => ({ value, label }))} /></Field></div>
-          <div className="grid gap-4 sm:grid-cols-2"><Field label={t('admin.achievements.form.descriptionCn')}><Textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field><Field label={t('admin.achievements.form.descriptionEn')}><Textarea rows={3} value={form.description_en} onChange={(event) => setForm({ ...form, description_en: event.target.value })} /></Field><Field label={t('admin.achievements.form.lockedHint')}><Input value={form.locked_hint} onChange={(event) => setForm({ ...form, locked_hint: event.target.value })} /></Field><Field label={t('admin.achievements.form.lockedHintEn')}><Input value={form.locked_hint_en} onChange={(event) => setForm({ ...form, locked_hint_en: event.target.value })} /></Field></div>
+          <div className="grid gap-4 sm:grid-cols-2"><Field label={t('admin.achievements.form.key')}><Input disabled={Boolean(form.id && form.status !== 'draft')} value={form.key} onChange={(event) => setForm({ ...form, key: event.target.value })} /></Field><Field label={t('admin.achievements.form.category')}><Select value={form.category} onChange={(value) => setForm({ ...form, category: value })} options={Object.entries(categoryLabels).map(([value, label]) => ({ value, label }))} /></Field></div>
+          <LocalizedFields value={form.translations} onBusyChange={setTranslationBusy} fields={[
+            { key: 'name', label: t('i18n.field.name'), maxLength: 120 },
+            { key: 'description', label: t('i18n.field.description'), maxLength: 500, multiline: true },
+            { key: 'locked_hint', label: t('admin.achievements.form.lockedHint'), maxLength: 255 },
+          ]} onChange={(translations) => setForm({ ...form, translations,
+            name: translations[defaultLocale]?.fields.name || form.name,
+            description: translations[defaultLocale]?.fields.description || '',
+          })} />
           <div className="grid gap-4 sm:grid-cols-3"><Field label={t('admin.achievements.form.status')}><Select value={form.status} onChange={(value) => setForm({ ...form, status: value })} options={Object.entries(statusLabels).map(([value, label]) => ({ value, label }))} /></Field><Field label={t('admin.achievements.form.rarity')}><Select value={form.rarity} onChange={(value) => setForm({ ...form, rarity: value })} options={Object.entries(rarityLabels).map(([value, label]) => ({ value, label }))} /></Field><Field label={t('admin.achievements.form.grantMode')}><Select value={form.grant_mode} onChange={(value) => setForm({ ...form, grant_mode: value as 'auto' | 'manual', rules: value === 'auto' && form.rules.length === 0 ? [emptyRule()] : form.rules })} options={[{ value: 'auto', label: t('admin.achievements.form.grantModeAuto') }, { value: 'manual', label: t('admin.achievements.form.grantModeManual') }]} /></Field><Field label={t('admin.achievements.form.visibility')}><Select value={form.visibility} onChange={(value) => setForm({ ...form, visibility: value as FormState['visibility'] })} options={[{ value: 'public', label: t('admin.achievements.form.visibilityPublic') }, { value: 'private', label: t('admin.achievements.form.visibilityPrivate') }, { value: 'hidden', label: t('admin.achievements.form.visibilityHidden') }]} /></Field><Field label={t('admin.achievements.form.progressMode')}><Select value={form.progress_mode} onChange={(value) => setForm({ ...form, progress_mode: value as FormState['progress_mode'] })} options={[{ value: 'aggregate', label: t('admin.achievements.form.progressAggregate') }, { value: 'primary', label: t('admin.achievements.form.progressPrimary') }, { value: 'hidden', label: t('admin.achievements.form.progressHidden') }]} /></Field><Field label={t('admin.achievements.form.sortOrder')}><Input type="number" value={form.sort_order} onChange={(event) => setForm({ ...form, sort_order: Number(event.target.value) || 0 })} /></Field><Field label={t('admin.achievements.form.seriesKey')}><Input value={form.series_key} onChange={(event) => setForm({ ...form, series_key: event.target.value })} placeholder={t('admin.achievements.form.seriesKeyPlaceholder')} /></Field><Field label={t('admin.achievements.form.tier')}><Input type="number" min={1} value={form.tier} onChange={(event) => setForm({ ...form, tier: Math.max(1, Number(event.target.value) || 1) })} /></Field><Field label={t('admin.achievements.form.supersedes')}><div className="flex h-[var(--control-height)] items-center"><Switch ariaLabel={t('admin.achievements.form.supersedes')} checked={form.supersedes_previous} onChange={(value) => setForm({ ...form, supersedes_previous: value })} /></div></Field><Field label={t('admin.achievements.form.activeFrom')}><Input type="datetime-local" value={form.active_from} onChange={(event) => setForm({ ...form, active_from: event.target.value })} /></Field><Field label={t('admin.achievements.form.activeUntil')}><Input type="datetime-local" value={form.active_until} onChange={(event) => setForm({ ...form, active_until: event.target.value })} /></Field></div>
           <Card className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold text-slate-900">{t('admin.achievements.form.icon.title')}</h3><p className="mt-1 text-xs text-slate-400">{t('admin.achievements.form.icon.description')}</p></div><Select className="w-40" value={form.icon_type} onChange={(value) => setForm({ ...form, icon_type: value as FormState['icon_type'], asset_id: value === 'fa' ? null : form.asset_id })} options={[{ value: 'fa', label: t('admin.achievements.form.icon.fa') }, { value: 'image', label: t('admin.achievements.form.icon.image') }, { value: 'svg', label: t('admin.achievements.form.icon.svg') }]} /></div><div className="mt-4 flex items-center gap-3">{form.icon_type === 'fa' ? <Input value={form.icon_value} onChange={(event) => setForm({ ...form, icon_value: event.target.value })} placeholder="fa-trophy" /> : <><Button variant="outline" loading={uploading} onClick={() => fileRef.current?.click()}>{t('admin.achievements.form.icon.upload')}</Button><span className="text-xs text-slate-400">{t('admin.achievements.form.icon.maxSize')}</span></>}<input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" onChange={(event) => { void uploadIcon(event.target.files?.[0]); event.target.value = '' }} /></div></Card>
           <Card className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold text-slate-900">{t('admin.achievements.form.rules.title')}</h3><p className="mt-1 text-xs text-slate-400">{t('admin.achievements.form.rules.description')}</p></div><div className="flex items-center gap-2"><Select className="w-32" value={form.rule_logic} onChange={(value) => setForm({ ...form, rule_logic: value as 'all' | 'any' })} options={[{ value: 'all', label: t('admin.achievements.form.rules.all') }, { value: 'any', label: t('admin.achievements.form.rules.any') }]} /><Button size="sm" variant="outline" disabled={form.rules.length >= 10} onClick={() => setForm({ ...form, rules: [...form.rules, emptyRule()] })}>{t('admin.achievements.form.rules.add')}</Button></div></div><div className="mt-4 space-y-3">{form.grant_mode === 'manual' ? <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">{t('admin.achievements.form.rules.manualHint')}</div> : form.rules.map((rule, index) => { const metric = metrics.find((item) => item.key === rule.metric_key); const filters = filterObject(rule); return <div key={index} className="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-[2fr_1fr_1fr_1fr_auto]"><Select value={rule.metric_key} onChange={(value) => updateRule(index, { metric_key: value, window_type: 'lifetime', filters: {} })} options={metricOptions} /><Select value={rule.operator} onChange={(value) => updateRule(index, { operator: value as AchievementRule['operator'] })} options={[{ value: 'gte', label: t('admin.achievements.form.rules.operator.gte') }, { value: 'eq', label: t('admin.achievements.form.rules.operator.eq') }, { value: 'between', label: t('admin.achievements.form.rules.operator.between') }]} /><Input type="number" min={1} value={rule.target_value} onChange={(event) => updateRule(index, { target_value: Math.max(1, Number(event.target.value) || 1) })} aria-label={t('admin.achievements.form.rules.targetValue')} /><Select value={rule.window_type} onChange={(value) => updateRule(index, { window_type: value as AchievementRule['window_type'], window_value: value === 'rolling_days' ? Math.max(1, rule.window_value || 30) : 0 })} options={(metric?.windows || ['lifetime']).map((value) => ({ value, label: value }))} /><Tooltip content={t('admin.achievements.form.rules.delete')}><Button size="sm" variant="ghost" aria-label={t('admin.achievements.form.rules.delete')} disabled={form.rules.length === 1} onClick={() => setForm({ ...form, rules: form.rules.filter((_, ruleIndex) => ruleIndex !== index) })}><i className="fa-solid fa-trash" aria-hidden="true" /></Button></Tooltip>{rule.operator === 'between' && <Input className="md:col-start-4" type="number" min={rule.target_value} value={rule.target_max} onChange={(event) => updateRule(index, { target_max: Math.max(rule.target_value, Number(event.target.value) || rule.target_value) })} aria-label={t('admin.achievements.rule.rangeMax')} />}{rule.window_type === 'rolling_days' && <Input className="md:col-start-4" type="number" min={1} max={3650} value={rule.window_value} onChange={(event) => updateRule(index, { window_value: Math.max(1, Math.min(3650, Number(event.target.value) || 1)) })} aria-label={t('admin.achievements.rule.rollingDays')} />}{(metric?.allowed_filters.length || 0) > 0 && <div className="flex flex-wrap items-center gap-2 md:col-span-5"><span className="text-xs font-medium text-slate-500">{t('admin.achievements.rule.objectFilter')}</span>{metric?.allowed_filters.includes('status') && <Input className="w-48" size="sm" value={Array.isArray(filters.status) ? (filters.status as string[]).join(',') : ''} onChange={(event) => updateRuleFilter(index, 'status', event.target.value.split(',').map((item) => item.trim()).filter(Boolean))} placeholder={t('admin.achievements.rule.statusCsv')} />}{metric?.allowed_filters.includes('is_public') && <Select className="w-36" size="sm" value={typeof filters.is_public === 'boolean' ? String(filters.is_public) : ''} onChange={(value) => updateRuleFilter(index, 'is_public', value === '' ? '' : value === 'true')} options={[{ value: '', label: t('admin.achievements.rule.allVisibility') }, { value: 'true', label: t('admin.achievements.rule.publicOnly') }, { value: 'false', label: t('admin.achievements.rule.privateOnly') }]} />}{metric?.allowed_filters.includes('kind') && <Select className="w-36" size="sm" value={Array.isArray(filters.kind) ? String((filters.kind as string[])[0] || '') : ''} onChange={(value) => updateRuleFilter(index, 'kind', value ? [value] : '')} options={[{ value: '', label: t('admin.achievements.rule.allAnnotations') }, { value: 'highlight', label: t('admin.achievements.rule.highlightOnly') }, { value: 'note', label: t('admin.achievements.rule.noteOnly') }, { value: 'bookmark', label: t('admin.achievements.rule.bookmarkOnly') }]} />}{metric?.allowed_filters.includes('replies_only') && <label className="flex items-center gap-2 text-xs text-slate-500"><Switch ariaLabel={t('admin.achievements.rule.repliesOnly')} checked={filters.replies_only === true} onChange={(value) => updateRuleFilter(index, 'replies_only', value)} /><span>{t('admin.achievements.rule.repliesOnly')}</span></label>}</div>}</div> })}</div></Card>

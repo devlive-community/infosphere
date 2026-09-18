@@ -173,6 +173,8 @@ export interface AchievementRule {
 }
 
 export interface AchievementDefinition {
+  translations?: Record<string, { fields: Record<string, string>; published?: Record<string, string>; revision: number; publish: boolean }>
+  resolved_locale?: string
   id: number
   key: string
   name: string

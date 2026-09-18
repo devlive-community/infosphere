@@ -8,7 +8,35 @@
 - 时间格式：RFC3339（如 `2026-09-05T12:00:00+08:00`）
 - 分页参数：`page`（默认 1）、`page_size`（默认 12，最大 100）；分页响应 `{ items, total, page, page_size }`
 
-## 认证
+## 动态国际化
+
+语言使用规范化 BCP 47 代码（旧 `zh` 偏好兼容为 `zh-CN`）。界面语言包和内容翻译分别启用。语言选择依次使用 `locale` 查询参数、`X-InfoSphere-Locale`、当前用户偏好、`infosphere_locale` Cookie、`Accept-Language`、站点默认语言。业务逻辑标识、价格和权限不随语言变化。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/i18n/locales` | `{items,default_locale,locale}`；只返回启用语言，每条含 `code/native_name/direction/ui_enabled/content_enabled/is_default/fallback_locale/sort_order` | 匿名，可选登录 |
+| GET | `/i18n/messages/:locale` | `{locale,chain,messages}`；按语言提供已发布覆盖消息，客户端与内置语言包按 chain 合并；ETag/304 缓存 | 匿名 |
+| PUT | `/auth/locale` | `{locale}` 保存本人语言偏好，同时设置语言 Cookie | `user:update` |
+| GET/PUT | `/admin/i18n/locales` | GET 返回 `{items,revision}`；PUT 提交完整 items 和读取时 revision；禁止删除已有语言，可停用；校验唯一默认语言、有效回退与循环 | `i18n:manage`，仅管理员 |
+| GET | `/admin/i18n/messages/:locale` | `{locale,revision,draft,published}`，包括停用语言的历史语言包 | `i18n:manage`，仅管理员 |
+| PUT | `/admin/i18n/messages/:locale` | `{messages,revision,publish}`；覆盖该语言草稿，publish=true 同时更新发布版本。最大 2MB / 10000 条；后台编辑器检查 ICU 语法和变量 | `i18n:manage`，仅管理员 |
+| GET/PUT | `/admin/i18n/resources/:kind/:id` | 当前 kind 仅 `achievement`；读取/部分更新动态内容翻译，PUT `{translations}` 只写传入的语言 | `achievement:manage`，仅管理员 |
+
+成就 POST/PUT 也接受 `translations`，与定义、规则和版本快照同事务保存。例如：
+
+```json
+{"translations":{"ja":{"fields":{"name":"読書家","description":"読書を続ける","locked_hint":""},"revision":0,"publish":true}}}
+```
+
+每种语言独立乐观锁，旧 revision 返回 409；未提交语言保持不变。字段允许 `name/description/locked_hint`，长度上限分别为 120/500/255 字符。保存草稿不改变已发布内容；激活成就要求默认语言名称已发布。显式空说明表示清空，字段缺省按回退链解析。停用语言保留数据但不参与内容回退。
+
+成就管理响应携带完整 translations；公开成就与我的成就只返回解析后的 `name/description/locked_hint` 和 `resolved_locale`，不返回翻译草稿。旧 name/name_en 等列保留作为兼容字段，升级自动回填动态翻译，重复启动不会覆盖人工翻译。隐藏成就仍执行原隐私规则。
+
+系统界面继续兼容现有 `t(key, vars)`，支持 ICU 复数、选择与数字格式；缺失覆盖消息回退到已发布的父语言/指定回退语言/站点默认和内置字典。语言包缺失不妨碍录入对应语言内容。新增语言不表示自动生成所有翻译。
+
+Web 为 Cookie/用户偏好提供一致首屏，在 `_app.getInitialProps` 注入语言快照；原自动静态优化页面改为按请求渲染（现有 URL 不变），HTML 使用 `private,no-store` 避免跨用户语言缓存。公开多语言 SEO 路由、旧邮件模板改造不属于当前接口。
+
+## 登录令牌
 
 除标注「匿名」的端点外，请求需携带 JWT：
 
