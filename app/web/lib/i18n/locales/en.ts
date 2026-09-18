@@ -1283,7 +1283,7 @@ export const en: Record<string, string> = {
   // Book form
   'bookForm.you': 'You',
   'bookForm.prefix.none': 'No prefix',
-  'bookForm.prefix.chapter': '第 (第1章, 第2章…)',
+  'bookForm.prefix.chapter': '第 (Chapter 1, Chapter 2…)',
   'bookForm.prefix.englishChapter': 'Chapter (Chapter 1, Chapter 2…)',
   'bookForm.error.title': 'Please enter a book title',
   'bookForm.error.slug': 'Slug may only contain lowercase letters, digits and hyphens',
@@ -1582,7 +1582,7 @@ export const en: Record<string, string> = {
   'admin.achievements.overview.grants': 'Total grants',
   'admin.achievements.settings.title': 'Module settings',
   'admin.achievements.settings.enabled': 'Enable achievements',
-  'admin.achievements.settings.enabledHint': 'Disable to stop evaluation and hide user入口; existing data is kept',
+  'admin.achievements.settings.enabledHint': 'Disable to stop evaluation and hide the user entry; existing data is kept',
   'admin.achievements.settings.publicProfile': 'Public profile display',
   'admin.achievements.settings.publicProfileHint': 'Allow users to showcase unlocked achievements on their public profile',
   'admin.achievements.settings.notifications': 'Unlock notifications',
