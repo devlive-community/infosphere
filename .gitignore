@@ -61,3 +61,6 @@ server/internal/webbundle/assets/web-runtime.tar.gz
 # 构建验证误生成目录（NEXT_DIST_DIR 绝对路径被解析为项目内路径）
 app/web/private/
 .claude/
+
+# 浏览器实机验证的会话 profile 目录
+.rundata/
