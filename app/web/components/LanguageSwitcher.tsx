@@ -7,7 +7,7 @@ export default function LanguageSwitcher() {
   const choices = locales.filter((item) => item.enabled && (item.ui_enabled || item.content_enabled))
   return (
     <div className="min-w-0 max-w-[11rem]">
-      <Select size="sm" value={locale} disabled={loading}
+      <Select value={locale} disabled={loading}
         placeholder={t('common.language.label')}
         options={choices.map((item) => ({ value: item.code, label: item.native_name }))}
         onChange={(value) => { void setLocale(value) }} />
