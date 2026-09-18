@@ -55,8 +55,8 @@ type UserAuthentication struct {
 	ProviderID       string     `gorm:"size:255;not null;uniqueIndex:uk_provider" json:"provider_id"`
 	ProviderUsername string     `gorm:"size:100" json:"provider_username"`
 	ProviderEmail    string     `gorm:"size:255" json:"provider_email"`
-	AccessToken      string     `gorm:"type:text" json:"-"`
-	RefreshToken     string     `gorm:"type:text" json:"-"`
+	AccessToken      string     `json:"-"`
+	RefreshToken     string     `json:"-"`
 	TokenExpiresAt   *time.Time `json:"token_expires_at"`
 	IsPrimary        bool       `json:"is_primary"`
 	CreatedAt        time.Time  `json:"created_at"`
@@ -67,7 +67,7 @@ type UserAuthentication struct {
 type SiteConfig struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	ConfigKey   string    `gorm:"size:50;uniqueIndex" json:"config_key"`
-	ConfigValue string    `gorm:"type:text" json:"config_value"`
+	ConfigValue string    `json:"config_value"`
 	Description string    `gorm:"size:255" json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -82,7 +82,7 @@ type AuditLog struct {
 	ResourceType  string    `gorm:"size:50;index;not null" json:"resource_type"`
 	ResourceID    string    `gorm:"size:100;index;not null" json:"resource_id"`
 	ResourceLabel string    `gorm:"size:255" json:"resource_label"`
-	Summary       string    `gorm:"type:text;not null" json:"-"`
+	Summary       string    `gorm:"not null" json:"-"`
 	CreatedAt     time.Time `gorm:"index;not null" json:"created_at"`
 }
 
@@ -92,7 +92,7 @@ type Notification struct {
 	UserID    uint       `gorm:"index;not null" json:"user_id"`
 	Type      string     `gorm:"size:30;index" json:"type"` // comment | reaction | system | collaboration
 	Title     string     `gorm:"size:255;not null" json:"title"`
-	Payload   string     `gorm:"type:text" json:"payload"` // JSON 字符串，如 {"link":"/book/detail/x"}
+	Payload   string     `json:"payload"` // JSON 字符串，如 {"link":"/book/detail/x"}
 	ReadAt    *time.Time `json:"read_at"`
 	CreatedAt time.Time  `json:"created_at"`
 }
@@ -208,8 +208,8 @@ type BackgroundJob struct {
 	ID          uint       `gorm:"primaryKey" json:"id"`
 	OwnerID     uint       `gorm:"index;not null;default:0" json:"owner_id"`
 	Type        string     `gorm:"size:80;index;not null" json:"type"`
-	Payload     string     `gorm:"type:text;not null" json:"-"`
-	Result      string     `gorm:"type:text" json:"-"`
+	Payload     string     `gorm:"not null" json:"-"`
+	Result      string     `json:"-"`
 	Status      string     `gorm:"size:20;index;not null;default:pending" json:"status"` // pending | running | retrying | succeeded | failed
 	Attempts    int        `gorm:"not null;default:0" json:"attempts"`
 	MaxAttempts int        `gorm:"not null;default:5" json:"max_attempts"`
@@ -217,7 +217,7 @@ type BackgroundJob struct {
 	StartedAt   *time.Time `json:"started_at"`
 	FinishedAt  *time.Time `json:"finished_at"`
 	LockedAt    *time.Time `gorm:"index" json:"-"`
-	LastError   string     `gorm:"type:text" json:"last_error"`
+	LastError   string     `json:"last_error"`
 	CreatedAt   time.Time  `gorm:"index" json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
@@ -283,7 +283,7 @@ type AchievementRule struct {
 	WindowType    string    `gorm:"size:20;default:lifetime" json:"window_type"`
 	WindowValue   int       `gorm:"default:0" json:"window_value"`
 	DistinctBy    string    `gorm:"size:30" json:"distinct_by"`
-	Filters       string    `gorm:"type:text" json:"filters"`
+	Filters       string    `json:"filters"`
 	SortOrder     int       `gorm:"default:0" json:"sort_order"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -294,7 +294,7 @@ type AchievementDefinitionVersion struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	AchievementID uint      `gorm:"uniqueIndex:uk_achievement_version;index;not null" json:"achievement_id"`
 	Version       int       `gorm:"uniqueIndex:uk_achievement_version;not null" json:"version"`
-	Snapshot      string    `gorm:"type:text;not null" json:"snapshot"`
+	Snapshot      string    `gorm:"not null" json:"snapshot"`
 	CreatedBy     uint      `gorm:"index;not null" json:"created_by"`
 	CreatedAt     time.Time `gorm:"index" json:"created_at"`
 }
@@ -307,7 +307,7 @@ type UserAchievementProgress struct {
 	DefinitionVersion int       `gorm:"not null" json:"definition_version"`
 	CurrentValue      int64     `gorm:"default:0" json:"current_value"`
 	Percent           int       `gorm:"default:0" json:"percent"`
-	RuleValues        string    `gorm:"type:text" json:"rule_values"`
+	RuleValues        string    `json:"rule_values"`
 	Status            string    `gorm:"size:20;default:pending;index" json:"status"` // pending | unlocked
 	LastEvaluatedAt   time.Time `gorm:"index" json:"last_evaluated_at"`
 	CreatedAt         time.Time `json:"created_at"`
@@ -324,7 +324,7 @@ type UserAchievement struct {
 	Source            string                 `gorm:"size:20;default:auto" json:"source"` // auto | manual
 	GrantorID         uint                   `gorm:"index;default:0" json:"grantor_id"`
 	Reason            string                 `gorm:"size:500" json:"reason"`
-	MetricsSnapshot   string                 `gorm:"type:text" json:"metrics_snapshot"`
+	MetricsSnapshot   string                 `json:"metrics_snapshot"`
 	IsPublic          bool                   `gorm:"index" json:"is_public"`
 	ShowcaseOrder     int                    `gorm:"default:0;index" json:"showcase_order"`
 	UnlockedAt        time.Time              `gorm:"index;not null" json:"unlocked_at"`
@@ -346,7 +346,7 @@ type AchievementEvent struct {
 	SourceID    string     `gorm:"size:100" json:"source_id"`
 	EnqueuedAt  *time.Time `gorm:"index" json:"enqueued_at"`
 	ProcessedAt *time.Time `gorm:"index" json:"processed_at"`
-	LastError   string     `gorm:"type:text" json:"last_error"`
+	LastError   string     `json:"last_error"`
 	CreatedAt   time.Time  `gorm:"index" json:"created_at"`
 }
 
@@ -354,7 +354,7 @@ type AchievementEvent struct {
 type Book struct {
 	ID          uint   `gorm:"primaryKey" json:"id"`
 	Title       string `gorm:"size:255;not null" json:"title"`
-	Description string `gorm:"type:text" json:"description"`
+	Description string `json:"description"`
 	CoverImage  string `gorm:"size:500" json:"cover_image"`
 	Slug        string `gorm:"size:255;uniqueIndex;not null" json:"slug"`
 	// SlugEditable 是否还允许修改访问路径（slug）。复制出的书籍为 true，修改一次后自动置为 false（只能改一次）。
@@ -418,7 +418,7 @@ type Comment struct {
 	User       *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	ParentID   *uint     `gorm:"index" json:"parent_id"`
 	Parent     *Comment  `gorm:"foreignKey:ParentID" json:"-"`
-	Content    string    `gorm:"type:text;not null" json:"content"`
+	Content    string    `gorm:"not null" json:"content"`
 	Status     string    `gorm:"size:20;default:published;index" json:"status"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -431,7 +431,7 @@ type BookReview struct {
 	UserID    uint      `gorm:"index;not null;uniqueIndex:uk_book_user_review" json:"user_id"`
 	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Rating    int       `gorm:"not null" json:"rating"` // 1-5
-	Content   string    `gorm:"type:text" json:"content"`
+	Content   string    `json:"content"`
 	Status    string    `gorm:"size:20;default:published;index" json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -445,10 +445,10 @@ type ContentReport struct {
 	TargetID       uint       `gorm:"index;not null" json:"target_id"`
 	TargetLabel    string     `gorm:"size:255;not null" json:"target_label"`
 	Reason         string     `gorm:"size:30;index;not null" json:"reason"`
-	Description    string     `gorm:"type:text" json:"description"`
+	Description    string     `json:"description"`
 	Status         string     `gorm:"size:20;index;default:pending" json:"status"` // pending | rejected | resolved
 	Resolution     string     `gorm:"size:20" json:"resolution"`                   // reject | takedown
-	ResolutionNote string     `gorm:"type:text" json:"resolution_note"`
+	ResolutionNote string     `json:"resolution_note"`
 	HandlerID      uint       `gorm:"index;default:0" json:"handler_id"`
 	ResolvedAt     *time.Time `json:"resolved_at"`
 	CreatedAt      time.Time  `gorm:"index" json:"created_at"`
@@ -499,8 +499,8 @@ type ReadingAnnotation struct {
 	DocumentID   uint      `gorm:"index;not null" json:"document_id"`
 	Kind         string    `gorm:"size:20;index;not null" json:"kind"` // highlight | note | bookmark
 	Color        string    `gorm:"size:20;default:yellow" json:"color"`
-	Note         string    `gorm:"type:text" json:"note"`
-	Quote        string    `gorm:"type:text" json:"quote"`
+	Note         string    `json:"note"`
+	Quote        string    `json:"quote"`
 	Prefix       string    `gorm:"size:500" json:"prefix"`
 	Suffix       string    `gorm:"size:500" json:"suffix"`
 	StartOffset  int       `gorm:"default:0" json:"start_offset"`
@@ -529,7 +529,7 @@ type Plugin struct {
 	Key         string     `gorm:"size:50;uniqueIndex;not null" json:"key"` // 如 pdf-export
 	Installed   bool       `gorm:"default:false" json:"installed"`
 	Version     string     `gorm:"size:50" json:"version"`
-	Meta        string     `gorm:"type:text" json:"meta"` // JSON：如 {"chrome_path":"...","status":"downloading"}
+	Meta        string     `json:"meta"` // JSON：如 {"chrome_path":"...","status":"downloading"}
 	InstalledAt *time.Time `json:"installed_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
@@ -625,7 +625,7 @@ type Document struct {
 	ParentID  *uint  `gorm:"index" json:"parent_id"`
 	Title     string `gorm:"size:255;not null" json:"title"`
 	Slug      string `gorm:"size:255;not null;uniqueIndex:uk_book_slug" json:"slug"`
-	Content   string `gorm:"type:text" json:"content"`
+	Content   string `json:"content"`
 	UserID    uint   `gorm:"index;not null" json:"user_id"`
 	SortOrder int    `gorm:"default:0" json:"sort_order"`
 	ViewCount int    `gorm:"default:0" json:"view_count"`
@@ -649,7 +649,7 @@ type DocumentRevision struct {
 	BookID        uint      `gorm:"index;not null" json:"book_id"`
 	UserID        uint      `gorm:"index;not null" json:"user_id"`
 	Title         string    `gorm:"size:255;not null" json:"title"`
-	Content       string    `gorm:"type:text" json:"content"`
+	Content       string    `json:"content"`
 	Status        string    `gorm:"size:20;not null" json:"status"`
 	AllowComments bool      `gorm:"not null;default:true" json:"allow_comments"`
 	Reason        string    `gorm:"size:20;not null" json:"reason"` // create | save | publish | pre_restore | restore

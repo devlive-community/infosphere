@@ -12,6 +12,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// mysqlStringSize 无显式 size 的字符串列在 MySQL 上的推导大小。
+// 取值超过 2^24 使驱动推导 longtext（4GB），避免文档正文、UI 文案包等长文本
+// 被建成 64KB 的 text，也避免对旧库 longtext 列的收缩式迁移；
+// SQLite/PostgreSQL 的 text 本身无长度限制，不受此值影响。
+const mysqlStringSize = 1<<24 + 1
+
 const (
 	TypeSQLite   = "sqlite"
 	TypeMySQL    = "mysql"
@@ -30,6 +36,12 @@ func Supported(t string) bool {
 		}
 	}
 	return false
+}
+
+// mysqlDialector 构造 MySQL 方言；DefaultStringSize 决定无显式 size 字符串列的推导类型，
+// 见 mysqlStringSize 注释。
+func mysqlDialector(dsn string) gorm.Dialector {
+	return mysql.New(mysql.Config{DSN: dsn, DefaultStringSize: mysqlStringSize})
 }
 
 func mysqlDSN(cfg config.DatabaseConfig) string {
@@ -63,7 +75,7 @@ func Open(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		}
 		return db, nil
 	case TypeMySQL:
-		return gorm.Open(mysql.Open(mysqlDSN(cfg)), &gorm.Config{})
+		return gorm.Open(mysqlDialector(mysqlDSN(cfg)), &gorm.Config{})
 	case TypePostgres:
 		return gorm.Open(postgres.Open(postgresDSN(cfg)), &gorm.Config{})
 	default:

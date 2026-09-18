@@ -30,8 +30,8 @@ type SiteLocale struct {
 // Draft and published values are separate: saving a draft never unpublishes live text.
 type UIMessageBundle struct {
 	Locale    string    `gorm:"primaryKey;size:64" json:"locale"`
-	Draft     string    `gorm:"type:text" json:"-"`
-	Published string    `gorm:"type:text" json:"-"`
+	Draft     string    `json:"-"`
+	Published string    `json:"-"`
 	Revision  int       `gorm:"not null" json:"revision"`
 	UpdatedBy uint      `json:"updated_by"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -42,8 +42,8 @@ type LocalizedResourceContent struct {
 	ResourceType string    `gorm:"size:40;uniqueIndex:uk_resource_locale;not null" json:"resource_type"`
 	ResourceID   uint      `gorm:"uniqueIndex:uk_resource_locale;not null" json:"resource_id"`
 	Locale       string    `gorm:"size:64;uniqueIndex:uk_resource_locale;not null" json:"locale"`
-	Draft        string    `gorm:"type:text" json:"-"`
-	Published    string    `gorm:"type:text" json:"-"`
+	Draft        string    `json:"-"`
+	Published    string    `json:"-"`
 	Revision     int       `gorm:"not null" json:"revision"`
 	UpdatedBy    uint      `json:"updated_by"`
 	UpdatedAt    time.Time `json:"updated_at"`
