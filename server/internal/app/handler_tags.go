@@ -263,8 +263,12 @@ func (a *App) findOrCreateTag(name string) (*models.Tag, error) {
 	return &tag, nil
 }
 
-// syncBookTags 将书籍标签同步为请求给定的名称列表（find-or-create + 全量替换）
+// syncBookTags 将书籍标签同步为请求给定的名称列表（find-or-create + 全量替换）。
+// 标签插件禁用时直接跳过（不新增/不清空既有关联），与「禁用即前后端全禁」一致。
 func (a *App) syncBookTags(book *models.Book, names []string) error {
+	if !a.pluginEnabled(pluginTags) {
+		return nil
+	}
 	tags := []models.Tag{}
 	seen := map[string]bool{}
 	for _, raw := range names {

@@ -52,7 +52,7 @@ var pluginRegistry = []pluginInfo{
 		Description: "安装官方 chrome-headless-shell，用于书籍 PDF 导出与网页浏览器渲染采集（运行 JavaScript）。约 130–170MB，下载到数据目录。",
 		SizeHint:    "~150MB",
 		Kind:        pluginKindRuntime,
-		Builtin:     true,
+		Builtin:     false, // 需从外部下载运行时，归为「外部插件」
 	},
 	{
 		Key:         pluginAchievements,
@@ -399,9 +399,14 @@ func (a *App) AdminInstallPlugin(c *gin.Context) {
 	}
 	// feature 插件：启用即切换开关，无需下载
 	if info.Kind == pluginKindFeature {
+		wasEnabled := a.pluginEnabled(key)
 		if err := a.setFeaturePluginEnabled(info, true); err != nil {
 			fail(c, http.StatusInternalServerError, "启用失败: "+err.Error())
 			return
+		}
+		// 功能启用时的初始化钩子：成就需重算，避免用户还要去模块设置里再保存一次才生效
+		if key == pluginAchievements && !wasEnabled {
+			_, _ = a.enqueueAchievementRecalculation(0)
 		}
 		ok(c, gin.H{"message": "已启用", "status": "enabled"})
 		return

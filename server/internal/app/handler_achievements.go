@@ -93,9 +93,9 @@ func (a *App) AdminUpdateAchievementSettings(c *gin.Context) {
 	} else if req.ShowcaseLimit > 12 {
 		req.ShowcaseLimit = 12
 	}
-	before := a.achievementSettings()
+	// 注意：成就总开关（cfgAchievementsEnabled）由「成就」插件启用状态唯一掌管，此处不再写入，
+	// 避免与插件开关冲突、以及「启用插件后还要来这里保存一次」的问题。
 	settings := []struct{ key, value, description string }{
-		{cfgAchievementsEnabled, boolText(req.Enabled), "成就模块总开关"},
 		{cfgAchievementsPublic, boolText(req.PublicProfileEnabled), "公开主页展示成就"},
 		{cfgAchievementsNotifications, boolText(req.NotificationsEnabled), "成就解锁站内通知"},
 		{cfgAchievementsAllowHide, boolText(req.AllowUserHide), "允许用户隐藏成就"},
@@ -108,11 +108,8 @@ func (a *App) AdminUpdateAchievementSettings(c *gin.Context) {
 		}
 	}
 	a.recordAudit(c, "achievement.settings_updated", "achievement", "settings", "成就模块设置", changedFields(
-		"enabled", "public_profile_enabled", "notifications_enabled", "allow_user_hide", "showcase_limit",
+		"public_profile_enabled", "notifications_enabled", "allow_user_hide", "showcase_limit",
 	))
-	if req.Enabled && !before.Enabled {
-		_, _ = a.enqueueAchievementRecalculation(0)
-	}
 	ok(c, a.achievementSettings())
 }
 
