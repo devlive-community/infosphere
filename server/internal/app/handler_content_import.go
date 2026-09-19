@@ -569,9 +569,17 @@ func (a *App) createImportedWebDocument(book *models.Book, u *models.User, title
 		title = "采集的网页"
 	}
 	allowComments := true
+	// 书籍开启「子章节状态跟随父章节」且挂在父章节下时，采集的章节沿用父章节发布状态（否则默认草稿）
+	status := "draft"
+	if parentID != nil && book.ChildStatusFollowParent {
+		var parent models.Document
+		if a.DB.Select("status").Where("id = ? AND book_id = ?", *parentID, book.ID).First(&parent).Error == nil && docStatuses[parent.Status] {
+			status = parent.Status
+		}
+	}
 	doc := models.Document{
 		BookID: book.ID, UserID: u.ID, Title: title, Content: strings.TrimSpace(content),
-		ParentID: parentID, Status: "draft", AllowComments: &allowComments,
+		ParentID: parentID, Status: status, AllowComments: &allowComments,
 	}
 	if sortOrder != nil {
 		doc.SortOrder = *sortOrder
