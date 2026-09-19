@@ -250,7 +250,7 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
           ) : loading ? (
             <Loading />
           ) : (
-            <div className={view === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+            <div className={view === 'grid' ? 'grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]' : 'space-y-4'}>
               {items.map((b) => <BookCard key={b.id} book={b} view={view} showAuthor={false} />)}
             </div>
           )}

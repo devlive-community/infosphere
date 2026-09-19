@@ -48,7 +48,7 @@ export default function Favorites() {
           <EmptyState>{t('favorites.empty')}</EmptyState>
         ) : (
           <>
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
               {data.items.map(({ book }) => (
                 <BookCard key={book.id} book={book} />
               ))}

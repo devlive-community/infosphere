@@ -215,7 +215,7 @@ export default function MyBooks() {
       {loading ? (
         <Loading />
       ) : hasBooks ? (
-        <div className={view === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+        <div className={view === 'grid' ? 'grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]' : 'space-y-4'}>
           {items.map((book) => (
             <BookCardMine key={book.id} book={book} view={view} collaborating={scope === 'collaborating'}
               menuOpen={menuFor === book.id} setMenuOpen={(open) => setMenuFor(open ? book.id : null)}
