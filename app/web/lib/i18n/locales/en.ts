@@ -1712,6 +1712,8 @@ export const en: Record<string, string> = {
   'admin.achievements.grants.usernameRequired': 'Please enter a username and select an achievement',
   'admin.achievements.form.editTitle': 'Edit achievement',
   'admin.achievements.form.createTitle': 'New achievement',
+  'admin.achievements.form.tab.basic': 'Basic info',
+  'admin.achievements.form.tab.i18n': 'Localization',
   'admin.achievements.form.cancel': 'Cancel',
   'admin.achievements.form.save': 'Save achievement',
   'admin.achievements.form.key': 'Key',

@@ -1712,6 +1712,8 @@ export const zh: Record<string, string> = {
   'admin.achievements.grants.usernameRequired': '请填写用户名并选择成就',
   'admin.achievements.form.editTitle': '编辑成就',
   'admin.achievements.form.createTitle': '新建成就',
+  'admin.achievements.form.tab.basic': '基本信息',
+  'admin.achievements.form.tab.i18n': '国际化信息',
   'admin.achievements.form.cancel': '取消',
   'admin.achievements.form.save': '保存成就',
   'admin.achievements.form.key': '唯一标识',
