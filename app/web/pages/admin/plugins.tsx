@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, API_BASE, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
-import { Badge, Button, Loading, useFeedback } from '@/components/ui'
+import { Badge, Button, EmptyState, Loading, SegmentedTabs, Switch, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
 interface Plugin {
@@ -10,20 +10,25 @@ interface Plugin {
   name: string
   description: string
   size_hint: string
+  kind: 'runtime' | 'feature'
+  builtin: boolean
   installed: boolean
   version: string
   status?: string
   error?: string
 }
 
+type PluginTab = 'builtin' | 'external'
+
 interface LogLine { time: string; level: string; text: string }
 
 // 管理控制台 · 插件：安装/卸载后台功能插件（如 PDF 导出），实时日志经 SSE 推送
 export default function AdminPlugins() {
-  const { user } = useApp()
+  const { user, refreshSite } = useApp()
   const isAdmin = user?.role === 'admin'
   const { showToast, confirmAction } = useFeedback()
   const { t } = useTranslation()
+  const [tab, setTab] = useState<PluginTab>('builtin')
   const [items, setItems] = useState<Plugin[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [logs, setLogs] = useState<Record<string, LogLine[]>>({})
@@ -91,6 +96,22 @@ export default function AdminPlugins() {
     }
   }
 
+  // 特性插件的启用/禁用：即时切换开关，禁用前二次确认（会隐藏对应页面与接口）。切换后刷新站点配置以更新左侧菜单。
+  async function toggleFeature(p: Plugin, next: boolean) {
+    if (!next && !(await confirmAction({ title: t('admin.plugins.disableTitle'), message: t('admin.plugins.disableMessage', { name: p.name }), confirmLabel: t('admin.plugins.disableConfirm'), danger: true }))) return
+    setBusy(p.key)
+    try {
+      await api(`/admin/plugins/${p.key}/${next ? 'install' : 'uninstall'}`, { method: 'POST' })
+      load()
+      await refreshSite()
+      showToast({ message: next ? t('admin.plugins.enabled') : t('admin.plugins.disabled'), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('admin.plugins.saveFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
   function toggleLogs(key: string) {
     if (logOpen[key]) {
       sources.current[key]?.close()
@@ -116,37 +137,53 @@ export default function AdminPlugins() {
         <p className="mt-1.5 text-sm text-slate-500">{t('admin.plugins.description')}</p>
       </div>
 
+      <SegmentedTabs className="mb-6" value={tab} onChange={(value) => setTab(value as PluginTab)} ariaLabel={t('admin.nav.plugins')} items={[
+        { value: 'builtin', label: t('admin.plugins.tab.builtin') },
+        { value: 'external', label: t('admin.plugins.tab.external') },
+      ]} />
+
       {items === null ? (
         <Loading className="py-16" label={t('admin.plugins.loading')} />
+      ) : tab === 'external' ? (
+        <EmptyState>{t('admin.plugins.externalEmpty')}</EmptyState>
       ) : (
         <div className="space-y-4">
-          {items.map((p) => {
+          {items.filter((p) => p.builtin).map((p) => {
             const pluginLogs = logs[p.key] || []
+            const isFeature = p.kind === 'feature'
             return (
               <div key={p.key} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <h2 className="font-semibold text-slate-900">{p.name}</h2>
-                      {statusBadge(p)}
-                      <span className="text-xs text-slate-400">{p.size_hint}</span>
+                      {isFeature
+                        ? <Badge tone={p.installed ? 'emerald' : 'slate'}>{p.installed ? t('admin.plugins.status.enabled') : t('admin.plugins.status.disabled')}</Badge>
+                        : statusBadge(p)}
+                      {!isFeature && p.size_hint && <span className="text-xs text-slate-400">{p.size_hint}</span>}
                     </div>
                     <p className="mt-1.5 text-sm text-slate-500">{p.description}</p>
                     {p.status === 'failed' && p.error && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-600">{p.error}</p>}
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => toggleLogs(p.key)}>{logOpen[p.key] ? t('admin.plugins.hideLogs') : t('admin.plugins.viewLogs')}</Button>
-                    {p.installed ? (
-                      <Button variant="outline" disabled={busy === p.key} onClick={() => uninstall(p)}>{t('admin.plugins.uninstall')}</Button>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {isFeature ? (
+                      <Switch ariaLabel={p.name} checked={p.installed} disabled={busy === p.key} onChange={(next) => toggleFeature(p, next)} />
                     ) : (
-                      <Button loading={busy === p.key || p.status === 'downloading'} disabled={p.status === 'downloading'} onClick={() => install(p)}>
-                        {p.status === 'downloading' ? t('admin.plugins.status.installing') : t('admin.plugins.install')}
-                      </Button>
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => toggleLogs(p.key)}>{logOpen[p.key] ? t('admin.plugins.hideLogs') : t('admin.plugins.viewLogs')}</Button>
+                        {p.installed ? (
+                          <Button variant="outline" disabled={busy === p.key} onClick={() => uninstall(p)}>{t('admin.plugins.uninstall')}</Button>
+                        ) : (
+                          <Button loading={busy === p.key || p.status === 'downloading'} disabled={p.status === 'downloading'} onClick={() => install(p)}>
+                            {p.status === 'downloading' ? t('admin.plugins.status.installing') : t('admin.plugins.install')}
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
 
-                {logOpen[p.key] && (
+                {!isFeature && logOpen[p.key] && (
                   <div className="mt-4 max-h-60 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-xs leading-6">
                     {pluginLogs.length === 0 ? (
                       <span className="text-slate-500">{t('admin.plugins.noLogs')}</span>

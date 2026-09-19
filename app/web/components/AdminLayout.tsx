@@ -76,6 +76,9 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
     { key: 'upgrade', labelKey: 'admin.nav.upgrade', href: '/admin/upgrade', icon: CloudIcon },
   ]
 
+  // 特性插件禁用时隐藏其菜单项（成就系统由插件启用状态驱动，禁用即前后端全禁）
+  const visibleNav = NAV.filter((item) => item.key !== 'achievements' || site.achievements_enabled === 'true')
+
   return (
     <div className="flex h-full flex-col">
       <Link href="/admin/system" className="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-100 px-5">
@@ -84,7 +87,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
         <span className="text-xs font-medium text-slate-400">{t('admin.title')}</span>
       </Link>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {NAV.map((item) => {
+        {visibleNav.map((item) => {
           const active = item.key === current
           const Icon = item.icon
           return (

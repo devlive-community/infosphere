@@ -94,6 +94,7 @@ interface AppContextValue {
   login: (token: string, user: User) => void
   logout: () => void
   refreshUser: () => Promise<User>
+  refreshSite: () => Promise<void>
   applyTheme: (s: ThemeSetting) => void
 }
 
@@ -125,6 +126,7 @@ const AppContext = createContext<AppContextValue>({
   login: () => {},
   logout: () => {},
   refreshUser: async () => { throw new Error('not ready') },
+  refreshSite: async () => {},
   applyTheme: () => {},
 })
 
@@ -243,13 +245,17 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
     return me
   }, [])
 
+  const refreshSite = useCallback(async () => {
+    try { setSite(await api<SiteConfig>('/site')) } catch { /* 忽略站点配置错误 */ }
+  }, [])
+
   const handleApplyTheme = useCallback((s: ThemeSetting) => {
     setTheme(s)
     applyTheme(s)
   }, [])
 
   return (
-    <AppContext.Provider value={{ user, authReady, installed, site, theme, login, logout, refreshUser, applyTheme: handleApplyTheme }}>
+    <AppContext.Provider value={{ user, authReady, installed, site, theme, login, logout, refreshUser, refreshSite, applyTheme: handleApplyTheme }}>
       {children}
     </AppContext.Provider>
   )
