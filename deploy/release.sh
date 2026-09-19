@@ -3,20 +3,67 @@
 # Release Note 优先取自 CHANGELOG.md 中该版本的条目，缺失时回退到提交历史（见 .github/workflows/release.yml）。
 #
 # 用法：
-#   deploy/release.sh            # 使用 handler_setup.go 中的当前版本
-#   deploy/release.sh 2026.0.1   # 指定版本号
+#   deploy/release.sh                       # 发布 handler_setup.go 中的当前版本
+#   deploy/release.sh 2026.0.1              # 指定发布版本号
+#   deploy/release.sh --next 2026.1.0       # 指定发布后开启的下一个版本号
+#   deploy/release.sh 2026.0.1 --next 2026.1.0
+#   deploy/release.sh --allow-dirty         # 工作区有未提交改动时仍允许发布（标签不含这些改动）
+# 发布成功后自动开启下一版本（默认 patch +1），版本改动留在工作区待检查提交。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 RELEASE_BRANCH="dev"
 SETUP_GO="server/internal/app/handler_setup.go"
 
-VERSION="${1:-$(grep -oE 'var Version = "[0-9.]+"' "$SETUP_GO" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)}"
+VERSION=""
+NEXT=""
+ALLOW_DIRTY=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --allow-dirty)
+      ALLOW_DIRTY=1
+      shift
+      ;;
+    --next)
+      [ -n "${2:-}" ] || { echo "--next 需要版本号参数" >&2; exit 1; }
+      NEXT="$2"
+      shift 2
+      ;;
+    --next=*)
+      NEXT="${1#--next=}"
+      shift
+      ;;
+    -*)
+      echo "未知选项：$1" >&2
+      exit 1
+      ;;
+    *)
+      [ -z "$VERSION" ] || { echo "发布版本号只能指定一次（收到：$1）" >&2; exit 1; }
+      VERSION="$1"
+      shift
+      ;;
+  esac
+done
+
+VERSION="${VERSION:-$(grep -oE 'var Version = "[0-9.]+"' "$SETUP_GO" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)}"
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "无法确定版本号（收到：${VERSION}）" >&2
   exit 1
 fi
 TAG="v${VERSION}"
+
+if [ -z "$NEXT" ]; then
+  IFS='.' read -r ny nm np <<<"$VERSION"
+  NEXT="${ny}.${nm}.$((np + 1))"
+fi
+if ! [[ "$NEXT" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "下一版本号格式应为 YYYY.MAJOR.PATCH（收到：${NEXT}）" >&2
+  exit 1
+fi
+if [ "$NEXT" = "$VERSION" ]; then
+  echo "下一版本号（$NEXT）不能与发布版本相同" >&2
+  exit 1
+fi
 
 # ── 预检 ──
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
@@ -24,8 +71,10 @@ if [ "$BRANCH" != "$RELEASE_BRANCH" ]; then
   echo "当前分支为 ${BRANCH}，请切换到默认分支 ${RELEASE_BRANCH} 再发布" >&2
   exit 1
 fi
-if [ -n "$(git status --porcelain)" ]; then
-  echo "工作区有未提交改动，请先提交后再发布：" >&2
+if [ "$ALLOW_DIRTY" -eq 1 ]; then
+  echo "⚠️  --allow-dirty：忽略未提交改动继续发布，标签不包含这些改动" >&2
+elif [ -n "$(git status --porcelain)" ]; then
+  echo "工作区有未提交改动，请先提交后再发布（或使用 --allow-dirty 跳过该检查）：" >&2
   git status --short
   exit 1
 fi
@@ -66,7 +115,7 @@ if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ] || printf '%s' "$NOTES" 
   echo "    建议先运行 deploy/new-version.sh 生成草稿，整理 CHANGELOG.md 后再发布。" >&2
 fi
 
-echo "将发布 ${TAG}（版本 ${VERSION}）到 $(git remote get-url origin)"
+echo "将发布 ${TAG}（版本 ${VERSION}）到 $(git remote get-url origin)，发布后自动开启下一版本 ${NEXT}"
 read -r -p "确认发布？(y/N) " ans
 case "$ans" in
   y | Y) ;;
@@ -77,7 +126,9 @@ git tag -a "$TAG" -m "Release $VERSION"
 git push origin "$TAG"
 
 echo "✅ 已推送标签 ${TAG}，Release 工作流开始构建并发布。"
-echo "💡 记得运行 deploy/new-version.sh 开启下一版本（统一 bump 版本号并转正 CHANGELOG）。"
+
+# ── 开启下一版本：统一 bump 各处版本号并转正 CHANGELOG，改动留在工作区待检查提交 ──
+deploy/new-version.sh "$NEXT"
 if command -v gh >/dev/null 2>&1; then
   echo "查看进度：gh run watch"
   gh run list --workflow=Release --limit=1 2>/dev/null || true

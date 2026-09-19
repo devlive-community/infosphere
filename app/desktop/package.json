@@ -1,6 +1,6 @@
 {
   "name": "infosphere-desktop",
-  "version": "2026.0.3",
+  "version": "2026.0.4",
   "private": true,
   "scripts": {
     "tauri": "tauri",
