@@ -177,6 +177,9 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
     }
   }, [user, book, doc])
 
+  // 正文滚动容器（阅读区是 h-screen 内部滚动，window 不滚动，续读/上报/回顶都以此容器为准）
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+
   // 精确续读：首次进入时，若上次进度停留在当前章节则恢复滚动位置
   const restoredRef = useRef(false)
   useEffect(() => {
@@ -185,12 +188,20 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
     getReadingProgress(user?.username || '', book.id).then((p) => {
       if (p && p.docId === doc.id && (p.scrollPercent ?? 0) > 0) {
         requestAnimationFrame(() => {
-          const max = document.documentElement.scrollHeight - window.innerHeight
-          if (max > 0) window.scrollTo({ top: (max * (p.scrollPercent as number)) / 100 })
+          const el = contentScrollRef.current
+          const max = el ? el.scrollHeight - el.clientHeight : 0
+          if (el && max > 0) el.scrollTo({ top: (max * (p.scrollPercent as number)) / 100 })
         })
       }
     })
   }, [book?.id, doc?.id, user?.username]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 切换章节后正文回到首行（首个章节交给续读逻辑，避免覆盖恢复位置）
+  const firstDocRef = useRef(true)
+  useEffect(() => {
+    if (firstDocRef.current) { firstDocRef.current = false; return }
+    contentScrollRef.current?.scrollTo({ top: 0 })
+  }, [doc?.id])
 
   // 阅读时长与滚动位置上报（登录用户）：活跃计时（隐藏暂停），节流上报滚动百分比，
   // 每 15s / 页面隐藏 / 切章 / 关闭时 flush 一次增量。
@@ -199,12 +210,14 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   useEffect(() => {
     if (!user || !book || !doc) return
     let lastTick = Date.now()
+    const scroller = contentScrollRef.current
     const computeScroll = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight
-      scrollPctRef.current = max > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / max) * 100))) : 0
+      const el = contentScrollRef.current
+      const max = el ? el.scrollHeight - el.clientHeight : 0
+      scrollPctRef.current = el && max > 0 ? Math.min(100, Math.max(0, Math.round((el.scrollTop / max) * 100))) : 0
     }
     const onScroll = () => computeScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
+    scroller?.addEventListener('scroll', onScroll, { passive: true })
     computeScroll()
 
     const tick = setInterval(() => {
@@ -230,7 +243,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
     return () => {
       clearInterval(tick)
       clearInterval(heartbeat)
-      window.removeEventListener('scroll', onScroll)
+      scroller?.removeEventListener('scroll', onScroll)
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', flush)
       flush()
@@ -405,7 +418,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
 
         {/* 中：正文（内部滚动）+ 底部固定的上一篇/下一篇 */}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="min-w-0 flex-1 overflow-y-auto">
+          <div ref={contentScrollRef} className="min-w-0 flex-1 overflow-y-auto">
             <div className="mx-auto w-full px-8 py-10 lg:px-14" style={{ maxWidth: 'var(--content-max-width)' }}>
               {doc ? (
                 <article className="relative isolate">

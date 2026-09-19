@@ -296,6 +296,15 @@ export default function Writer({ user }: WriterProps) {
     el?.scrollIntoView({ block: 'nearest' })
   }, [current?.id, expanded])
 
+  // 切换/新建章节后，编辑区与预览区都回到首行，避免停留在上一章节的滚动位置
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (el) { el.scrollTop = 0; el.setSelectionRange(0, 0) }
+      if (previewRef.current) previewRef.current.scrollTop = 0
+    })
+  }, [current?.id])
+
   // 加载书籍与章节树
   useEffect(() => {
     if (!user || !bookSlug) return
@@ -1237,7 +1246,8 @@ export default function Writer({ user }: WriterProps) {
           <span className="text-slate-300">/</span>
           <Link href="/books" onClick={(event) => { event.preventDefault(); navigateAway('/books') }} className="shrink-0 text-slate-500 hover:text-primary-600">{t('writer.myBooks')}</Link>
           <span className="text-slate-300">/</span>
-          <span className="truncate font-medium text-slate-900">{book.title}</span>
+          <Link href={`/book/detail/${encodeURIComponent(book.slug)}`} onClick={(event) => { event.preventDefault(); navigateAway(`/book/detail/${encodeURIComponent(book.slug)}`) }}
+            className="truncate font-medium text-slate-900 hover:text-primary-600">{book.title}</Link>
         </div>
         <div className="hidden items-center gap-1.5 text-sm text-slate-400 md:flex">
           {saveState === 'saved' && <><CheckCircleIcon className="h-4 w-4 text-emerald-500" /> {t('writer.allSaved')}</>}
