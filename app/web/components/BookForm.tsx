@@ -8,7 +8,7 @@ import { BookIcon, CheckCircleIcon, CloseIcon, ImageIcon, LinkIcon, UploadIcon, 
 import type { Book, BookStatus } from '@/lib/types'
 
 const MAX_TITLE = 60
-const MAX_DESC = 200
+const MAX_DESC = 1000
 const MAX_TAGS = 10
 const MAX_WATERMARK = 80
 const validSlug = (s: string) => /^[a-z0-9-]+$/.test(s)

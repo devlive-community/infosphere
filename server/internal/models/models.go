@@ -68,7 +68,7 @@ type SiteConfig struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	ConfigKey   string    `gorm:"size:50;uniqueIndex" json:"config_key"`
 	ConfigValue string    `json:"config_value"`
-	Description string    `gorm:"size:255" json:"description"`
+	Description string    `gorm:"size:1000" json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
