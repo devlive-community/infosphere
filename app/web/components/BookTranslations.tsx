@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { api } from '@/lib/api'
+import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 
 interface Variant { slug: string; title: string; language: string; current: boolean; first_doc_slug?: string }
@@ -9,11 +10,14 @@ interface Variant { slug: string; title: string; language: string; current: bool
 // linkTo='reader' 时切换后停留在阅读页（跳到该书首个可读章节），否则跳到详情页。
 export default function BookTranslations({ bookId, linkTo = 'detail' }: { bookId: number; linkTo?: 'detail' | 'reader' }) {
   const { t } = useTranslation()
+  const { site } = useApp()
+  const enabled = (site.feature_plugins || []).includes('book-translations')
   const [items, setItems] = useState<Variant[]>([])
   useEffect(() => {
+    if (!enabled) return
     api<{ items: Variant[] }>(`/books/${bookId}/translations`).then((d) => setItems(d.items || [])).catch(() => { /* 忽略 */ })
-  }, [bookId])
-  if (items.length < 2) return null
+  }, [bookId, enabled])
+  if (!enabled || items.length < 2) return null
   const hrefFor = (v: Variant) =>
     linkTo === 'reader' && v.first_doc_slug
       ? `/book/reader/${encodeURIComponent(v.slug)}/${encodeURIComponent(v.first_doc_slug)}`

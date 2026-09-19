@@ -45,6 +45,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const router = useRouter()
   const { user, site } = useApp()
   const tagsEnabled = (site.feature_plugins || []).includes('tags')
+  const transEnabled = (site.feature_plugins || []).includes('book-translations')
+  const versionsEnabled = (site.feature_plugins || []).includes('book-versions')
   const { t } = useTranslation()
   const isEdit = !!initial
 
@@ -255,29 +257,29 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
           </Section>
 
           {/* 多语言与版本：语言/翻译分组 一组，版本/版本分组 一组（设置页拆分为独立 tab，可选隐藏） */}
-          {showLocalization && (
+          {showLocalization && (transEnabled || versionsEnabled) && (
           <Section icon={<i className="fa-solid fa-language text-sm" aria-hidden="true" />} title={t('bookForm.section.localization')}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
+              {transEnabled && <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('common.language.label')}</label>
                 <Input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder={t('bookForm.placeholder.language')} maxLength={32} />
                 <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.languageHint')}</p>
-              </div>
-              <div>
+              </div>}
+              {transEnabled && <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.transGroup')}</label>
                 <Input value={transGroup} onChange={(e) => setTransGroup(e.target.value)} placeholder={t('bookForm.placeholder.transGroup')} maxLength={64} />
                 <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.transGroupHint')}</p>
-              </div>
-              <div>
+              </div>}
+              {versionsEnabled && <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.version')}</label>
                 <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder={t('bookForm.placeholder.version')} maxLength={32} />
                 <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.versionHint')}</p>
-              </div>
-              <div>
+              </div>}
+              {versionsEnabled && <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.versionGroup')}</label>
                 <Input value={versionGroup} onChange={(e) => setVersionGroup(e.target.value)} placeholder={t('bookForm.placeholder.versionGroup')} maxLength={64} />
                 <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.versionGroupHint')}</p>
-              </div>
+              </div>}
             </div>
           </Section>
           )}

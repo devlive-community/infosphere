@@ -5,6 +5,7 @@ import Seo from '@/components/Seo'
 import { resolveMediaUrl } from '@/lib/media'
 import { GearIcon, UsersIcon, DownloadIcon, ExternalLinkIcon, PencilIcon, ListIcon, TrashIcon } from '@/components/icons'
 import { ButtonLink } from '@/components/ui'
+import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 
@@ -19,12 +20,16 @@ interface BookSettingsLayoutProps {
 // BookSettingsLayout 书籍设置：左侧书籍卡与导航 + 右侧内容区（对齐账户设置的双栏布局）
 export default function BookSettingsLayout({ book, active, children }: BookSettingsLayoutProps) {
   const { t } = useTranslation()
+  const { site } = useApp()
   const cover = resolveMediaUrl(book.cover_image)
   const base = `/book/settings/${encodeURIComponent(book.slug)}`
+  // 多语言/版本都禁用时，隐藏「多语言与版本」设置 tab
+  const features = site.feature_plugins || []
+  const localizationEnabled = features.includes('book-translations') || features.includes('book-versions')
 
   const NAV: { key: BookSettingsTab; labelKey: string; icon: (p: { className?: string }) => JSX.Element; sub: string; danger?: boolean }[] = [
     { key: 'basic', labelKey: 'bookSettings.nav.basic', icon: GearIcon, sub: '' },
-    { key: 'localization', labelKey: 'bookSettings.nav.localization', icon: ({ className }) => <i className={`fa-solid fa-language ${className || ''}`} aria-hidden="true" />, sub: 'localization' },
+    ...(localizationEnabled ? [{ key: 'localization' as BookSettingsTab, labelKey: 'bookSettings.nav.localization', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-language ${className || ''}`} aria-hidden="true" />, sub: 'localization' }] : []),
     { key: 'chapters', labelKey: 'bookSettings.nav.chapters', icon: ListIcon, sub: 'chapters' },
     { key: 'analytics', labelKey: 'bookSettings.nav.analytics', icon: ({ className }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" />, sub: 'analytics' },
     { key: 'collaborators', labelKey: 'bookSettings.nav.collaborators', icon: UsersIcon, sub: 'collaborators' },

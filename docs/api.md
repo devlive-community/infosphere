@@ -303,8 +303,10 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/books/:id/documents` | 可见书籍的文档树（不含正文）；未授权统一 404，普通读者/viewer 仅含已发布章节 | `document:read` |
-| GET | `/books/:id/translations` | 同一翻译组（书籍 `trans_group` 相同且非空）内对当前用户可见的书籍 `items:[{slug,title,language,version,current}]`（少于两本返回空），供阅读页语言切换 | `book:read` |
-| GET | `/books/:id/versions` | 同一版本组（书籍 `version_group` 相同且非空）内对当前用户可见的书籍 `items:[{slug,title,language,version,current}]`（少于两本返回空），供阅读页版本切换 | `book:read` |
+| GET | `/books/:id/translations` | 同一翻译组（书籍 `trans_group` 相同且非空）内对当前用户可见的书籍 `items:[{slug,title,language,version,current}]`（少于两本返回空），供阅读页语言切换。**受「书籍多语言」插件守卫**（默认启用，禁用后 404、前端入口隐藏） | `book:read` |
+| GET | `/books/:id/versions` | 同一版本组（书籍 `version_group` 相同且非空）内对当前用户可见的书籍 `items:[{slug,title,language,version,current}]`（少于两本返回空），供阅读页版本切换。**受「书籍版本」插件守卫**（默认启用，禁用后 404、前端入口隐藏） | `book:read` |
+
+> 「书籍多语言」（`book-translations`）与「书籍版本」（`book-versions`）为 feature 插件，默认启用；数据（`language`/`trans_group`/`version`/`version_group`）存于书籍字段，禁用只停用切换入口与这两个接口，不删数据。
 | POST | `/books/:id/copy` | 复制可读书籍的元数据 + 章节到当前用户名下的**私有草稿**新书。JSON `{title?, mode:full\|custom, doc_ids?}`：`full` 按原结构与顺序复制全部章节；`custom` 仅复制 `doc_ids`（有序，即复制后顺序），父章节同在所选集合内则保留父子、否则升为顶层。返回 `{book, copied_documents}` | `book:create` |
 | POST | `/books/:id/documents` | 创建文档（title 必填；slug 留空自动生成；parent_id 归属校验；成功后生成初始版本） | `document:create` |
 | GET | `/books/:id/documents/slug/:slug` | 按 slug 查文档（含正文） | `document:read` |

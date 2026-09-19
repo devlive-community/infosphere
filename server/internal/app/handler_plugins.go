@@ -26,9 +26,11 @@ import (
 // 保持基础二进制/镜像轻量；未安装则 PDF 导出不可用。
 
 const (
-	pluginPDFExport    = "pdf-export"
-	pluginAchievements = "achievements"
-	pluginTags         = "tags"
+	pluginPDFExport        = "pdf-export"
+	pluginAchievements     = "achievements"
+	pluginTags             = "tags"
+	pluginBookTranslations = "book-translations"
+	pluginBookVersions     = "book-versions"
 	// pluginKindRuntime 需要下载运行时依赖（二进制/镜像）的插件；pluginKindFeature 仅切换某项功能的启用/禁用。
 	pluginKindRuntime = "runtime"
 	pluginKindFeature = "feature"
@@ -80,6 +82,20 @@ var pluginRegistry = []pluginInfo{
 		AdminPerms: []authz.Permission{authz.AchievementManage, authz.AchievementGrant},
 		UserPerms:  []authz.Permission{authz.AchievementRead, authz.AchievementUpdate},
 		OnEnable:   func(a *App) error { _, err := a.enqueueAchievementRecalculation(0); return err },
+	},
+	{
+		Key:         pluginBookTranslations,
+		Name:        "书籍多语言",
+		Description: "同一作品的多语言互译组：阅读/详情页可在不同语言版本间切换。禁用后语言切换入口与相关接口停用（默认启用，数据保留在书籍字段中）。",
+		Kind:        pluginKindFeature,
+		Builtin:     true,
+	},
+	{
+		Key:         pluginBookVersions,
+		Name:        "书籍版本",
+		Description: "同一作品的多版本组：阅读/详情页可在不同版本间切换。禁用后版本切换入口与相关接口停用（默认启用，数据保留在书籍字段中）。",
+		Kind:        pluginKindFeature,
+		Builtin:     true,
 	},
 	{
 		Key:         pluginTags,
