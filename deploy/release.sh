@@ -39,6 +39,22 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
   exit 1
 fi
 
+# ── 版本一致性预检：各版本载体应与发布版本一致，避免产物版本漂移 ──
+check_version() {
+  local label="$1" file="$2" pattern="$3" got
+  got="$(grep -Eom1 "$pattern" "$file" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)"
+  if [ "$got" != "$VERSION" ]; then
+    echo "版本不一致：$label（$file）为 ${got:-未找到}，应为 $VERSION" >&2
+    echo "请先运行 deploy/new-version.sh 统一版本号" >&2
+    exit 1
+  fi
+}
+check_version "Go var Version" "$SETUP_GO" 'var Version = "[0-9.]+"'
+check_version "web/package.json" "app/web/package.json" '"version": "[0-9.]+"'
+check_version "desktop/package.json" "app/desktop/package.json" '"version": "[0-9.]+"'
+check_version "tauri.conf.json" "app/desktop/src-tauri/tauri.conf.json" '"version": "[0-9.]+"'
+check_version "Cargo.toml" "app/desktop/src-tauri/Cargo.toml" '^version = "[0-9.]+"'
+
 # ── CHANGELOG 预检：Release Note 取自 CHANGELOG.md 中该版本的条目 ──
 NOTES="$(awk -v ver="$VERSION" '
   $0 ~ ("^## \\[" ver "\\]") { grab = 1; next }
@@ -61,6 +77,7 @@ git tag -a "$TAG" -m "Release $VERSION"
 git push origin "$TAG"
 
 echo "✅ 已推送标签 ${TAG}，Release 工作流开始构建并发布。"
+echo "💡 记得运行 deploy/new-version.sh 开启下一版本（统一 bump 版本号并转正 CHANGELOG）。"
 if command -v gh >/dev/null 2>&1; then
   echo "查看进度：gh run watch"
   gh run list --workflow=Release --limit=1 2>/dev/null || true
