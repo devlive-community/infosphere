@@ -290,7 +290,7 @@ export default function MyReading() {
           <EmptyState>{t('user.reading.noRecords')}</EmptyState>
         ) : (
           <>
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]">
               {data.items.map((item) => (
                 <ReadingCard key={item.book.id} item={item} />
               ))}
