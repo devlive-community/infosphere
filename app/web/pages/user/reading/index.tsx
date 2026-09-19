@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Container from '@/components/Container'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
+import { useGridPageSize } from '@/lib/useGridPageSize'
 import { useTranslation } from '@/lib/i18n'
 import { Button, ButtonLink, EmptyState, Input, Loading, Pagination, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
@@ -243,6 +244,7 @@ export default function MyReading() {
   const { site } = useApp()
   const siteName = site.site_name || 'InfoSphere'
   const { t } = useTranslation()
+  const { ref: gridRef, pageSize } = useGridPageSize({ minItemRem: 18, rows: 3, fallback: 9 })
   const [page, setPage] = useState(1)
   const [data, setData] = useState<ReadingPage | null>(null)
   const [stats, setStats] = useState<ReadingStats | null>(null)
@@ -251,11 +253,11 @@ export default function MyReading() {
   useEffect(() => {
     if (!user) return
     setLoading(true)
-    api<ReadingPage>('/users/me/reading', { params: { page, page_size: 9 } })
+    api<ReadingPage>('/users/me/reading', { params: { page, page_size: pageSize } })
       .then(setData)
-      .catch(() => setData({ items: [], total: 0, page: 1, page_size: 9 }))
+      .catch(() => setData({ items: [], total: 0, page: 1, page_size: pageSize }))
       .finally(() => setLoading(false))
-  }, [user, page])
+  }, [user, page, pageSize])
 
   useEffect(() => {
     if (!user) return
@@ -290,7 +292,7 @@ export default function MyReading() {
           <EmptyState>{t('user.reading.noRecords')}</EmptyState>
         ) : (
           <>
-            <div className="grid gap-5 grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]">
+            <div ref={gridRef} className="grid gap-5 grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]">
               {data.items.map((item) => (
                 <ReadingCard key={item.book.id} item={item} />
               ))}

@@ -8,6 +8,7 @@ import { api, formatDate, formatNumber, API_BASE, getToken } from '@/lib/api'
 import { isQueuedTask, waitForTask, type QueuedTask } from '@/lib/background-tasks'
 import { useTranslation } from '@/lib/i18n'
 import { useRequireAuth , useApp} from '@/lib/auth'
+import { useGridPageSize } from '@/lib/useGridPageSize'
 import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import BookCopyDialog from '@/components/BookCopyDialog'
@@ -64,6 +65,7 @@ export default function MyBooks() {
   const siteName = site.site_name || 'InfoSphere'
   const [status, setStatus] = useState('')
   const scope: 'owned' | 'collaborating' = router.query.scope === 'collaborating' ? 'collaborating' : 'owned'
+  const { ref: gridRef, pageSize } = useGridPageSize({ minItemRem: 15, rows: 3, fallback: 9 })
   const [page, setPage] = useState(1)
   const [keyword, setKeyword] = useState('')
   const [sort, setSort] = useState<SortKey>('updated')
@@ -82,7 +84,7 @@ export default function MyBooks() {
     if (!user) return
     setLoading(true)
     try {
-      setData(await api<PageResult<Book>>('/books', { params: { scope, page, page_size: 9, status, title: keyword, sort } }))
+      setData(await api<PageResult<Book>>('/books', { params: { scope, page, page_size: pageSize, status, title: keyword, sort } }))
       const summary = await api<Record<string, number>>('/books/status-counts', { params: { scope } }).catch(() => null)
       if (summary) setCounts(summary)
     } catch (e) {
@@ -92,7 +94,7 @@ export default function MyBooks() {
     }
   }
 
-  useEffect(() => { if (user && router.isReady) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, router.isReady, page, scope, status, keyword, sort])
+  useEffect(() => { if (user && router.isReady) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, router.isReady, page, scope, status, keyword, sort, pageSize])
 
   function changeScope(next: 'owned' | 'collaborating') {
     setStatus('')
@@ -213,6 +215,7 @@ export default function MyBooks() {
 
       <p className="py-4 text-sm text-slate-400">{t('books.total', { count: data.total })}</p>
 
+      <div ref={gridRef}>
       {loading ? (
         <Loading />
       ) : hasBooks ? (
@@ -231,6 +234,7 @@ export default function MyBooks() {
           </> : t('books.empty.collaborating')}
         </EmptyState>
       )}
+      </div>
 
       <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
 
