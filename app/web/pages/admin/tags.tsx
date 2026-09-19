@@ -78,9 +78,9 @@ export default function AdminTags() {
         <Button onClick={() => setForm(emptyForm())}><i className="fa-solid fa-plus" aria-hidden="true" /> {t('admin.tags.create')}</Button>
       </div>
 
-      <form className="mt-6 flex max-w-md gap-2" onSubmit={(e) => { e.preventDefault(); setPage(1); setSearch(q.trim()) }}>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('admin.tags.searchPlaceholder')} />
-        <Button type="submit" variant="outline">{t('common.actions.search')}</Button>
+      <form className="mt-6 flex max-w-md items-center gap-2" onSubmit={(e) => { e.preventDefault(); setPage(1); setSearch(q.trim()) }}>
+        <div className="min-w-0 flex-1"><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('admin.tags.searchPlaceholder')} /></div>
+        <Button type="submit" variant="outline" className="shrink-0">{t('common.actions.search')}</Button>
       </form>
 
       <div className="mt-6">
