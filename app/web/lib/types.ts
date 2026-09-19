@@ -29,6 +29,8 @@ export interface Tag {
   id: number
   name: string
   slug: string
+  icon_type?: string
+  icon_value?: string
   book_count?: number
 }
 
@@ -144,6 +146,7 @@ export interface SiteConfig {
   announcement_tone?: string
   translation_enabled?: boolean
   achievements_enabled?: string
+  feature_plugins?: string[]
 }
 
 export type AchievementCategory = 'reading' | 'creation' | 'community' | 'account' | 'special'

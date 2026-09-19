@@ -13,7 +13,7 @@ import {
   ActivityIcon, ClockIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'achievements' | 'reports' | 'audit' | 'tasks' | 'languages' | 'settings' | 'plugins' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'tags' | 'achievements' | 'reports' | 'audit' | 'tasks' | 'languages' | 'settings' | 'plugins' | 'upgrade'
 
 function ReportIcon({ className }: { className?: string }) {
   return <i className={`fa-solid fa-flag ${className || ''}`.trim()} aria-hidden="true" />
@@ -66,6 +66,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
     { key: 'users', labelKey: 'admin.nav.users', href: '/admin/users', icon: UsersIcon },
     { key: 'books', labelKey: 'admin.nav.books', href: '/admin/books', icon: BookIcon },
     { key: 'documents', labelKey: 'admin.nav.documents', href: '/admin/documents', icon: ListBulletIcon },
+    { key: 'tags', labelKey: 'admin.nav.tags', href: '/admin/tags', icon: ({ className }) => <i className={`fa-solid fa-tags ${className || ''}`} aria-hidden="true" /> },
     { key: 'achievements', labelKey: 'admin.nav.achievements', href: '/admin/achievements', icon: ({ className }) => <i className={`fa-solid fa-trophy ${className || ''}`} aria-hidden="true" /> },
     { key: 'reports', labelKey: 'admin.nav.reports', href: '/admin/reports', icon: ReportIcon },
     { key: 'audit', labelKey: 'admin.nav.audit', href: '/admin/audit-logs', icon: ActivityIcon },
@@ -76,8 +77,13 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
     { key: 'upgrade', labelKey: 'admin.nav.upgrade', href: '/admin/upgrade', icon: CloudIcon },
   ]
 
-  // 特性插件禁用时隐藏其菜单项（成就系统由插件启用状态驱动，禁用即前后端全禁）
-  const visibleNav = NAV.filter((item) => item.key !== 'achievements' || site.achievements_enabled === 'true')
+  // 特性插件禁用时隐藏其菜单项（禁用即前后端全禁）
+  const features = site.feature_plugins || []
+  const visibleNav = NAV.filter((item) => {
+    if (item.key === 'achievements') return site.achievements_enabled === 'true'
+    if (item.key === 'tags') return features.includes('tags')
+    return true
+  })
 
   return (
     <div className="flex h-full flex-col">

@@ -200,6 +200,9 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
               ))}
               {(hotTags || []).length === 0 && <li className="px-3 py-2 text-xs text-slate-400">{t('explore.tags.empty')}</li>}
             </ul>
+            <Link href="/tags" className="mt-1.5 flex items-center gap-1 px-3 py-2 text-sm font-medium text-primary-600 hover:underline">
+              {t('explore.tags.viewAll')} <ArrowRightIcon className="h-3.5 w-3.5" />
+            </Link>
           </div>
 
           <p className="mt-4 flex items-start gap-1.5 px-2 text-xs leading-5 text-slate-400">
