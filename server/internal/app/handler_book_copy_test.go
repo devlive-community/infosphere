@@ -101,4 +101,32 @@ func TestCopyBook(t *testing.T) {
 	if ctop[0].(map[string]any)["title"] != "C" {
 		t.Fatalf("自选顺序应 C 在前，实际 %v", ctop[0].(map[string]any)["title"])
 	}
+
+	// 章节复制到目标书籍：选中 A（含子 B）复制到目标书，保持父子；再单独复制 C
+	_, tgt := req(http.MethodPost, "/api/v1/books", map[string]any{"title": "目标书", "status": "draft"}, token)
+	targetID := int(tgt["data"].(map[string]any)["id"].(float64))
+	status, cp := req(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/documents/copy", bookID),
+		map[string]any{"target_book_id": targetID, "doc_ids": []int{a1}}, token)
+	if status != http.StatusOK || cp["data"].(map[string]any)["copied_documents"] != float64(2) {
+		t.Fatalf("复制 A 含子 B 应 2 章: %d %v", status, cp)
+	}
+	_, ttree := req(http.MethodGet, fmt.Sprintf("/api/v1/books/%d/documents", targetID), nil, token)
+	ttop := ttree["data"].([]any)
+	if len(ttop) != 1 || ttop[0].(map[string]any)["title"] != "A" {
+		t.Fatalf("目标书顶层应仅 A，实际 %v", ttop)
+	}
+	achildren, _ := ttop[0].(map[string]any)["children"].([]any)
+	if len(achildren) != 1 || achildren[0].(map[string]any)["title"] != "B" {
+		t.Fatalf("A 下应保留子章节 B，实际 %v", achildren)
+	}
+	// 单条复制 C，追加到目标书顶层末尾
+	status, cp2 := req(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/documents/copy", bookID),
+		map[string]any{"target_book_id": targetID, "doc_ids": []int{c1}}, token)
+	if status != http.StatusOK || cp2["data"].(map[string]any)["copied_documents"] != float64(1) {
+		t.Fatalf("单条复制 C 应 1 章: %d %v", status, cp2)
+	}
+	_, ttree2 := req(http.MethodGet, fmt.Sprintf("/api/v1/books/%d/documents", targetID), nil, token)
+	if len(ttree2["data"].([]any)) != 2 {
+		t.Fatalf("目标书顶层应为 A、C 两章，实际 %d", len(ttree2["data"].([]any)))
+	}
 }

@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { InferGetServerSidePropsType } from 'next'
 import { api } from '@/lib/api'
-import { Badge, ButtonLink, DropdownMenu, Loading, EmptyState, Tooltip, useFeedback } from '@/components/ui'
+import { Badge, Button, ButtonLink, Checkbox, DropdownMenu, Field, Loading, EmptyState, Modal, Select, Tooltip, useFeedback } from '@/components/ui'
 import { ChevronDownIcon, ChevronRightIcon, GripIcon, HistoryIcon, LinkIcon, PencilIcon, TrashIcon } from '@/components/icons'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import DocTreeIcon from '@/components/DocTreeIcon'
 import { getBookSettingsProps } from '@/lib/book-settings'
 import { useTranslation } from '@/lib/i18n'
-import type { Document, DocumentStatus } from '@/lib/types'
+import type { Book, Document, DocumentStatus, PageResult } from '@/lib/types'
 
 export const getServerSideProps = getBookSettingsProps
 
@@ -42,6 +42,8 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
   const [dropTarget, setDropTarget] = useState<{ id: number; pos: DropPos } | null>(null)
   const [reordering, setReordering] = useState(false)
   const [menuFor, setMenuFor] = useState<number | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [copyIds, setCopyIds] = useState<number[] | null>(null) // 打开复制弹框的目标章节 id（多选或单条）
 
   const load = useCallback(() => {
     api<Document[]>(`/books/${book.id}/documents`).then((d) => setDocs(d || [])).catch((e) => showToast({ title: t('bookSettings.chapters.error.load'), message: (e as Error).message, tone: 'error' }))
@@ -181,6 +183,11 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
           style={{ marginLeft: level * 20 }}>
           {dropHere && dropTarget!.pos !== 'inside' && <span className={`pointer-events-none absolute inset-x-2 z-10 h-0.5 rounded-full bg-primary-500 ${dropTarget!.pos === 'before' ? 'top-0' : 'bottom-0'}`} />}
           {dropHere && dropTarget!.pos === 'inside' && <span className="pointer-events-none absolute inset-0 z-10 rounded-lg ring-2 ring-inset ring-primary-400" />}
+          <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
+            <Checkbox ariaLabel={t('bookSettings.chapters.copy.select', { title: doc.title })}
+              checked={selected.has(doc.id)}
+              onChange={(v) => setSelected((s) => { const n = new Set(s); v ? n.add(doc.id) : n.delete(doc.id); return n })} />
+          </span>
           <Tooltip content={t('bookSettings.chapters.tooltip.drag')}>
             <span className="flex h-6 w-5 shrink-0 cursor-grab items-center justify-center text-slate-300 group-hover:text-slate-500"><GripIcon className="h-4 w-4" /></span>
           </Tooltip>
@@ -222,6 +229,10 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                 <HistoryIcon className="h-4 w-4 text-slate-400" /> {t('bookSettings.chapters.menu.history')}
               </Link>
+              <button role="menuitem" onClick={() => { setMenuFor(null); setCopyIds([doc.id]) }}
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                <i className="fa-solid fa-copy w-4 text-center text-slate-400" aria-hidden="true" /> {t('bookSettings.chapters.menu.copyTo')}
+              </button>
               <div className="my-1 border-t border-slate-100" />
               {STATUS_ACTIONS.filter((s) => s.value !== doc.status).map((s) => (
                 <button key={s.value} role="menuitem" disabled={busy === doc.id}
@@ -256,6 +267,16 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
           <ButtonLink href={`/book/writer/${encodeURIComponent(book.slug)}`}>{t('bookSettings.chapters.goWriter')}</ButtonLink>
         </div>
 
+        {selected.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-primary-50/50 px-6 py-3">
+            <span className="text-sm text-slate-600">{t('bookSettings.chapters.copy.selectedCount', { count: selected.size })}</span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={() => setCopyIds(Array.from(selected))}><i className="fa-solid fa-copy" aria-hidden="true" /> {t('bookSettings.chapters.copy.action')}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t('bookSettings.chapters.copy.clear')}</Button>
+            </div>
+          </div>
+        )}
+
         {docs === null ? (
           <Loading className="py-16" label={t('bookSettings.chapters.loading')} />
         ) : docs.length === 0 ? (
@@ -264,6 +285,65 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
           <ul className="p-3">{docs.map((doc) => renderNode(doc, 0))}</ul>
         )}
       </div>
+
+      {copyIds !== null && (
+        <CopyToBookDialog sourceBookId={book.id} sourceBookSlug={book.slug} docIds={copyIds}
+          onClose={() => setCopyIds(null)}
+          onDone={() => { setCopyIds(null); setSelected(new Set()) }} />
+      )}
     </BookSettingsLayout>
+  )
+}
+
+// CopyToBookDialog 将选定章节（含子章节）复制到目标书籍。
+function CopyToBookDialog({ sourceBookId, sourceBookSlug, docIds, onClose, onDone }: {
+  sourceBookId: number
+  sourceBookSlug: string
+  docIds: number[]
+  onClose: () => void
+  onDone: () => void
+}) {
+  const { t } = useTranslation()
+  const { showToast } = useFeedback()
+  const [books, setBooks] = useState<Book[] | null>(null)
+  const [targetId, setTargetId] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api<PageResult<Book>>('/books', { params: { page_size: 100 } })
+      .then((r) => setBooks(r.items || []))
+      .catch(() => setBooks([]))
+  }, [])
+
+  async function submit() {
+    if (!targetId) return
+    setSaving(true)
+    try {
+      const r = await api<{ copied_documents: number; target_slug: string }>(`/books/${sourceBookId}/documents/copy`, {
+        method: 'POST', body: { target_book_id: Number(targetId), doc_ids: docIds },
+      })
+      showToast({ message: t('bookSettings.chapters.copy.done', { count: r.copied_documents }), tone: 'success' })
+      onDone()
+    } catch (e) {
+      showToast({ title: t('bookSettings.chapters.copy.failed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={t('bookSettings.chapters.copy.title')}
+      footer={<><Button variant="outline" onClick={onClose}>{t('common.actions.cancel')}</Button><Button loading={saving} disabled={!targetId} onClick={submit}>{t('bookSettings.chapters.copy.confirm')}</Button></>}>
+      <div className="space-y-4">
+        <p className="text-sm text-slate-500">{t('bookSettings.chapters.copy.desc', { count: docIds.length })}</p>
+        <Field label={t('bookSettings.chapters.copy.target')}>
+          {books === null ? <Loading className="py-4" /> : (
+            <Select value={targetId} onChange={setTargetId} placeholder={t('bookSettings.chapters.copy.targetPlaceholder')}
+              options={(books).map((b) => ({ value: String(b.id), label: b.id === sourceBookId ? t('bookSettings.chapters.copy.sameBook', { title: b.title }) : b.title }))} />
+          )}
+        </Field>
+        <p className="text-xs text-slate-400">{t('bookSettings.chapters.copy.hint')}</p>
+      </div>
+    </Modal>
   )
 }
