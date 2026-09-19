@@ -1477,6 +1477,7 @@ export const zh: Record<string, string> = {
   'admin.nav.reports': '内容审核',
   'admin.nav.audit': '审计日志',
   'admin.nav.tasks': '异步任务',
+  'admin.nav.languages': '语言管理',
   'admin.nav.settings': '系统设置',
   'admin.nav.plugins': '插件',
   'admin.nav.upgrade': '版本更新',

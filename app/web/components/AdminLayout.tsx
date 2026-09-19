@@ -13,7 +13,7 @@ import {
   ActivityIcon, ClockIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'achievements' | 'reports' | 'audit' | 'tasks' | 'settings' | 'plugins' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'achievements' | 'reports' | 'audit' | 'tasks' | 'languages' | 'settings' | 'plugins' | 'upgrade'
 
 function ReportIcon({ className }: { className?: string }) {
   return <i className={`fa-solid fa-flag ${className || ''}`.trim()} aria-hidden="true" />
@@ -70,6 +70,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
     { key: 'reports', labelKey: 'admin.nav.reports', href: '/admin/reports', icon: ReportIcon },
     { key: 'audit', labelKey: 'admin.nav.audit', href: '/admin/audit-logs', icon: ActivityIcon },
     { key: 'tasks', labelKey: 'admin.nav.tasks', href: '/admin/tasks', icon: ClockIcon },
+    { key: 'languages', labelKey: 'admin.nav.languages', href: '/admin/languages', icon: ({ className }) => <i className={`fa-solid fa-language ${className || ''}`} aria-hidden="true" /> },
     { key: 'settings', labelKey: 'admin.nav.settings', href: '/admin/settings/site', icon: GearIcon },
     { key: 'plugins', labelKey: 'admin.nav.plugins', href: '/admin/plugins', icon: CodeIcon },
     { key: 'upgrade', labelKey: 'admin.nav.upgrade', href: '/admin/upgrade', icon: CloudIcon },

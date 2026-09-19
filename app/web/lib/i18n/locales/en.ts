@@ -1477,6 +1477,7 @@ export const en: Record<string, string> = {
   'admin.nav.reports': 'Reports',
   'admin.nav.audit': 'Audit logs',
   'admin.nav.tasks': 'Async tasks',
+  'admin.nav.languages': 'Languages',
   'admin.nav.settings': 'Settings',
   'admin.nav.plugins': 'Plugins',
   'admin.nav.upgrade': 'Upgrade',

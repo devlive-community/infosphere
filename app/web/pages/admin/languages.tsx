@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import SettingsLayout from '@/components/SettingsLayout'
+import AdminLayout from '@/components/AdminLayout'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { useTranslation, type SiteLocale } from '@/lib/i18n'
@@ -9,7 +9,8 @@ import { Badge, Button, Card, Field, Input, Loading, SegmentedTabs, Select, Swit
 interface Registry { items: SiteLocale[]; revision: number }
 interface Bundle { locale: string; revision: number; draft: Record<string, string>; published: Record<string, string> }
 
-export default function LanguageSettings() {
+// 语言管理：独立的后台左侧菜单（站点语言注册表 + 界面语言包）
+export default function AdminLanguages() {
   const { user } = useApp()
   const { t, refreshLanguages } = useTranslation()
   const { showToast } = useFeedback()
@@ -81,10 +82,14 @@ export default function LanguageSettings() {
     } catch (cause) { setError((cause as Error).message) }
   }
 
-  return <SettingsLayout active="languages" description={t('i18n.settingsDescription')}>
+  return <AdminLayout current="languages" breadcrumb={t('i18n.title')}>
+    <div className="mb-6">
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><i className="fa-solid fa-language text-primary-600" aria-hidden="true" />{t('i18n.title')}</h1>
+      <p className="mt-1.5 text-sm text-slate-500">{t('i18n.settingsDescription')}</p>
+    </div>
     <SegmentedTabs value={tab} onChange={setTab} ariaLabel={t('i18n.title')} items={[{ value: 'languages', label: t('i18n.languages') }, { value: 'messages', label: t('i18n.messages') }]} />
     {error && <Card role="alert" className="my-4 max-h-40 overflow-auto break-words border-rose-200 p-4 text-rose-700">{error}</Card>}
-    {loading && <Loading label={t('global.pageLoading')} />}
+    {loading && !registry && <Loading className="mt-4" label={t('global.pageLoading')} />}
     {!registry && !loading && <Button onClick={load}>{t('i18n.retry')}</Button>}
     {registry && tab === 'languages' && <div className="mt-4 space-y-4">
       <p className="text-sm text-slate-500">{t('i18n.registryHint')}</p>
@@ -103,7 +108,8 @@ export default function LanguageSettings() {
     </div>}
     {registry && tab === 'messages' && <Card className="mt-4 space-y-4 p-5">
       <Field label={t('i18n.languages')}><Select value={selected} disabled={saving} onChange={setSelected} options={registry.items.filter((item) => item.code).map((item) => ({ value: item.code, label: item.native_name }))} /></Field>
-      {bundle && <>
+      {loading && <Loading className="py-6" label={t('global.pageLoading')} />}
+      {!loading && bundle && <>
         <div className="flex flex-wrap gap-3"><Badge>{t('i18n.publishedKeys', { count: Object.keys(bundle.published).length })}</Badge><Badge>{t('i18n.baseKeys', { count: Object.keys(builtinMessages.en).length })}</Badge></div>
         <p className="text-sm text-slate-500">{t('i18n.bundleHint')}</p>
         <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => fileRef.current?.click()}>{t('i18n.import')}</Button><Button variant="outline" onClick={exportBundle}>{t('i18n.export')}</Button><Button variant="ghost" onClick={() => setEditor(JSON.stringify(builtinMessages[selected] || builtinMessages.en, null, 2))}>{t('i18n.loadTemplate')}</Button></div>
@@ -112,5 +118,5 @@ export default function LanguageSettings() {
         <div className="flex gap-3"><Button loading={saving} variant="outline" onClick={() => saveBundle(false)}>{t('i18n.saveDraft')}</Button><Button loading={saving} onClick={() => saveBundle(true)}>{t('i18n.publish')}</Button></div>
       </>}
     </Card>}
-  </SettingsLayout>
+  </AdminLayout>
 }
