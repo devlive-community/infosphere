@@ -15,6 +15,9 @@ func TestExtractDocIcon(t *testing.T) {
 		{"with-style", "<!-- icon: brands fa-github -->", "brands fa-github"},
 		{"strip-illegal", "<!-- icon: rocket! @home -->", "rocket home"},
 		{"first-wins", "<!-- icon: home -->\n<!-- icon: gear -->", "home"},
+		{"leading-blank-lines", "\n\n<!-- icon: star -->\n# Title", "star"},
+		{"mid-content-ignored", "# Title\n\n<!-- icon: gear -->\n正文", ""},
+		{"after-text-ignored", "前言 <!-- icon: gear -->", ""},
 	}
 	for _, tc := range cases {
 		if got := extractDocIcon(tc.content); got != tc.want {

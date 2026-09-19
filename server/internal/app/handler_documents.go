@@ -17,8 +17,9 @@ import (
 
 var docStatuses = map[string]bool{"draft": true, "published": true, "archived": true}
 
-// docIconPattern 匹配正文中的图标元数据注释：<!-- icon: xxx -->（大小写不敏感，取首个）
-var docIconPattern = regexp.MustCompile(`(?i)<!--\s*icon:\s*([^>]+?)\s*-->`)
+// docIconPattern 匹配「文档开头」的图标元数据注释：<!-- icon: xxx -->（大小写不敏感）。
+// 用 ^\s* 锚定到正文起始，只解析开头的元数据，正文内容中出现的同样注释一律不当作元数据。
+var docIconPattern = regexp.MustCompile(`(?i)^\s*<!--\s*icon:\s*([^>]+?)\s*-->`)
 
 // docIconAllowed 仅保留 FontAwesome 类名允许的字符（字母数字、空格、连字符、下划线）
 var docIconAllowed = regexp.MustCompile(`[^a-zA-Z0-9 _-]+`)

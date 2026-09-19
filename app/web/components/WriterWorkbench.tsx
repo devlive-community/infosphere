@@ -812,13 +812,13 @@ export default function Writer({ user }: WriterProps) {
     setInsertMenuOpen(false)
   }
 
-  // 元数据：章节图标（<!-- icon: xxx -->），替换目录树中的默认文档/文件夹图标。
-  const DOC_ICON_RE = /<!--\s*icon:[^>]*-->[ \t]*\n?/i
+  // 元数据：章节图标（<!-- icon: xxx -->）。只识别「文档开头」的元数据（^\s* 锚定），正文中的同样注释不算元数据。
+  const DOC_ICON_RE = /^\s*<!--\s*icon:[^>]*-->[ \t]*\n?/i
   async function setDocIcon() {
     setMetaMenuOpen(false)
     const el = textareaRef.current
     const value = el?.value ?? content
-    const currentIcon = /<!--\s*icon:\s*([^>]+?)\s*-->/i.exec(value)?.[1]?.trim() || ''
+    const currentIcon = /^\s*<!--\s*icon:\s*([^>]+?)\s*-->/i.exec(value)?.[1]?.trim() || ''
     const input = await requestInput({
       title: t('writer.setIconTitle'),
       message: t('writer.setIconMsg'),
