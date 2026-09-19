@@ -43,7 +43,8 @@ export interface BookFormProps {
 // 书籍表单：创建与设置页共用，双栏（分区表单 + 实时预览）
 export default function BookForm({ initial, heading, subheading, breadcrumb, submitLabel, showSaveDraft, showHeader = true, showLocalization = true, onSubmit }: BookFormProps) {
   const router = useRouter()
-  const { user } = useApp()
+  const { user, site } = useApp()
+  const tagsEnabled = (site.feature_plugins || []).includes('tags')
   const { t } = useTranslation()
   const isEdit = !!initial
 
@@ -175,6 +176,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                 <span className="pointer-events-none absolute bottom-2 right-3 text-xs text-slate-400">{description.length} / {MAX_DESC}</span>
               </div>
             </RowField>
+            {tagsEnabled && (
             <RowField label={t('bookForm.label.tags')} hint={t('bookForm.hint.tags', { count: MAX_TAGS })}>
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition-colors focus-within:border-primary-500">
                 {tags.map((tag) => (
@@ -189,6 +191,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                   className="min-w-[140px] flex-1 border-0 bg-transparent p-0 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-0" />
               </div>
             </RowField>
+            )}
           </Section>
 
           {/* 封面 */}
@@ -345,7 +348,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
               {coverSrc && <img src={coverSrc} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
             </div>
             <div className="space-y-2 p-4">
-              {tags.length > 0 && (
+              {tagsEnabled && tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {tags.map((tag) => (
                     <span key={tag} className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{tag}</span>

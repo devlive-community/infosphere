@@ -2120,6 +2120,7 @@ export const zh: Record<string, string> = {
   'admin.plugins.tab.builtin': '内置插件',
   'admin.plugins.tab.external': '外部插件',
   'admin.plugins.externalEmpty': '暂无外部插件。插件商店安装即将支持。',
+  'admin.plugins.builtinEmpty': '暂无内置插件。',
   'admin.plugins.enabled': '已启用',
   'admin.plugins.disabled': '已禁用',
   'admin.plugins.saveFailed': '操作失败',

@@ -2120,6 +2120,7 @@ export const en: Record<string, string> = {
   'admin.plugins.tab.builtin': 'Built-in',
   'admin.plugins.tab.external': 'External',
   'admin.plugins.externalEmpty': 'No external plugins yet. Store installation is coming soon.',
+  'admin.plugins.builtinEmpty': 'No built-in plugins.',
   'admin.plugins.enabled': 'Enabled',
   'admin.plugins.disabled': 'Disabled',
   'admin.plugins.saveFailed': 'Operation failed',

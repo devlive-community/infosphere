@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/router'
 import { api, API_BASE, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
@@ -28,7 +29,10 @@ export default function AdminPlugins() {
   const isAdmin = user?.role === 'admin'
   const { showToast, confirmAction } = useFeedback()
   const { t } = useTranslation()
-  const [tab, setTab] = useState<PluginTab>('builtin')
+  const router = useRouter()
+  // Tab 用查询参数承载（不用本地 state），可分享/回退/刷新保持
+  const tab: PluginTab = router.query.type === 'external' ? 'external' : 'builtin'
+  const setTab = (next: PluginTab) => router.push({ query: next === 'builtin' ? {} : { type: next } }, undefined, { shallow: true })
   const [items, setItems] = useState<Plugin[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [logs, setLogs] = useState<Record<string, LogLine[]>>({})
@@ -144,11 +148,11 @@ export default function AdminPlugins() {
 
       {items === null ? (
         <Loading className="py-16" label={t('admin.plugins.loading')} />
-      ) : tab === 'external' ? (
-        <EmptyState>{t('admin.plugins.externalEmpty')}</EmptyState>
+      ) : items.filter((p) => p.builtin === (tab === 'builtin')).length === 0 ? (
+        <EmptyState>{tab === 'external' ? t('admin.plugins.externalEmpty') : t('admin.plugins.builtinEmpty')}</EmptyState>
       ) : (
         <div className="space-y-4">
-          {items.filter((p) => p.builtin).map((p) => {
+          {items.filter((p) => p.builtin === (tab === 'builtin')).map((p) => {
             const pluginLogs = logs[p.key] || []
             const isFeature = p.kind === 'feature'
             return (

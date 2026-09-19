@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/router'
 import AchievementIcon from '@/components/AchievementIcon'
 import Container from '@/components/Container'
+import FeatureGate from '@/components/FeatureGate'
 import Seo from '@/components/Seo'
 import { api } from '@/lib/api'
 import { useApp, useRequireAuth } from '@/lib/auth'
@@ -23,14 +25,21 @@ const rarityLabels: Record<string, string> = { common: 'myAch.rarity.common', ra
 const rarityTone: Record<string, 'slate' | 'sky' | 'violet' | 'amber'> = { common: 'slate', rare: 'sky', epic: 'violet', legendary: 'amber' }
 
 export default function MyAchievementsPage() {
+  return <FeatureGate feature="achievements"><MyAchievementsInner /></FeatureGate>
+}
+
+function MyAchievementsInner() {
   const user = useRequireAuth()
   const { site } = useApp()
   const { showToast } = useFeedback()
   const { locale, t } = useTranslation()
+  const router = useRouter()
+  // Tab（筛选）用查询参数承载，不用本地 state
+  const tab: Tab = router.query.tab === 'progress' || router.query.tab === 'all' ? router.query.tab : 'unlocked'
+  const setTab = (next: Tab) => router.push({ query: next === 'unlocked' ? {} : { tab: next } }, undefined, { shallow: true })
   const [data, setData] = useState<AchievementPageData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<Tab>('unlocked')
   const [updating, setUpdating] = useState<number | null>(null)
 
   useEffect(() => {
@@ -88,7 +97,7 @@ export default function MyAchievementsPage() {
             <>
               <div className="mt-6"><SegmentedTabs value={tab} onChange={(value) => setTab(value as Tab)} ariaLabel={t('myAch.statusAria')} items={[{ value: 'unlocked', label: t('myAch.tabUnlocked', { n: data.unlocked_count }) }, { value: 'progress', label: t('myAch.tabProgress') }, { value: 'all', label: t('myAch.tabAll', { n: data.total }) }]} /></div>
               {items.length === 0 ? <div className="mt-6"><EmptyState>{tab === 'unlocked' ? t('myAch.emptyUnlocked') : tab === 'progress' ? t('myAch.emptyProgress') : t('myAch.emptyAll')}</EmptyState></div> : (
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-6 grid gap-4 grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]">
                   {items.map((item) => {
                     const definition = item.definition
                     const progress = item.progress?.percent || 0

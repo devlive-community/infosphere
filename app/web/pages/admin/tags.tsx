@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
 import IconPicker from '@/components/IconPicker'
 import { api } from '@/lib/api'
@@ -67,6 +68,7 @@ export default function AdminTags() {
   }
 
   return (
+    <FeatureGate feature="tags">
     <AdminLayout current="tags" breadcrumb={t('admin.nav.tags')}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -144,5 +146,6 @@ export default function AdminTags() {
         )}
       </Modal>
     </AdminLayout>
+    </FeatureGate>
   )
 }

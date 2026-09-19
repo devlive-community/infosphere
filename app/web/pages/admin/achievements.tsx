@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/router'
 import AdminLayout from '@/components/AdminLayout'
+import FeatureGate from '@/components/FeatureGate'
 import LocalizedFields, { type ResourceTranslations } from '@/components/LocalizedFields'
 import AchievementIcon from '@/components/AchievementIcon'
 import UserAvatar from '@/components/UserAvatar'
@@ -111,7 +113,10 @@ export default function AdminAchievements() {
   const windowLabel = (w: string) => { const k = `admin.achievements.window.${w}`; const v = t(k); return v === k ? w : v }
   const metricLabel = (m: AchievementMetric) => { const k = `admin.achievements.metric.${m.key}.label`; const v = t(k); return v === k ? m.label : v }
   const metricDesc = (m: AchievementMetric) => { const k = `admin.achievements.metric.${m.key}.desc`; const v = t(k); return v === k ? m.description : v }
-  const [tab, setTab] = useState<Tab>('overview')
+  const router = useRouter()
+  // 主 Tab 用查询参数承载（?tab=definitions|metrics|grants），不用本地 state
+  const tab: Tab = (['definitions', 'metrics', 'grants'].includes(String(router.query.tab)) ? router.query.tab : 'overview') as Tab
+  const setTab = (next: Tab) => router.push({ query: next === 'overview' ? {} : { tab: next } }, undefined, { shallow: true })
   const [settings, setSettings] = useState<AchievementSettings | null>(null)
   const [definitions, setDefinitions] = useState<AchievementDefinition[]>([])
   const [metrics, setMetrics] = useState<AchievementMetric[]>([])
@@ -280,6 +285,7 @@ export default function AdminAchievements() {
   }
 
   return (
+    <FeatureGate feature="achievements">
     <AdminLayout current="achievements" breadcrumb={t('admin.achievements.title')}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div><h1 className="text-3xl font-bold text-slate-900">{t('admin.achievements.title')}</h1><p className="mt-1.5 text-sm text-slate-500">{t('admin.achievements.description')}</p></div>
@@ -306,7 +312,6 @@ export default function AdminAchievements() {
                 <h2 className="text-lg font-semibold text-slate-900">{t('admin.achievements.settings.title')}</h2>
                 <div className="mt-5 divide-y divide-slate-100">
                   {[
-                    [t('admin.achievements.settings.enabled'), t('admin.achievements.settings.enabledHint'), 'enabled'],
                     [t('admin.achievements.settings.publicProfile'), t('admin.achievements.settings.publicProfileHint'), 'public_profile_enabled'],
                     [t('admin.achievements.settings.notifications'), t('admin.achievements.settings.notificationsHint'), 'notifications_enabled'],
                     [t('admin.achievements.settings.allowUserHide'), t('admin.achievements.settings.allowUserHideHint'), 'allow_user_hide'],
@@ -381,5 +386,6 @@ export default function AdminAchievements() {
         </div>}
       </Modal>
     </AdminLayout>
+    </FeatureGate>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Container from '@/components/Container'
 import Seo from '@/components/Seo'
+import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
 import { api, formatNumber } from '@/lib/api'
 import { useApp } from '@/lib/auth'
@@ -11,15 +12,17 @@ import type { Tag } from '@/lib/types'
 
 // 全部标签页：列出所有有公开书籍的标签（含图标与使用计数），点击进入按标签检索。
 export default function AllTags() {
+  return <FeatureGate feature="tags"><AllTagsInner /></FeatureGate>
+}
+
+function AllTagsInner() {
   const { t } = useTranslation()
   const { site } = useApp()
-  const enabled = (site.feature_plugins || []).includes('tags')
   const [tags, setTags] = useState<Tag[] | null>(null)
 
   useEffect(() => {
-    if (!enabled) { setTags([]); return }
     api<Tag[]>('/tags', { params: { limit: 200 } }).then((d) => setTags(d || [])).catch(() => setTags([]))
-  }, [enabled])
+  }, [])
 
   return (
     <>
