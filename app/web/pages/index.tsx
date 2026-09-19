@@ -231,7 +231,7 @@ export default function Home({ site, siteUrl, stats, latest, hot, trending, tags
                 <li key={b.id}>
                   <Link href={`/book/detail/${encodeURIComponent(b.slug)}`} className="group flex gap-3">
                     <span className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-400 to-primary-600">
-                      <CoverImage src={b.cover_image} alt={b.title} className="h-full w-full object-cover" />
+                      <CoverImage src={b.cover_image} alt={b.title} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold text-slate-900 group-hover:text-primary-600">{b.title}</span>
