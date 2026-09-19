@@ -32,25 +32,44 @@ perl -pi -e "s/\"version\": \"[0-9.]+\"/\"version\": \"$NEW\"/" \
   app/web/package.json app/desktop/package.json app/desktop/src-tauri/tauri.conf.json
 perl -pi -e "s/^version = \"[0-9.]+\"/version = \"$NEW\"/m" app/desktop/src-tauri/Cargo.toml
 
-# ── 2. 生成 CHANGELOG 草稿（自上个标签起的提交历史） ──
+# ── 2. 更新 CHANGELOG：优先把 [Unreleased] 段转正为版本段，空缺时用提交历史生成草稿 ──
 DATE="$(date +%Y-%m-%d)"
 PREV="$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || true)"
 if [ -n "$PREV" ]; then RANGE="${PREV}..HEAD"; else RANGE="HEAD"; fi
 NOTES="$(git log --no-merges -n 100 --pretty='- %s' $RANGE)"
 [ -n "$NOTES" ] || NOTES="- 待补充"
 
-# 在首个 `## [` 版本段前插入新段（grep -m1 避免管道 SIGPIPE）
-tmp="$(mktemp)"
-line="$(grep -m1 -n '^## \[' CHANGELOG.md | cut -d: -f1 || true)"
-if [ -n "$line" ]; then
-  {
-    head -n "$((line - 1))" CHANGELOG.md
-    printf '## [%s] - %s\n\n%s\n\n' "$NEW" "$DATE" "$NOTES"
-    tail -n "+${line}" CHANGELOG.md
-  } >"$tmp"
+UNR_LINE="$(grep -n '^## \[Unreleased\]' CHANGELOG.md | cut -d: -f1 || true)"
+UNR_BODY="$(awk '/^## \[Unreleased\]/ { f = 1; next } f && /^## \[/ { exit } f { print }' CHANGELOG.md)"
+if [ -n "$(printf '%s' "$UNR_BODY" | tr -d '[:space:]')" ]; then
+  BODY="$UNR_BODY"
 else
-  { cat CHANGELOG.md; printf '\n## [%s] - %s\n\n%s\n' "$NEW" "$DATE" "$NOTES"; } >"$tmp"
+  BODY="$NOTES"
 fi
+
+# 重建文件：头部 + 空 [Unreleased] + 新版本段（剔除旧 [Unreleased] 段后接回其余版本段）
+tmp="$(mktemp)"
+first_any="$(grep -n -m1 '^## \[' CHANGELOG.md | cut -d: -f1 || true)"
+after_unr=""
+if [ -n "$UNR_LINE" ]; then
+  rel="$(tail -n "+$((UNR_LINE + 1))" CHANGELOG.md | grep -n -m1 '^## \[' | cut -d: -f1 || true)"
+  [ -n "$rel" ] && after_unr=$((UNR_LINE + rel))
+fi
+{
+  if [ -n "$first_any" ]; then
+    head -n "$((first_any - 1))" CHANGELOG.md
+  else
+    cat CHANGELOG.md
+    printf '\n'
+  fi
+  printf '## [Unreleased]\n\n'
+  printf '## [%s] - %s\n\n%s\n\n' "$NEW" "$DATE" "$BODY"
+  if [ -n "$after_unr" ]; then
+    tail -n "+${after_unr}" CHANGELOG.md
+  elif [ -z "$UNR_LINE" ] && [ -n "$first_any" ]; then
+    tail -n "+${first_any}" CHANGELOG.md
+  fi
+} >"$tmp"
 mv "$tmp" CHANGELOG.md
 
 echo
