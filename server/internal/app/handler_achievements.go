@@ -132,6 +132,7 @@ var achievementMetrics = []achievementMetric{
 	{Key: "reading.books_started", Label: "开始阅读书籍", Category: "reading", Description: "产生阅读进度的不同书籍数", Aggregation: "distinct_count", Unit: "本", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "reading.minutes", Label: "累计阅读时长", Category: "reading", Description: "阅读器上报的有效阅读分钟数", Aggregation: "sum", Unit: "分钟", Windows: []string{"lifetime", "calendar_day", "calendar_week", "calendar_month", "rolling_days"}},
 	{Key: "reading.annotations", Label: "创建阅读标注", Category: "reading", Description: "私人划线、笔记或章节书签数量", Aggregation: "count", Unit: "条", Windows: []string{"lifetime", "rolling_days"}, AllowedFilters: []string{"kind"}},
+	{Key: "reading.reading_days", Label: "阅读活跃天数", Category: "reading", Description: "有有效阅读时长的自然日去重天数", Aggregation: "distinct_count", Unit: "天", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "social.likes_given", Label: "点赞书籍", Category: "community", Description: "当前仍保留的书籍点赞数", Aggregation: "count", Unit: "次", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "social.favorites_given", Label: "收藏书籍", Category: "community", Description: "当前仍保留的书籍收藏数", Aggregation: "count", Unit: "次", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "social.comments_created", Label: "发表评论", Category: "community", Description: "已发布评论或回复数量", Aggregation: "count", Unit: "条", Windows: []string{"lifetime", "rolling_days"}, AllowedFilters: []string{"replies_only"}},
@@ -141,6 +142,8 @@ var achievementMetrics = []achievementMetric{
 	{Key: "creator.likes_received", Label: "作品获得点赞", Category: "creation", Description: "本人书籍当前点赞总数", Aggregation: "count", Unit: "次", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "creator.favorites_received", Label: "作品获得收藏", Category: "creation", Description: "本人书籍当前收藏总数", Aggregation: "count", Unit: "次", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "creator.comments_received", Label: "作品获得评论", Category: "creation", Description: "本人作品收到的已发布评论数", Aggregation: "count", Unit: "条", Windows: []string{"lifetime", "rolling_days"}, AllowedFilters: []string{"replies_only"}},
+	{Key: "creator.published_books", Label: "发布书籍", Category: "creation", Description: "本人已发布状态的书籍数量", Aggregation: "count", Unit: "本", Windows: []string{"lifetime", "rolling_days"}},
+	{Key: "creator.tags_used", Label: "使用过的标签", Category: "creation", Description: "本人书籍上使用过的不同标签数", Aggregation: "distinct_count", Unit: "个", Windows: []string{"lifetime"}},
 	{Key: "account.age_days", Label: "账号创建天数", Category: "account", Description: "从注册日期到当前的自然天数", Aggregation: "current", Unit: "天", Windows: []string{"lifetime"}},
 	{Key: "account.invited_users", Label: "邀请注册用户", Category: "account", Description: "通过本人邀请码注册的用户数", Aggregation: "count", Unit: "人", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "account.oauth_bindings", Label: "绑定第三方账号", Category: "account", Description: "当前绑定的 OAuth 提供方数量", Aggregation: "count", Unit: "个", Windows: []string{"lifetime"}},
@@ -730,6 +733,12 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 		q := applyAchievementWindow(a.DB.Model(&models.ReadingAnnotation{}).Where("user_id = ?", userID), "created_at", rule)
 		q = applyStringFilter(q, "kind", filters.Kind)
 		err = q.Count(&value).Error
+	case "reading.reading_days":
+		q := a.DB.Model(&models.ReadingDailyTime{}).Where("user_id = ? AND seconds > 0", userID)
+		if start := achievementWindowStart(rule); start != nil {
+			q = q.Where("day >= ?", start.Format("2006-01-02"))
+		}
+		err = q.Distinct("day").Count(&value).Error
 	case "social.likes_given", "social.favorites_given":
 		typeName := "like"
 		if rule.MetricKey == "social.favorites_given" {
@@ -754,6 +763,14 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 		q := applyAchievementWindow(a.DB.Model(&models.Document{}).Where("user_id = ?", userID), "created_at", rule)
 		q = applyStringFilter(q, "status", filters.Status)
 		err = q.Count(&value).Error
+	case "creator.published_books":
+		q := applyAchievementWindow(a.DB.Model(&models.Book{}).Where("user_id = ? AND status = ?", userID, "published"), "created_at", rule)
+		err = q.Count(&value).Error
+	case "creator.tags_used":
+		err = a.DB.Table("book_tags").
+			Joins("JOIN books ON books.id = book_tags.book_id AND books.deleted_at IS NULL").
+			Where("books.user_id = ?", userID).
+			Distinct("book_tags.tag_id").Count(&value).Error
 	case "creator.views_received":
 		q := a.DB.Model(&models.Book{}).Where("user_id = ?", userID)
 		q = applyStringFilter(q, "status", filters.Status)

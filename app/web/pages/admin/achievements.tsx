@@ -128,6 +128,8 @@ export default function AdminAchievements() {
   const [grantUsername, setGrantUsername] = useState('')
   const [grantAchievementID, setGrantAchievementID] = useState('')
   const [grantReason, setGrantReason] = useState('')
+  const METRIC_PAGE_SIZE = 9
+  const [metricPage, setMetricPage] = useState(1)
 
   async function loadDefinitions() {
     const result = await api<PageResult<AchievementDefinition>>('/admin/achievements', { params: { page_size: 100 } })
@@ -330,7 +332,10 @@ export default function AdminAchievements() {
           )}
 
           {tab === 'metrics' && (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{metrics.map((metric) => <Card key={metric.key} className="p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-slate-900">{metricLabel(metric)}</h2><p className="mt-1 font-mono text-xs text-primary-600">{metric.key}</p></div><Badge>{categoryLabels[metric.category]}</Badge></div><p className="mt-3 text-sm leading-6 text-slate-500">{metricDesc(metric)}</p><div className="mt-4 flex flex-wrap gap-1.5"><Badge tone="primary">{aggLabel(metric.aggregation)}</Badge>{metric.windows.map((window) => <Badge key={window}>{windowLabel(window)}</Badge>)}</div></Card>)}</div>
+            <>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{metrics.slice((metricPage - 1) * METRIC_PAGE_SIZE, metricPage * METRIC_PAGE_SIZE).map((metric) => <Card key={metric.key} className="p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-slate-900">{metricLabel(metric)}</h2><p className="mt-1 font-mono text-xs text-primary-600">{metric.key}</p></div><Badge>{categoryLabels[metric.category]}</Badge></div><p className="mt-3 text-sm leading-6 text-slate-500">{metricDesc(metric)}</p><div className="mt-4 flex flex-wrap gap-1.5"><Badge tone="primary">{aggLabel(metric.aggregation)}</Badge>{metric.windows.map((window) => <Badge key={window}>{windowLabel(window)}</Badge>)}</div></Card>)}</div>
+              {metrics.length > METRIC_PAGE_SIZE && <div className="mt-6"><Pagination page={metricPage} pageSize={METRIC_PAGE_SIZE} total={metrics.length} onChange={setMetricPage} /></div>}
+            </>
           )}
 
           {tab === 'grants' && (
