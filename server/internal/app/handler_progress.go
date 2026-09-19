@@ -173,8 +173,9 @@ func (a *App) MyReading(c *gin.Context) {
 	books := map[uint]models.Book{}
 	if len(bookIDs) > 0 {
 		var list []models.Book
-		a.DB.Preload("User").Preload("Tags").Where("id IN ?", bookIDs).Find(&list)
+		a.DB.Preload("User").Where("id IN ?", bookIDs).Find(&list)
 		a.attachChapterCounts(list)
+		a.attachBookTags(list)
 		for _, b := range list {
 			books[b.ID] = b
 		}

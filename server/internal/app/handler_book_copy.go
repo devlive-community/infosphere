@@ -106,9 +106,10 @@ func (a *App) CopyBook(c *gin.Context) {
 		return
 	}
 
-	// 复制标签
-	var withTags models.Book
-	if a.DB.Preload("Tags").First(&withTags, src.ID).Error == nil && len(withTags.Tags) > 0 {
+	// 复制标签（手动加载源书标签名，标签插件禁用时为空）
+	withTags := models.Book{ID: src.ID}
+	a.attachBookTagsOne(&withTags)
+	if len(withTags.Tags) > 0 {
 		names := make([]string, 0, len(withTags.Tags))
 		for _, t := range withTags.Tags {
 			names = append(names, t.Name)

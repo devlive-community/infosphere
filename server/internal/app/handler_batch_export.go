@@ -29,7 +29,7 @@ func (a *App) BatchExportMyBooks(c *gin.Context) {
 
 	// 解析可选 ids（逗号分隔）；省略则导出全部自有书籍。
 	var books []models.Book
-	query := a.DB.Preload("Tags").Order("id ASC")
+	query := a.DB.Order("id ASC")
 	if raw := strings.TrimSpace(c.Query("ids")); raw != "" {
 		ids := []uint{}
 		for _, part := range strings.Split(raw, ",") {

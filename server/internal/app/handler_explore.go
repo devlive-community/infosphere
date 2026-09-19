@@ -88,6 +88,7 @@ func (a *App) ExploreHot(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
+	a.attachBookTags(books)
 	ok(c, books)
 }
 
@@ -100,6 +101,7 @@ func (a *App) ExploreLatest(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
+	a.attachBookTags(books)
 	ok(c, books)
 }
 
@@ -135,11 +137,14 @@ func (a *App) SiteStats(c *gin.Context) {
 		Joins("JOIN books b ON b.id = documents.book_id").
 		Where("b.is_public = ? AND b.status IN ? AND documents.status = ?", true, publiclyReadableBookStatuses, "published").
 		Count(&docCount)
-	a.DB.Model(&models.Tag{}).
-		Joins("JOIN book_tags bt ON bt.tag_id = tags.id").
-		Joins("JOIN books b ON b.id = bt.book_id").
-		Where("b.is_public = ? AND b.status IN ?", true, publiclyReadableBookStatuses).
-		Distinct("tags.id").Count(&tagCount)
+	// 标签插件禁用/表不存在时 tag_count 记 0（表由标签插件建）
+	if a.pluginEnabled(pluginTags) && a.DB.Migrator().HasTable(&models.Tag{}) {
+		a.DB.Model(&models.Tag{}).
+			Joins("JOIN book_tags bt ON bt.tag_id = tags.id").
+			Joins("JOIN books b ON b.id = bt.book_id").
+			Where("b.is_public = ? AND b.status IN ?", true, publiclyReadableBookStatuses).
+			Distinct("tags.id").Count(&tagCount)
+	}
 	publicBooks.Select("COALESCE(SUM(view_count), 0)").Scan(&views)
 	ok(c, gin.H{
 		"user_count":     userCount,
@@ -306,5 +311,6 @@ func (a *App) GetUserBooks(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
+	a.attachBookTags(books)
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }

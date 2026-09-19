@@ -83,6 +83,7 @@ func (a *App) GlobalSearch(c *gin.Context) {
 		books, documents = paginateMixedSearch(books, documents, options.Page, options.PageSize)
 	}
 	a.attachChapterCounts(books)
+	a.attachBookTags(books)
 	visibleTotal := bookTotal + documentTotal
 	if options.Type == "book" {
 		visibleTotal = bookTotal
@@ -177,7 +178,7 @@ func (a *App) bookSearchQuery(c *gin.Context, options searchOptions) *gorm.DB {
 	if options.Author != "" {
 		query = query.Where("EXISTS (SELECT 1 FROM users su WHERE su.id = books.user_id AND su.username = ?)", options.Author)
 	}
-	if options.Tag != "" {
+	if options.Tag != "" && a.tagsQueryable() {
 		query = query.Where("EXISTS (SELECT 1 FROM book_tags sbt JOIN tags st ON st.id = sbt.tag_id WHERE sbt.book_id = books.id AND st.slug = ?)", options.Tag)
 	}
 	if options.UpdatedFrom != nil {
@@ -264,7 +265,7 @@ func (a *App) documentSearchQuery(c *gin.Context, options searchOptions) *gorm.D
 	if options.Author != "" {
 		query = query.Where("EXISTS (SELECT 1 FROM users su WHERE su.id = b.user_id AND su.username = ?)", options.Author)
 	}
-	if options.Tag != "" {
+	if options.Tag != "" && a.tagsQueryable() {
 		query = query.Where("EXISTS (SELECT 1 FROM book_tags sbt JOIN tags st ON st.id = sbt.tag_id WHERE sbt.book_id = b.id AND st.slug = ?)", options.Tag)
 	}
 	if options.UpdatedFrom != nil {

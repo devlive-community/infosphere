@@ -103,6 +103,7 @@ func (a *App) writeBookMarkdownZip(c *gin.Context, book *models.Book) {
 
 // buildBookMarkdownZip 将书籍打包为 markdown zip 字节（book.md + chapters/ + images/），供单本与批量导出复用。
 func (a *App) buildBookMarkdownZip(book *models.Book) ([]byte, error) {
+	a.attachBookTagsOne(book) // 手动加载标签（标签插件禁用时为空）
 	buf := &bytes.Buffer{}
 	w := zip.NewWriter(buf)
 

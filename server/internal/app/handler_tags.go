@@ -73,7 +73,7 @@ func (a *App) DeleteTag(c *gin.Context) {
 		fail(c, http.StatusNotFound, "标签不存在")
 		return
 	}
-	if err := a.DB.Model(&tag).Association("Books").Clear(); err != nil {
+	if err := a.DB.Where("tag_id = ?", tag.ID).Delete(&models.BookTag{}).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "解绑书籍失败: "+err.Error())
 		return
 	}
@@ -226,7 +226,61 @@ func (a *App) BooksByTag(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
+	a.attachBookTags(books)
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
+}
+
+// attachBookTags 手动为一批书籍加载标签（替代 GORM many2many Preload，解耦核心与标签插件）。
+// 标签插件禁用或表不存在时不加载（books[i].Tags 保持空），实现「禁用即无标签」。
+func (a *App) attachBookTags(books []models.Book) {
+	if len(books) == 0 || !a.pluginEnabled(pluginTags) || !a.DB.Migrator().HasTable(&models.BookTag{}) {
+		return
+	}
+	ids := make([]uint, 0, len(books))
+	idx := make(map[uint]int, len(books))
+	for i := range books {
+		books[i].Tags = []models.Tag{}
+		ids = append(ids, books[i].ID)
+		idx[books[i].ID] = i
+	}
+	var pairs []models.BookTag
+	if a.DB.Where("book_id IN ?", ids).Order("tag_id ASC").Find(&pairs).Error != nil || len(pairs) == 0 {
+		return
+	}
+	tagIDs := make([]uint, 0, len(pairs))
+	seen := map[uint]bool{}
+	for _, p := range pairs {
+		if !seen[p.TagID] {
+			seen[p.TagID] = true
+			tagIDs = append(tagIDs, p.TagID)
+		}
+	}
+	var tags []models.Tag
+	a.DB.Where("id IN ?", tagIDs).Find(&tags)
+	tagByID := make(map[uint]models.Tag, len(tags))
+	for _, t := range tags {
+		tagByID[t.ID] = t
+	}
+	for _, p := range pairs {
+		if t, ok := tagByID[p.TagID]; ok {
+			books[idx[p.BookID]].Tags = append(books[idx[p.BookID]].Tags, t)
+		}
+	}
+}
+
+// tagsQueryable 标签插件已启用且表存在时才可对 book_tags/tags 做联表查询。
+func (a *App) tagsQueryable() bool {
+	return a.pluginEnabled(pluginTags) && a.DB.Migrator().HasTable(&models.BookTag{})
+}
+
+// attachBookTagsOne 为单本书加载标签（attachBookTags 的单本封装）。
+func (a *App) attachBookTagsOne(book *models.Book) {
+	if book == nil {
+		return
+	}
+	one := []models.Book{*book}
+	a.attachBookTags(one)
+	book.Tags = one[0].Tags
 }
 
 // findOrCreateTag 按名称查找或创建标签（slug 冲突时追加后缀）
@@ -283,5 +337,15 @@ func (a *App) syncBookTags(book *models.Book, names []string) error {
 		}
 		tags = append(tags, *tag)
 	}
-	return a.DB.Model(book).Association("Tags").Replace(&tags)
+	// 手动全量替换 book_tags 关联（不走 GORM many2many）
+	if err := a.DB.Where("book_id = ?", book.ID).Delete(&models.BookTag{}).Error; err != nil {
+		return err
+	}
+	book.Tags = tags
+	for _, t := range tags {
+		if err := a.DB.Create(&models.BookTag{BookID: book.ID, TagID: t.ID}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

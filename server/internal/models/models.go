@@ -389,7 +389,8 @@ type Book struct {
 	// ExportFormats 逗号分隔的允许导出格式（pdf,markdown）；空表示全部格式可用
 	ExportFormats string         `gorm:"size:100;default:''" json:"export_formats"`
 	User          *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Tags          []Tag          `gorm:"many2many:book_tags" json:"tags,omitempty"`
+	// Tags 由代码手动加载（attachBookTags），不走 GORM many2many——避免核心 Book 硬依赖标签插件表。
+	Tags []Tag `gorm:"-" json:"tags,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
@@ -669,8 +670,7 @@ func All(db *gorm.DB) error {
 		&Book{},
 		&Document{},
 		&DocumentRevision{},
-		&Tag{},
-		&BookTag{},
+		// Tag / BookTag 由「标签」插件在启用时建表（不在核心 AutoMigrate）。
 		&ReadingProgress{},
 		&ReadChapter{},
 		&ReadingAnnotation{},

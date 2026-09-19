@@ -112,12 +112,12 @@ func (a *App) canReadBook(u *models.User, b *models.Book) bool {
 }
 
 func preloadBookUser(db *gorm.DB) *gorm.DB {
+	// 标签不再走 GORM Preload（Book.Tags 为 gorm:"-"）；Find 之后调用 a.attachBookTags 手动加载。
 	return db.
 		Preload("User", func(tx *gorm.DB) *gorm.DB {
 			// 公开书籍响应只能携带公开资料，禁止通过嵌套 User 泄露邮箱、登录时间和账户状态。
 			return tx.Select("id", "username", "avatar", "bio", "github_url", "role", "created_at")
-		}).
-		Preload("Tags")
+		})
 }
 
 type bookAccess struct {
@@ -190,7 +190,7 @@ func (a *App) ListBooks(c *gin.Context) {
 	if username := c.Query("username"); username != "" {
 		query = query.Joins("JOIN users u ON u.id = books.user_id").Where("u.username LIKE ?", "%"+username+"%")
 	}
-	if tagSlug := c.Query("tag"); tagSlug != "" {
+	if tagSlug := c.Query("tag"); tagSlug != "" && a.pluginEnabled(pluginTags) && a.DB.Migrator().HasTable(&models.BookTag{}) {
 		query = query.Joins("JOIN book_tags bt ON bt.book_id = books.id").
 			Joins("JOIN tags t ON t.id = bt.tag_id AND t.slug = ?", tagSlug)
 	}
@@ -209,6 +209,7 @@ func (a *App) ListBooks(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
+	a.attachBookTags(books)
 	if scope == "collaborating" {
 		for i := range books {
 			books[i].CollaboratorRole, _ = a.collaboratorRole(u, books[i].ID)
@@ -421,6 +422,7 @@ func (a *App) GetBook(c *gin.Context) {
 		fail(c, http.StatusForbidden, "无权访问该书籍")
 		return
 	}
+	a.attachBookTagsOne(book)
 	ok(c, book)
 }
 
@@ -435,6 +437,7 @@ func (a *App) GetBookBySlug(c *gin.Context) {
 		fail(c, http.StatusForbidden, "无权访问该书籍")
 		return
 	}
+	a.attachBookTagsOne(&book)
 	ok(c, book)
 }
 

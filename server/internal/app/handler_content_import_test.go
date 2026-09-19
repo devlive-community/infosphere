@@ -42,11 +42,13 @@ func newContentImportTestApp(t *testing.T) (*App, *models.User, *gorm.DB) {
 	if err := models.All(db); err != nil {
 		t.Fatalf("迁移测试数据库失败: %v", err)
 	}
+	app := &App{DB: db}
+	app.syncPluginState() // 为默认启用的插件（标签）建表并注册权限，模拟 New() 启动
 	user := &models.User{Username: "import-owner", Email: "import-owner@test.local", IsActive: true}
 	if err := db.Create(user).Error; err != nil {
 		t.Fatalf("创建测试用户失败: %v", err)
 	}
-	return &App{DB: db}, user, db
+	return app, user, db
 }
 
 func contentImportRouter(app *App, user *models.User) *gin.Engine {

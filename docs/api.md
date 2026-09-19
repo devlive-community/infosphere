@@ -492,7 +492,7 @@ Authorization: Bearer <token>
 | POST | `/admin/plugins/:key/install` | runtime 插件后台异步安装（pdf-export 下载 chrome-headless-shell），轮询 `/admin/plugins` 看状态；feature 插件（如 achievements）为即时**启用** | `plugin:manage` |
 | POST | `/admin/plugins/:key/uninstall[?purge=true]` | runtime 插件卸载并清理下载文件；feature 插件为即时**禁用**（保留数据）。`purge=true` 额外 DROP 该插件独占表（如成就 7 张表，不可恢复）。特性插件禁用后其前端页面与后端接口一并停用（成就管理菜单隐藏、`/admin/achievement-*` 与 `/users/me/achievements` 返回 404），其动态权限也随之移除 | `plugin:manage` |
 
-> **插件数据/权限隔离**：feature 插件的独占表**只在首次启用时建表**（不在核心 AutoMigrate），启用时动态注册其权限，`purge` 卸载时 DROP 表。成就已按此隔离；标签因 `Book.Tags` 多对多耦合，表留在核心（仍做路由/UI 全禁）。
+> **插件数据/权限隔离**：feature 插件的独占表**只在首次启用时建表**（不在核心 AutoMigrate），启用时动态注册其权限，`purge` 卸载时 DROP 表。**成就与标签均已完整隔离**（标签已把 `Book.Tags` 从 GORM many2many 改为代码手动加载 `attachBookTags`，`Tag`/`BookTag` 表随标签插件建/删）。升级到新版本后，已启用插件的表/字段在启动时由 `syncPluginState` 幂等自动迁移。
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |

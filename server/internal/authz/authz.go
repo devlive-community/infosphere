@@ -128,7 +128,7 @@ var All = []Permission{
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	DocumentRevisionRead, DocumentRevisionRestore,
 	TrashRead, TrashRestore, TrashDelete,
-	TagRead, TagCreate, TagDelete, TagManage,
+	// 标签权限（TagRead/Create/Delete/Manage）由「标签」插件动态注册，不静态列于此。
 	SearchRead,
 	AuthOauth, AuthPasswordReset,
 	NotificationRead, NotificationUpdate,
@@ -154,7 +154,7 @@ var userPermissions = []Permission{
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	DocumentRevisionRead, DocumentRevisionRestore,
 	TrashRead, TrashRestore, TrashDelete,
-	TagRead, TagCreate,
+	// 标签权限（TagRead/TagCreate）由「标签」插件动态注册
 	SearchRead,
 	AuthOauth, AuthPasswordReset,
 	NotificationRead, NotificationUpdate,

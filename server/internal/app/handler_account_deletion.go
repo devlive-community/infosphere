@@ -23,8 +23,11 @@ func (a *App) deleteUserCompletely(uid uint) error {
 		}
 		// 1. 书籍范围数据（含他人对这些书的互动/进度/标注/评论）
 		if len(bookIDs) > 0 {
-			if err := tx.Exec("DELETE FROM book_tags WHERE book_id IN ?", bookIDs).Error; err != nil {
-				return err
+			// book_tags 表由标签插件建，未启用时不存在，先判存在
+			if tx.Migrator().HasTable("book_tags") {
+				if err := tx.Exec("DELETE FROM book_tags WHERE book_id IN ?", bookIDs).Error; err != nil {
+					return err
+				}
 			}
 			for _, m := range []any{
 				&models.BookCollaborator{}, &models.Reaction{}, &models.ReadingProgress{}, &models.ReadChapter{},

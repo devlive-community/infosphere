@@ -764,10 +764,13 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 		q := applyAchievementWindow(a.DB.Model(&models.Book{}).Where("user_id = ? AND status = ?", userID, "published"), "created_at", rule)
 		err = q.Count(&value).Error
 	case "creator.tags_used":
-		err = a.DB.Table("book_tags").
-			Joins("JOIN books ON books.id = book_tags.book_id AND books.deleted_at IS NULL").
-			Where("books.user_id = ?", userID).
-			Distinct("book_tags.tag_id").Count(&value).Error
+		// 标签表由标签插件建；未启用/已清除时该指标记 0
+		if a.pluginEnabled(pluginTags) && a.DB.Migrator().HasTable("book_tags") {
+			err = a.DB.Table("book_tags").
+				Joins("JOIN books ON books.id = book_tags.book_id AND books.deleted_at IS NULL").
+				Where("books.user_id = ?", userID).
+				Distinct("book_tags.tag_id").Count(&value).Error
+		}
 	case "creator.views_received":
 		q := a.DB.Model(&models.Book{}).Where("user_id = ?", userID)
 		q = applyStringFilter(q, "status", filters.Status)
