@@ -138,6 +138,7 @@ export interface SiteConfig {
   version?: string
   installation_date?: string
   comments_enabled?: string
+  registration_require_email_activation?: string
   announcement_enabled?: string
   announcement_text?: string
   announcement_tone?: string

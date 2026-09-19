@@ -247,7 +247,7 @@ export default function Layout({ title, children }: { title?: string; children: 
         </div>
       </header>
 
-      {user && user.email_verified === false && <ActivationBanner />}
+      {user && user.email_verified === false && site.registration_require_email_activation === 'true' && <ActivationBanner />}
 
       <main className="w-full flex-1">{children}</main>
 
