@@ -12,6 +12,7 @@ import (
 
 type copyBookRequest struct {
 	Title  string `json:"title"`
+	Slug   string `json:"slug"`    // 可选：显式设置副本访问路径；设置后不可再改，留空则自动生成且允许改一次
 	Mode   string `json:"mode"`    // full（整本）| custom（自选章节）
 	DocIDs []uint `json:"doc_ids"` // custom 模式：有序、要复制的原章节 id（可拖拽重排 / 移除）
 }
@@ -66,9 +67,30 @@ func (a *App) CopyBook(c *gin.Context) {
 		title = src.Title + " 副本"
 	}
 	title = truncateText(title, 255)
+	// 访问路径：显式设置则校验唯一并锁定（SlugEditable=false）；留空则自动生成且允许改一次
+	slug := strings.TrimSpace(req.Slug)
+	slugEditable := true
+	if slug != "" {
+		if !validSlug(slug) {
+			fail(c, http.StatusBadRequest, "访问路径仅支持小写字母、数字与中划线")
+			return
+		}
+		var taken int64
+		a.DB.Model(&models.Book{}).Where("slug = ?", slug).Count(&taken)
+		if taken > 0 {
+			fail(c, http.StatusConflict, "访问路径已被占用")
+			return
+		}
+		slugEditable = false
+	} else {
+		slug = a.uniqueBookSlug(slugify(title))
+		if slug == "" {
+			slug = a.uniqueBookSlug("book")
+		}
+	}
 	newBook := models.Book{
-		Title: title, UserID: u.ID, Status: "draft", IsPublic: false,
-		SlugEditable:  true, // 副本允许一次性修改访问路径
+		Title: title, UserID: u.ID, Status: "draft", IsPublic: false, Slug: slug,
+		SlugEditable:  slugEditable,
 		Description:   src.Description, CoverImage: src.CoverImage,
 		LoginRequired: src.LoginRequired,
 		OrderCol:      src.OrderCol, OrderDir: src.OrderDir, ChapterPrefix: src.ChapterPrefix,
@@ -78,10 +100,6 @@ func (a *App) CopyBook(c *gin.Context) {
 		WatermarkEnabled: src.WatermarkEnabled, WatermarkText: src.WatermarkText,
 		ExportEnabled: src.ExportEnabled, GuestExportEnabled: src.GuestExportEnabled,
 		ExportStyleShared: src.ExportStyleShared, ExportFormats: src.ExportFormats,
-	}
-	newBook.Slug = a.uniqueBookSlug(slugify(title))
-	if newBook.Slug == "" {
-		newBook.Slug = a.uniqueBookSlug("book")
 	}
 	if err := a.DB.Create(&newBook).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "复制失败: "+err.Error())

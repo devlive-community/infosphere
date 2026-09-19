@@ -23,6 +23,7 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
   const { t } = useTranslation()
   const { showToast } = useFeedback()
   const [title, setTitle] = useState('')
+  const [slug, setSlug] = useState('')
   const [mode, setMode] = useState<'full' | 'custom'>('full')
   const [items, setItems] = useState<FlatDoc[]>([])
   const [total, setTotal] = useState(0)
@@ -33,6 +34,7 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
   useEffect(() => {
     if (!open) return
     setTitle(`${book.title} ${t('copyDialog.copySuffix')}`)
+    setSlug('')
     setMode('full')
     if (tree) {
       const flat = flatten(tree)
@@ -83,9 +85,10 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
     if (mode === 'custom' && items.length === 0) return
     setBusy(true)
     try {
+      const slugField = slug.trim() ? { slug: slug.trim() } : {}
       const body = mode === 'full'
-        ? { title: title.trim(), mode: 'full' }
-        : { title: title.trim(), mode: 'custom', doc_ids: items.map((x) => x.id) }
+        ? { title: title.trim(), mode: 'full', ...slugField }
+        : { title: title.trim(), mode: 'custom', doc_ids: items.map((x) => x.id), ...slugField }
       const d = await api<{ book: { slug: string }; first_doc_slug?: string }>(`/books/${book.id}/copy`, { method: 'POST', body })
       showToast({ message: t('copyDialog.copied'), tone: 'success' })
       onClose()
@@ -114,6 +117,12 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
           <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('copyDialog.newTitle')}</label>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('copyDialog.titlePlaceholder')} maxLength={255} />
           <p className="mt-1.5 text-xs text-slate-400">{t('copyDialog.hint')}</p>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('copyDialog.slugLabel')}</label>
+          <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder={t('copyDialog.slugPlaceholder')} maxLength={255} />
+          <p className="mt-1.5 text-xs text-slate-400">{t('copyDialog.slugHint')}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
