@@ -10,7 +10,7 @@ import { api } from '@/lib/api'
 import { getReadingProgress } from '@/lib/reading-progress'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
-import { Button, ButtonLink, Tooltip, Loading, useFeedback } from '@/components/ui'
+import { Button, ButtonLink, Tooltip, Loading, SegmentedTabs, useFeedback } from '@/components/ui'
 import UserAvatar from '@/components/UserAvatar'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
@@ -111,6 +111,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const { t } = useTranslation()
   const router = useRouter()
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
+  // 目录 / 评价 横向 Tab：由 URL 承载（?tab=reviews），浅路由切换，可分享可回退
+  const activeTab = router.query.tab === 'reviews' ? 'reviews' : 'toc'
+  const goTab = (value: string) => router.push({ pathname: '/book/detail/[slug]', query: { slug, ...(value === 'reviews' ? { tab: 'reviews' } : {}) } }, undefined, { shallow: true, scroll: false })
   // 私有/草稿书 SSR 无令牌取不到，挂载后携带本地令牌客户端重试（避免默认空白）
   const [book, setBook] = useState<Book | null>(ssrBook ?? null)
   const [copyOpen, setCopyOpen] = useState(false)
@@ -505,9 +508,12 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         </section>
       </Container>
 
-      {/* 关于这本书 + 目录 */}
+      {/* 目录 / 评价 横向 Tab */}
       <Container>
         <section className="border-t border-slate-200 py-10">
+          <SegmentedTabs className="mb-6 max-w-sm" value={activeTab} ariaLabel={t('detail.toc')} onChange={goTab}
+            items={[{ value: 'toc', label: t('detail.toc') }, { value: 'reviews', label: t('review.title') }]} />
+          {activeTab === 'toc' ? (
           <div className="max-w-3xl">
             <h2 className="text-xl font-bold text-slate-900">{t('detail.about')}</h2>
             <div className="mt-4 min-w-0 space-y-3 text-[15px] leading-7 text-slate-600">
@@ -585,14 +591,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               )}
             </div>
           </div>
-        </section>
-      </Container>
-
-      {/* 评价与评分 */}
-      <Container>
-        <section className="border-t border-slate-200 py-10">
-          <h2 className="mb-6 text-xl font-bold text-slate-900">{t('review.title')}</h2>
-          <BookReviews bookId={book.id} authorId={book.user_id} />
+          ) : (
+            <BookReviews bookId={book.id} authorId={book.user_id} />
+          )}
         </section>
       </Container>
 
