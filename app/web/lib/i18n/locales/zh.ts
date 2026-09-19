@@ -46,6 +46,9 @@ export const zh: Record<string, string> = {
   'common.actions.edit': '编辑',
   'common.actions.confirm': '确认',
   'common.actions.close': '关闭',
+  'dtp.prevMonth': '上个月',
+  'dtp.nextMonth': '下个月',
+  'dtp.time': '时间',
 
   // 语言切换
   'common.language.label': '语言',

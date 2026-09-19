@@ -46,6 +46,9 @@ export const en: Record<string, string> = {
   'common.actions.edit': 'Edit',
   'common.actions.confirm': 'Confirm',
   'common.actions.close': 'Close',
+  'dtp.prevMonth': 'Previous month',
+  'dtp.nextMonth': 'Next month',
+  'dtp.time': 'Time',
 
   // Language switch
   'common.language.label': 'Language',
