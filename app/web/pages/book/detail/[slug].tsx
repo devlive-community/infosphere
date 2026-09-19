@@ -602,7 +602,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         <section className="border-t border-slate-200 bg-white py-10">
           <Container>
             <h2 className="mb-6 text-xl font-bold text-slate-900">{t('detail.related')}</h2>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
               {related.map((b) => <BookCard key={b.id} book={b} showStatus tagsMax={2} tagsLink={false} dateField="created" />)}
             </div>
           </Container>
