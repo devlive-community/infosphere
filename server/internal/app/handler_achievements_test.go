@@ -45,6 +45,7 @@ func TestAchievementEvaluationCreatesProgressAndSingleGrant(t *testing.T) {
 	if err := app.setSetting(cfgAchievementsEnabled, "true", "test"); err != nil {
 		t.Fatal(err)
 	}
+	app.syncPluginState() // 启用成就插件：建表 + 注册权限
 	if err := app.setSetting(cfgAchievementsNotifications, "false", "test"); err != nil {
 		t.Fatal(err)
 	}
@@ -100,6 +101,7 @@ func TestAchievementEventIsDeduplicatedAndProcessed(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = app.setSetting(cfgAchievementsEnabled, "true", "test")
+	app.syncPluginState() // 启用成就插件：建表 + 注册权限（生产由启用端点触发）
 	_ = app.setSetting(cfgAchievementsNotifications, "false", "test")
 	definition := models.AchievementDefinition{Key: "account.first-day", Name: "加入一天", Category: "account", Status: "active", Rarity: "common", IconType: "fa", IconValue: "fa-user", RuleLogic: "all", GrantMode: "auto", Visibility: "public", ProgressMode: "aggregate", Version: 1, Tier: 1, CreatedBy: user.ID, UpdatedBy: user.ID}
 	if err := db.Create(&definition).Error; err != nil {
@@ -152,6 +154,7 @@ func TestAchievementAdminPermissionAndPublicPayload(t *testing.T) {
 	router := app.Router()
 	// 成就为特性插件：管理接口挂启用守卫，权限校验用例需先启用插件
 	_ = app.setSetting(cfgAchievementsEnabled, "true", "test")
+	app.syncPluginState() // 启用成就插件：建表 + 注册权限（生产由启用端点触发）
 	request := func(path, token string) (int, map[string]any) {
 		recorder := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -174,6 +177,7 @@ func TestAchievementAdminPermissionAndPublicPayload(t *testing.T) {
 	}
 
 	_ = app.setSetting(cfgAchievementsEnabled, "true", "test")
+	app.syncPluginState() // 启用成就插件：建表 + 注册权限（生产由启用端点触发）
 	definition := models.AchievementDefinition{Key: "public.safe", Name: "公开成就", Category: "special", Status: "archived", Rarity: "rare", IconType: "fa", IconValue: "fa-award", Visibility: "public", Tier: 1, CreatedBy: admin.ID, UpdatedBy: admin.ID}
 	if err := db.Create(&definition).Error; err != nil {
 		t.Fatal(err)

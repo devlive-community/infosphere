@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"infosphere/server/internal/authz"
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/models"
 )
@@ -45,16 +46,25 @@ func TestFeaturePluginGate(t *testing.T) {
 		return res.StatusCode
 	}
 
-	// 默认禁用：成就管理接口 404
+	// 默认禁用：成就管理接口 404，且成就表未建（首次启用才建表）
 	if st := do(http.MethodGet, "/api/v1/admin/achievement-metrics"); st != http.StatusNotFound {
 		t.Fatalf("成就插件禁用时应 404，实际 %d", st)
 	}
-	// 启用插件 → 接口 200，且站点开关置真
+	if a.DB.Migrator().HasTable("achievement_definitions") {
+		t.Fatalf("插件未启用时不应建成就表")
+	}
+	// 启用插件 → 接口 200，建表，站点开关置真，动态权限注册
 	if st := do(http.MethodPost, "/api/v1/admin/plugins/"+pluginAchievements+"/install"); st != http.StatusOK {
 		t.Fatalf("启用成就插件应 200，实际 %d", st)
 	}
 	if !a.pluginEnabled(pluginAchievements) || a.getSetting(cfgAchievementsEnabled) != "true" {
 		t.Fatalf("启用后开关未置真")
+	}
+	if !a.DB.Migrator().HasTable("achievement_definitions") {
+		t.Fatalf("启用后应已建成就表")
+	}
+	if !authz.Has("admin", authz.AchievementManage) {
+		t.Fatalf("启用后管理员应获得成就权限（动态注册）")
 	}
 	if st := do(http.MethodGet, "/api/v1/admin/achievement-metrics"); st != http.StatusOK {
 		t.Fatalf("启用后成就管理应 200，实际 %d", st)
@@ -68,6 +78,19 @@ func TestFeaturePluginGate(t *testing.T) {
 	}
 	if st := do(http.MethodGet, "/api/v1/admin/achievement-metrics"); st != http.StatusNotFound {
 		t.Fatalf("禁用后成就管理应 404，实际 %d", st)
+	}
+	if authz.Has("admin", authz.AchievementManage) {
+		t.Fatalf("禁用后应移除动态成就权限")
+	}
+	// 禁用后表仍在（未 purge）；purge 卸载后表被删除
+	if !a.DB.Migrator().HasTable("achievement_definitions") {
+		t.Fatalf("普通禁用不应删除数据表")
+	}
+	if st := do(http.MethodPost, "/api/v1/admin/plugins/"+pluginAchievements+"/uninstall?purge=true"); st != http.StatusOK {
+		t.Fatalf("purge 卸载应 200，实际 %d", st)
+	}
+	if a.DB.Migrator().HasTable("achievement_definitions") {
+		t.Fatalf("purge 后应删除成就表")
 	}
 }
 

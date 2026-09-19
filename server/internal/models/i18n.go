@@ -72,8 +72,9 @@ func SeedI18n(db *gorm.DB) error {
 		if cfg.ContentMigrated {
 			return nil
 		}
+		// 成就相关表由「成就」插件在启用时建表；未启用时该表不存在，跳过其旧内容迁移。
 		var cursor uint
-		for {
+		for tx.Migrator().HasTable(&AchievementDefinition{}) {
 			rows := []AchievementDefinition{}
 			if err := tx.Where("id > ?", cursor).Order("id").Limit(200).Find(&rows).Error; err != nil {
 				return err

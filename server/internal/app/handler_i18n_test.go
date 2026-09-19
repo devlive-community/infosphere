@@ -21,6 +21,7 @@ func TestDynamicI18nWorkflow(t *testing.T) {
 	if err := a.setSetting(cfgAchievementsEnabled, "true", "test"); err != nil {
 		t.Fatal(err)
 	}
+	a.syncPluginState() // 启用成就插件：建表 + 注册权限
 	owner.Role = "admin"
 	if err := db.Save(owner).Error; err != nil {
 		t.Fatal(err)
@@ -166,6 +167,7 @@ func TestLocaleFallbackValidation(t *testing.T) {
 
 func TestLegacyAchievementLocaleMigration(t *testing.T) {
 	a, user, db := newContentImportTestApp(t)
+	_ = a.migratePluginModels(pluginInfoByKey(pluginAchievements)) // 成就表由插件建，测试直接用需先建表
 	d := models.AchievementDefinition{Key: "legacy-i18n", Name: "旧中文", NameEn: "Legacy English", CreatedBy: user.ID, UpdatedBy: user.ID}
 	if err := db.Create(&d).Error; err != nil {
 		t.Fatal(err)

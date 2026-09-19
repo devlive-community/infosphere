@@ -168,6 +168,10 @@ func (a *App) AdminDeleteUser(c *gin.Context) {
 			&models.UserAchievementProgress{}, &models.UserAchievement{}, &models.AchievementEvent{},
 		}
 		for _, m := range related {
+			// 插件独占表（如成就）在插件未启用时不存在，跳过其清理
+			if !tx.Migrator().HasTable(m) {
+				continue
+			}
 			if err := tx.Unscoped().Where("user_id = ?", u.ID).Delete(m).Error; err != nil {
 				return err
 			}

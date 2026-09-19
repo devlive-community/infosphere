@@ -5,6 +5,8 @@
 // 所需权限；公开只读端点匿名可访问，但同样在 docs/api.md 中登记其语义权限。
 package authz
 
+import "sync"
+
 // Permission 权限标识
 type Permission string
 
@@ -142,7 +144,8 @@ var All = []Permission{
 	UploadCreate,
 	SystemRead, SystemUpgrade,
 	PluginManage,
-	AchievementRead, AchievementUpdate, AchievementManage, AchievementGrant,
+	// 注意：成就权限（AchievementRead/Update/Manage/Grant）由「成就」插件在启用时动态注册，
+	// 不再静态列于此，禁用插件即随之移除（见 authz.SetPluginPermissions）。
 }
 
 // userPermissions 普通用户（user 角色）拥有的权限
@@ -173,23 +176,78 @@ var rolePermissions = map[string][]Permission{
 	"user":  userPermissions,
 }
 
-// ForRole 返回角色的全部权限
-func ForRole(role string) []Permission {
-	perms, ok := rolePermissions[role]
-	if !ok {
-		return nil
+// 插件动态权限：由已启用的 feature 插件贡献，插件禁用时随之移除。
+// app 在启动与插件启停时调用 SetPluginPermissions 重算。
+var (
+	pluginPermsMu    sync.RWMutex
+	pluginAdminPerms = map[Permission]bool{}
+	pluginUserPerms  = map[Permission]bool{}
+)
+
+// SetPluginPermissions 用当前启用插件贡献的权限整体替换动态覆盖层。
+// admin 传插件的全部权限，user 传其中面向普通用户的子集。
+func SetPluginPermissions(admin, user []Permission) {
+	pluginPermsMu.Lock()
+	defer pluginPermsMu.Unlock()
+	pluginAdminPerms = make(map[Permission]bool, len(admin))
+	for _, p := range admin {
+		pluginAdminPerms[p] = true
 	}
+	pluginUserPerms = make(map[Permission]bool, len(user))
+	for _, p := range user {
+		pluginUserPerms[p] = true
+	}
+}
+
+func hasPluginPerm(role string, perm Permission) bool {
+	pluginPermsMu.RLock()
+	defer pluginPermsMu.RUnlock()
+	if role == "admin" {
+		return pluginAdminPerms[perm] || pluginUserPerms[perm]
+	}
+	if role == "user" {
+		return pluginUserPerms[perm]
+	}
+	return false
+}
+
+// ForRole 返回角色的全部权限（含已启用插件贡献的动态权限）
+func ForRole(role string) []Permission {
+	perms := rolePermissions[role]
 	out := make([]Permission, len(perms))
 	copy(out, perms)
+	pluginPermsMu.RLock()
+	defer pluginPermsMu.RUnlock()
+	set := map[Permission]bool{}
+	for _, p := range out {
+		set[p] = true
+	}
+	dyn := pluginUserPerms
+	if role == "admin" {
+		// admin 拥有全部插件权限（user 子集 + admin 专属）
+		for p := range pluginUserPerms {
+			if !set[p] {
+				out = append(out, p)
+				set[p] = true
+			}
+		}
+		dyn = pluginAdminPerms
+	}
+	for p := range dyn {
+		if !set[p] {
+			out = append(out, p)
+			set[p] = true
+		}
+	}
 	return out
 }
 
-// Has 判断角色是否拥有指定权限
+// Has 判断角色是否拥有指定权限（含已启用插件贡献的动态权限）
 func Has(role string, perm Permission) bool {
 	for _, p := range rolePermissions[role] {
 		if p == perm {
 			return true
 		}
 	}
-	return false
+	return hasPluginPerm(role, perm)
 }

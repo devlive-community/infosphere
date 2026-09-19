@@ -56,6 +56,10 @@ func (a *App) deleteUserCompletely(uid uint) error {
 			&models.ReadingDailyTime{}, &models.UserThemeSetting{},
 			&models.UserAchievementProgress{}, &models.UserAchievement{}, &models.AchievementEvent{},
 		} {
+			// 插件独占表（如成就）在插件未启用时不存在，跳过其清理
+			if !tx.Migrator().HasTable(m) {
+				continue
+			}
 			if err := tx.Unscoped().Where("user_id = ?", uid).Delete(m).Error; err != nil {
 				return err
 			}

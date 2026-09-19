@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -42,6 +43,12 @@ type pluginInfo struct {
 	Builtin     bool   `json:"builtin"` // 内置插件；外部（商店）插件后续支持
 	// EnabledKey：feature 插件复用的站点配置开关键（为空则以 Plugin.Installed 记录启用状态）
 	EnabledKey string `json:"-"`
+	// ---- 数据层/权限隔离（feature 插件）----
+	Models      []any              `json:"-"` // 该插件独占的表：仅在启用时 AutoMigrate（首次启用建表）
+	Tables      []string           `json:"-"` // 该插件独占的表名：purge 卸载时 DROP
+	AdminPerms  []authz.Permission `json:"-"` // 启用时授予管理员的权限（动态注册）
+	UserPerms   []authz.Permission `json:"-"` // 启用时授予普通用户的权限（动态注册）
+	OnEnable    func(a *App) error `json:"-"` // 启用后的初始化钩子（如成就重算）
 }
 
 // pluginRegistry 已知插件清单
@@ -57,10 +64,22 @@ var pluginRegistry = []pluginInfo{
 	{
 		Key:         pluginAchievements,
 		Name:        "成就系统",
-		Description: "为用户提供成就、徽章与进度追踪。启用后管理后台显示「成就管理」，用户端显示成就页；禁用后相关页面与接口一并停用。",
+		Description: "为用户提供成就、徽章与进度追踪。启用后管理后台显示「成就管理」，用户端显示成就页；禁用后相关页面与接口一并停用。首次启用时建表、注册权限，卸载可清除数据。",
 		Kind:        pluginKindFeature,
 		Builtin:     true,
 		EnabledKey:  cfgAchievementsEnabled,
+		Models: []any{
+			&models.AchievementAsset{}, &models.AchievementDefinition{}, &models.AchievementRule{},
+			&models.AchievementDefinitionVersion{}, &models.UserAchievementProgress{},
+			&models.UserAchievement{}, &models.AchievementEvent{},
+		},
+		Tables: []string{
+			"achievement_events", "user_achievements", "user_achievement_progresses",
+			"achievement_definition_versions", "achievement_rules", "achievement_definitions", "achievement_assets",
+		},
+		AdminPerms: []authz.Permission{authz.AchievementManage, authz.AchievementGrant},
+		UserPerms:  []authz.Permission{authz.AchievementRead, authz.AchievementUpdate},
+		OnEnable:   func(a *App) error { _, err := a.enqueueAchievementRecalculation(0); return err },
 	},
 	{
 		Key:         pluginTags,
@@ -124,6 +143,42 @@ func (a *App) setFeaturePluginEnabled(info *pluginInfo, enabled bool) error {
 	}
 	a.savePluginMeta(&p, map[string]any{"status": status})
 	return nil
+}
+
+// migratePluginModels 为插件建表（幂等；仅在启用时调用，实现「首次启用才建表」）。
+func (a *App) migratePluginModels(info *pluginInfo) error {
+	if len(info.Models) == 0 {
+		return nil
+	}
+	return a.DB.AutoMigrate(info.Models...)
+}
+
+// syncPluginPermissions 用当前启用的 feature 插件重算 authz 动态权限覆盖层（禁用插件即移除其权限）。
+func (a *App) syncPluginPermissions() {
+	admin := []authz.Permission{}
+	user := []authz.Permission{}
+	for i := range pluginRegistry {
+		info := &pluginRegistry[i]
+		if info.Kind != pluginKindFeature || !a.pluginEnabled(info.Key) {
+			continue
+		}
+		admin = append(admin, info.AdminPerms...)
+		user = append(user, info.UserPerms...)
+	}
+	authz.SetPluginPermissions(admin, user)
+}
+
+// syncPluginState 启动时调用：为已启用的 feature 插件建表，并重算动态权限。
+func (a *App) syncPluginState() {
+	for i := range pluginRegistry {
+		info := &pluginRegistry[i]
+		if info.Kind == pluginKindFeature && a.pluginEnabled(info.Key) {
+			if err := a.migratePluginModels(info); err != nil {
+				log.Printf("plugin %s migrate failed: %v", info.Key, err)
+			}
+		}
+	}
+	a.syncPluginPermissions()
 }
 
 func pluginInfoByKey(key string) *pluginInfo {
@@ -380,6 +435,7 @@ func (a *App) AdminListPlugins(c *gin.Context) {
 			"size_hint":   info.SizeHint,
 			"kind":        info.Kind,
 			"builtin":     info.Builtin,
+			"purgeable":   len(info.Tables) > 0,
 			"installed":   a.pluginEnabled(info.Key),
 			"version":     p.Version,
 			"status":      pluginMeta(&p)["status"],
@@ -404,10 +460,17 @@ func (a *App) AdminInstallPlugin(c *gin.Context) {
 			fail(c, http.StatusInternalServerError, "启用失败: "+err.Error())
 			return
 		}
-		// 功能启用时的初始化钩子：成就需重算，避免用户还要去模块设置里再保存一次才生效
-		if key == pluginAchievements && !wasEnabled {
-			_, _ = a.enqueueAchievementRecalculation(0)
+		if !wasEnabled {
+			// 首次启用：建表 + 初始化钩子（如成就重算，避免还要去模块设置里再保存一次）
+			if err := a.migratePluginModels(info); err != nil {
+				fail(c, http.StatusInternalServerError, "建表失败: "+err.Error())
+				return
+			}
+			if info.OnEnable != nil {
+				_ = info.OnEnable(a)
+			}
 		}
+		a.syncPluginPermissions() // 注册该插件权限
 		ok(c, gin.H{"message": "已启用", "status": "enabled"})
 		return
 	}
@@ -434,13 +497,27 @@ func (a *App) AdminUninstallPlugin(c *gin.Context) {
 		fail(c, http.StatusNotFound, "插件不存在")
 		return
 	}
-	// feature 插件：禁用即切换开关，保留记录
+	// feature 插件：禁用即切换开关，保留记录；?purge=true 额外清除该插件数据表
 	if info.Kind == pluginKindFeature {
 		if err := a.setFeaturePluginEnabled(info, false); err != nil {
 			fail(c, http.StatusInternalServerError, "禁用失败: "+err.Error())
 			return
 		}
-		ok(c, gin.H{"message": "已禁用"})
+		a.syncPluginPermissions() // 移除该插件权限
+		purged := false
+		if c.Query("purge") == "true" && len(info.Tables) > 0 {
+			for _, tbl := range info.Tables {
+				if err := a.DB.Migrator().DropTable(tbl); err != nil {
+					log.Printf("plugin %s drop table %s failed: %v", key, tbl, err)
+				}
+			}
+			purged = true
+		}
+		if purged {
+			ok(c, gin.H{"message": "已禁用并清除数据"})
+		} else {
+			ok(c, gin.H{"message": "已禁用"})
+		}
 		return
 	}
 	// 递增代次，使任何进行中的安装 goroutine 的后续写入全部失效，避免卸载后被重新写回
