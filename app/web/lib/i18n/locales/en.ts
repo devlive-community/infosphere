@@ -88,6 +88,7 @@ export const en: Record<string, string> = {
   'nav.menu.myBooks': 'My books',
   'nav.menu.analytics': 'Author analytics',
   'nav.menu.reading': 'Reading',
+  'nav.menu.follows': 'Following',
   'nav.menu.notes': 'My notes',
   'nav.menu.achievements': 'Achievements',
   'nav.menu.profile': 'Profile',
@@ -1027,6 +1028,9 @@ export const en: Record<string, string> = {
   'detail.like': 'Like',
   'detail.favorited': 'Favorited',
   'detail.favorite': 'Favorite',
+  'detail.follow.follow': 'Follow',
+  'detail.follow.following': 'Following',
+  'detail.follow.failed': 'Action failed',
   'detail.share': 'Share',
   'detail.copy': 'Copy',
   'detail.write': 'Write',
@@ -1109,6 +1113,11 @@ export const en: Record<string, string> = {
   'favorites.subtitle': 'All the books you favorited',
   'favorites.loading': 'Loading favorited books…',
   'favorites.empty': 'No favorites yet—favorite books you like from their detail page',
+  'follows.seoTitle': 'Following',
+  'follows.heading': 'Following',
+  'follows.subtitle': 'Books you follow; you get notified when they update',
+  'follows.loading': 'Loading followed books…',
+  'follows.empty': 'Not following any book yet—follow ones you like from their detail page',
 
   // Notification settings
   'notify.seoTitle': 'Notifications',
@@ -1132,6 +1141,8 @@ export const en: Record<string, string> = {
   'notify.itemSystemHint': 'Version upgrades and other system messages',
   'notify.itemAchievementLabel': 'Achievement notifications',
   'notify.itemAchievementHint': 'Achievement unlocks and manual grants',
+  'notify.itemBookUpdateLabel': 'Followed updates',
+  'notify.itemBookUpdateHint': 'New chapters and updates from books you follow',
 
   // Danger zone
   'danger.title': 'Danger zone',

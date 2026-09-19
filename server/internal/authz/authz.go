@@ -43,6 +43,11 @@ const (
 	TagDelete Permission = "tag:delete" // 删除标签（仅管理员）
 	TagManage Permission = "tag:manage" // 后台标签管理：重命名、图标、列出全部（仅管理员）
 
+	// 书籍关注（由「书籍关注」插件动态注册）
+	FollowRead   Permission = "follow:read"   // 查看自己的关注状态与关注列表
+	FollowCreate Permission = "follow:create" // 关注书籍
+	FollowDelete Permission = "follow:delete" // 取消关注
+
 	// 搜索
 	SearchRead Permission = "search:read" // 全局搜索书籍与章节（含匿名访问，仅公开内容）
 

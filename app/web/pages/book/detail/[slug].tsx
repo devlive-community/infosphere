@@ -112,6 +112,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const router = useRouter()
   // 标签插件禁用时隐藏详情页的标签入口（面包屑标签、标签 chip）
   const tagsEnabled = Array.isArray((site as Record<string, unknown>).feature_plugins) && ((site as Record<string, unknown>).feature_plugins as string[]).includes('tags')
+  const followEnabled = Array.isArray((site as Record<string, unknown>).feature_plugins) && ((site as Record<string, unknown>).feature_plugins as string[]).includes('book-follow')
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
   // 目录 / 评价 横向 Tab：由 URL 承载（?tab=reviews），浅路由切换，可分享可回退
   const activeTab = router.query.tab === 'reviews' ? 'reviews' : 'toc'
@@ -158,6 +159,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const [reactionsReady, setReactionsReady] = useState(false)
   const [reactionError, setReactionError] = useState('')
   const [reactBusy, setReactBusy] = useState<'like' | 'favorite' | null>(null)
+  const [following, setFollowing] = useState(false)
+  const [followBusy, setFollowBusy] = useState(false)
   const bookSlugSafe = book?.slug || ''
   const username = user?.username || ''
   useEffect(() => {
@@ -205,8 +208,14 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         if (!cancelled) setReactionsReady(true)
       })
 
+    if (followEnabled) {
+      api<{ following: boolean }>(`/books/${book.id}/follow/me`)
+        .then((r) => { if (!cancelled) setFollowing(!!r.following) })
+        .catch(() => { /* 忽略 */ })
+    }
+
     return () => { cancelled = true }
-  }, [authReady, user, book]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authReady, user, book, followEnabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 阅读进度：登录用户读过的章节 ID 集合，用于目录标记与整体进度
   const [readSet, setReadSet] = useState<Set<number>>(new Set())
@@ -350,6 +359,22 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
     }
   }
 
+  async function toggleFollow() {
+    if (!user) { router.push(`/login?redirect=${encodeURIComponent(router.asPath)}`); return }
+    if (followBusy) return
+    const next = !following
+    setFollowBusy(true)
+    setFollowing(next)
+    try {
+      await api(`/books/${book.id}/follow`, { method: next ? 'POST' : 'DELETE' })
+    } catch (e) {
+      setFollowing(!next)
+      showToast({ title: t('detail.follow.failed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setFollowBusy(false)
+    }
+  }
+
   return (
     <div className="min-w-0 overflow-x-hidden bg-warm">
       <Seo
@@ -465,6 +490,17 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                     : `${favorited ? t('detail.favorited') : t('detail.favorite')}${favoriteCount !== null ? ` ${formatNumber(favoriteCount)}` : ''}`}
                 </Button>
               </div>
+              {followEnabled && (
+              <div className="grid min-w-0 grid-cols-1 sm:contents">
+                <Button type="button" variant="outline" onClick={toggleFollow} disabled={followBusy} aria-pressed={following}
+                  className={`w-full px-3 sm:w-auto sm:px-5 ${following
+                    ? 'border-primary-200 bg-primary-50 text-primary-700 hover:border-primary-300 hover:bg-primary-100'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}>
+                  <i className="fa-solid fa-bell" aria-hidden="true" />
+                  {followBusy ? t('detail.processing') : (following ? t('detail.follow.following') : t('detail.follow.follow'))}
+                </Button>
+              </div>
+              )}
               <div className="grid min-w-0 grid-cols-2 gap-2 sm:contents">
                 <Tooltip content={t('detail.share')} className="w-full sm:w-auto"><Button type="button" variant="outline" onClick={share}
                   className="w-full !px-0 text-slate-500 sm:w-[var(--control-height)]">

@@ -336,6 +336,7 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		fail(c, http.StatusForbidden, "无权操作该文档")
 		return
 	}
+	oldStatus := doc.Status // 用于判定「首次发布」以通知关注者
 
 	var req documentPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -442,6 +443,10 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		return
 	}
 	a.recordAchievementEvent(doc.UserID, "document.updated", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.updated:%d:%d", doc.ID, doc.UpdatedAt.UnixNano()))
+	// 章节首次发布（草稿→已发布）时通知关注该书的用户
+	if publishedChapter && oldStatus != "published" {
+		a.notifyChapterPublished(book, doc)
+	}
 	ok(c, doc)
 }
 

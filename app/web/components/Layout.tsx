@@ -41,6 +41,7 @@ function UserMenu() {
     { label: t('nav.menu.myBooks'), href: '/books', icon: BookIcon },
     { label: t('nav.menu.analytics'), href: '/user/analytics', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" /> },
     { label: t('nav.menu.reading'), href: '/user/reading', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-book-open-reader ${className || ''}`} aria-hidden="true" /> },
+    ...((site.feature_plugins || []).includes('book-follow') ? [{ label: t('nav.menu.follows'), href: '/user/follows', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-bell ${className || ''}`} aria-hidden="true" /> }] : []),
     { label: t('nav.menu.notes'), href: '/user/notes', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-note-sticky ${className || ''}`} aria-hidden="true" /> },
     ...(site.achievements_enabled === 'true' ? [{ label: t('nav.menu.achievements'), href: '/user/achievements', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-trophy ${className || ''}`} aria-hidden="true" /> }] : []),
     { label: t('nav.menu.profile'), href: '/user/profile', icon: UserCircleIcon },

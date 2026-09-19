@@ -88,6 +88,7 @@ export const zh: Record<string, string> = {
   'nav.menu.myBooks': '我的书籍',
   'nav.menu.analytics': '创作数据',
   'nav.menu.reading': '我在读',
+  'nav.menu.follows': '我的关注',
   'nav.menu.notes': '我的笔记',
   'nav.menu.achievements': '我的成就',
   'nav.menu.profile': '个人资料',
@@ -1027,6 +1028,9 @@ export const zh: Record<string, string> = {
   'detail.like': '点赞',
   'detail.favorited': '已收藏',
   'detail.favorite': '收藏',
+  'detail.follow.follow': '关注',
+  'detail.follow.following': '已关注',
+  'detail.follow.failed': '操作失败',
   'detail.share': '分享',
   'detail.copy': '复制',
   'detail.write': '写作',
@@ -1109,6 +1113,11 @@ export const zh: Record<string, string> = {
   'favorites.subtitle': '你收藏的全部书籍',
   'favorites.loading': '正在加载收藏书籍…',
   'favorites.empty': '还没有收藏书籍，去书籍详情页收藏喜欢的作品吧',
+  'follows.seoTitle': '我的关注',
+  'follows.heading': '我的关注',
+  'follows.subtitle': '你关注的书籍，更新时会收到通知',
+  'follows.loading': '正在加载关注书籍…',
+  'follows.empty': '还没有关注书籍，去书籍详情页关注感兴趣的作品吧',
 
   // 通知设置
   'notify.seoTitle': '通知设置',
@@ -1132,6 +1141,8 @@ export const zh: Record<string, string> = {
   'notify.itemSystemHint': '版本升级等系统消息',
   'notify.itemAchievementLabel': '成就通知',
   'notify.itemAchievementHint': '成就解锁和人工授予结果',
+  'notify.itemBookUpdateLabel': '关注更新',
+  'notify.itemBookUpdateHint': '你关注的书籍发布新章节等更新',
 
   // 危险区
   'danger.title': '危险区',

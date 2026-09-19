@@ -262,6 +262,12 @@ func (a *App) Router() *gin.Engine {
 		books.GET("/:id/reactions/me", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyBookReaction)
 		api.GET("/users/me/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyReactions)
 
+		// ── 书籍关注（follow:*，「书籍关注」插件守卫） ──
+		books.POST("/:id/follow", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowCreate), a.RateLimit(reactionRateLimit), a.FollowBook)
+		books.DELETE("/:id/follow", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowDelete), a.RateLimit(reactionRateLimit), a.UnfollowBook)
+		books.GET("/:id/follow/me", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowRead), a.MyBookFollow)
+		api.GET("/users/me/follows", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowRead), a.MyFollows)
+
 		// ── 阅读进度（user 语义，读自己写自己） ──
 		api.GET("/users/me/reading", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReading)
 		api.GET("/users/me/reading-stats", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReadingStats)

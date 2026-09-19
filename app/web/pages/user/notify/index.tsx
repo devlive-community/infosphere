@@ -15,6 +15,7 @@ interface Prefs {
   moderation: boolean
   system: boolean
   achievement: boolean
+  book_update: boolean
 }
 
 const ITEMS: { key: keyof Prefs; labelKey: string; hintKey: string }[] = [
@@ -24,6 +25,7 @@ const ITEMS: { key: keyof Prefs; labelKey: string; hintKey: string }[] = [
   { key: 'moderation', labelKey: 'notify.itemModerationLabel', hintKey: 'notify.itemModerationHint' },
   { key: 'system', labelKey: 'notify.itemSystemLabel', hintKey: 'notify.itemSystemHint' },
   { key: 'achievement', labelKey: 'notify.itemAchievementLabel', hintKey: 'notify.itemAchievementHint' },
+  { key: 'book_update', labelKey: 'notify.itemBookUpdateLabel', hintKey: 'notify.itemBookUpdateHint' },
 ]
 
 export default function NotifyPrefs() {
@@ -35,15 +37,18 @@ export default function NotifyPrefs() {
   const [prefs, setPrefs] = useState<Prefs | null>(null)
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
-  // 成就插件禁用时，隐藏「成就通知」偏好项
+  // 插件禁用时隐藏对应的通知偏好项
   const achievementsEnabled = (site.feature_plugins || []).includes('achievements')
-  const items = ITEMS.filter((it) => it.key !== 'achievement' || achievementsEnabled)
+  const followEnabled = (site.feature_plugins || []).includes('book-follow')
+  const items = ITEMS.filter((it) =>
+    (it.key !== 'achievement' || achievementsEnabled) &&
+    (it.key !== 'book_update' || followEnabled))
 
   useEffect(() => {
     if (!user) return
     api<{ email_enabled: boolean; prefs: Prefs }>('/auth/notification-prefs')
       .then((d) => { setPrefs(d.prefs); setEmailEnabled(d.email_enabled) })
-      .catch(() => setPrefs({ comment: true, reaction: true, collaboration: true, moderation: true, system: true, achievement: true }))
+      .catch(() => setPrefs({ comment: true, reaction: true, collaboration: true, moderation: true, system: true, achievement: true, book_update: true }))
   }, [user])
 
   if (!user) return <Loading className="min-h-[60vh]" label={t('account.common.loadingInfo')} />

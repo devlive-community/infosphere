@@ -31,6 +31,7 @@ const (
 	pluginTags             = "tags"
 	pluginBookTranslations = "book-translations"
 	pluginBookVersions     = "book-versions"
+	pluginBookFollow       = "book-follow"
 	// pluginKindRuntime 需要下载运行时依赖（二进制/镜像）的插件；pluginKindFeature 仅切换某项功能的启用/禁用。
 	pluginKindRuntime = "runtime"
 	pluginKindFeature = "feature"
@@ -96,6 +97,16 @@ var pluginRegistry = []pluginInfo{
 		Description: "同一作品的多版本组：阅读/详情页可在不同版本间切换。禁用后版本切换入口与相关接口停用（默认启用，数据保留在书籍字段中）。",
 		Kind:        pluginKindFeature,
 		Builtin:     true,
+	},
+	{
+		Key:         pluginBookFollow,
+		Name:        "书籍关注",
+		Description: "用户可关注书籍，作品更新（新章节/状态）时收到通知；用户可在通知偏好中开关。禁用后关注入口、我的关注、相关接口与更新通知一并停用（默认启用）。首次启用建表、注册权限，卸载可清除数据。",
+		Kind:        pluginKindFeature,
+		Builtin:     true,
+		Models:      []any{&models.BookFollow{}},
+		Tables:      []string{"book_follows"},
+		UserPerms:   []authz.Permission{authz.FollowRead, authz.FollowCreate, authz.FollowDelete},
 	},
 	{
 		Key:         pluginTags,

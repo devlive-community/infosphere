@@ -394,6 +394,19 @@ Authorization: Bearer <token>
 | GET | `/books/:id/reactions/me` | 当前用户对该书的态度 + 全站计数 | `reaction:read` |
 | GET | `/users/me/reactions?type=&page=` | 我的点赞/收藏列表；自动过滤当前已失去访问权的书籍 | `reaction:read` |
 
+## 书籍关注（登录用户，「书籍关注」插件）
+
+> `book-follow` 为 feature 插件（默认启用）。禁用后本节端点与 `/users/me/follows` 返回 404，前端关注入口/我的关注/通知偏好项隐藏，更新也不再通知。权限 `follow:*` 由插件动态注册。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| POST | `/books/:id/follow` | 关注书籍（幂等），返回 `{following,count}` | `follow:create` |
+| DELETE | `/books/:id/follow` | 取消关注，返回 `{following,count}` | `follow:delete` |
+| GET | `/books/:id/follow/me` | 当前用户是否关注 + 关注数 | `follow:read` |
+| GET | `/users/me/follows?page=&page_size=` | 我关注的书籍（分页，过滤已失去访问权的） | `follow:read` |
+
+- 关注者在被关注书籍**发布新章节**（草稿→已发布）时收到 `book_update` 站内通知（作者本人除外），受用户「关注更新」通知偏好（`book_update`）开关控制。
+
 ## 站内通知（登录用户）
 
 | 方法 | 路径 | 说明 | 权限 |

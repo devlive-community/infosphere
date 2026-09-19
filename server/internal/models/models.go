@@ -174,6 +174,7 @@ type UserNotificationPref struct {
 	Moderation    bool `gorm:"default:true" json:"moderation"`
 	System        bool `gorm:"default:true" json:"system"`
 	Achievement   bool `gorm:"default:true" json:"achievement"`
+	BookUpdate    bool `gorm:"default:true" json:"book_update"` // 关注书籍更新通知
 }
 
 // LoginLockout 登录失败锁定计数（每账户一条，多实例共享）。
@@ -466,6 +467,14 @@ type Reaction struct {
 	Type      string    `gorm:"uniqueIndex:uk_user_book_type;size:20;not null" json:"type"` // like | favorite
 	CreatedAt time.Time `json:"created_at"`
 	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+}
+
+// BookFollow 用户关注书籍：关注后收到该书更新（新章节/状态）通知。由「书籍关注」插件建表。
+type BookFollow struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"uniqueIndex:uk_user_book_follow;not null" json:"user_id"`
+	BookID    uint      `gorm:"uniqueIndex:uk_user_book_follow;index;not null" json:"book_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ReadingProgress 阅读进度：每个用户在每个书籍中最近读到的章节
