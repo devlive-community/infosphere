@@ -23,6 +23,7 @@ interface ExploreProps {
   tag: string
   tagName: string
   sort: 'latest' | 'hot'
+  visibility: string
   page: number
   data: PageResult<Book>
   hotTags: Tag[]
@@ -38,6 +39,7 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
   const keyword = typeof query.title === 'string' ? query.title.slice(0, 100) : ''
   const tag = typeof query.tag === 'string' ? query.tag.slice(0, 50) : ''
   const sort = (query.sort === 'hot' ? 'hot' : 'latest') as 'latest' | 'hot'
+  const visibility = query.visibility === 'login' && user ? 'login' : ''
   const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1)
 
   const [site, data, tags] = await Promise.all([
@@ -45,7 +47,7 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
     tag
       ? serverApi<PageResult<Book>>(`/tags/${encodeURIComponent(tag)}/books`, { params: { page, page_size: 12 } })
           .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>)
-      : serverApi<PageResult<Book>>('/books', { params: { page, page_size: 12, title: keyword || undefined } })
+      : serverApi<PageResult<Book>>('/books', { headers: auth, params: { page, page_size: 12, title: keyword || undefined, visibility: visibility || undefined } })
           .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>),
     serverApi<Tag[]>('/tags', { params: { limit: 200 } }).catch(() => [] as Tag[]),
   ])
@@ -53,10 +55,10 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
     .flatMap((book) => book.tags || [])
     .find((item) => item.slug === tag)
   const tagName = tag ? selectedBookTag?.name || tags.find((item) => item.slug === tag)?.name || tag : ''
-  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), keyword, tag, tagName, sort, page, data, hotTags: tags.slice(0, 6) } }
+  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), keyword, tag, tagName, sort, visibility, page, data, hotTags: tags.slice(0, 6) } }
 }
 
-export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Explore({ user, site, siteUrl, keyword, tag, tagName, sort, visibility, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
   const [view, setView] = useState<'grid' | 'list'>('grid')
@@ -73,12 +75,14 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
   // 当前高亮的浏览项：按 URL 中的 sort 显式区分「全部公开书籍」(无 sort) 与「最新发布」(sort=latest)，
   // 保证同一时刻只有一个高亮；含标签筛选时三项均不高亮
   const rawSort = typeof router.query.sort === 'string' ? router.query.sort : ''
-  const activeMode = tag ? '' : rawSort === 'hot' ? 'hot' : rawSort === 'latest' ? 'latest' : 'all'
+  const loginOnly = visibility === 'login'
+  const activeMode = tag ? '' : loginOnly ? 'login' : rawSort === 'hot' ? 'hot' : rawSort === 'latest' ? 'latest' : 'all'
 
   const browseItems = [
-    { mode: 'all' as const, label: t('explore.browse.all'), shortLabel: t('explore.browse.allShort'), icon: <BookIcon className="h-4 w-4" />, href: '/explore' },
-    { mode: 'latest' as const, label: t('explore.browse.latest'), shortLabel: t('explore.browse.latestShort'), icon: <ClockIcon className="h-4 w-4" />, href: '/explore?sort=latest' },
-    { mode: 'hot' as const, label: t('explore.browse.hot'), shortLabel: t('explore.browse.hotShort'), icon: <i className="fa-solid fa-fire text-sm" aria-hidden="true" />, href: '/explore?sort=hot' },
+    { mode: 'all', label: t('explore.browse.all'), shortLabel: t('explore.browse.allShort'), icon: <BookIcon className="h-4 w-4" />, href: '/explore' },
+    { mode: 'latest', label: t('explore.browse.latest'), shortLabel: t('explore.browse.latestShort'), icon: <ClockIcon className="h-4 w-4" />, href: '/explore?sort=latest' },
+    { mode: 'hot', label: t('explore.browse.hot'), shortLabel: t('explore.browse.hotShort'), icon: <i className="fa-solid fa-fire text-sm" aria-hidden="true" />, href: '/explore?sort=hot' },
+    ...(user ? [{ mode: 'login', label: t('explore.browse.loginOnly'), shortLabel: t('explore.browse.loginOnlyShort'), icon: <i className="fa-solid fa-user-lock text-sm" aria-hidden="true" />, href: '/explore?visibility=login' }] : []),
   ]
 
   const items = [...(data.items || [])].sort((a, b) => {
@@ -87,7 +91,7 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
     return 0
   })
 
-  const sectionTitle = tag ? t('explore.section.byTag', { tag: tagName }) : keyword ? t('explore.section.searchResult', { keyword }) : t('explore.section.allPublic')
+  const sectionTitle = tag ? t('explore.section.byTag', { tag: tagName }) : keyword ? t('explore.section.searchResult', { keyword }) : loginOnly ? t('explore.browse.loginOnly') : t('explore.section.allPublic')
 
   const jsonLd = items.length > 0 ? {
     '@context': 'https://schema.org',
@@ -211,7 +215,7 @@ export default function Explore({ site, siteUrl, keyword, tag, tagName, sort, pa
               <span className="text-sm text-slate-400">{t('explore.section.count', { total: data.total })}</span>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              {!tag && (
+              {!tag && !loginOnly && (
                 <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setLoading(true); window.location.href = v === 'hot' ? '/explore?sort=hot' : '/explore' }}
                   options={[{ value: 'latest', label: t('explore.browse.latest') }, { value: 'hot', label: t('explore.browse.hot') }]} />
               )}

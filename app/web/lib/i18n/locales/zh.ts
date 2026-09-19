@@ -933,6 +933,8 @@ export const zh: Record<string, string> = {
   'explore.browse.allShort': '全部',
   'explore.browse.latestShort': '最新',
   'explore.browse.hotShort': '热门',
+  'explore.browse.loginOnly': '仅登录可读',
+  'explore.browse.loginOnlyShort': '仅登录',
   'explore.browse.aria': '浏览内容',
   'explore.browse.heading': '浏览内容',
   'explore.tags.heading': '热门标签',

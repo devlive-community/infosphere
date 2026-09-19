@@ -179,6 +179,9 @@ func (a *App) ListBooks(c *gin.Context) {
 		// 未登录游客看不到「仅登录可读」书籍
 		if u == nil {
 			query = query.Where("books.login_required = ?", false)
+		} else if c.Query("visibility") == "login" {
+			// 登录用户可筛选「仅登录可读」书籍
+			query = query.Where("books.login_required = ?", true)
 		}
 	}
 	if title := c.Query("title"); title != "" {

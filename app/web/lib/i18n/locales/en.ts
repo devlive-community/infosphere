@@ -933,6 +933,8 @@ export const en: Record<string, string> = {
   'explore.browse.allShort': 'All',
   'explore.browse.latestShort': 'Latest',
   'explore.browse.hotShort': 'Popular',
+  'explore.browse.loginOnly': 'Members only',
+  'explore.browse.loginOnlyShort': 'Members',
   'explore.browse.aria': 'Browse',
   'explore.browse.heading': 'Browse',
   'explore.tags.heading': 'Popular tags',
