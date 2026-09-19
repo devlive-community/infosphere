@@ -7,7 +7,7 @@ import { useTranslation } from '@/lib/i18n'
 import { renderMarkdown, bindMarkdownInteractivity, headingPlainText } from '@/lib/markdown'
 import Seo from '@/components/Seo'
 import DocTreeIcon from '@/components/DocTreeIcon'
-import { Button, Input, Textarea, Select, Field, Badge, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Switch, Tooltip, Modal, useFeedback } from '@/components/ui'
+import { Button, Input, Textarea, Select, Field, Badge, Checkbox, ContextMenu, ContextMenuItem, EmptyState, Loading, SegmentedTabs, Switch, Tooltip, Modal, useFeedback } from '@/components/ui'
 import {
   BookIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, CloudIcon, CodeIcon,
   CloseIcon, EyeIcon, FileTextIcon, FolderIcon, GlobeIcon, GripIcon, HistoryIcon, ImageIcon, LinkIcon,
@@ -1760,6 +1760,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
   const [url, setURL] = useState('')
   const [title, setTitle] = useState('')
   const [renderMode, setRenderMode] = useState<WebRenderMode>('auto')
+  const [includeSource, setIncludeSource] = useState(false)
   const [browserAvailable, setBrowserAvailable] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -1769,6 +1770,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
     setURL('')
     setTitle('')
     setRenderMode('auto')
+    setIncludeSource(false)
     setError('')
     api<{ available: boolean }>('/import/browser-available').then((r) => setBrowserAvailable(r.available)).catch(() => {})
   }, [open])
@@ -1793,7 +1795,7 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
       const result = await api<{ document: Document }>(`/books/${bookId}/documents/import-web`, {
         method: 'POST',
         body: {
-          url: url.trim(), title: title.trim(), render_mode: renderMode,
+          url: url.trim(), title: title.trim(), render_mode: renderMode, include_source: includeSource,
           parent_id: parent?.id ?? null,
           sort_order: parent ? parent.children?.length || 0 : topLevelCount,
         },
@@ -1845,6 +1847,10 @@ function WebDocumentImportDialog({ open, bookId, parent, topLevelCount, onClose,
               ...(browserAvailable ? [{ value: 'browser', label: t('writer.parseBrowser') }] : []),
             ]} />
           </Field>
+          <label className="flex cursor-pointer items-start gap-2.5">
+            <Checkbox checked={includeSource} onChange={setIncludeSource} ariaLabel={t('writer.includeSource')} />
+            <span className="text-sm text-slate-600">{t('writer.includeSource')}<span className="mt-0.5 block text-xs text-slate-400">{t('writer.includeSourceHint')}</span></span>
+          </label>
 
           {error && <div role="alert" className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-600 [overflow-wrap:anywhere]">{error}</div>}
           {loading && <div className="rounded-xl border border-primary-100 bg-primary-50/50 px-4 py-4"><Loading className="py-1" label={t('writer.extracting')} /></div>}

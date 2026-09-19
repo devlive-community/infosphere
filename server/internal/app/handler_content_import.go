@@ -79,11 +79,21 @@ type webPage struct {
 }
 
 type webImportPayload struct {
-	URL        string `json:"url"`
-	Title      string `json:"title"`
-	RenderMode string `json:"render_mode"` // auto | static | browser
-	ParentID   *uint  `json:"parent_id,omitempty"`
-	SortOrder  *int   `json:"sort_order,omitempty"`
+	URL           string `json:"url"`
+	Title         string `json:"title"`
+	RenderMode    string `json:"render_mode"`    // auto | static | browser
+	IncludeSource bool   `json:"include_source"` // 是否在 Markdown 末尾附加「来源：原始网页」链接（默认否）
+	ParentID      *uint  `json:"parent_id,omitempty"`
+	SortOrder     *int   `json:"sort_order,omitempty"`
+}
+
+// withSourceNote 按需在 Markdown 末尾附加来源链接（include 为 false 时原样返回）
+func withSourceNote(markdown, sourceURL string, include bool) string {
+	md := strings.TrimSpace(markdown)
+	if include && sourceURL != "" {
+		return md + "\n\n> 来源：[原始网页](" + sourceURL + ")"
+	}
+	return md
 }
 
 type webArticle struct {
@@ -355,7 +365,7 @@ func (a *App) ImportWebBook(c *gin.Context) {
 	if customTitle := strings.TrimSpace(req.Title); customTitle != "" {
 		article.Title = truncateText(customTitle, 255)
 	}
-	chapter := importedChapter{Title: "正文", Content: article.Markdown}
+	chapter := importedChapter{Title: "正文", Content: withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource)}
 	book, err := a.createContentImportBook(u, article.Title, article.Description, []importedChapter{chapter})
 	if err != nil {
 		fail(c, http.StatusInternalServerError, "创建网页书籍失败: "+err.Error())
@@ -407,7 +417,7 @@ func (a *App) ImportWebDocument(c *gin.Context) {
 	if customTitle := strings.TrimSpace(req.Title); customTitle != "" {
 		article.Title = truncateText(customTitle, 255)
 	}
-	content := strings.TrimSpace(article.Markdown) + "\n\n> 来源：[原始网页](" + page.FinalURL.String() + ")"
+	content := withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource)
 	doc, err := a.createImportedWebDocument(book, u, article.Title, content, req.ParentID, req.SortOrder)
 	if err != nil {
 		fail(c, http.StatusInternalServerError, "创建网页章节失败: "+err.Error())
@@ -435,7 +445,7 @@ func (a *App) CollectWebContent(c *gin.Context) {
 	}
 	ok(c, gin.H{
 		"title":       article.Title,
-		"markdown":    strings.TrimSpace(article.Markdown),
+		"markdown":    withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource),
 		"source_url":  page.FinalURL.String(),
 		"render_mode": usedMode,
 	})

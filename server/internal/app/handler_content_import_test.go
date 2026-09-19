@@ -534,7 +534,7 @@ func TestImportWebDocumentRemovesPageChromeAndCreatesRevision(t *testing.T) {
 		}, nil
 	}
 	router := contentImportRouter(app, owner)
-	body := `{"url":"https://8.8.8.8/posts/clean","render_mode":"static","parent_id":` + strconv.FormatUint(uint64(parent.ID), 10) + `,"sort_order":3}`
+	body := `{"url":"https://8.8.8.8/posts/clean","render_mode":"static","include_source":true,"parent_id":` + strconv.FormatUint(uint64(parent.ID), 10) + `,"sort_order":3}`
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/documents/import-web", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")

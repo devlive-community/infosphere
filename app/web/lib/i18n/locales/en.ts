@@ -560,6 +560,8 @@ export const en: Record<string, string> = {
   'writer.parseStatic': 'Static fetch only',
   'writer.parseBrowser': 'Run JavaScript in a browser',
   'writer.extracting': 'Extracting page content and building the chapter…',
+  'writer.includeSource': 'Append source page',
+  'writer.includeSourceHint': 'When checked, append a “Source: original page” link at the end; off by default.',
   'writer.collectAsChapter': 'Fetch as chapter',
   'writer.currentEdit': 'Current editor content',
   'writer.unsavedRestoreWarn': 'The current content is unsaved. Close version history and save manually before restoring.',

@@ -560,6 +560,8 @@ export const zh: Record<string, string> = {
   'writer.parseStatic': '仅静态抓取',
   'writer.parseBrowser': '使用浏览器运行 JavaScript',
   'writer.extracting': '正在提取网页正文并构建章节…',
+  'writer.includeSource': '附加来源原始网页',
+  'writer.includeSourceHint': '勾选后在正文末尾追加「来源：原始网页」链接，默认不添加。',
   'writer.collectAsChapter': '采集为章节',
   'writer.currentEdit': '当前编辑内容',
   'writer.unsavedRestoreWarn': '当前编辑内容尚未保存。请关闭版本历史并先手动保存，再执行恢复。',
