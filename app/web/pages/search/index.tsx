@@ -98,6 +98,7 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
   const router = useRouter()
   const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
+  const tagsEnabled = Array.isArray((site as Record<string, unknown>).feature_plugins) && ((site as Record<string, unknown>).feature_plugins as string[]).includes('tags')
   const [keyword, setKeyword] = useState(q)
   const [draft, setDraft] = useState(filters)
   const [loading, setLoading] = useState(false)
@@ -151,11 +152,11 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
                 leading={<SearchIcon className="h-4 w-4" />} placeholder={t('search.placeholder')} maxLength={100} />
               <Button type="submit" loading={loading} className="w-full sm:w-auto">{t('search.submit')}</Button>
             </div>
-            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 md:grid-cols-4">
+            <div className={`grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 ${tagsEnabled ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
               <Input value={draft.author} onChange={(event) => setDraft({ ...draft, author: event.target.value })}
                 placeholder={t('search.authorPlaceholder')} maxLength={50} />
-              <Select value={draft.tag} onChange={(tag) => setDraft({ ...draft, tag })}
-                options={[{ value: '', label: t('search.allTags') }, ...tags.map((tag) => ({ value: tag.slug, label: tag.name }))]} />
+              {tagsEnabled && <Select value={draft.tag} onChange={(tag) => setDraft({ ...draft, tag })}
+                options={[{ value: '', label: t('search.allTags') }, ...tags.map((tag) => ({ value: tag.slug, label: tag.name }))]} />}
               <DatePicker value={draft.updatedFrom} onChange={(value) => setDraft({ ...draft, updatedFrom: value })}
                 placeholder={t('search.updatedFrom')} max={draft.updatedTo || undefined} ariaLabel={t('search.updatedFrom')} />
               <DatePicker value={draft.updatedTo} onChange={(value) => setDraft({ ...draft, updatedTo: value })}

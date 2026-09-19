@@ -1,9 +1,13 @@
 import Link from 'next/link'
+import { useApp } from '@/lib/auth'
 import type { Tag } from '@/lib/types'
 
-// TagChips 书卡与详情页的标签 chip（对齐首页设计基线的分类标签）
+// TagChips 书卡与详情页的标签 chip（对齐首页设计基线的分类标签）。
+// 标签插件禁用时整体不渲染（书卡/详情/作者页/探索等处的标签入口随之隐藏）。
 export default function TagChips({ tags, max = 3, link = true }: { tags?: Tag[]; max?: number; link?: boolean }) {
-  if (!tags || tags.length === 0) return null
+  const { site } = useApp()
+  const tagsEnabled = (site.feature_plugins || []).includes('tags')
+  if (!tagsEnabled || !tags || tags.length === 0) return null
   const shown = tags.slice(0, max)
   return (
     <span className="flex flex-wrap items-center gap-1.5">

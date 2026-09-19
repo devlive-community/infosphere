@@ -61,6 +61,9 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
 export default function Explore({ user, site, siteUrl, keyword, tag, tagName, sort, visibility, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
+  // 标签插件禁用时，隐藏所有标签入口（热门搜索、标签侧栏、全部标签链接）
+  const featurePlugins = (site as Record<string, unknown>).feature_plugins
+  const tagsEnabled = Array.isArray(featurePlugins) && (featurePlugins as string[]).includes('tags')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -139,6 +142,7 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
             <Button type="submit" size="lg" className="w-full px-7 sm:w-auto">{t('explore.search.submit')}</Button>
           </form>
 
+          {tagsEnabled && (hotTags || []).length > 0 && (
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
             <span className="text-slate-400">{t('explore.search.hotSearch')}</span>
             {(hotTags || []).slice(0, 4).map((t) => (
@@ -146,6 +150,7 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
                 className="rounded-full px-2.5 py-1 text-primary-600 transition-colors hover:bg-primary-50">{t.name}</Link>
             ))}
           </div>
+          )}
         </Container>
       </section>
 
@@ -158,7 +163,7 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
               const item = browseItems.find((entry) => entry.mode === mode)
               if (item) { navLoad(item.href); void router.push(item.href) }
             }} />
-          {hotTags.length > 0 && <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+          {tagsEnabled && hotTags.length > 0 && <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
             {hotTags.map((item) => <Link key={item.id} href={`/explore?tag=${encodeURIComponent(item.slug)}`}
               onClick={() => navLoad(`/explore?tag=${encodeURIComponent(item.slug)}`)}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${tag === item.slug ? 'border-primary-300 bg-primary-50 text-primary-700' : 'border-slate-200 bg-white text-slate-600'}`}>
@@ -184,7 +189,7 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
             })}
           </ul>
 
-          <div className="mt-4 border-t border-slate-100 pt-4">
+          {tagsEnabled && <div className="mt-4 border-t border-slate-100 pt-4">
             <h2 className="mb-2 px-2 text-sm font-semibold text-slate-900">{t('explore.tags.heading')}</h2>
             <ul className="space-y-0.5">
               {(hotTags || []).map((t) => (
@@ -203,7 +208,7 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
             <Link href="/tags" className="mt-1.5 flex items-center gap-1 px-3 py-2 text-sm font-medium text-primary-600 hover:underline">
               {t('explore.tags.viewAll')} <ArrowRightIcon className="h-3.5 w-3.5" />
             </Link>
-          </div>
+          </div>}
 
           <p className="mt-4 flex items-start gap-1.5 px-2 text-xs leading-5 text-slate-400">
             <GlobeIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />

@@ -35,6 +35,9 @@ export default function NotifyPrefs() {
   const [prefs, setPrefs] = useState<Prefs | null>(null)
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
+  // 成就插件禁用时，隐藏「成就通知」偏好项
+  const achievementsEnabled = (site.feature_plugins || []).includes('achievements')
+  const items = ITEMS.filter((it) => it.key !== 'achievement' || achievementsEnabled)
 
   useEffect(() => {
     if (!user) return
@@ -89,7 +92,7 @@ export default function NotifyPrefs() {
                     </div>
                   )}
                   <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-                    {ITEMS.map((it) => (
+                    {items.map((it) => (
                       <div key={it.key} className="flex items-center justify-between gap-4 px-4 py-3">
                         <div className="min-w-0">
                           <div className="text-sm font-medium text-slate-800">{t(it.labelKey)}</div>

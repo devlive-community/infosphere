@@ -110,6 +110,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const { user, authReady } = useApp()
   const { t } = useTranslation()
   const router = useRouter()
+  // 标签插件禁用时隐藏详情页的标签入口（面包屑标签、标签 chip）
+  const tagsEnabled = Array.isArray((site as Record<string, unknown>).feature_plugins) && ((site as Record<string, unknown>).feature_plugins as string[]).includes('tags')
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
   // 目录 / 评价 横向 Tab：由 URL 承载（?tab=reviews），浅路由切换，可分享可回退
   const activeTab = router.query.tab === 'reviews' ? 'reviews' : 'toc'
@@ -363,7 +365,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         {/* 面包屑 */}
         <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden py-3 text-sm text-slate-500">
           <Link href="/explore" className="shrink-0 hover:text-primary-600">{t('detail.breadcrumbExplore')}</Link>
-          {(book.tags || []).slice(0, 1).map((t) => (
+          {tagsEnabled && (book.tags || []).slice(0, 1).map((t) => (
             <span key={t.id} className="flex min-w-0 items-center gap-1.5">
               <span className="text-slate-300">/</span>
               <Link href={`/explore?tag=${encodeURIComponent(t.slug)}`} className="truncate hover:text-primary-600">{t.name}</Link>
@@ -389,11 +391,13 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
             <h1 className="break-words text-2xl font-bold leading-tight text-ink sm:text-3xl md:text-4xl">{book.title}</h1>
             {book.description && <p className="mt-3 max-w-full whitespace-normal text-[15px] leading-7 text-slate-500 [overflow-wrap:anywhere]">{book.description}</p>}
 
+            {tagsEnabled && (book.tags || []).length > 0 && (
             <div className="mt-4 flex min-w-0 max-w-full flex-wrap gap-2 overflow-hidden">
               {(book.tags || []).map((t) => (
                 <span key={t.id} className="inline-flex max-w-full items-center truncate rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">{t.name}</span>
               ))}
             </div>
+            )}
 
             <div className="mt-4 flex flex-col gap-2"><BookTranslations bookId={book.id} /><BookVersions bookId={book.id} /></div>
 
