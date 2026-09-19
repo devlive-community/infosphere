@@ -245,11 +245,11 @@ export default function Writer({ user }: WriterProps) {
   useEffect(() => {
     if (!preview && !splitPreview) return
     const timer = setTimeout(() => {
-      setPreviewHtml(renderMarkdown(content))
+      setPreviewHtml(renderMarkdown(content, { bookSlug }))
       if (previewRef.current) bindMarkdownInteractivity(previewRef.current)
     }, 300)
     return () => clearTimeout(timer)
-  }, [content, preview, splitPreview])
+  }, [content, preview, splitPreview, bookSlug])
 
   // 预览里的任务复选框可点击：点击第 idx 个复选框即翻转正文里第 idx 个任务项标记。
   useEffect(() => {

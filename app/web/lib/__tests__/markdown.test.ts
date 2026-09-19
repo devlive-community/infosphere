@@ -25,6 +25,25 @@ describe('renderMarkdown 基础渲染', () => {
     expect(html).toContain('target="_blank"')
     expect(html).toContain('rel="noopener noreferrer"')
   })
+
+  it('内部文档链接 doc: 同书补全为阅读地址', () => {
+    const html = renderMarkdown('见 [第二章](doc:chapter-two)', { bookSlug: 'my-book' })
+    expect(html).toContain('href="/book/reader/my-book/chapter-two"')
+    expect(html).toContain('md-doc-link')
+    expect(html).not.toContain('doc:')
+  })
+
+  it('内部文档链接 doc: 跨书 book/doc 形式', () => {
+    const html = renderMarkdown('[外部章节](doc:other-book/intro)', { bookSlug: 'my-book' })
+    expect(html).toContain('href="/book/reader/other-book/intro"')
+  })
+
+  it('无书籍上下文的 doc: 链接降级为纯文本', () => {
+    const html = renderMarkdown('[孤立](doc:chapter-two)')
+    expect(html).not.toContain('doc:')
+    expect(html).toContain('孤立')
+    expect(html).not.toContain('href="/book/reader')
+  })
 })
 
 describe('M17 扩展', () => {

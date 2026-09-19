@@ -40,6 +40,9 @@ const alertExtension: TokenizerAndRendererExtension = {
 // 章节内标题序号：为 H2/H3 生成稳定 id（h-1, h-2…），供“本章目录”锚点跳转
 let headingSeq = 0
 
+// 渲染时的当前书籍 slug，用于把 `doc:` 内部链接补全为阅读地址（渲染是同步的，模块级变量安全）
+let currentBookSlug = ''
+
 const renderer: Renderer = new marked.Renderer()
 
 renderer.heading = (text: string, level: number): string => {
@@ -69,8 +72,23 @@ renderer.code = (code: string, infostring: string | undefined, _escaped: boolean
 }
 
 renderer.link = (href: string | null, _title: string | null, text: string): string => {
-  const external = /^https?:\/\//.test(href || '')
-  return `<a href="${href ?? ''}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${text}</a>`
+  const raw = href ?? ''
+  // 内部文档链接：[文字](doc:章节slug) 同书跳转；[文字](doc:书slug/章节slug) 跨书跳转。
+  // 渲染时补全为 /book/reader/<书>/<章节>，指向阅读页；scheme 在净化前已被改写，不会被 DOMPurify 拦掉。
+  if (raw.startsWith('doc:')) {
+    const ref = raw.slice(4).trim().replace(/^\/+/, '')
+    let bookSlug = currentBookSlug
+    let docSlug = ref
+    const slash = ref.indexOf('/')
+    if (slash >= 0) { bookSlug = ref.slice(0, slash); docSlug = ref.slice(slash + 1) }
+    if (bookSlug && docSlug) {
+      const internal = `/book/reader/${encodeURIComponent(bookSlug)}/${encodeURIComponent(docSlug)}`
+      return `<a href="${internal}" class="md-doc-link">${text}</a>`
+    }
+    return text // 无书籍上下文且未指定书籍：降级为纯文本，避免产生死链
+  }
+  const external = /^https?:\/\//.test(raw)
+  return `<a href="${raw}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${text}</a>`
 }
 
 marked.use({ renderer, extensions: [alertExtension, ...markdownExtensions], breaks: true, gfm: true })
@@ -92,10 +110,12 @@ function buildTocHtml(headings: Heading[]): string {
   )
 }
 
-// renderMarkdown 渲染 Markdown 为经过 XSS 净化的 HTML（SSR 与客户端共用）
-export function renderMarkdown(source: string | null | undefined): string {
+// renderMarkdown 渲染 Markdown 为经过 XSS 净化的 HTML（SSR 与客户端共用）。
+// options.bookSlug 提供当前书籍上下文，用于把 `doc:章节slug` 内部链接补全为阅读地址。
+export function renderMarkdown(source: string | null | undefined, options?: { bookSlug?: string }): string {
   if (!source) return ''
   headingSeq = 0 // 与 extractHeadings 保持相同的编号顺序
+  currentBookSlug = options?.bookSlug || ''
   const html = marked.parse(source, { async: false }) as string
   let out = DOMPurify.sanitize(html, { ADD_ATTR: ['target', 'rel', 'id'] })
   // [toc] 扩展：用文档标题填充占位（须与 marked 解析使用同一份 source）

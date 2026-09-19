@@ -32,7 +32,7 @@ export const getServerSideProps: GetServerSideProps<PrintProps> = async ({ req, 
   const flat = flatten(tree)
   const chapters: Chapter[] = await Promise.all(flat.map(async ({ doc, level }) => {
     const full = await serverApi<Document>(`/documents/${doc.id}`, { headers: auth }).catch(() => null)
-    return { id: doc.id, title: doc.title, level, html: renderMarkdown(full?.content || '') }
+    return { id: doc.id, title: doc.title, level, html: renderMarkdown(full?.content || '', { bookSlug: book.slug }) }
   }))
   const style: PrintStyle = {
     pageSize: String(query.page_size || 'A4'),

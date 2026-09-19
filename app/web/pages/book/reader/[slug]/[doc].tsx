@@ -104,7 +104,7 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
       return null
     }
     const childDocs = (findNode(tree)?.children || []).map((c) => ({ slug: c.slug, title: c.title }))
-    const html = fillChildrenToc(renderMarkdown(doc.content), childDocs, book.slug, book.chapter_prefix || '')
+    const html = fillChildrenToc(renderMarkdown(doc.content, { bookSlug: book.slug }), childDocs, book.slug, book.chapter_prefix || '')
     return { props: {
       installed: true, user, site, siteUrl: siteUrlFrom(req), book, doc,
       html, tree, access, readDocIds: readChapters.doc_ids || [],
