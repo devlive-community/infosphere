@@ -190,6 +190,8 @@ export const ShieldCheckIcon = svg(<>
 
 export const ActivityIcon = svg(<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />)
 
+export const CheckIcon = svg(<path d="M20 6 9 17l-5-5" />)
+
 export const ExternalLinkIcon = svg(<>
   <path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
 </>)
