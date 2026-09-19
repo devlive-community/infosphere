@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/router'
 import Seo from '@/components/Seo'
 import Container from '@/components/Container'
@@ -544,13 +545,14 @@ function ActionRow({ book, menu, canManage, canEdit }: { book: Book; menu: React
   const { t } = useTranslation()
   const isNew = !book.description
   const [chaptersOpen, setChaptersOpen] = useState(false)
+  const chaptersBtnRef = useRef<HTMLButtonElement>(null)
   return (
     <div className="flex items-center justify-between">
       <Link href={canEdit ? `/book/writer/${encodeURIComponent(book.slug)}` : `/book/detail/${encodeURIComponent(book.slug)}`} className="text-sm font-medium text-primary-600 hover:underline">
         {canEdit ? (isNew ? t('books.row.start') : t('books.row.continue')) : t('books.row.view')}
       </Link>
       <div className="relative flex items-center gap-1">
-        <Tooltip content={t('books.tooltip.chapters')}><button type="button" onClick={() => setChaptersOpen(!chaptersOpen)}
+        <Tooltip content={t('books.tooltip.chapters')}><button ref={chaptersBtnRef} type="button" onClick={() => setChaptersOpen(!chaptersOpen)}
           className={`flex items-center justify-center rounded-lg transition-colors ${chaptersOpen ? 'bg-primary-50 text-primary-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
           style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}>
             <FileTextIcon className="h-4 w-4" />
@@ -561,33 +563,56 @@ function ActionRow({ book, menu, canManage, canEdit }: { book: Book; menu: React
             <GearIcon className="h-4 w-4" />
           </Link></Tooltip>}
         {menu}
-        {chaptersOpen && <ChapterPanel book={book} canEdit={canEdit} onClose={() => setChaptersOpen(false)} />}
+        {chaptersOpen && <ChapterPanel book={book} canEdit={canEdit} triggerRef={chaptersBtnRef} onClose={() => setChaptersOpen(false)} />}
       </div>
     </div>
   )
 }
 
-// ChapterPanel 书籍章节弹出列表：懒加载文档树，点击进阅读，铅笔进编辑
-function ChapterPanel({ book, canEdit, onClose }: { book: Book; canEdit: boolean; onClose: () => void }) {
+// ChapterPanel 书籍章节弹出列表：懒加载文档树，点击进阅读，铅笔进编辑。
+// 用 Portal + fixed 定位渲染到 body，避免被卡片的 overflow-hidden 裁切（导致左侧内容显示不全）。
+function ChapterPanel({ book, canEdit, triggerRef, onClose }: { book: Book; canEdit: boolean; triggerRef: React.RefObject<HTMLButtonElement>; onClose: () => void }) {
   const { t } = useTranslation()
   const [docs, setDocs] = useState<Document[] | null>(null)
   const [error, setError] = useState('')
+  const [style, setStyle] = useState<React.CSSProperties | null>(null)
   useEffect(() => {
     api<Document[]>(`/books/${book.id}/documents`)
       .then((d) => setDocs(d || []))
       .catch((e) => setError((e as Error).message))
   }, [book.id])
 
+  useLayoutEffect(() => {
+    const place = () => {
+      const rect = triggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const width = Math.min(320, window.innerWidth - 16)
+      const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))
+      const spaceAbove = rect.top
+      const spaceBelow = window.innerHeight - rect.bottom
+      const above = spaceAbove > spaceBelow
+      setStyle(above
+        ? { left, width, bottom: window.innerHeight - rect.top + 8, maxHeight: spaceAbove - 16 }
+        : { left, width, top: rect.bottom + 8, maxHeight: spaceBelow - 16 })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true) }
+  }, [triggerRef])
+
   const rows = flattenDocs(docs || [])
-  return (
+  if (typeof document === 'undefined') return null
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-30" onClick={onClose} />
-      <div className="absolute bottom-10 right-0 z-40 w-80 max-w-[85vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+      <div className="fixed inset-0 z-[110]" onClick={onClose} />
+      <div className="fixed z-[120] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+        style={{ visibility: style ? 'visible' : 'hidden', ...style }}>
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-2.5">
           <span className="text-sm font-semibold text-slate-900">{t('books.chapters.title')}</span>
           <span className="text-xs text-slate-400">{docs ? t('books.chapters.count', { count: rows.length }) : ''}</span>
         </div>
-        <div className="max-h-72 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {error && <p className="px-4 py-3 text-sm text-rose-500">{error}</p>}
           {!error && docs === null && <Loading className="py-6" label={t('books.chapters.loading')} />}
           {docs !== null && rows.length === 0 && <p className="px-4 py-6 text-center text-sm text-slate-400">{t('books.chapters.empty')}</p>}
@@ -607,12 +632,13 @@ function ChapterPanel({ book, canEdit, onClose }: { book: Book; canEdit: boolean
             </div>
           ))}
         </div>
-        {canEdit && <div className="border-t border-slate-100 px-4 py-2">
+        {canEdit && <div className="shrink-0 border-t border-slate-100 px-4 py-2">
           <Link href={`/book/writer/${encodeURIComponent(book.slug)}`} onClick={onClose}
             className="text-sm font-medium text-primary-600 hover:underline">{t('books.chapters.manageAll')}</Link>
         </div>}
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
 
