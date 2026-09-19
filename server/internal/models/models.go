@@ -406,7 +406,9 @@ type Tag struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Name      string    `gorm:"size:50;uniqueIndex;not null" json:"name"`
 	Slug      string    `gorm:"size:50;uniqueIndex;not null" json:"slug"`
-	BookCount int64     `gorm:"->" json:"book_count"` // 只读聚合列：公开书籍使用计数
+	IconType  string    `gorm:"size:10;default:''" json:"icon_type"` // "" | fa | image | svg
+	IconValue string    `gorm:"size:500" json:"icon_value"`          // fa 类名，或上传后的媒体地址
+	BookCount int64     `gorm:"->" json:"book_count"`                // 只读聚合列：公开书籍使用计数
 	CreatedAt time.Time `json:"created_at"`
 }
 

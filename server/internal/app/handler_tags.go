@@ -19,7 +19,7 @@ func (a *App) ListTags(c *gin.Context) {
 	q := strings.TrimSpace(c.Query("q"))
 
 	query := a.DB.Model(&models.Tag{}).
-		Select("tags.id, tags.name, tags.slug, COUNT(book_tags.book_id) AS book_count").
+		Select("tags.id, tags.name, tags.slug, tags.icon_type, tags.icon_value, COUNT(book_tags.book_id) AS book_count").
 		Joins("JOIN book_tags ON book_tags.tag_id = tags.id").
 		Joins("JOIN books ON books.id = book_tags.book_id").
 		Where("books.is_public = ? AND books.status IN ?", true, publiclyReadableBookStatuses).
@@ -82,6 +82,115 @@ func (a *App) DeleteTag(c *gin.Context) {
 		return
 	}
 	ok(c, gin.H{"message": "已删除"})
+}
+
+func validTagIconType(t string) bool {
+	return t == "" || t == "fa" || t == "image" || t == "svg"
+}
+
+// AdminListTags GET /admin/tags 后台标签管理：列出全部标签（含总使用计数），支持搜索与分页
+func (a *App) AdminListTags(c *gin.Context) {
+	page, pageSize := paginate(c)
+	q := strings.TrimSpace(c.Query("q"))
+
+	countQuery := a.DB.Model(&models.Tag{})
+	if q != "" {
+		countQuery = countQuery.Where("name LIKE ?", "%"+q+"%")
+	}
+	var total int64
+	countQuery.Count(&total)
+
+	query := a.DB.Model(&models.Tag{}).
+		Select("tags.id, tags.name, tags.slug, tags.icon_type, tags.icon_value, tags.created_at, COUNT(book_tags.book_id) AS book_count").
+		Joins("LEFT JOIN book_tags ON book_tags.tag_id = tags.id").
+		Group("tags.id")
+	if q != "" {
+		query = query.Where("tags.name LIKE ?", "%"+q+"%")
+	}
+	tags := []models.Tag{}
+	if err := query.Order("book_count DESC, tags.id DESC").
+		Limit(pageSize).Offset((page - 1) * pageSize).Find(&tags).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "查询失败")
+		return
+	}
+	ok(c, PageResult{Items: tags, Total: total, Page: page, PageSize: pageSize})
+}
+
+// AdminCreateTag POST /admin/tags 后台创建标签（可带图标）
+func (a *App) AdminCreateTag(c *gin.Context) {
+	var req struct {
+		Name      string `json:"name"`
+		IconType  string `json:"icon_type"`
+		IconValue string `json:"icon_value"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Name) == "" {
+		fail(c, http.StatusBadRequest, "请填写标签名称")
+		return
+	}
+	if !validTagIconType(req.IconType) {
+		fail(c, http.StatusBadRequest, "图标类型无效")
+		return
+	}
+	name := strings.TrimSpace(req.Name)
+	if len([]rune(name)) > 50 {
+		fail(c, http.StatusBadRequest, "标签名称过长（最多 50 字）")
+		return
+	}
+	tag, err := a.findOrCreateTag(name)
+	if err != nil {
+		fail(c, http.StatusInternalServerError, "创建标签失败: "+err.Error())
+		return
+	}
+	if err := a.DB.Model(tag).Updates(map[string]any{"icon_type": req.IconType, "icon_value": strings.TrimSpace(req.IconValue)}).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "保存图标失败: "+err.Error())
+		return
+	}
+	ok(c, tag)
+}
+
+// AdminUpdateTag PUT /admin/tags/:id 后台更新标签名称与图标（slug 保持不变，避免破坏既有链接）
+func (a *App) AdminUpdateTag(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	var req struct {
+		Name      string `json:"name"`
+		IconType  string `json:"icon_type"`
+		IconValue string `json:"icon_value"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Name) == "" {
+		fail(c, http.StatusBadRequest, "请填写标签名称")
+		return
+	}
+	if !validTagIconType(req.IconType) {
+		fail(c, http.StatusBadRequest, "图标类型无效")
+		return
+	}
+	name := strings.TrimSpace(req.Name)
+	if len([]rune(name)) > 50 {
+		fail(c, http.StatusBadRequest, "标签名称过长（最多 50 字）")
+		return
+	}
+	var tag models.Tag
+	if err := a.DB.First(&tag, id).Error; err != nil {
+		fail(c, http.StatusNotFound, "标签不存在")
+		return
+	}
+	if name != tag.Name {
+		var count int64
+		a.DB.Model(&models.Tag{}).Where("name = ? AND id <> ?", name, tag.ID).Count(&count)
+		if count > 0 {
+			fail(c, http.StatusConflict, "同名标签已存在")
+			return
+		}
+	}
+	if err := a.DB.Model(&tag).Updates(map[string]any{"name": name, "icon_type": req.IconType, "icon_value": strings.TrimSpace(req.IconValue)}).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
+		return
+	}
+	ok(c, tag)
 }
 
 // BooksByTag GET /tags/:slug/books 按标签查询公开书籍

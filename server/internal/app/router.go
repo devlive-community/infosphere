@@ -152,8 +152,8 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/books/:id/versions", a.GetBookVersions)
 			public.GET("/books/:id/documents/slug/:slug", a.GetDocumentBySlug)
 			public.GET("/documents/:id", a.GetDocument)
-			public.GET("/tags", a.ListTags)
-			public.GET("/tags/:slug/books", a.BooksByTag)
+			public.GET("/tags", a.RequireFeaturePlugin(pluginTags), a.ListTags)
+			public.GET("/tags/:slug/books", a.RequireFeaturePlugin(pluginTags), a.BooksByTag)
 			public.POST("/books/:id/view", a.IncrementBookView)
 			// 导出（公开且开放导出的书籍匿名可导，鉴权在 handler 内）
 			public.GET("/export/pdf-available", a.PDFExportAvailable)
@@ -300,7 +300,7 @@ func (a *App) Router() *gin.Engine {
 		api.POST("/upload", a.RequireAuth(), a.RequireEmailVerified(), a.RequirePermission(authz.UploadCreate), a.RateLimit(uploadRateLimit), a.Upload)
 
 		// ── 标签管理（tag:*；登录用户可创建，删除仅管理员） ──
-		tags := api.Group("/tags", a.RequireAuth())
+		tags := api.Group("/tags", a.RequireAuth(), a.RequireFeaturePlugin(pluginTags))
 		{
 			tags.POST("", a.RequirePermission(authz.TagCreate), a.CreateTag)
 			tags.DELETE("/:id", a.RequirePermission(authz.TagDelete), a.DeleteTag)
@@ -346,6 +346,15 @@ func (a *App) Router() *gin.Engine {
 			admin.POST("/admin/tasks/:id/retry", a.RequirePermission(authz.TaskRetry), a.AdminRetryBackgroundJob)
 			admin.GET("/admin/reports", a.RequirePermission(authz.ReportRead), a.AdminListContentReports)
 			admin.PUT("/admin/reports/:id", a.RequirePermission(authz.ReportUpdate), a.AdminResolveContentReport)
+
+			// 标签管理（tag:manage）：整组挂「标签」特性插件守卫，禁用后后台标签接口一并 404
+			tagAdmin := admin.Group("", a.RequireFeaturePlugin(pluginTags))
+			{
+				tagAdmin.GET("/admin/tags", a.RequirePermission(authz.TagManage), a.AdminListTags)
+				tagAdmin.POST("/admin/tags", a.RequirePermission(authz.TagManage), a.AdminCreateTag)
+				tagAdmin.PUT("/admin/tags/:id", a.RequirePermission(authz.TagManage), a.AdminUpdateTag)
+				tagAdmin.DELETE("/admin/tags/:id", a.RequirePermission(authz.TagDelete), a.DeleteTag)
+			}
 
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
 			admin.GET("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminListConfigs)

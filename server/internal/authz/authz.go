@@ -39,6 +39,7 @@ const (
 	TagRead   Permission = "tag:read"   // 浏览标签与按标签检索（含匿名访问）
 	TagCreate Permission = "tag:create" // 创建标签（登录用户，书籍打标时自动创建）
 	TagDelete Permission = "tag:delete" // 删除标签（仅管理员）
+	TagManage Permission = "tag:manage" // 后台标签管理：重命名、图标、列出全部（仅管理员）
 
 	// 搜索
 	SearchRead Permission = "search:read" // 全局搜索书籍与章节（含匿名访问，仅公开内容）
@@ -125,7 +126,7 @@ var All = []Permission{
 	DocumentRead, DocumentCreate, DocumentUpdate, DocumentDelete,
 	DocumentRevisionRead, DocumentRevisionRestore,
 	TrashRead, TrashRestore, TrashDelete,
-	TagRead, TagCreate, TagDelete,
+	TagRead, TagCreate, TagDelete, TagManage,
 	SearchRead,
 	AuthOauth, AuthPasswordReset,
 	NotificationRead, NotificationUpdate,

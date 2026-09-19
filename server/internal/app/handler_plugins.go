@@ -27,6 +27,7 @@ import (
 const (
 	pluginPDFExport    = "pdf-export"
 	pluginAchievements = "achievements"
+	pluginTags         = "tags"
 	// pluginKindRuntime 需要下载运行时依赖（二进制/镜像）的插件；pluginKindFeature 仅切换某项功能的启用/禁用。
 	pluginKindRuntime = "runtime"
 	pluginKindFeature = "feature"
@@ -60,6 +61,13 @@ var pluginRegistry = []pluginInfo{
 		Kind:        pluginKindFeature,
 		Builtin:     true,
 		EnabledKey:  cfgAchievementsEnabled,
+	},
+	{
+		Key:         pluginTags,
+		Name:        "标签系统",
+		Description: "书籍标签浏览、按标签检索与后台标签管理（图标）。禁用后标签页面与相关接口一并停用（默认启用）。",
+		Kind:        pluginKindFeature,
+		Builtin:     true,
 	},
 }
 

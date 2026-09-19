@@ -76,6 +76,7 @@ Authorization: Bearer <token>
 | `tag:read` | 浏览标签与按标签检索 | ✅ | ✅ |
 | `tag:create` | 创建标签（书籍打标时自动创建） | ✅ | ✅ |
 | `tag:delete` | 删除标签 | ❌ | ✅ |
+| `tag:manage` | 后台标签管理（重命名、图标、列出全部） | ❌ | ✅ |
 | `search:read` | 全局搜索书籍与章节（匿名仅公开内容） | ✅ | ✅ |
 | `comment:read` | 浏览章节评论（匿名可读） | ✅ | ✅ |
 | `comment:create` | 发表评论 | ✅ | ✅ |
@@ -348,15 +349,22 @@ Authorization: Bearer <token>
 
 ## 标签
 
+> 标签为「标签系统」特性插件（默认启用）。插件禁用后本节全部端点与后台标签管理一并返回 404。
+
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| GET | `/tags?q=&limit=` | 标签列表（含公开书籍使用计数 `book_count`，按计数降序） | `tag:read` |
+| GET | `/tags?q=&limit=` | 标签列表（含 `icon_type`/`icon_value`/`book_count`，按计数降序） | `tag:read` |
 | POST | `/tags` | 创建标签 `{ "name": "Go" }` | `tag:create` |
 | DELETE | `/tags/:id` | 删除标签并解绑全部书籍 | `tag:delete` |
 | GET | `/tags/:slug/books?page=` | 按标签查公开书籍（分页） | `tag:read` |
+| GET | `/admin/tags?q=&page=&page_size=` | 后台标签管理：全部标签（含图标与总使用计数），分页 | `tag:manage` |
+| POST | `/admin/tags` | 后台创建标签 `{name, icon_type?, icon_value?}`（icon_type: fa/image/svg） | `tag:manage` |
+| PUT | `/admin/tags/:id` | 更新标签名称与图标（slug 保持不变） | `tag:manage` |
+| DELETE | `/admin/tags/:id` | 删除标签（同 `/tags/:id`） | `tag:delete` |
 
 - 书籍对象包含 `tags: [{ id, name, slug }]`；创建/更新书籍时请求体可传 `tags: ["Go", "后端"]`，服务端自动 find-or-create 并全量替换关联（单书最多 10 个）
 - 列表过滤：`GET /books?tag=<slug>`
+- 图标上传走通用 `POST /upload`（返回媒体地址），前端用通用 `IconPicker` / `ResourceIcon` 组件
 
 ## 上传
 
