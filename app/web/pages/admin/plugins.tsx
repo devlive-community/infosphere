@@ -13,6 +13,7 @@ interface Plugin {
   size_hint: string
   kind: 'runtime' | 'feature'
   builtin: boolean
+  purgeable?: boolean
   installed: boolean
   version: string
   status?: string
@@ -116,6 +117,22 @@ export default function AdminPlugins() {
     }
   }
 
+  // 卸载并清除数据：禁用插件并 DROP 其独占表（不可恢复），二次确认
+  async function purgeFeature(p: Plugin) {
+    if (!(await confirmAction({ title: t('admin.plugins.purgeTitle'), message: t('admin.plugins.purgeMessage', { name: p.name }), confirmLabel: t('admin.plugins.purgeConfirm'), danger: true }))) return
+    setBusy(p.key)
+    try {
+      await api(`/admin/plugins/${p.key}/uninstall?purge=true`, { method: 'POST' })
+      load()
+      await refreshSite()
+      showToast({ message: t('admin.plugins.purged'), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('admin.plugins.saveFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
   function toggleLogs(key: string) {
     if (logOpen[key]) {
       sources.current[key]?.close()
@@ -171,7 +188,10 @@ export default function AdminPlugins() {
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     {isFeature ? (
-                      <Switch ariaLabel={p.name} checked={p.installed} disabled={busy === p.key} onChange={(next) => toggleFeature(p, next)} />
+                      <>
+                        {p.purgeable && <Button variant="ghost" size="sm" className="text-rose-600" disabled={busy === p.key} onClick={() => purgeFeature(p)}>{t('admin.plugins.purge')}</Button>}
+                        <Switch ariaLabel={p.name} checked={p.installed} disabled={busy === p.key} onChange={(next) => toggleFeature(p, next)} />
+                      </>
                     ) : (
                       <>
                         <Button variant="ghost" size="sm" onClick={() => toggleLogs(p.key)}>{logOpen[p.key] ? t('admin.plugins.hideLogs') : t('admin.plugins.viewLogs')}</Button>
