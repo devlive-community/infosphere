@@ -479,9 +479,9 @@ Authorization: Bearer <token>
 | POST | `/admin/tasks/:id/retry` | 将最终失败任务清空旧错误和尝试次数后重新排队；重复操作返回 409 | `task:retry` |
 | GET | `/admin/reports?page=&page_size=&status=&target_type=&reason=&q=` | 举报队列与处理记录；`q` 匹配目标摘要、举报人用户名或邮箱；举报人身份仅此管理员接口返回 | `report:read` |
 | PUT | `/admin/reports/:id` | 处理待审举报：`{resolution:"reject"\|"takedown",note?}`；下架会将书籍转为私有归档、章节归档或评论隐藏，并通知举报人 | `report:update` |
-| GET | `/admin/plugins` | 列出后台插件及安装状态（installed/version/status/error） | `plugin:manage` |
-| POST | `/admin/plugins/:key/install` | 后台异步安装插件（pdf-export 下载 chrome-headless-shell 到数据目录），轮询 `/admin/plugins` 看状态 | `plugin:manage` |
-| POST | `/admin/plugins/:key/uninstall` | 卸载插件并清理下载文件 | `plugin:manage` |
+| GET | `/admin/plugins` | 列出后台插件（`key/name/description/kind/builtin/installed/version/status/error`）。`kind=runtime` 为运行时依赖插件（下载二进制），`kind=feature` 为特性开关插件；`installed` 表示已安装/已启用 | `plugin:manage` |
+| POST | `/admin/plugins/:key/install` | runtime 插件后台异步安装（pdf-export 下载 chrome-headless-shell），轮询 `/admin/plugins` 看状态；feature 插件（如 achievements）为即时**启用** | `plugin:manage` |
+| POST | `/admin/plugins/:key/uninstall` | runtime 插件卸载并清理下载文件；feature 插件为即时**禁用**（保留记录）。特性插件禁用后其前端页面与后端接口一并停用（如成就管理菜单隐藏、`/admin/achievement-*` 与 `/users/me/achievements` 返回 404） | `plugin:manage` |
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |

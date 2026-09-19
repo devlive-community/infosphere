@@ -141,7 +141,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/explore/latest", a.ExploreLatest)
 			public.GET("/users/:username", a.GetUserProfile)
 			public.GET("/users/:username/books", a.GetUserBooks)
-			public.GET("/users/:username/achievements", a.PublicUserAchievements)
+			public.GET("/users/:username/achievements", a.RequireFeaturePlugin(pluginAchievements), a.PublicUserAchievements)
 			public.GET("/achievements/settings", a.PublicAchievementSettings)
 
 			public.GET("/books", a.ListBooks) // mine=true 时要求登录
@@ -290,7 +290,7 @@ func (a *App) Router() *gin.Engine {
 		}
 
 		// ── 成就（本人完整进度；公开陈列见 public 组） ──
-		achievements := api.Group("/users/me/achievements", a.RequireAuth())
+		achievements := api.Group("/users/me/achievements", a.RequireAuth(), a.RequireFeaturePlugin(pluginAchievements))
 		{
 			achievements.GET("", a.RequirePermission(authz.AchievementRead), a.MyAchievements)
 			achievements.PUT("/:id/display", a.RequirePermission(authz.AchievementUpdate), a.UpdateMyAchievementDisplay)
@@ -357,20 +357,25 @@ func (a *App) Router() *gin.Engine {
 			admin.POST("/admin/plugins/:key/install", a.RequirePermission(authz.PluginManage), a.AdminInstallPlugin)
 			admin.POST("/admin/plugins/:key/uninstall", a.RequirePermission(authz.PluginManage), a.AdminUninstallPlugin)
 
-			// 成就管理：模块设置、指标目录、定义、重算与人工授予
+			// 成就管理：模块设置、指标目录、定义、重算与人工授予。
+			// 整组挂「成就」特性插件启用守卫——插件禁用时后台接口一并 404（前端菜单同步隐藏）。
+			// 例外：achievement-settings 不挂守卫，禁用后仍可读取（返回 enabled=false），启用/禁用统一走插件页。
 			admin.GET("/admin/achievement-settings", a.RequirePermission(authz.AchievementManage), a.AdminGetAchievementSettings)
 			admin.PUT("/admin/achievement-settings", a.RequirePermission(authz.AchievementManage), a.AdminUpdateAchievementSettings)
-			admin.GET("/admin/achievement-metrics", a.RequirePermission(authz.AchievementManage), a.AdminAchievementMetrics)
-			admin.GET("/admin/achievements", a.RequirePermission(authz.AchievementManage), a.AdminListAchievements)
-			admin.POST("/admin/achievements", a.RequirePermission(authz.AchievementManage), a.AdminCreateAchievement)
-			admin.GET("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminGetAchievement)
-			admin.PUT("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminUpdateAchievement)
-			admin.DELETE("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminDeleteAchievement)
-			admin.POST("/admin/achievements/:id/recalculate", a.RequirePermission(authz.AchievementManage), a.AdminRecalculateAchievement)
-			admin.POST("/admin/achievement-icons", a.RequirePermission(authz.AchievementManage), a.AdminUploadAchievementIcon)
-			admin.GET("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminListAchievementGrants)
-			admin.POST("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminGrantAchievement)
-			admin.POST("/admin/achievement-grants/:id/revoke", a.RequirePermission(authz.AchievementGrant), a.AdminRevokeAchievement)
+			achAdmin := admin.Group("", a.RequireFeaturePlugin(pluginAchievements))
+			{
+				achAdmin.GET("/admin/achievement-metrics", a.RequirePermission(authz.AchievementManage), a.AdminAchievementMetrics)
+				achAdmin.GET("/admin/achievements", a.RequirePermission(authz.AchievementManage), a.AdminListAchievements)
+				achAdmin.POST("/admin/achievements", a.RequirePermission(authz.AchievementManage), a.AdminCreateAchievement)
+				achAdmin.GET("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminGetAchievement)
+				achAdmin.PUT("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminUpdateAchievement)
+				achAdmin.DELETE("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminDeleteAchievement)
+				achAdmin.POST("/admin/achievements/:id/recalculate", a.RequirePermission(authz.AchievementManage), a.AdminRecalculateAchievement)
+				achAdmin.POST("/admin/achievement-icons", a.RequirePermission(authz.AchievementManage), a.AdminUploadAchievementIcon)
+				achAdmin.GET("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminListAchievementGrants)
+				achAdmin.POST("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminGrantAchievement)
+				achAdmin.POST("/admin/achievement-grants/:id/revoke", a.RequirePermission(authz.AchievementGrant), a.AdminRevokeAchievement)
+			}
 		}
 
 		// 插件操作日志 SSE（自行按 query token 鉴权，EventSource 无法带请求头）

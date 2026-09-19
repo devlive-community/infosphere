@@ -11,6 +11,66 @@ import (
 	"infosphere/server/internal/models"
 )
 
+// 特性插件（成就）：禁用时后台接口 404，启用后 200；启用/禁用切换即切换站点配置开关。
+func TestFeaturePluginGate(t *testing.T) {
+	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("加载配置失败: %v", err)
+	}
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatalf("创建应用失败: %v", err)
+	}
+	ts := httptest.NewServer(a.Router())
+	defer ts.Close()
+
+	install := `{"database":{"type":"sqlite"},"site":{"name":"t"},"admin":{"username":"admin","email":"a@b.c","password":"secret123"}}`
+	r, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/setup/install", bytes.NewBufferString(install))
+	r.Header.Set("Content-Type", "application/json")
+	resp, _ := http.DefaultClient.Do(r)
+	var ip map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&ip)
+	resp.Body.Close()
+	token := ip["data"].(map[string]any)["token"].(string)
+
+	do := func(method, path string) int {
+		req, _ := http.NewRequest(method, ts.URL+path, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("请求失败: %v", err)
+		}
+		defer res.Body.Close()
+		return res.StatusCode
+	}
+
+	// 默认禁用：成就管理接口 404
+	if st := do(http.MethodGet, "/api/v1/admin/achievement-metrics"); st != http.StatusNotFound {
+		t.Fatalf("成就插件禁用时应 404，实际 %d", st)
+	}
+	// 启用插件 → 接口 200，且站点开关置真
+	if st := do(http.MethodPost, "/api/v1/admin/plugins/"+pluginAchievements+"/install"); st != http.StatusOK {
+		t.Fatalf("启用成就插件应 200，实际 %d", st)
+	}
+	if !a.pluginEnabled(pluginAchievements) || a.getSetting(cfgAchievementsEnabled) != "true" {
+		t.Fatalf("启用后开关未置真")
+	}
+	if st := do(http.MethodGet, "/api/v1/admin/achievement-metrics"); st != http.StatusOK {
+		t.Fatalf("启用后成就管理应 200，实际 %d", st)
+	}
+	// 禁用插件 → 接口重新 404
+	if st := do(http.MethodPost, "/api/v1/admin/plugins/"+pluginAchievements+"/uninstall"); st != http.StatusOK {
+		t.Fatalf("禁用成就插件应 200，实际 %d", st)
+	}
+	if a.pluginEnabled(pluginAchievements) {
+		t.Fatalf("禁用后仍判为启用")
+	}
+	if st := do(http.MethodGet, "/api/v1/admin/achievement-metrics"); st != http.StatusNotFound {
+		t.Fatalf("禁用后成就管理应 404，实际 %d", st)
+	}
+}
+
 // 卸载插件必须真正删除，且不被进行中的安装 goroutine 重新写回（代次守卫）。
 func TestPluginUninstallGuardsAgainstStaleInstall(t *testing.T) {
 	t.Setenv("INFO_SPHERE_DATA", t.TempDir())

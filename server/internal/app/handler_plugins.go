@@ -24,13 +24,23 @@ import (
 // 插件系统：目前仅内置「PDF 导出」插件，安装时下载官方 chrome-headless-shell 到数据目录，
 // 保持基础二进制/镜像轻量；未安装则 PDF 导出不可用。
 
-const pluginPDFExport = "pdf-export"
+const (
+	pluginPDFExport    = "pdf-export"
+	pluginAchievements = "achievements"
+	// pluginKindRuntime 需要下载运行时依赖（二进制/镜像）的插件；pluginKindFeature 仅切换某项功能的启用/禁用。
+	pluginKindRuntime = "runtime"
+	pluginKindFeature = "feature"
+)
 
 type pluginInfo struct {
 	Key         string `json:"key"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	SizeHint    string `json:"size_hint"`
+	Kind        string `json:"kind"`    // runtime | feature
+	Builtin     bool   `json:"builtin"` // 内置插件；外部（商店）插件后续支持
+	// EnabledKey：feature 插件复用的站点配置开关键（为空则以 Plugin.Installed 记录启用状态）
+	EnabledKey string `json:"-"`
 }
 
 // pluginRegistry 已知插件清单
@@ -40,7 +50,72 @@ var pluginRegistry = []pluginInfo{
 		Name:        "无头浏览器 (Chromium)",
 		Description: "安装官方 chrome-headless-shell，用于书籍 PDF 导出与网页浏览器渲染采集（运行 JavaScript）。约 130–170MB，下载到数据目录。",
 		SizeHint:    "~150MB",
+		Kind:        pluginKindRuntime,
+		Builtin:     true,
 	},
+	{
+		Key:         pluginAchievements,
+		Name:        "成就系统",
+		Description: "为用户提供成就、徽章与进度追踪。启用后管理后台显示「成就管理」，用户端显示成就页；禁用后相关页面与接口一并停用。",
+		Kind:        pluginKindFeature,
+		Builtin:     true,
+		EnabledKey:  cfgAchievementsEnabled,
+	},
+}
+
+// pluginEnabled 判定插件是否启用：feature 插件优先看其复用的站点配置开关（无则看 Plugin.Installed，内置默认启用）；
+// runtime 插件看运行时依赖是否已安装。禁用即前后端全禁的唯一判定入口。
+func (a *App) pluginEnabled(key string) bool {
+	info := pluginInfoByKey(key)
+	if info == nil {
+		return false
+	}
+	if info.Kind == pluginKindFeature {
+		if info.EnabledKey != "" {
+			return a.getSetting(info.EnabledKey) == "true"
+		}
+		var p models.Plugin
+		if err := a.DB.Where("`key` = ?", key).First(&p).Error; err != nil {
+			return true // 内置特性插件默认启用
+		}
+		return p.Installed
+	}
+	var p models.Plugin
+	return a.DB.Where("`key` = ? AND installed = ?", key, true).First(&p).Error == nil
+}
+
+// RequireFeaturePlugin 特性插件启用守卫：插件被禁用时对应后端接口直接 404，确保「禁用即前后端全禁」。
+func (a *App) RequireFeaturePlugin(key string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !a.pluginEnabled(key) {
+			fail(c, http.StatusNotFound, "功能未启用")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// setFeaturePluginEnabled 切换 feature 插件启用状态：优先写其复用的站点配置开关，否则以 Plugin.Installed 记录。
+func (a *App) setFeaturePluginEnabled(info *pluginInfo, enabled bool) error {
+	if info.EnabledKey != "" {
+		return a.setSetting(info.EnabledKey, boolText(enabled), info.Name+" 启用开关")
+	}
+	var p models.Plugin
+	if err := a.DB.Where("`key` = ?", info.Key).First(&p).Error; err != nil {
+		p = models.Plugin{Key: info.Key}
+	}
+	p.Installed = enabled
+	if enabled {
+		now := time.Now()
+		p.InstalledAt = &now
+	}
+	status := "disabled"
+	if enabled {
+		status = "enabled"
+	}
+	a.savePluginMeta(&p, map[string]any{"status": status})
+	return nil
 }
 
 func pluginInfoByKey(key string) *pluginInfo {
@@ -295,7 +370,9 @@ func (a *App) AdminListPlugins(c *gin.Context) {
 			"name":        info.Name,
 			"description": info.Description,
 			"size_hint":   info.SizeHint,
-			"installed":   p.Installed,
+			"kind":        info.Kind,
+			"builtin":     info.Builtin,
+			"installed":   a.pluginEnabled(info.Key),
 			"version":     p.Version,
 			"status":      pluginMeta(&p)["status"],
 			"error":       pluginMeta(&p)["error"],
@@ -307,8 +384,18 @@ func (a *App) AdminListPlugins(c *gin.Context) {
 // AdminInstallPlugin POST /admin/plugins/:key/install 触发后台安装
 func (a *App) AdminInstallPlugin(c *gin.Context) {
 	key := c.Param("key")
-	if pluginInfoByKey(key) == nil {
+	info := pluginInfoByKey(key)
+	if info == nil {
 		fail(c, http.StatusNotFound, "插件不存在")
+		return
+	}
+	// feature 插件：启用即切换开关，无需下载
+	if info.Kind == pluginKindFeature {
+		if err := a.setFeaturePluginEnabled(info, true); err != nil {
+			fail(c, http.StatusInternalServerError, "启用失败: "+err.Error())
+			return
+		}
+		ok(c, gin.H{"message": "已启用", "status": "enabled"})
 		return
 	}
 	var p models.Plugin
@@ -329,8 +416,18 @@ func (a *App) AdminInstallPlugin(c *gin.Context) {
 // AdminUninstallPlugin POST /admin/plugins/:key/uninstall 卸载并清理下载文件
 func (a *App) AdminUninstallPlugin(c *gin.Context) {
 	key := c.Param("key")
-	if pluginInfoByKey(key) == nil {
+	info := pluginInfoByKey(key)
+	if info == nil {
 		fail(c, http.StatusNotFound, "插件不存在")
+		return
+	}
+	// feature 插件：禁用即切换开关，保留记录
+	if info.Kind == pluginKindFeature {
+		if err := a.setFeaturePluginEnabled(info, false); err != nil {
+			fail(c, http.StatusInternalServerError, "禁用失败: "+err.Error())
+			return
+		}
+		ok(c, gin.H{"message": "已禁用"})
 		return
 	}
 	// 递增代次，使任何进行中的安装 goroutine 的后续写入全部失效，避免卸载后被重新写回

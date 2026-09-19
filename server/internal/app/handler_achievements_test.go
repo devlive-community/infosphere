@@ -150,6 +150,8 @@ func TestAchievementAdminPermissionAndPublicPayload(t *testing.T) {
 	adminToken, _ := auth.GenerateToken(app.Config.Secret, admin.ID, admin.Username, admin.Role)
 	userToken, _ := auth.GenerateToken(app.Config.Secret, regular.ID, regular.Username, regular.Role)
 	router := app.Router()
+	// 成就为特性插件：管理接口挂启用守卫，权限校验用例需先启用插件
+	_ = app.setSetting(cfgAchievementsEnabled, "true", "test")
 	request := func(path, token string) (int, map[string]any) {
 		recorder := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, path, nil)
