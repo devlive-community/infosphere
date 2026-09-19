@@ -137,6 +137,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/stats", a.SiteStats)
 		public.GET("/sitemap", a.SitemapURLs)
 			public.GET("/explore/hot", a.ExploreHot)
+		public.GET("/explore/active-authors", a.ExploreActiveAuthors)
 			public.GET("/explore/latest", a.ExploreLatest)
 			public.GET("/users/:username", a.GetUserProfile)
 			public.GET("/users/:username/books", a.GetUserBooks)

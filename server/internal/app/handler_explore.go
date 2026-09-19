@@ -103,6 +103,27 @@ func (a *App) ExploreLatest(c *gin.Context) {
 	ok(c, books)
 }
 
+// ExploreActiveAuthors GET /explore/active-authors 活跃作者：按公开书籍数排序，附作品数与总阅读量
+func (a *App) ExploreActiveAuthors(c *gin.Context) {
+	type authorRow struct {
+		ID         uint   `json:"id"`
+		Username   string `json:"username"`
+		Avatar     string `json:"avatar"`
+		BookCount  int64  `json:"book_count"`
+		TotalViews int64  `json:"total_views"`
+	}
+	rows := []authorRow{}
+	a.DB.Table("books").
+		Select("users.id as id, users.username as username, users.avatar as avatar, COUNT(books.id) as book_count, COALESCE(SUM(books.view_count), 0) as total_views").
+		Joins("JOIN users ON users.id = books.user_id").
+		Where("books.is_public = ? AND books.status IN ? AND books.deleted_at IS NULL", true, publiclyReadableBookStatuses).
+		Group("users.id, users.username, users.avatar").
+		Order("book_count DESC, total_views DESC").
+		Limit(8).
+		Find(&rows)
+	ok(c, gin.H{"items": rows})
+}
+
 // SiteStats GET /stats 站点统计
 func (a *App) SiteStats(c *gin.Context) {
 	var userCount, bookCount, docCount, tagCount int64
