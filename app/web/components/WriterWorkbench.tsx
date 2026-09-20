@@ -172,6 +172,7 @@ export default function Writer({ user }: WriterProps) {
   const [sortOrder, setSortOrder] = useState(0)
   const [allowComments, setAllowComments] = useState(true)
   const [slug, setSlug] = useState('') // 文档路径；留空则由标题自动生成（沿用既有逻辑）
+  const [externalUrl, setExternalUrl] = useState('') // 外链章节地址；非空时该章节是跳转外部地址的链接，不使用正文编辑器
 
   // 书籍设置表单
   const [bookForm, setBookForm] = useState<BookFormState>({ title: '', description: '', status: 'draft', isPublic: false, tags: [] as string[], chapterPrefix: '', childStatusFollowParent: false })
@@ -326,8 +327,8 @@ export default function Writer({ user }: WriterProps) {
   function resetForm() {
     setCurrent(null)
     setCreatingUnder(null)
-    setTitle(''); setContent(''); setStatus('draft'); setParentId(''); setSortOrder(0); setAllowComments(true); setSlug('')
-    snapshot.current = JSON.stringify(['', '', 'draft', '', 0, true, ''])
+    setTitle(''); setContent(''); setStatus('draft'); setParentId(''); setSortOrder(0); setAllowComments(true); setSlug(''); setExternalUrl('')
+    snapshot.current = JSON.stringify(['', '', 'draft', '', 0, true, '', ''])
     loadedDocId.current = null
     setSaveState('saved')
   }
@@ -370,7 +371,8 @@ export default function Writer({ user }: WriterProps) {
         setSortOrder(full.sort_order)
         setAllowComments(full.allow_comments !== false)
         setSlug(full.slug || '')
-        snapshot.current = JSON.stringify([full.title, full.content || '', full.status, full.parent_id ? String(full.parent_id) : '', full.sort_order, full.allow_comments !== false, full.slug || ''])
+        setExternalUrl(full.external_url || '')
+        snapshot.current = JSON.stringify([full.title, full.content || '', full.status, full.parent_id ? String(full.parent_id) : '', full.sort_order, full.allow_comments !== false, full.slug || '', full.external_url || ''])
         loadedDocId.current = full.id
         setSaveState('saved')
         // 本地草稿恢复：若上次离开时有未保存内容且与服务端不同，提示恢复
@@ -412,6 +414,7 @@ export default function Writer({ user }: WriterProps) {
     }
     const payload = {
       title: title.trim(), content, status: effectiveStatus, sort_order: sortOrder,
+      external_url: externalUrl.trim(),
       parent_id: parentId ? Number(parentId) : null, allow_comments: allowComments,
       // 文档路径：填了就用它，留空则不传（新建按标题自动生成，编辑保持原路径）
       ...(slug.trim() ? { slug: slug.trim() } : {}),
@@ -424,7 +427,7 @@ export default function Writer({ user }: WriterProps) {
       if (current) {
         const updated = await api<Document>(`/documents/${current.id}`, { method: 'PUT', body: payload })
         setSlug(updated.slug || '')
-        snapshot.current = JSON.stringify([updated.title, updated.content || '', updated.status, updated.parent_id ? String(updated.parent_id) : '', updated.sort_order, updated.allow_comments !== false, updated.slug || ''])
+        snapshot.current = JSON.stringify([updated.title, updated.content || '', updated.status, updated.parent_id ? String(updated.parent_id) : '', updated.sort_order, updated.allow_comments !== false, updated.slug || '', updated.external_url || ''])
         loadedDocId.current = updated.id
         try { localStorage.removeItem(draftKey(updated.id)) } catch { /* 忽略 */ }
         setDraftRecovery(null)
@@ -435,7 +438,7 @@ export default function Writer({ user }: WriterProps) {
       } else {
         const created = await api<Document>(`/books/${book.id}/documents`, { method: 'POST', body: payload })
         setSlug(created.slug || '')
-        snapshot.current = JSON.stringify([created.title, created.content || '', created.status, created.parent_id ? String(created.parent_id) : '', created.sort_order, created.allow_comments !== false, created.slug || ''])
+        snapshot.current = JSON.stringify([created.title, created.content || '', created.status, created.parent_id ? String(created.parent_id) : '', created.sort_order, created.allow_comments !== false, created.slug || '', created.external_url || ''])
         loadedDocId.current = created.id
         setCurrent(created)
         if (opts?.status) setStatus(opts.status)
@@ -457,7 +460,7 @@ export default function Writer({ user }: WriterProps) {
   // 脏状态检测；自动保存当前临时关闭，只保留手动保存、快捷键保存与发布。
   useEffect(() => {
     if (!book) return
-    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments, slug])
+    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments, slug, externalUrl])
     if (key === snapshot.current) { setSaveState((s) => (s === 'saving' ? s : 'saved')); return }
     if (loadedDocId.current !== null && loadedDocId.current !== current?.id) return
     if (!current && !title.trim()) return
@@ -465,13 +468,13 @@ export default function Writer({ user }: WriterProps) {
     if (!AUTO_SAVE_ENABLED) return
     const timer = setTimeout(() => { saveRef.current() }, 1500)
     return () => clearTimeout(timer)
-  }, [book, title, content, status, parentId, sortOrder, allowComments, slug, current])
+  }, [book, title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, current])
 
   // 本地草稿备份：脏内容防抖写入 localStorage（服务端自动保存关闭时的兜底），保存后清除。
   useEffect(() => {
     const id = current?.id
     if (!id || loadedDocId.current !== id) return
-    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments, slug])
+    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments, slug, externalUrl])
     if (key === snapshot.current) {
       try { localStorage.removeItem(draftKey(id)) } catch { /* 忽略 */ }
       return
@@ -480,7 +483,7 @@ export default function Writer({ user }: WriterProps) {
       try { localStorage.setItem(draftKey(id), JSON.stringify({ content, title, ts: Date.now() })) } catch { /* 忽略 */ }
     }, 800)
     return () => clearTimeout(timer)
-  }, [title, content, status, parentId, sortOrder, allowComments, slug, current])
+  }, [title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, current])
 
   // Ctrl/Cmd + S 手动保存
   useEffect(() => {
@@ -1548,8 +1551,17 @@ export default function Writer({ user }: WriterProps) {
                 </div>
               )}
 
-              {/* 正文：铺满剩余高度，内部滚动。三态：全屏预览 / 分栏（编辑+预览）/ 纯编辑 */}
-              {preview ? (
+              {/* 正文：铺满剩余高度，内部滚动。外链章节不使用编辑器，仅展示目标地址；否则三态：全屏预览 / 分栏（编辑+预览）/ 纯编辑 */}
+              {externalUrl.trim() ? (
+                <div className="min-h-0 flex-1 overflow-y-auto px-6 py-10">
+                  <div className="mx-auto max-w-md rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-6 text-center">
+                    <i className="fa-solid fa-arrow-up-right-from-square mb-3 text-2xl text-primary-500" aria-hidden="true" />
+                    <p className="text-sm text-slate-600">{t('writer.externalChapterNote')}</p>
+                    <a href={externalUrl.trim()} target="_blank" rel="noopener noreferrer"
+                      className="mt-3 inline-block break-all text-sm text-primary-600 hover:underline">{externalUrl.trim()}</a>
+                  </div>
+                </div>
+              ) : preview ? (
                 <div ref={previewRef}
                   className="markdown-body min-h-0 flex-1 overflow-y-auto px-6 py-5"
                   dangerouslySetInnerHTML={{ __html: previewHtml }} />
@@ -1665,6 +1677,9 @@ export default function Writer({ user }: WriterProps) {
             </Field>
             <Field label={t('writer.docPath')} hint={t('writer.docPathHint')}>
               <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder={t('writer.docPathPlaceholder')} />
+            </Field>
+            <Field label={t('writer.externalUrl')} hint={t('writer.externalUrlHint')}>
+              <Input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} placeholder="https://…" />
             </Field>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">{t('writer.allowComments')}</span>

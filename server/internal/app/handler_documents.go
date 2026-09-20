@@ -86,6 +86,7 @@ type documentPayload struct {
 	Title          *string         `json:"title"`
 	Slug           *string         `json:"slug"`
 	Content        *string         `json:"content"`
+	ExternalURL    *string         `json:"external_url"` // 非空=外链章节（跳转外部地址，不渲染正文）
 	ParentID       json.RawMessage `json:"parent_id"`
 	SortOrder      *int            `json:"sort_order"`
 	Status         *string         `json:"status"`
@@ -93,6 +94,11 @@ type documentPayload struct {
 	AllowComments  *bool           `json:"allow_comments"`
 	CreateRevision *bool           `json:"create_revision"`
 	RevisionReason *string         `json:"revision_reason"`
+}
+
+// validExternalURL 校验外链章节地址：仅允许 http/https 绝对地址。
+func validExternalURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 }
 
 // parseParentID 解析 parent_id 三态：缺省(present=false)不改动；显式 null 表示置为顶级；数字表示挂到该父级
@@ -170,6 +176,14 @@ func (a *App) CreateDocument(c *gin.Context) {
 	}
 	if req.Content != nil {
 		doc.Content = *req.Content
+	}
+	if req.ExternalURL != nil {
+		ext := strings.TrimSpace(*req.ExternalURL)
+		if ext != "" && !validExternalURL(ext) {
+			fail(c, http.StatusBadRequest, "外链地址需以 http:// 或 https:// 开头")
+			return
+		}
+		doc.ExternalURL = ext
 	}
 	doc.Icon = extractDocIcon(doc.Content)
 	if req.SortOrder != nil {
@@ -349,6 +363,14 @@ func (a *App) UpdateDocument(c *gin.Context) {
 	if req.Content != nil {
 		doc.Content = *req.Content
 		doc.Icon = extractDocIcon(doc.Content)
+	}
+	if req.ExternalURL != nil {
+		ext := strings.TrimSpace(*req.ExternalURL)
+		if ext != "" && !validExternalURL(ext) {
+			fail(c, http.StatusBadRequest, "外链地址需以 http:// 或 https:// 开头")
+			return
+		}
+		doc.ExternalURL = ext
 	}
 	if req.SortOrder != nil {
 		doc.SortOrder = *req.SortOrder

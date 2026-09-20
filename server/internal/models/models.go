@@ -724,6 +724,9 @@ type Document struct {
 	Status    string `gorm:"size:20;default:draft;index" json:"status"`
 	// Icon 目录树图标：从正文 <!-- icon: xxx --> 元数据提取的 FontAwesome 图标名，替换默认文档/文件夹图标
 	Icon string `gorm:"size:64" json:"icon"`
+	// ExternalURL 外链章节：非空时该章节是一个跳转到外部地址的链接，不渲染正文内容；
+	// 阅读端点击直接在新标签打开该地址，写作端可只填地址不填编辑器内容。
+	ExternalURL string `gorm:"size:1024" json:"external_url"`
 	// 公开后允许评论；指针型保证显式 false 能写入（列默认 true）
 	AllowComments *bool          `gorm:"default:true" json:"allow_comments"`
 	CreatedAt     time.Time      `json:"created_at"`

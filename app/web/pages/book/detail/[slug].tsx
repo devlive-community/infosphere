@@ -605,14 +605,16 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 <p className="py-10 text-center text-sm text-slate-400">{t('detail.noChapters')}</p>
               ) : (
                 <ul className="divide-y divide-slate-100">
-                  {tree.map((doc, i) => (
-                    <li key={doc.id}>
-                      <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${doc.slug}`}
-                        className="group flex items-center gap-3 border-l-2 border-transparent px-3 py-3.5 transition-colors hover:bg-primary-50/40 sm:gap-5 sm:px-6 sm:py-4">
+                  {tree.map((doc, i) => {
+                    const external = (doc.external_url || '').trim()
+                    const rowClass = "group flex items-center gap-3 border-l-2 border-transparent px-3 py-3.5 transition-colors hover:bg-primary-50/40 sm:gap-5 sm:px-6 sm:py-4"
+                    const inner = (
+                      <>
                         <span className={`w-8 shrink-0 text-center text-lg font-bold transition-colors group-hover:text-primary-500 sm:w-10 sm:text-2xl ${readSet.has(doc.id) ? 'text-emerald-400' : 'text-slate-300'}`}>{String(i + 1).padStart(2, '0')}</span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-1.5">
                             <span className="truncate font-semibold text-slate-900">{chapterPrefix}{doc.title}</span>
+                            {external && <i className="fa-solid fa-arrow-up-right-from-square shrink-0 text-xs text-slate-400" aria-hidden="true" />}
                             {readSet.has(doc.id) && <CheckCircleSmallIcon className="h-4 w-4 shrink-0 text-emerald-500" />}
                           </span>
                           {(doc.children?.length || 0) > 0 && (
@@ -630,9 +632,18 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                           <span className="hidden shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 sm:inline-flex">{t('detail.sectionCount', { n: doc.children!.length })}</span>
                         )}
                         <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-primary-500" />
-                      </Link>
-                    </li>
-                  ))}
+                      </>
+                    )
+                    return (
+                      <li key={doc.id}>
+                        {external ? (
+                          <a href={external} target="_blank" rel="noopener noreferrer" className={rowClass}>{inner}</a>
+                        ) : (
+                          <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${doc.slug}`} className={rowClass}>{inner}</Link>
+                        )}
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>

@@ -631,6 +631,14 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
                   {isExpanded ? <ChevronDownIcon className="h-3.5 w-3.5" /> : <ChevronRightIcon className="h-3.5 w-3.5" />}
                 </button>
               ) : <span className="ml-1 w-5 shrink-0" />}
+              {(item.external_url || '').trim() ? (
+                <a href={(item.external_url || '').trim()} target="_blank" rel="noopener noreferrer"
+                  className="flex flex-1 items-center gap-1.5 py-1.5 pl-1 pr-2 text-left">
+                  <DocTreeIcon icon={item.icon} hasChildren={hasChildren} colorClass="text-slate-400" />
+                  <span className="whitespace-nowrap text-slate-700">{chapterPrefix}{item.title}</span>
+                  <i className="fa-solid fa-arrow-up-right-from-square ml-1 shrink-0 text-[10px] text-slate-400" aria-hidden="true" />
+                </a>
+              ) : (
               <Link href={`/book/reader?slug=${encodeURIComponent(bookSlug)}&doc=${item.slug}`}
                 {...(active ? { 'data-toc-active': '1' } : {})}
                 className="flex flex-1 items-center gap-1.5 py-1.5 pl-1 pr-2 text-left">
@@ -642,6 +650,7 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
                   </span>
                 )}
               </Link>
+              )}
             </div>
             {hasChildren && isExpanded && (
               <ReaderTree items={item.children!} bookSlug={bookSlug} chapterPrefix={chapterPrefix} activeId={activeId}

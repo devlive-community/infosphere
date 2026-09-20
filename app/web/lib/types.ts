@@ -100,6 +100,7 @@ export interface Document {
   view_count?: number
   status: DocumentStatus
   icon?: string
+  external_url?: string
   allow_comments?: boolean | null
   created_at: string
   updated_at: string
