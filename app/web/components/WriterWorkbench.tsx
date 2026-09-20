@@ -1700,7 +1700,11 @@ export default function Writer({ user }: WriterProps) {
             </Field>
             <Field label={t('writer.parentChapter')}>
               <Select value={parentId} onChange={(v) => setParentId(v)}
-                options={[{ value: '', label: t('writer.asTopLevel') }, ...parentCandidates.map((d) => ({ value: String(d.id), label: `${chapterPrefix}${d.title}` }))]} />
+                options={[{ value: '', label: t('writer.asTopLevel') }, ...parentCandidates.map((d) => {
+                  let depth = 0
+                  for (let p = d.parent_id; p; p = byId.get(p)?.parent_id ?? null) depth++
+                  return { value: String(d.id), label: `${'　'.repeat(depth)}${depth > 0 ? '└ ' : ''}${chapterPrefix}${d.title}` }
+                })]} />
             </Field>
             <Field label={t('writer.sortOrder')}>
               <Input type="number" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value) || 0)} />

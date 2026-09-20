@@ -37,6 +37,7 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
   const { t } = useTranslation()
   const [docs, setDocs] = useState<Document[] | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [dragId, setDragId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: number; pos: DropPos } | null>(null)
@@ -96,6 +97,33 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
     } finally {
       setBusy(null)
     }
+  }
+
+  // 批量改状态：对所选章节逐个应用（含子章节级联），完成后刷新。
+  async function bulkStatus(status: DocumentStatus) {
+    const ids = Array.from(selected)
+    if (ids.length === 0) return
+    setBulkBusy(true)
+    try {
+      await Promise.all(ids.map((id) => api(`/documents/${id}`, { method: 'PUT', body: { status, cascade_status: true } })))
+      showToast({ message: t('bookSettings.chapters.bulk.statusDone', { count: ids.length }), tone: 'success' })
+      setSelected(new Set()); load()
+    } catch (e) {
+      showToast({ title: t('bookSettings.chapters.error.status'), message: (e as Error).message, tone: 'error' })
+    } finally { setBulkBusy(false) }
+  }
+
+  // 批量删除：删除父章节会连带其子树，逐个删除并忽略已随父级删除的项。
+  async function bulkDelete() {
+    const ids = Array.from(selected)
+    if (ids.length === 0) return
+    if (!(await confirmAction({ title: t('bookSettings.chapters.bulk.deleteTitle'), message: t('bookSettings.chapters.bulk.deleteMessage', { count: ids.length }), confirmLabel: t('books.delete.confirm'), danger: true }))) return
+    setBulkBusy(true)
+    try {
+      for (const id of ids) { try { await api(`/documents/${id}`, { method: 'DELETE' }) } catch { /* 可能已随父章节删除 */ } }
+      showToast({ message: t('bookSettings.chapters.bulk.deleteDone', { count: ids.length }), tone: 'success' })
+      setSelected(new Set()); load()
+    } finally { setBulkBusy(false) }
   }
 
   async function copyLink(doc: Document) {
@@ -270,8 +298,16 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
         {selected.size > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-primary-50/50 px-6 py-3">
             <span className="text-sm text-slate-600">{t('bookSettings.chapters.copy.selectedCount', { count: selected.size })}</span>
-            <div className="flex items-center gap-2">
-              <Button size="sm" onClick={() => setCopyIds(Array.from(selected))}><i className="fa-solid fa-copy" aria-hidden="true" /> {t('bookSettings.chapters.copy.action')}</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" loading={bulkBusy} onClick={() => setCopyIds(Array.from(selected))}><i className="fa-solid fa-copy" aria-hidden="true" /> {t('bookSettings.chapters.copy.action')}</Button>
+              <span className="mx-1 hidden h-5 w-px bg-slate-200 sm:block" />
+              <span className="text-xs text-slate-400">{t('bookSettings.chapters.bulk.setStatus')}</span>
+              {STATUS_ACTIONS.map((s) => (
+                <Button key={s.value} size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkStatus(s.value)}>{t(s.labelKey)}</Button>
+              ))}
+              <Button size="sm" variant="outline" disabled={bulkBusy} className="border-rose-300 text-rose-600 hover:bg-rose-50" onClick={bulkDelete}>
+                <TrashIcon className="h-4 w-4" /> {t('bookSettings.chapters.bulk.delete')}
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t('bookSettings.chapters.copy.clear')}</Button>
             </div>
           </div>
