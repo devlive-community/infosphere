@@ -135,9 +135,9 @@ func (a *App) Router() *gin.Engine {
 		{
 			public.GET("/site", a.GetSiteConfig)
 			public.GET("/stats", a.SiteStats)
-		public.GET("/sitemap", a.SitemapURLs)
+			public.GET("/sitemap", a.SitemapURLs)
 			public.GET("/explore/hot", a.ExploreHot)
-		public.GET("/explore/active-authors", a.ExploreActiveAuthors)
+			public.GET("/explore/active-authors", a.ExploreActiveAuthors)
 			public.GET("/explore/latest", a.ExploreLatest)
 			public.GET("/users/:username", a.GetUserProfile)
 			public.GET("/users/:username/books", a.GetUserBooks)
@@ -204,7 +204,7 @@ func (a *App) Router() *gin.Engine {
 		docs := api.Group("", a.RequireAuth())
 		{
 			docs.POST("/books/:id/documents", a.RequireEmailVerified(), a.RequirePermission(authz.DocumentCreate), a.CreateDocument)
-			docs.POST("/books/:id/documents/import-web", a.RequirePermission(authz.DocumentCreate), a.ImportWebDocument)
+			docs.POST("/books/:id/documents/import-web", a.RequirePageCollect(), a.RequirePermission(authz.DocumentCreate), a.ImportWebDocument)
 			docs.POST("/books/:id/documents/copy", a.RequirePermission(authz.DocumentCreate), a.CopyDocuments)
 			docs.PUT("/documents/:id", a.RequirePermission(authz.DocumentUpdate), a.UpdateDocument)
 			docs.DELETE("/documents/:id", a.RequirePermission(authz.DocumentDelete), a.DeleteDocument)
@@ -219,11 +219,11 @@ func (a *App) Router() *gin.Engine {
 		// ── 导入书籍（book:import，ZIP / PDF / 网页成为本人的书籍） ──
 		api.POST("/import", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportBook)
 		api.POST("/import/pdf", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportPDFBook)
-		api.POST("/import/web", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportWebBook)
+		api.POST("/import/web", a.RequireAuth(), a.RequirePageCollect(), a.RequirePermission(authz.BookImport), a.ImportWebBook)
 		// 采集网页正文为 Markdown（不建文档），供写作编辑器插入
-		api.POST("/import/web-content", a.RequireAuth(), a.RequirePermission(authz.DocumentCreate), a.CollectWebContent)
+		api.POST("/import/web-content", a.RequireAuth(), a.RequirePageCollect(), a.RequirePermission(authz.DocumentCreate), a.CollectWebContent)
 		// 浏览器渲染是否可用（依赖无头浏览器插件），供前端联动禁用「浏览器运行 JavaScript」采集模式
-		api.GET("/import/browser-available", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.BrowserRenderAvailable)
+		api.GET("/import/browser-available", a.RequireAuth(), a.RequireFeaturePlugin(pluginContentCollect), a.RequirePermission(authz.BookImport), a.BrowserRenderAvailable)
 		api.GET("/tasks/:id", a.RequireAuth(), a.GetBackgroundJob)
 
 		// ── 站内通知（notification:*；SSE 端点自行鉴权，EventSource 无法带请求头） ──
@@ -283,7 +283,7 @@ func (a *App) Router() *gin.Engine {
 		api.GET("/users/me/author-analytics", a.RequireAuth(), a.RequirePermission(authz.BookAnalyticsRead), a.MyAuthorAnalytics)
 		api.GET("/users/me/reader-retention", a.RequireAuth(), a.RequirePermission(authz.BookAnalyticsRead), a.MyReaderRetention)
 		api.GET("/users/me/export/books", a.RequireAuth(), a.RequirePermission(authz.BookExport), a.BatchExportMyBooks)
-			api.GET("/users/me/exports", a.RequireAuth(), a.RequirePermission(authz.BookExport), a.MyExports)
+		api.GET("/users/me/exports", a.RequireAuth(), a.RequirePermission(authz.BookExport), a.MyExports)
 		api.GET("/users/me/reading-goal", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.GetReadingGoal)
 		api.PUT("/users/me/reading-goal", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressUpdate), a.SaveReadingGoal)
 		progress := api.Group("/reading-progress", a.RequireAuth())

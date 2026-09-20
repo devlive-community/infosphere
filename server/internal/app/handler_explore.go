@@ -165,6 +165,9 @@ func (a *App) GetSiteConfig(c *gin.Context) {
 	}
 	// 仅暴露翻译是否可用，不泄露 API Key 等敏感配置
 	cfg["translation_enabled"] = a.translationEnabled()
+	// 内容采集：单页/整站两个子开关（已含插件启用判定），供前端联动显示/隐藏采集入口
+	cfg["collect_page_enabled"] = a.pageCollectEnabled()
+	cfg["collect_site_enabled"] = a.siteCollectEnabled()
 	// 暴露已启用的特性插件键，供前端联动显示/隐藏对应页面与入口
 	featurePlugins := []string{}
 	for _, info := range pluginRegistry {

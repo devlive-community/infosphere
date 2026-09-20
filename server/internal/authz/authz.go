@@ -54,6 +54,11 @@ const (
 	GrowthManage      Permission = "growth:manage"      // 后台等级/设置管理（仅管理员）
 	ExperienceAdjust  Permission = "experience:adjust"  // 人工加减经验（仅管理员）
 
+	// 内容采集插件
+	CollectRead   Permission = "collect:read"   // 查看采集任务与历史
+	CollectCreate Permission = "collect:create" // 发起采集（单页/整站）
+	CollectManage Permission = "collect:manage" // 管理采集任务（重试/删除）
+
 	// 搜索
 	SearchRead Permission = "search:read" // 全局搜索书籍与章节（含匿名访问，仅公开内容）
 

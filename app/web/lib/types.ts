@@ -148,6 +148,8 @@ export interface SiteConfig {
   translation_enabled?: boolean
   achievements_enabled?: string
   feature_plugins?: string[]
+  collect_page_enabled?: boolean
+  collect_site_enabled?: boolean
 }
 
 export type AchievementCategory = 'reading' | 'creation' | 'community' | 'account' | 'special'

@@ -259,6 +259,8 @@ type WebRenderMode = 'auto' | 'static' | 'browser'
 type ImportResult = { book: Book; message?: string; imported_doc?: number; render_mode?: string }
 
 function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImported: () => Promise<void> }) {
+  const { site } = useApp()
+  const webCollectEnabled = site.collect_page_enabled !== false // 网页采集插件/子开关：禁用则不显示「网页」导入
   const [kind, setKind] = useState<ImportKind>('pdf')
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
@@ -350,7 +352,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
           <SegmentedTabs fullWidth value={kind} ariaLabel={t('books.import.typeAria')}
             onChange={(value) => switchKind(value as ImportKind)} items={[
               { value: 'pdf', label: t('books.import.kind.pdf'), icon: <FileTextIcon className="h-4 w-4" /> },
-              { value: 'web', label: t('books.import.kind.web'), icon: <GlobeIcon className="h-4 w-4" /> },
+              ...(webCollectEnabled ? [{ value: 'web', label: t('books.import.kind.web'), icon: <GlobeIcon className="h-4 w-4" /> }] : []),
               { value: 'zip', label: t('books.import.kind.zip'), icon: <UploadIcon className="h-4 w-4" /> },
             ]} />
 

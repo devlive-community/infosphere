@@ -33,7 +33,11 @@ const (
 	pluginBookVersions     = "book-versions"
 	pluginBookFollow       = "book-follow"
 	pluginGrowth           = "growth"
+	pluginContentCollect   = "content-collect"
 	cfgGrowthEnabled       = "growth_enabled"
+	// 内容采集插件的两个子开关（站点配置项，默认启用）：分别控制整站采集与单页网页采集。
+	cfgSiteCollectEnabled = "collect_site_enabled"
+	cfgPageCollectEnabled = "collect_page_enabled"
 	// pluginKindRuntime 需要下载运行时依赖（二进制/镜像）的插件；pluginKindFeature 仅切换某项功能的启用/禁用。
 	pluginKindRuntime = "runtime"
 	pluginKindFeature = "feature"
@@ -124,6 +128,17 @@ var pluginRegistry = []pluginInfo{
 		OnEnable:    func(a *App) error { a.seedDefaultLevels(); a.seedExperienceRules(); return nil },
 	},
 	{
+		Key:         pluginContentCollect,
+		Name:        "内容采集",
+		Description: "网页采集与整站采集：把外部网页/文档站点抓取为书籍章节。含编辑器「采集网页」、网页导入成书、整站递归采集（目录预览 + 内容区确认 + 后台采集 + 失败重试 + 采集历史）。禁用后所有采集入口与接口一并停用（默认启用）。首次启用建表、注册权限，卸载可清除采集记录。",
+		Kind:        pluginKindFeature,
+		Builtin:     true,
+		Models:      []any{&models.CrawlJob{}, &models.CrawlPage{}},
+		Tables:      []string{"crawl_pages", "crawl_jobs"},
+		AdminPerms:  []authz.Permission{authz.CollectManage},
+		UserPerms:   []authz.Permission{authz.CollectRead, authz.CollectCreate, authz.CollectManage},
+	},
+	{
 		Key:         pluginTags,
 		Name:        "标签系统",
 		Description: "书籍标签浏览、按标签检索与后台标签管理（图标）。禁用后标签页面与相关接口一并停用（默认启用）。首次启用建表、注册权限，卸载可清除数据。",
@@ -155,6 +170,40 @@ func (a *App) pluginEnabled(key string) bool {
 	}
 	var p models.Plugin
 	return a.DB.Where("`key` = ? AND installed = ?", key, true).First(&p).Error == nil
+}
+
+// pageCollectEnabled 单页网页采集是否可用：插件启用且未关闭「网页采集」子开关（默认启用）。
+func (a *App) pageCollectEnabled() bool {
+	return a.pluginEnabled(pluginContentCollect) && a.getSetting(cfgPageCollectEnabled) != "false"
+}
+
+// siteCollectEnabled 整站采集是否可用：插件启用且未关闭「整站采集」子开关（默认启用）。
+func (a *App) siteCollectEnabled() bool {
+	return a.pluginEnabled(pluginContentCollect) && a.getSetting(cfgSiteCollectEnabled) != "false"
+}
+
+// RequirePageCollect 网页采集守卫：插件禁用或「网页采集」子开关关闭时 404。
+func (a *App) RequirePageCollect() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !a.pageCollectEnabled() {
+			fail(c, http.StatusNotFound, "网页采集未启用")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// RequireSiteCollect 整站采集守卫：插件禁用或「整站采集」子开关关闭时 404。
+func (a *App) RequireSiteCollect() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !a.siteCollectEnabled() {
+			fail(c, http.StatusNotFound, "整站采集未启用")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }
 
 // RequireFeaturePlugin 特性插件启用守卫：插件被禁用时对应后端接口直接 404，确保「禁用即前后端全禁」。

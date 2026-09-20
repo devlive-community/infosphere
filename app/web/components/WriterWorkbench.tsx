@@ -117,6 +117,7 @@ export default function Writer({ user }: WriterProps) {
   useRequireAuth()
   const router = useRouter()
   const { site } = useApp()
+  const collectEnabled = site.collect_page_enabled !== false // 网页采集插件/子开关；禁用后隐藏采集入口
   const { t } = useTranslation()
   const bookSlug = (router.query.slug as string) || ''
   // 路由为可选 catch-all（[[...doc]]）：doc 可能是数组或缺省
@@ -239,10 +240,11 @@ export default function Writer({ user }: WriterProps) {
   }, [fontSize])
 
   const filteredSlash = useMemo(() => {
+    const items = collectEnabled ? SLASH_COMMANDS : SLASH_COMMANDS.filter((c) => c.key !== 'collect')
     const q = slash.query.toLowerCase()
-    if (!q) return SLASH_COMMANDS
-    return SLASH_COMMANDS.filter((c) => t(c.labelKey).includes(slash.query) || c.kw.includes(q) || c.key.includes(q))
-  }, [slash.query, t])
+    if (!q) return items
+    return items.filter((c) => t(c.labelKey).includes(slash.query) || c.kw.includes(q) || c.key.includes(q))
+  }, [slash.query, t, collectEnabled])
   const previewRef = useRef<HTMLDivElement>(null)
   // 预览内容防抖：输入时避免每键全量重渲染 Markdown
   const [previewHtml, setPreviewHtml] = useState('')
@@ -1088,7 +1090,7 @@ export default function Writer({ user }: WriterProps) {
         case 'children': insertChildrenToc(); break
         case 'hr': insertText('---\n'); break
         case 'image': fileInputRef.current?.click(); break
-        case 'collect': void collectWebContent(); break
+        case 'collect': if (collectEnabled) void collectWebContent(); break
         case 'import-md': mdImportRef.current?.click(); break
         case 'link': void insertLink(); break
       }
@@ -1353,7 +1355,7 @@ export default function Writer({ user }: WriterProps) {
                     <div className="absolute left-0 right-0 top-11 z-20 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                       <button onClick={() => { createNew(); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> {t('writer.newChapterBtn')}</button>
                       <button onClick={() => { setNewMenuOpen(false); if (!current) { showToast({ message: t('writer.needParent'), tone: 'error' }); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> {t('writer.newSubChapter')}</button>
-                      <button onClick={() => openWebImport()} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> {t('writer.fromWeb')}</button>
+                      {collectEnabled && <button onClick={() => openWebImport()} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> {t('writer.fromWeb')}</button>}
                     </div>
                   )}
                 </div>
@@ -1529,9 +1531,11 @@ export default function Writer({ user }: WriterProps) {
                   <ToolbarDivider />
                   <ToolbarButton title={t('writer.tb.uploadImage')} onClick={() => fileInputRef.current?.click()}><UploadIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title={t('writer.tb.imageLink')} onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
-                  <ToolbarButton title={collecting ? t('writer.tb.collecting') : t('writer.tb.collect')} onClick={() => { if (!collecting) void collectWebContent() }}>
-                    {collecting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> : <GlobeIcon className="h-4 w-4" />}
-                  </ToolbarButton>
+                  {collectEnabled && (
+                    <ToolbarButton title={collecting ? t('writer.tb.collecting') : t('writer.tb.collect')} onClick={() => { if (!collecting) void collectWebContent() }}>
+                      {collecting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> : <GlobeIcon className="h-4 w-4" />}
+                    </ToolbarButton>
+                  )}
                   <ToolbarButton title={t('writer.tb.importMarkdown')} onClick={() => mdImportRef.current?.click()}><FileTextIcon className="h-4 w-4" /></ToolbarButton>
                   <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
                     onChange={(e) => { if (e.target.files?.length) void uploadImages(e.target.files); e.target.value = '' }} />
@@ -1741,9 +1745,11 @@ export default function Writer({ user }: WriterProps) {
         <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) createChildOf(d) }}>
           <FolderIcon className="h-4 w-4" /> {t('writer.newSubChapter')}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) openWebImport(d) }}>
-          <GlobeIcon className="h-4 w-4" /> {t('writer.fromWeb')}
-        </ContextMenuItem>
+        {collectEnabled && (
+          <ContextMenuItem onClick={() => { const d = chapterMenu?.doc; closeChapterMenu(); if (d) openWebImport(d) }}>
+            <GlobeIcon className="h-4 w-4" /> {t('writer.fromWeb')}
+          </ContextMenuItem>
+        )}
         <div role="separator" className="my-1 border-t border-slate-100" />
         <ContextMenuItem onClick={() => { if (chapterMenu) move(chapterMenu.doc, -1); closeChapterMenu() }}>
           <i className="fa-solid fa-arrow-up" aria-hidden="true" /> {t('writer.moveUp')}
