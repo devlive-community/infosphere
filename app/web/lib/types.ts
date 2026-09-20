@@ -196,6 +196,7 @@ export interface AchievementDefinition {
   asset?: AchievementAsset | null
   series_key: string
   tier: number
+  reward_xp: number
   supersedes_previous: boolean
   rule_logic: 'all' | 'any'
   grant_mode: 'auto' | 'manual'

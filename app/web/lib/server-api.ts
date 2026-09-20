@@ -98,7 +98,7 @@ export async function getSiteConfig(): Promise<Record<string, string>> {
 }
 
 export function invalidateSiteCache(): void {
-  siteCache = null
+  lastGoodSite = null
 }
 
 // 从请求推导对外站点根地址（canonical / sitemap / JSON-LD 用）
