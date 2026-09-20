@@ -44,6 +44,48 @@ func TestExtractNavTree(t *testing.T) {
 	}
 }
 
+// 目录树推断：模拟 Antora 文档站（nav.nav-menu，外层有包裹 ul 使 depth 从 2 起），
+// 归一化后顶层应为 depth0，父子关系正确，标题保留大小写。
+func TestExtractNavTreeNestedWrappers(t *testing.T) {
+	page := `<html><body>
+	<nav class="navbar"><a href="https://spring.io/why">Why Spring</a><a href="https://spring.io/learn">Learn</a></nav>
+	<aside class="nav"><div class="nav-panel-menu"><nav class="nav-menu"><ul class="nav-list"><li><ul>
+	  <li><a href="index.html">Overview</a>
+	    <ul><li><a href="concepts.html">AI Concepts</a></li></ul>
+	  </li>
+	  <li><a href="getting-started.html">Getting Started</a>
+	    <ul><li><a href="api/chatclient.html">Chat Client API</a>
+	      <ul><li><a href="api/advisors.html">Advisors</a></li></ul>
+	    </li></ul>
+	  </li>
+	</ul></li></ul></nav></div></aside>
+	</body></html>`
+	root, _ := html.Parse(strings.NewReader(page))
+	base, _ := url.Parse("https://8.8.8.8/spring-ai/reference/1.1/")
+	tree := extractNavTree(root, base, 200)
+	byURL := map[string]crawlNode{}
+	for _, n := range tree {
+		byURL[n.URL] = n
+	}
+	overview := byURL["https://8.8.8.8/spring-ai/reference/1.1/index.html"]
+	if overview.Title != "Overview" || overview.Depth != 0 || overview.ParentURL != "" {
+		t.Fatalf("Overview 应为顶层 depth0，实际 %+v", overview)
+	}
+	concepts := byURL["https://8.8.8.8/spring-ai/reference/1.1/concepts.html"]
+	if concepts.Depth != 1 || concepts.ParentURL != overview.URL {
+		t.Fatalf("AI Concepts 应为 depth1 且父级 Overview，实际 %+v", concepts)
+	}
+	advisors := byURL["https://8.8.8.8/spring-ai/reference/1.1/api/advisors.html"]
+	chatClient := byURL["https://8.8.8.8/spring-ai/reference/1.1/api/chatclient.html"]
+	if advisors.Depth != 2 || advisors.ParentURL != chatClient.URL {
+		t.Fatalf("Advisors 应为 depth2 且父级 Chat Client API，实际 %+v", advisors)
+	}
+	// 外站 navbar 链接（不同域）不应混入
+	if _, bad := byURL["https://spring.io/why"]; bad {
+		t.Fatal("不应包含外站导航链接")
+	}
+}
+
 // 采集 slug 由 URL 末段生成并保留大小写（用户明确要求不要转小写）。
 func TestCrawlSlugPreservesCase(t *testing.T) {
 	if got := crawlSlugFromURL("https://8.8.8.8/reference/AI-Concepts.html"); got != "AI-Concepts" {

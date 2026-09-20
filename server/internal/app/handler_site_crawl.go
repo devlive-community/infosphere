@@ -83,6 +83,21 @@ func extractNavTree(root *html.Node, base *url.URL, limit int) []crawlNode {
 		}
 	}
 	walk(nav, 0)
+	// 归一化 depth：容器可能有若干层包裹 ul，导致最小 depth>0；整体减去最小值，使顶层从 0 开始，
+	// 便于目录树按层级正确缩进展示（父子关系由 parent_url 保证，不受此影响）。
+	if len(out) > 0 {
+		minDepth := out[0].Depth
+		for _, n := range out {
+			if n.Depth < minDepth {
+				minDepth = n.Depth
+			}
+		}
+		if minDepth > 0 {
+			for i := range out {
+				out[i].Depth -= minDepth
+			}
+		}
+	}
 	return out
 }
 
