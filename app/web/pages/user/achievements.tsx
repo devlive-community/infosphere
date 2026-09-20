@@ -53,7 +53,12 @@ function MyAchievementsInner() {
   const items = useMemo(() => {
     const source = data?.items || []
     if (tab === 'unlocked') return source.filter((item) => item.unlocked)
-    if (tab === 'progress') return source.filter((item) => !item.unlocked && (item.progress?.percent || 0) > 0)
+    if (tab === 'progress') {
+      // 进行中：按进度从高到低排序，最接近解锁的排在前面
+      return source
+        .filter((item) => !item.unlocked && (item.progress?.percent || 0) > 0)
+        .sort((a, b) => (b.progress?.percent || 0) - (a.progress?.percent || 0))
+    }
     return source
   }, [data, tab])
 

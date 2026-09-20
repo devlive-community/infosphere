@@ -1022,6 +1022,9 @@ func (a *App) MyAchievements(c *gin.Context) {
 		return
 	}
 	user := currentUser(c)
+	// 打开「我的成就」时实时评估一次：刷新进度、并补授已达成但因事件未触发而尚未解锁的成就
+	// （保证进度条新鲜、「看到即解锁」）。失败不阻塞页面。
+	_ = a.evaluateAllAchievementsForUser(user.ID)
 	definitions := []models.AchievementDefinition{}
 	if err := a.DB.Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).Preload("Asset").
 		Where("status = ?", "active").Order("sort_order ASC, id ASC").Find(&definitions).Error; err != nil {
