@@ -1,14 +1,15 @@
-package app
+package pdfexport
 
-// pdf-export 插件（无头浏览器 / Chromium 运行时）自注册。
+import "infosphere/server/internal/plugins"
+
 func init() {
-	registerPlugin(pluginInfo{
+	plugins.Register(plugins.Meta{
 		Order:       10,
-		Key:         pluginPDFExport,
+		Key:         plugins.KeyPDFExport,
 		Name:        "无头浏览器 (Chromium)",
 		Description: "安装官方 chrome-headless-shell，用于书籍 PDF 导出与网页浏览器渲染采集（运行 JavaScript）。约 130–170MB，下载到数据目录。",
 		SizeHint:    "~150MB",
-		Kind:        pluginKindRuntime,
+		Kind:        plugins.KindRuntime,
 		Builtin:     false, // 需从外部下载运行时，归为「外部插件」
 	})
 }

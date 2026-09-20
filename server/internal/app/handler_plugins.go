@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"infosphere/server/internal/authz"
 	"infosphere/server/internal/config"
 	"infosphere/server/internal/models"
+	"infosphere/server/internal/plugins"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,51 +26,48 @@ import (
 // 插件系统：目前仅内置「PDF 导出」插件，安装时下载官方 chrome-headless-shell 到数据目录，
 // 保持基础二进制/镜像轻量；未安装则 PDF 导出不可用。
 
+// 插件键与类型的单一事实来源在 internal/plugins 包；app 内的这些常量只是别名，方便现有代码引用。
 const (
-	pluginPDFExport        = "pdf-export"
-	pluginAchievements     = "achievements"
-	pluginTags             = "tags"
-	pluginBookTranslations = "book-translations"
-	pluginBookVersions     = "book-versions"
-	pluginBookFollow       = "book-follow"
-	pluginGrowth           = "growth"
-	pluginContentCollect   = "content-collect"
-	pluginWatermark        = "watermark"
+	pluginPDFExport        = plugins.KeyPDFExport
+	pluginAchievements     = plugins.KeyAchievements
+	pluginTags             = plugins.KeyTags
+	pluginBookTranslations = plugins.KeyBookTranslations
+	pluginBookVersions     = plugins.KeyBookVersions
+	pluginBookFollow       = plugins.KeyBookFollow
+	pluginGrowth           = plugins.KeyGrowth
+	pluginContentCollect   = plugins.KeyContentCollect
+	pluginWatermark        = plugins.KeyWatermark
 	cfgGrowthEnabled       = "growth_enabled"
 	// 内容采集插件的两个子开关（站点配置项，默认启用）：分别控制整站采集与单页网页采集。
 	cfgSiteCollectEnabled = "collect_site_enabled"
 	cfgPageCollectEnabled = "collect_page_enabled"
 	// pluginKindRuntime 需要下载运行时依赖（二进制/镜像）的插件；pluginKindFeature 仅切换某项功能的启用/禁用。
-	pluginKindRuntime = "runtime"
-	pluginKindFeature = "feature"
+	pluginKindRuntime = plugins.KindRuntime
+	pluginKindFeature = plugins.KindFeature
 )
 
+// pluginInfo = 声明式元数据（plugins.Meta，来自各插件子包 internal/plugins/<name>/）
+// + app 侧的启用行为钩子（OnEnable，依赖 *App 故留在 app 包）。
 type pluginInfo struct {
-	Key         string `json:"key"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	SizeHint    string `json:"size_hint"`
-	Kind        string `json:"kind"`    // runtime | feature
-	Builtin     bool   `json:"builtin"` // 内置插件；外部（商店）插件后续支持
-	Order       int    `json:"-"`       // 稳定展示顺序（越小越靠前）
-	// EnabledKey：feature 插件复用的站点配置开关键（为空则以 Plugin.Installed 记录启用状态）
-	EnabledKey string `json:"-"`
-	// ---- 数据层/权限隔离（feature 插件）----
-	Models      []any              `json:"-"` // 该插件独占的表：仅在启用时 AutoMigrate（首次启用建表）
-	Tables      []string           `json:"-"` // 该插件独占的表名：purge 卸载时 DROP
-	AdminPerms  []authz.Permission `json:"-"` // 启用时授予管理员的权限（动态注册）
-	UserPerms   []authz.Permission `json:"-"` // 启用时授予普通用户的权限（动态注册）
-	OnEnable    func(a *App) error `json:"-"` // 启用后的初始化钩子（如成就重算）
+	plugins.Meta
+	OnEnable func(a *App) error `json:"-"` // 启用后的初始化钩子（如成就重算、种子等级）
 }
 
-// pluginRegistry 已注册插件清单。不再在此硬编码——每个插件在自己的 plugin_<key>.go 里通过
-// init() 调用 registerPlugin 自注册，核心只遍历本清单，便于后续插件商店化（禁止把「有哪些插件」写死在一处）。
+// pluginOnEnable 各插件启用后的 app 侧行为钩子，按键关联（元数据在子包，行为在 app）。
+var pluginOnEnable = map[string]func(a *App) error{
+	pluginAchievements: func(a *App) error { _, err := a.enqueueAchievementRecalculation(0); return err },
+	pluginGrowth:       func(a *App) error { a.seedDefaultLevels(); a.seedExperienceRules(); return nil },
+}
+
+// pluginRegistry 由各插件子包自注册的元数据构建（禁止在此硬编码「有哪些插件」）。
+// 子包在 blank import（plugins_import.go）触发的 init() 中调用 plugins.Register，
+// 本包 init() 再据 plugins.All() 组装并挂上 app 侧行为钩子。
 var pluginRegistry []pluginInfo
 
-// registerPlugin 供各插件在自己的 init() 中自注册；按 Order 保持稳定展示顺序。
-func registerPlugin(info pluginInfo) {
-	pluginRegistry = append(pluginRegistry, info)
-	sort.SliceStable(pluginRegistry, func(i, j int) bool { return pluginRegistry[i].Order < pluginRegistry[j].Order })
+func init() {
+	for _, m := range plugins.All() {
+		pluginRegistry = append(pluginRegistry, pluginInfo{Meta: m, OnEnable: pluginOnEnable[m.Key]})
+	}
 }
 
 // pluginEnabled 判定插件是否启用：feature 插件优先看其复用的站点配置开关（无则看 Plugin.Installed，内置默认启用）；
