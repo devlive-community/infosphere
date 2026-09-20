@@ -802,6 +802,9 @@ export const zh: Record<string, string> = {
   'copyDialog.modeCustom': '自定义复制',
   'copyDialog.modeFullHint': '按当前结构与顺序复制全部章节',
   'copyDialog.modeCustomHint': '选择、拖拽重排或移除要复制的章节',
+  'copyDialog.modeMetadata': '仅元数据',
+  'copyDialog.modeMetadataHint': '只复制书籍信息与设置，不含任何章节',
+  'copyDialog.copyMetadata': '仅复制元数据',
   'copyDialog.emptyKeep': '已移除全部章节，请至少保留一章',
   'copyDialog.removeChapter': '移除章节（含子章节）',
 

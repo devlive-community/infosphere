@@ -79,11 +79,11 @@ func (a *App) publicDiscoverableBooks(u *models.User) *gorm.DB {
 	return q
 }
 
-// ExploreHot GET /explore/hot 浏览量最高的 6 本公开书籍
+// ExploreHot GET /explore/hot 浏览量最高的公开书籍（首页精选按屏宽自适应展示，取 8 本留出宽屏余量）
 func (a *App) ExploreHot(c *gin.Context) {
 	books := []models.Book{}
 	if err := preloadBookUser(a.publicDiscoverableBooks(currentUser(c))).
-		Order("view_count DESC").Limit(6).Find(&books).Error; err != nil {
+		Order("view_count DESC").Limit(8).Find(&books).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "查询失败")
 		return
 	}

@@ -10,6 +10,7 @@ import BookCard from '@/components/BookCard'
 import CoverImage from '@/components/CoverImage'
 import UserAvatar from '@/components/UserAvatar'
 import ResourceIcon from '@/components/ResourceIcon'
+import { useGridPageSize } from '@/lib/useGridPageSize'
 import { formatNumber } from '@/lib/api'
 import { BookIcon, ChevronRightIcon, CloudIcon, CodeIcon, EyeIcon, FileTextIcon, ShieldIcon, UsersIcon } from '@/components/icons'
 import { useTranslation } from '@/lib/i18n'
@@ -113,6 +114,8 @@ const TOPIC_ICONS = ['fa-layer-group', 'fa-code', 'fa-database', 'fa-screwdriver
 export default function Home({ site, siteUrl, stats, latest, hot, trending, tags, authors }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
+  // 精选书籍：按屏宽自适应单行展示数量（列数 × 1 行）
+  const { ref: featuredRef, pageSize: featuredCount } = useGridPageSize({ minItemRem: 15, rows: 1, fallback: 4 })
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -194,8 +197,8 @@ export default function Home({ site, siteUrl, stats, latest, hot, trending, tags
       {hot.length > 0 && (
         <section className="mt-12">
           <SectionHead title={t('home.featured.title')} subtitle={t('home.featured.subtitle')} href="/explore?sort=hot" />
-          <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
-            {(hot || []).slice(0, 4).map((b) => <BookCard key={b.id} book={b} tagsMax={2} tagsLink={false} authorLink={false} />)}
+          <div ref={featuredRef} className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
+            {(hot || []).slice(0, featuredCount).map((b) => <BookCard key={b.id} book={b} tagsMax={2} tagsLink={false} authorLink={false} />)}
           </div>
         </section>
       )}

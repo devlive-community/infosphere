@@ -24,7 +24,7 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
   const { showToast } = useFeedback()
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
-  const [mode, setMode] = useState<'full' | 'custom'>('full')
+  const [mode, setMode] = useState<'full' | 'custom' | 'metadata'>('full')
   const [items, setItems] = useState<FlatDoc[]>([])
   const [total, setTotal] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -86,9 +86,9 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
     setBusy(true)
     try {
       const slugField = slug.trim() ? { slug: slug.trim() } : {}
-      const body = mode === 'full'
-        ? { title: title.trim(), mode: 'full', ...slugField }
-        : { title: title.trim(), mode: 'custom', doc_ids: items.map((x) => x.id), ...slugField }
+      const body = mode === 'custom'
+        ? { title: title.trim(), mode: 'custom', doc_ids: items.map((x) => x.id), ...slugField }
+        : { title: title.trim(), mode, ...slugField }
       const d = await api<{ book: { slug: string }; first_doc_slug?: string }>(`/books/${book.id}/copy`, { method: 'POST', body })
       showToast({ message: t('copyDialog.copied'), tone: 'success' })
       onClose()
@@ -109,7 +109,7 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
       footer={<>
         <Button variant="ghost" onClick={onClose}>{t('common.actions.cancel')}</Button>
         <Button loading={busy} disabled={mode === 'custom' && items.length === 0} onClick={submit}>
-          {mode === 'full' ? t('copyDialog.copyAll', { n: total }) : t('copyDialog.copySelected', { n: items.length })}
+          {mode === 'full' ? t('copyDialog.copyAll', { n: total }) : mode === 'metadata' ? t('copyDialog.copyMetadata') : t('copyDialog.copySelected', { n: items.length })}
         </Button>
       </>}>
       <div className="space-y-4">
@@ -125,12 +125,12 @@ export default function BookCopyDialog({ book, tree, open, onClose }: { book: Bo
           <p className="mt-1.5 text-xs text-slate-400">{t('copyDialog.slugHint')}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          {(['full', 'custom'] as const).map((m) => (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {(['full', 'custom', 'metadata'] as const).map((m) => (
             <button key={m} type="button" onClick={() => setMode(m)}
               className={`rounded-lg border p-3 text-left transition-colors ${mode === m ? 'border-primary-500 bg-primary-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-              <div className="text-sm font-medium text-slate-800">{m === 'full' ? t('copyDialog.modeFull') : t('copyDialog.modeCustom')}</div>
-              <div className="mt-0.5 text-xs text-slate-400">{m === 'full' ? t('copyDialog.modeFullHint') : t('copyDialog.modeCustomHint')}</div>
+              <div className="text-sm font-medium text-slate-800">{m === 'full' ? t('copyDialog.modeFull') : m === 'custom' ? t('copyDialog.modeCustom') : t('copyDialog.modeMetadata')}</div>
+              <div className="mt-0.5 text-xs text-slate-400">{m === 'full' ? t('copyDialog.modeFullHint') : m === 'custom' ? t('copyDialog.modeCustomHint') : t('copyDialog.modeMetadataHint')}</div>
             </button>
           ))}
         </div>

@@ -13,7 +13,7 @@ import (
 type copyBookRequest struct {
 	Title  string `json:"title"`
 	Slug   string `json:"slug"`    // 可选：显式设置副本访问路径；设置后不可再改，留空则自动生成且允许改一次
-	Mode   string `json:"mode"`    // full（整本）| custom（自选章节）
+	Mode   string `json:"mode"`    // full（整本）| custom（自选章节）| metadata（仅元数据，不含章节）
 	DocIDs []uint `json:"doc_ids"` // custom 模式：有序、要复制的原章节 id（可拖拽重排 / 移除）
 }
 
@@ -54,6 +54,8 @@ func (a *App) CopyBook(c *gin.Context) {
 				selected[id] = true
 			}
 		}
+	} else if req.Mode == "metadata" {
+		// 仅复制元数据，不含任何章节：chosen 保持为空
 	} else {
 		for i := range srcDocs {
 			chosen = append(chosen, &srcDocs[i])

@@ -802,6 +802,9 @@ export const en: Record<string, string> = {
   'copyDialog.modeCustom': 'Custom copy',
   'copyDialog.modeFullHint': 'Copy all chapters in the current structure and order',
   'copyDialog.modeCustomHint': 'Select, reorder or remove chapters to copy',
+  'copyDialog.modeMetadata': 'Metadata only',
+  'copyDialog.modeMetadataHint': 'Copy only book info and settings, no chapters',
+  'copyDialog.copyMetadata': 'Copy metadata only',
   'copyDialog.emptyKeep': 'All chapters removed — keep at least one',
   'copyDialog.removeChapter': 'Remove chapter (with sub-chapters)',
 
