@@ -40,6 +40,7 @@ func (a *App) ExportBookDOCX(c *gin.Context) {
 		fail(c, http.StatusForbidden, "作者未开放 Word 导出")
 		return
 	}
+	a.recordBookExport(u, book, "docx")
 	a.writeBookDOCX(c, book, a.canEditBookContent(u, book))
 }
 

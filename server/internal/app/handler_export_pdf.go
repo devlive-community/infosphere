@@ -130,6 +130,7 @@ func (a *App) ExportBookPDF(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "生成 PDF 失败: "+err.Error())
 		return
 	}
+	a.recordBookExport(u, book, "pdf")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.pdf", book.Slug))
 	c.Data(http.StatusOK, "application/pdf", pdf)
 }

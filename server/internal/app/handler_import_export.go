@@ -83,6 +83,7 @@ func (a *App) ExportBook(c *gin.Context) {
 		fail(c, http.StatusForbidden, "无权导出该书籍")
 		return
 	}
+	a.recordBookExport(currentUser(c), book, "zip")
 	a.writeBookMarkdownZip(c, book)
 }
 

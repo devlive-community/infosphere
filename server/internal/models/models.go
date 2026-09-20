@@ -630,6 +630,18 @@ type BookExportSetting struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// BookExportRecord 用户导出书籍的历史记录（每导出一本书一条），用于「我的导出」列表。
+// BookTitle 为导出当时的书名快照，避免原书改名/删除后历史丢失可读信息。
+type BookExportRecord struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"index;not null" json:"user_id"`
+	BookID    uint      `gorm:"index;not null" json:"book_id"`
+	BookTitle string    `gorm:"size:255" json:"book_title"`
+	BookSlug  string    `gorm:"size:255" json:"book_slug"`
+	Format    string    `gorm:"size:16;not null" json:"format"` // markdown | pdf | docx | epub | zip
+	CreatedAt time.Time `gorm:"index" json:"created_at"`
+}
+
 // UserExportSetting 用户导出（PDF）样式偏好，每用户一条
 type UserExportSetting struct {
 	ID           uint   `gorm:"primaryKey" json:"id"`
@@ -754,6 +766,7 @@ func All(db *gorm.DB) error {
 		&BookAnalyticsDaily{},
 		&Plugin{},
 		&UserExportSetting{},
+		&BookExportRecord{},
 		&UserReadingGoal{},
 		&ReadingDailyTime{},
 		&EmailVerificationToken{},

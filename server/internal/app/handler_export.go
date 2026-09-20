@@ -122,5 +122,6 @@ func (a *App) ExportBookMarkdownPublic(c *gin.Context) {
 		fail(c, http.StatusForbidden, "作者未开放 Markdown 导出")
 		return
 	}
+	a.recordBookExport(u, book, "markdown")
 	a.writeBookMarkdownZip(c, book)
 }

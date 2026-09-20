@@ -16,7 +16,7 @@ export default function MyLibraryTabs({ active }: { active: LibraryTab }) {
     { value: 'favorites', label: t('library.tab.favorites'), href: '/user/favorites' },
     { value: 'likes', label: t('library.tab.likes'), href: '/user/likes' },
     ...(followEnabled ? [{ value: 'follows', label: t('library.tab.follows'), href: '/user/follows' }] : []),
-    { value: 'export', label: t('library.tab.export'), href: '/user/export' },
+    { value: 'export', label: t('library.tab.export'), href: '/user/exports' },
   ]
   return <SegmentedTabs className="mb-6" value={active} ariaLabel={t('library.aria')} items={items} />
 }

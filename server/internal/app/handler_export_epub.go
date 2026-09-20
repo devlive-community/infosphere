@@ -40,6 +40,7 @@ func (a *App) ExportBookEPUB(c *gin.Context) {
 		fail(c, http.StatusForbidden, "作者未开放 EPUB 导出")
 		return
 	}
+	a.recordBookExport(u, book, "epub")
 	a.writeBookEPUB(c, book, a.canEditBookContent(u, book))
 }
 

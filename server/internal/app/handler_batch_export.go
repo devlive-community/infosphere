@@ -121,6 +121,11 @@ func (a *App) BatchExportMyBooks(c *gin.Context) {
 		return
 	}
 
+	// 记录导出历史（每本一条），打包全部成功后再记，避免中途失败留下脏记录。
+	for i := range exportable {
+		a.recordBookExport(user, &exportable[i], "zip")
+	}
+
 	filename := fmt.Sprintf("books-export-%s.zip", time.Now().Format("20060102"))
 	c.Header("Content-Disposition", "attachment; filename="+filename)
 	c.Data(http.StatusOK, "application/zip", buf.Bytes())

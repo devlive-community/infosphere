@@ -161,6 +161,27 @@ func TestBatchExportMyBooks(t *testing.T) {
 	if status, _ := download(fmt.Sprintf("/api/v1/users/me/export/books?ids=%d", bobBook), aliceToken); status != http.StatusForbidden {
 		t.Fatalf("导出他人书籍应 403: %d", status)
 	}
+
+	// 导出历史：前两次成功的批量导出（全部=2 本 + 混合 ids=1 本）应记录 3 条，仅本人可见。
+	status, hist := request(http.MethodGet, "/api/v1/users/me/exports", nil, aliceToken)
+	if status != http.StatusOK {
+		t.Fatalf("查询导出历史应成功: %d", status)
+	}
+	data := hist["data"].(map[string]any)
+	if int(data["total"].(float64)) != 3 {
+		t.Fatalf("alice 导出历史应为 3 条，实际 %v", data["total"])
+	}
+	items := data["items"].([]any)
+	if len(items) != 3 {
+		t.Fatalf("导出历史条目应为 3，实际 %d", len(items))
+	}
+	if first := items[0].(map[string]any); first["format"].(string) != "zip" {
+		t.Fatalf("导出格式应为 zip，实际 %v", first["format"])
+	}
+	// bob 未导出过 → 历史为空（隔离）。
+	if _, bobHist := request(http.MethodGet, "/api/v1/users/me/exports", nil, bobToken); int(bobHist["data"].(map[string]any)["total"].(float64)) != 0 {
+		t.Fatalf("bob 导出历史应为空")
+	}
 }
 
 func keysOf(m map[string][]byte) []string {
