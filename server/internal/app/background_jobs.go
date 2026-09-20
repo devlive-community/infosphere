@@ -81,6 +81,7 @@ func (a *App) configureJobQueue() error {
 	queue.Register(sitemapJobType, a.runSitemapGenerate)
 	queue.Register(achievementRecalculateJobType, a.runAchievementRecalculateJob)
 	queue.Register(achievementEvaluateJobType, a.runAchievementEvaluateJob)
+	queue.Register(siteCrawlJobType, a.runSiteCrawlJob)
 	a.jobsMu.Lock()
 	a.Jobs = queue
 	a.jobsMu.Unlock()

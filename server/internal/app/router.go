@@ -226,6 +226,17 @@ func (a *App) Router() *gin.Engine {
 		api.GET("/import/browser-available", a.RequireAuth(), a.RequireFeaturePlugin(pluginContentCollect), a.RequirePermission(authz.BookImport), a.BrowserRenderAvailable)
 		api.GET("/tasks/:id", a.RequireAuth(), a.GetBackgroundJob)
 
+		// 整站采集（content-collect 插件 + collect:* 权限）
+		collect := api.Group("/collect", a.RequireAuth(), a.RequireFeaturePlugin(pluginContentCollect))
+		{
+			collect.POST("/site/preview", a.RequireSiteCollect(), a.RequirePermission(authz.CollectCreate), a.SiteCrawlPreview)
+			collect.POST("/site", a.RequireSiteCollect(), a.RequirePermission(authz.CollectCreate), a.StartSiteCrawl)
+			collect.GET("/jobs/:id", a.RequirePermission(authz.CollectRead), a.GetCrawlJob)
+			collect.POST("/jobs/:id/retry", a.RequirePermission(authz.CollectManage), a.RetryCrawlJob)
+			collect.POST("/pages/:id/retry", a.RequirePermission(authz.CollectManage), a.RetryCrawlPage)
+		}
+		api.GET("/books/:id/collect/jobs", a.RequireAuth(), a.RequireFeaturePlugin(pluginContentCollect), a.RequirePermission(authz.CollectRead), a.ListBookCrawlJobs)
+
 		// ── 站内通知（notification:*；SSE 端点自行鉴权，EventSource 无法带请求头） ──
 		notif := api.Group("/notifications", a.RequireAuth())
 		{
