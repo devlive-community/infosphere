@@ -107,6 +107,7 @@ const SLASH_COMMANDS: { key: string; labelKey: string; kw: string }[] = [
   { key: 'hr', labelKey: 'writer.slash.hr', kw: 'hr rule divider' },
   { key: 'image', labelKey: 'writer.slash.image', kw: 'image img upload photo' },
   { key: 'collect', labelKey: 'writer.slash.collect', kw: 'collect web fetch import scrape 采集 网页' },
+  { key: 'import-md', labelKey: 'writer.slash.importMarkdown', kw: 'import markdown md file upload 导入 文件' },
   { key: 'link', labelKey: 'writer.slash.link', kw: 'link url href' },
 ]
 
@@ -181,6 +182,7 @@ export default function Writer({ user }: WriterProps) {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const mdImportRef = useRef<HTMLInputElement>(null)
   const scrollLock = useRef<'edit' | 'preview' | null>(null) // 分栏滚动同步防抖锁
   const [uploading, setUploading] = useState(false)
   const [collecting, setCollecting] = useState(false)
@@ -726,6 +728,21 @@ export default function Writer({ user }: WriterProps) {
     }
   }
 
+  // importMarkdownFile 导入本地 Markdown 文件到当前章节：正文为空则整体载入，否则在光标处插入；
+  // 标题为空时用文件名（去扩展名）填充，方便直接导入成一章。
+  async function importMarkdownFile(file: File) {
+    if (file.size > 5 * 1024 * 1024) { showToast({ title: t('writer.importMdFailed'), message: t('writer.importMdTooLarge'), tone: 'error' }); return }
+    try {
+      const text = await file.text()
+      if (!content.trim()) setContent(text)
+      else insertText('\n' + text)
+      if (!title.trim()) setTitle(file.name.replace(/\.(md|markdown|mdown|txt)$/i, ''))
+      showToast({ message: t('writer.importMdDone'), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('writer.importMdFailed'), message: (e as Error).message, tone: 'error' })
+    }
+  }
+
   // lineOffset 计算行数组中第 idx 行起始的字符偏移（含各行后的换行符）。
   function lineOffset(arr: string[], idx: number) {
     return arr.slice(0, idx).reduce((n, l) => n + l.length + 1, 0)
@@ -1072,6 +1089,7 @@ export default function Writer({ user }: WriterProps) {
         case 'hr': insertText('---\n'); break
         case 'image': fileInputRef.current?.click(); break
         case 'collect': void collectWebContent(); break
+        case 'import-md': mdImportRef.current?.click(); break
         case 'link': void insertLink(); break
       }
     })
@@ -1514,8 +1532,11 @@ export default function Writer({ user }: WriterProps) {
                   <ToolbarButton title={collecting ? t('writer.tb.collecting') : t('writer.tb.collect')} onClick={() => { if (!collecting) void collectWebContent() }}>
                     {collecting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> : <GlobeIcon className="h-4 w-4" />}
                   </ToolbarButton>
+                  <ToolbarButton title={t('writer.tb.importMarkdown')} onClick={() => mdImportRef.current?.click()}><FileTextIcon className="h-4 w-4" /></ToolbarButton>
                   <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
                     onChange={(e) => { if (e.target.files?.length) void uploadImages(e.target.files); e.target.value = '' }} />
+                  <input ref={mdImportRef} type="file" accept=".md,.markdown,.mdown,.txt,text/markdown,text/plain" hidden
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void importMarkdownFile(f); e.target.value = '' }} />
                 </div>
               )}
 
