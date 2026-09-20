@@ -136,6 +136,7 @@ export default function Writer({ user }: WriterProps) {
   const [translateMenuOpen, setTranslateMenuOpen] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
+  const [reorderingId, setReorderingId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: number; pos: 'before' | 'inside' | 'after' } | null>(null)
   const [creatingUnder, setCreatingUnder] = useState<number | null>(null) // 新建期间保持高亮的父章节
   const [preview, setPreview] = useState(false)
@@ -540,7 +541,7 @@ export default function Writer({ user }: WriterProps) {
 
   // 拖拽移动：支持跨层级。pos=before/after 挂到目标同级，inside 作为目标的子章节
   async function moveNode(dragDocId: number, targetId: number, pos: 'before' | 'inside' | 'after') {
-    if (!book || dragDocId === targetId) return
+    if (!book || dragDocId === targetId || reorderingId != null) return
     const drag = flatDocs.find((d) => d.id === dragDocId)
     const target = flatDocs.find((d) => d.id === targetId)
     if (!drag || !target) return
@@ -575,9 +576,14 @@ export default function Writer({ user }: WriterProps) {
         writes.push(api(`/documents/${d.id}`, { method: 'PUT', body: { sort_order: i } }))
       }
     })
-    if (writes.length) await Promise.all(writes)
-    if (pos === 'inside') setExpanded(new Set(expanded).add(target.id)) // 展开新父级以显示移入的子章节
-    await loadTree(book)
+    setReorderingId(dragDocId) // 拖拽排序期间在被拖章节行显示 loading，并禁止并发拖拽
+    try {
+      if (writes.length) await Promise.all(writes)
+      if (pos === 'inside') setExpanded(new Set(expanded).add(target.id)) // 展开新父级以显示移入的子章节
+      await loadTree(book)
+    } finally {
+      setReorderingId(null)
+    }
   }
 
   // startNewChapter 在指定父级下追加一个空白新章节（parent 为 null 表示顶级）
@@ -1340,7 +1346,7 @@ export default function Writer({ user }: WriterProps) {
                     currentId={current?.id ?? creatingUnder ?? undefined} chapterPrefix={chapterPrefix}
                     onSelect={selectDoc} onMove={move} onDelete={removeDoc}
                     menuFor={chapterMenu?.doc.id ?? null} onOpenMenu={openChapterMenu} onCloseMenu={closeChapterMenu}
-                    dragEnabled={!search.trim()} dragId={dragId} dragBlocked={dragBlocked} dropTarget={dropTarget}
+                    dragEnabled={!search.trim()} dragId={dragId} dragBlocked={dragBlocked} dropTarget={dropTarget} reorderingId={reorderingId}
                     onDragStartItem={(d) => setDragId(d.id)}
                     onDragOverItem={(d, pos) => setDropTarget({ id: d.id, pos })}
                     onDropItem={(d) => { if (dragId != null && dropTarget) moveNode(dragId, d.id, dropTarget.pos); setDragId(null); setDropTarget(null) }}
@@ -2275,6 +2281,7 @@ interface TreeProps {
   onCloseMenu: () => void
   dragEnabled: boolean
   dragId: number | null
+  reorderingId: number | null
   dragBlocked: Set<number> | null
   dropTarget: { id: number; pos: 'before' | 'inside' | 'after' } | null
   onDragStartItem: (doc: Document) => void
@@ -2296,7 +2303,7 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
   const { t } = useTranslation()
   const {
     item, depth, search, expanded, setExpanded, currentId, chapterPrefix, onSelect, menuFor, onOpenMenu, onCloseMenu,
-    dragEnabled, dragId, dragBlocked, dropTarget, onDragStartItem, onDragOverItem, onDropItem, onDragEndItem,
+    dragEnabled, dragId, reorderingId, dragBlocked, dropTarget, onDragStartItem, onDragOverItem, onDropItem, onDragEndItem,
   } = props
   function toggleExpand() {
     const next = new Set(expanded)
@@ -2307,13 +2314,14 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
   const isExpanded = search !== '' || expanded.has(item.id)
   const active = currentId === item.id
   const dragging = dragId === item.id
+  const reordering = reorderingId === item.id
   const dropHere = dropTarget?.id === item.id
 
   return (
     <li>
       <div
         {...(active ? { 'data-toc-active': '1' } : {})}
-        draggable={dragEnabled}
+        draggable={dragEnabled && reorderingId == null}
         onContextMenu={(event) => {
           event.preventDefault()
           event.stopPropagation()
@@ -2331,8 +2339,9 @@ function TreeItem(props: TreeProps & { item: Document; depth: number }) {
           onDragOverItem(item, pos)
         }}
         onDrop={(e) => { e.preventDefault(); onDropItem(item) }}
-        className={`group relative flex items-center rounded-lg text-sm ${active ? 'bg-primary-50 ring-1 ring-inset ring-primary-100' : 'hover:bg-slate-50'} ${dragging ? 'opacity-40' : ''}`}>
+        className={`group relative flex items-center rounded-lg text-sm ${active ? 'bg-primary-50 ring-1 ring-inset ring-primary-100' : 'hover:bg-slate-50'} ${dragging ? 'opacity-40' : ''} ${reordering ? 'opacity-60' : ''}`}>
         {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-0.5 rounded-full bg-primary-500" />}
+        {reordering && <span className="pointer-events-none absolute right-2 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" />}
         {dropHere && dropTarget!.pos !== 'inside' && <span className={`pointer-events-none absolute inset-x-1.5 z-10 h-0.5 rounded-full bg-primary-500 ${dropTarget!.pos === 'before' ? 'top-0' : 'bottom-0'}`} />}
         {dropHere && dropTarget!.pos === 'inside' && <span className="pointer-events-none absolute inset-0 z-10 rounded-lg ring-2 ring-inset ring-primary-400" />}
         {hasChildren ? (

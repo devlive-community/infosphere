@@ -487,11 +487,11 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
         {/* 右：本章目录（内滚）+ 阅读设置 + 作者（固定底部） */}
         {!focus && (
           <aside className="hidden shrink-0 flex-col border-l border-slate-200 px-5 py-6 xl:flex" style={{ width: 'var(--sidebar-width)' }}>
-            {/* 本章目录：占满剩余区域，内部滚动 */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            {/* 本章目录：标题固定不滚动，列表过长时独立内部滚动 */}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <h2 className="mb-3 shrink-0 text-sm font-semibold text-slate-900">{t('reader.chapterToc')}</h2>
               {headings.length > 0 ? (
-                <div>
-                  <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('reader.chapterToc')}</h2>
+                <div className="min-h-0 flex-1 overflow-y-auto">
                   <ul className="space-y-1 border-l border-slate-100">
                     {headings.map((h) => (
                       <li key={h.id}>
