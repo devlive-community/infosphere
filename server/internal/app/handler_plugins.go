@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -50,6 +51,7 @@ type pluginInfo struct {
 	SizeHint    string `json:"size_hint"`
 	Kind        string `json:"kind"`    // runtime | feature
 	Builtin     bool   `json:"builtin"` // 内置插件；外部（商店）插件后续支持
+	Order       int    `json:"-"`       // 稳定展示顺序（越小越靠前）
 	// EnabledKey：feature 插件复用的站点配置开关键（为空则以 Plugin.Installed 记录启用状态）
 	EnabledKey string `json:"-"`
 	// ---- 数据层/权限隔离（feature 插件）----
@@ -60,95 +62,14 @@ type pluginInfo struct {
 	OnEnable    func(a *App) error `json:"-"` // 启用后的初始化钩子（如成就重算）
 }
 
-// pluginRegistry 已知插件清单
-var pluginRegistry = []pluginInfo{
-	{
-		Key:         pluginPDFExport,
-		Name:        "无头浏览器 (Chromium)",
-		Description: "安装官方 chrome-headless-shell，用于书籍 PDF 导出与网页浏览器渲染采集（运行 JavaScript）。约 130–170MB，下载到数据目录。",
-		SizeHint:    "~150MB",
-		Kind:        pluginKindRuntime,
-		Builtin:     false, // 需从外部下载运行时，归为「外部插件」
-	},
-	{
-		Key:         pluginAchievements,
-		Name:        "成就系统",
-		Description: "为用户提供成就、徽章与进度追踪。启用后管理后台显示「成就管理」，用户端显示成就页；禁用后相关页面与接口一并停用。首次启用时建表、注册权限，卸载可清除数据。",
-		Kind:        pluginKindFeature,
-		Builtin:     true,
-		EnabledKey:  cfgAchievementsEnabled,
-		Models: []any{
-			&models.AchievementAsset{}, &models.AchievementDefinition{}, &models.AchievementRule{},
-			&models.AchievementDefinitionVersion{}, &models.UserAchievementProgress{},
-			&models.UserAchievement{}, &models.AchievementEvent{},
-		},
-		Tables: []string{
-			"achievement_events", "user_achievements", "user_achievement_progresses",
-			"achievement_definition_versions", "achievement_rules", "achievement_definitions", "achievement_assets",
-		},
-		AdminPerms: []authz.Permission{authz.AchievementManage, authz.AchievementGrant},
-		UserPerms:  []authz.Permission{authz.AchievementRead, authz.AchievementUpdate},
-		OnEnable:   func(a *App) error { _, err := a.enqueueAchievementRecalculation(0); return err },
-	},
-	{
-		Key:         pluginBookTranslations,
-		Name:        "书籍多语言",
-		Description: "同一作品的多语言互译组：阅读/详情页可在不同语言版本间切换。禁用后语言切换入口与相关接口停用（默认启用，数据保留在书籍字段中）。",
-		Kind:        pluginKindFeature,
-		Builtin:     true,
-	},
-	{
-		Key:         pluginBookVersions,
-		Name:        "书籍版本",
-		Description: "同一作品的多版本组：阅读/详情页可在不同版本间切换。禁用后版本切换入口与相关接口停用（默认启用，数据保留在书籍字段中）。",
-		Kind:        pluginKindFeature,
-		Builtin:     true,
-	},
-	{
-		Key:         pluginBookFollow,
-		Name:        "书籍关注",
-		Description: "用户可关注书籍，作品更新（新章节/状态）时收到通知；用户可在通知偏好中开关。禁用后关注入口、我的关注、相关接口与更新通知一并停用（默认启用）。首次启用建表、注册权限，卸载可清除数据。",
-		Kind:        pluginKindFeature,
-		Builtin:     true,
-		Models:      []any{&models.BookFollow{}},
-		Tables:      []string{"book_follows"},
-		UserPerms:   []authz.Permission{authz.FollowRead, authz.FollowCreate, authz.FollowDelete},
-	},
-	{
-		Key:         pluginGrowth,
-		Name:        "成长等级",
-		Description: "用户成长等级：经验流水、等级、升级通知与公开徽标；经验来自成就解锁等权威事件。默认关闭，启用后建表、注册权限并种子默认等级；禁用后页面/入口/接口一并停用，数据保留。",
-		Kind:        pluginKindFeature,
-		Builtin:     true,
-		EnabledKey:  cfgGrowthEnabled,
-		Models:      []any{&models.LevelDefinition{}, &models.UserGrowthProfile{}, &models.ExperienceEvent{}, &models.UserLevelHistory{}, &models.ExperienceRule{}},
-		Tables:      []string{"user_level_histories", "experience_events", "user_growth_profiles", "level_definitions", "experience_rules"},
-		AdminPerms:  []authz.Permission{authz.GrowthManage, authz.ExperienceAdjust},
-		UserPerms:   []authz.Permission{authz.GrowthRead, authz.GrowthUpdate},
-		OnEnable:    func(a *App) error { a.seedDefaultLevels(); a.seedExperienceRules(); return nil },
-	},
-	{
-		Key:         pluginContentCollect,
-		Name:        "内容采集",
-		Description: "网页采集与整站采集：把外部网页/文档站点抓取为书籍章节。含编辑器「采集网页」、网页导入成书、整站递归采集（目录预览 + 内容区确认 + 后台采集 + 失败重试 + 采集历史）。禁用后所有采集入口与接口一并停用（默认启用）。首次启用建表、注册权限，卸载可清除采集记录。",
-		Kind:        pluginKindFeature,
-		Builtin:     true,
-		Models:      []any{&models.CrawlJob{}, &models.CrawlPage{}},
-		Tables:      []string{"crawl_pages", "crawl_jobs"},
-		AdminPerms:  []authz.Permission{authz.CollectManage},
-		UserPerms:   []authz.Permission{authz.CollectRead, authz.CollectCreate, authz.CollectManage},
-	},
-	{
-		Key:         pluginTags,
-		Name:        "标签系统",
-		Description: "书籍标签浏览、按标签检索与后台标签管理（图标）。禁用后标签页面与相关接口一并停用（默认启用）。首次启用建表、注册权限，卸载可清除数据。",
-		Kind:        pluginKindFeature,
-		Builtin:     true,
-		Models:      []any{&models.Tag{}, &models.BookTag{}},
-		Tables:      []string{"book_tags", "tags"},
-		AdminPerms:  []authz.Permission{authz.TagDelete, authz.TagManage},
-		UserPerms:   []authz.Permission{authz.TagRead, authz.TagCreate},
-	},
+// pluginRegistry 已注册插件清单。不再在此硬编码——每个插件在自己的 plugin_<key>.go 里通过
+// init() 调用 registerPlugin 自注册，核心只遍历本清单，便于后续插件商店化（禁止把「有哪些插件」写死在一处）。
+var pluginRegistry []pluginInfo
+
+// registerPlugin 供各插件在自己的 init() 中自注册；按 Order 保持稳定展示顺序。
+func registerPlugin(info pluginInfo) {
+	pluginRegistry = append(pluginRegistry, info)
+	sort.SliceStable(pluginRegistry, func(i, j int) bool { return pluginRegistry[i].Order < pluginRegistry[j].Order })
 }
 
 // pluginEnabled 判定插件是否启用：feature 插件优先看其复用的站点配置开关（无则看 Plugin.Installed，内置默认启用）；
