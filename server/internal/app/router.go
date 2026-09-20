@@ -143,9 +143,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/users/:username", a.GetUserProfile)
 			public.GET("/users/:username/books", a.GetUserBooks)
 			public.GET("/users/:username/achievements", a.RequireFeaturePlugin(pluginAchievements), a.PublicUserAchievements)
-			public.GET("/growth/settings", a.GrowthSettings)
-			public.GET("/growth/levels", a.RequireFeaturePlugin(pluginGrowth), a.GrowthLevels)
-			public.GET("/users/:username/growth", a.RequireFeaturePlugin(pluginGrowth), a.PublicUserGrowth)
+			// /growth/settings、/growth/levels、/users/:username/growth 由 growth 插件子包自注册
 			public.GET("/achievements/settings", a.PublicAchievementSettings)
 
 			public.GET("/books", a.ListBooks) // mine=true 时要求登录
@@ -277,10 +275,7 @@ func (a *App) Router() *gin.Engine {
 
 		// ── 书籍关注等插件路由：由各插件子包（internal/plugins/<name>/）自行注册（迁移中） ──
 
-		// ── 用户成长等级（growth:*，「成长等级」插件守卫） ──
-		api.GET("/users/me/growth", a.RequireAuth(), a.RequireFeaturePlugin(pluginGrowth), a.RequirePermission(authz.GrowthRead), a.MyGrowth)
-		api.GET("/users/me/experience-events", a.RequireAuth(), a.RequireFeaturePlugin(pluginGrowth), a.RequirePermission(authz.GrowthRead), a.MyExperienceEvents)
-		api.PUT("/users/me/growth/display", a.RequireAuth(), a.RequireFeaturePlugin(pluginGrowth), a.RequirePermission(authz.GrowthUpdate), a.UpdateMyGrowthDisplay)
+			// 用户成长等级 /users/me/growth 等由 growth 插件子包自注册
 
 		// ── 阅读进度（user 语义，读自己写自己） ──
 		api.GET("/users/me/reading", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReading)
@@ -398,17 +393,7 @@ func (a *App) Router() *gin.Engine {
 				achAdmin.POST("/admin/achievement-grants/:id/revoke", a.RequirePermission(authz.AchievementGrant), a.AdminRevokeAchievement)
 			}
 
-			// 成长等级管理（「成长等级」插件守卫）
-			growthAdmin := admin.Group("", a.RequireFeaturePlugin(pluginGrowth))
-			{
-				growthAdmin.GET("/admin/growth/levels", a.RequirePermission(authz.GrowthManage), a.AdminListLevels)
-				growthAdmin.POST("/admin/growth/levels", a.RequirePermission(authz.GrowthManage), a.AdminCreateLevel)
-				growthAdmin.PUT("/admin/growth/levels/:id", a.RequirePermission(authz.GrowthManage), a.AdminUpdateLevel)
-				growthAdmin.DELETE("/admin/growth/levels/:id", a.RequirePermission(authz.GrowthManage), a.AdminDeleteLevel)
-				growthAdmin.POST("/admin/growth/adjust", a.RequirePermission(authz.ExperienceAdjust), a.AdminAdjustExperience)
-				growthAdmin.GET("/admin/growth/rules", a.RequirePermission(authz.GrowthManage), a.AdminListExperienceRules)
-				growthAdmin.PUT("/admin/growth/rules/:id", a.RequirePermission(authz.GrowthManage), a.AdminUpdateExperienceRule)
-			}
+			// 成长等级管理 /admin/growth/* 由 growth 插件子包自注册（自带 RequireAdmin + 特性插件守卫 + 权限）
 		}
 
 		// 插件操作日志 SSE（自行按 query token 鉴权，EventSource 无法带请求头）

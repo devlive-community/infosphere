@@ -32,6 +32,9 @@ func (a *App) RateLimitReaction() gin.HandlerFunc              { return a.RateLi
 func (a *App) RequirePermissionMiddleware(perm authz.Permission) gin.HandlerFunc {
 	return a.RequirePermission(perm)
 }
+func (a *App) RecordAudit(c *gin.Context, action, resourceType, resourceID, label string, summary map[string]any) {
+	a.recordAudit(c, action, resourceType, resourceID, label, summary)
+}
 func (a *App) Paginate(c *gin.Context) (int, int) { return paginate(c) }
 func (a *App) Slugify(s string) string            { return slugify(s) }
 func (a *App) RandomSlug(prefix string) string    { return randomSlug(prefix) }

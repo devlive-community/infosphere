@@ -22,6 +22,9 @@ type Core interface {
 	AtoiDefault(s string, def int) int
 	Notify(userID uint, ntype, title string, payload map[string]any)
 	PluginEnabled(key string) bool
+	RecordAudit(c *gin.Context, action, resourceType, resourceID, label string, summary map[string]any)
+	// RecordExperience 记一条经验流水（成长插件禁用时为空操作）；供成长插件人工调整等复用。
+	RecordExperience(userID uint, ruleKey, sourceType, sourceID, dedupeKey string, xp int, reason string)
 
 	// 书籍/用户领域共享工具（核心与多个插件复用）
 	IsAdmin(u *models.User) bool
