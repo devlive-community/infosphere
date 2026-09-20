@@ -82,17 +82,18 @@ export async function isInstalled(): Promise<boolean> {
   }
 }
 
-// 站点配置缓存：避免每个 SSR 请求都查一次站点配置
-let siteCache: { value: Record<string, string>; expires: number } | null = null
+// 站点配置每次 SSR 都实时拉取：/site 是轻查询，且含插件启用状态（feature_plugins），
+// 不能缓存——否则管理员启用/禁用插件后要等缓存过期、页面「刷新几十次才生效」。
+// 仅保留「上次成功值」作为后端不可用时的兜底，不作为 TTL 缓存。
+let lastGoodSite: Record<string, string> | null = null
 
 export async function getSiteConfig(): Promise<Record<string, string>> {
-  if (siteCache && siteCache.expires > Date.now()) return siteCache.value
   try {
     const value = await serverApi<Record<string, string>>('/site')
-    siteCache = { value, expires: Date.now() + 60_000 }
+    lastGoodSite = value
     return value
   } catch {
-    return siteCache?.value ?? {}
+    return lastGoodSite ?? {}
   }
 }
 

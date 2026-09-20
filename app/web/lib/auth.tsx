@@ -159,6 +159,12 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
   const [site, setSite] = useState<SiteConfig>(initialSite ?? {})
   const [theme, setTheme] = useState<ThemeSetting>(DEFAULT_THEME)
 
+  // SSR 页在导航时会带来最新的 site（含 feature_plugins）；同步到客户端状态，
+  // 避免插件启用/禁用后其它页面仍用挂载时的旧 site（需硬刷新才生效）。
+  useEffect(() => {
+    if (initialSite && Object.keys(initialSite).length > 0) setSite(initialSite)
+  }, [initialSite])
+
   // 登录后从服务端拉取主题设置并应用
   const loadAndApplyTheme = useCallback(async () => {
     try {
