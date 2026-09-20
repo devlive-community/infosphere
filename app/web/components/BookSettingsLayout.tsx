@@ -9,7 +9,7 @@ import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 
-export type BookSettingsTab = 'basic' | 'localization' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'danger' | 'crawl-history'
+export type BookSettingsTab = 'basic' | 'localization' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'danger' | 'crawl-history' | 'watermark'
 
 interface BookSettingsLayoutProps {
   book: Book
@@ -39,6 +39,7 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
     { key: 'analytics', labelKey: 'bookSettings.nav.analytics', icon: ({ className }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" />, sub: 'analytics' },
     ...(features.includes('content-collect') ? [{ key: 'crawl-history' as BookSettingsTab, labelKey: 'bookSettings.nav.crawlHistory', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-spider ${className || ''}`} aria-hidden="true" />, sub: 'crawl-history' }] : []),
     { key: 'collaborators', labelKey: 'bookSettings.nav.collaborators', icon: UsersIcon, sub: 'collaborators' },
+    ...(features.includes('watermark') ? [{ key: 'watermark' as BookSettingsTab, labelKey: 'bookSettings.nav.watermark', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-stamp ${className || ''}`} aria-hidden="true" />, sub: 'watermark' }] : []),
     { key: 'export', labelKey: 'bookSettings.nav.export', icon: ({ className }) => <i className={`fa-solid fa-file-export ${className || ''}`} aria-hidden="true" />, sub: 'export' },
     { key: 'data', labelKey: 'bookSettings.nav.data', icon: DownloadIcon, sub: 'data' },
     { key: 'danger', labelKey: 'bookSettings.nav.danger', icon: TrashIcon, sub: 'danger', danger: true },

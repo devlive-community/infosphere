@@ -7,7 +7,7 @@ import "testing"
 func TestPluginSelfRegistration(t *testing.T) {
 	want := []string{
 		pluginPDFExport, pluginAchievements, pluginBookTranslations, pluginBookVersions,
-		pluginBookFollow, pluginGrowth, pluginContentCollect, pluginTags,
+		pluginWatermark, pluginBookFollow, pluginGrowth, pluginContentCollect, pluginTags,
 	}
 	if len(pluginRegistry) != len(want) {
 		t.Fatalf("插件数量应为 %d，实际 %d", len(want), len(pluginRegistry))

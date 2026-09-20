@@ -10,7 +10,6 @@ import type { Book, BookStatus } from '@/lib/types'
 const MAX_TITLE = 60
 const MAX_DESC = 1000
 const MAX_TAGS = 10
-const MAX_WATERMARK = 80
 const validSlug = (s: string) => /^[a-z0-9-]+$/.test(s)
 
 const statusOptions = [
@@ -63,8 +62,9 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [transGroup, setTransGroup] = useState(initial?.trans_group || '')
   const [version, setVersion] = useState(initial?.version || '')
   const [versionGroup, setVersionGroup] = useState(initial?.version_group || '')
-  const [watermarkEnabled, setWatermarkEnabled] = useState(initial?.watermark_enabled || false)
-  const [watermarkText, setWatermarkText] = useState(initial?.watermark_text || '')
+  // 水印配置已迁移到独立 tab；此处仅从 initial 透传，随基础设置一起原样提交，不再在此编辑。
+  const watermarkEnabled = initial?.watermark_enabled || false
+  const watermarkText = initial?.watermark_text || ''
   const [tags, setTags] = useState<string[]>((initial?.tags || []).map((t) => t.name))
   const [tagInput, setTagInput] = useState('')
   const [error, setError] = useState('')
@@ -283,32 +283,8 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
           </Section>
           )}
 
-          {/* 阅读水印 */}
-          <Section icon={<i className="fa-solid fa-stamp text-sm" aria-hidden="true" />} title={t('bookForm.section.watermark')}>
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
-              <div>
-                <div className="text-sm font-medium text-slate-900">{t('bookForm.watermark.title')}</div>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookForm.watermark.desc')}</p>
-              </div>
-              <Switch checked={watermarkEnabled} onChange={setWatermarkEnabled} ariaLabel={t('bookForm.watermark.title')} />
-            </div>
-            {watermarkEnabled && (
-              <RowField label={t('bookForm.watermark.label')} hint={t('bookForm.watermark.hint')}>
-                <div className="relative">
-                  <Input
-                    value={watermarkText}
-                    maxLength={MAX_WATERMARK}
-                    onChange={(e) => setWatermarkText(e.target.value)}
-                    placeholder={t('bookForm.watermark.placeholder')}
-                    className="pr-16"
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                    {watermarkText.length} / {MAX_WATERMARK}
-                  </span>
-                </div>
-              </RowField>
-            )}
-          </Section>
+          {/* 阅读水印已迁移到「书籍设置 → 水印」独立 tab（受 watermark 插件控制）；
+              此处仍保留 watermark_enabled/text 于提交负载中，避免基础设置保存时清空既有水印配置。 */}
 
           {/* 发布设置 */}
           <Section icon={<SlidersIcon className="h-4 w-4" />} title={t('bookForm.section.publish')}>

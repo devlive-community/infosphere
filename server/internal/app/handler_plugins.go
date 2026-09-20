@@ -35,6 +35,7 @@ const (
 	pluginBookFollow       = "book-follow"
 	pluginGrowth           = "growth"
 	pluginContentCollect   = "content-collect"
+	pluginWatermark        = "watermark"
 	cfgGrowthEnabled       = "growth_enabled"
 	// 内容采集插件的两个子开关（站点配置项，默认启用）：分别控制整站采集与单页网页采集。
 	cfgSiteCollectEnabled = "collect_site_enabled"

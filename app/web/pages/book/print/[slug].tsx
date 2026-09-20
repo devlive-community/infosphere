@@ -1,7 +1,7 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import { useEffect, useState } from 'react'
 import Head from 'next/head'
-import { authHeaderFrom, isInstalled, serverApi } from '@/lib/server-api'
+import { authHeaderFrom, isInstalled, serverApi, getSiteConfig } from '@/lib/server-api'
 import { renderMarkdown } from '@/lib/markdown'
 import { resolveMediaUrl } from '@/lib/media'
 import { useTranslation } from '@/lib/i18n'
@@ -14,6 +14,7 @@ interface PrintProps {
   chapters: Chapter[]
   chapterPrefix: string
   style: PrintStyle
+  watermarkOn: boolean
 }
 
 function flatten(docs: Document[], level = 0): { doc: Document; level: number }[] {
@@ -42,10 +43,12 @@ export const getServerSideProps: GetServerSideProps<PrintProps> = async ({ req, 
     cover: query.cover !== '0',
     toc: query.toc !== '0',
   }
-  return { props: { book, chapters, chapterPrefix: book.chapter_prefix || '', style } }
+  const site = await getSiteConfig().catch(() => ({}) as Record<string, unknown>)
+  const watermarkOn = ((site as { feature_plugins?: string[] }).feature_plugins || []).includes('watermark')
+  return { props: { book, chapters, chapterPrefix: book.chapter_prefix || '', style, watermarkOn } }
 }
 
-export default function PrintBook({ book, chapters, chapterPrefix, style }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function PrintBook({ book, chapters, chapterPrefix, style, watermarkOn }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
   const [ready, setReady] = useState(false)
   useEffect(() => {
@@ -63,7 +66,7 @@ export default function PrintBook({ book, chapters, chapterPrefix, style }: Infe
     <div className="print-book">
       <Head><title>{book.title}</title><meta name="robots" content="noindex, nofollow" /></Head>
       <style dangerouslySetInnerHTML={{ __html: printCss(style) }} />
-      {book.watermark_enabled && book.watermark_text && <PrintWatermark text={book.watermark_text} />}
+      {watermarkOn && book.watermark_enabled && book.watermark_text && <PrintWatermark text={book.watermark_text} />}
 
       {style.cover && (
         <section className="print-cover">

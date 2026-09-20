@@ -448,7 +448,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
             <div className="mx-auto w-full px-8 py-10 lg:px-14" style={{ maxWidth: 'var(--content-max-width)' }}>
               {doc ? (
                 <article className="relative isolate">
-                  {book.watermark_enabled && book.watermark_text && <WatermarkLayer text={book.watermark_text} />}
+                  {book.watermark_enabled && book.watermark_text && ((site as { feature_plugins?: string[] }).feature_plugins || []).includes('watermark') && <WatermarkLayer text={book.watermark_text} />}
                   {parentDoc && <div className="mb-1 text-sm font-medium text-primary-600">{chapterPrefix}{parentDoc.title}</div>}
                   <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">{doc.title}</h1>
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-400">
