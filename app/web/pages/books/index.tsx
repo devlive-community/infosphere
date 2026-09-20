@@ -177,6 +177,11 @@ export default function MyBooks() {
             <Button variant="outline" className="px-3 text-sm sm:px-5 sm:text-base" onClick={() => setImportOpen(true)}>
               <UploadIcon className="h-5 w-5" /> {t('books.action.import')}
             </Button>
+            {site.collect_site_enabled !== false && (
+              <ButtonLink href="/books/collect" variant="outline" className="px-3 text-sm sm:px-5 sm:text-base">
+                <GlobeIcon className="h-5 w-5" /> {t('collect.title')}
+              </ButtonLink>
+            )}
             <ButtonLink href="/books/create" className="col-span-2 px-3 text-sm sm:px-5 sm:text-base">
               <PlusIcon className="h-5 w-5" /> {t('books.action.create')}
             </ButtonLink>
@@ -498,9 +503,12 @@ function BookCardMine({ book, view, collaborating, menuOpen, setMenuOpen, onCopy
       showAuthor={collaborating}
       showStatus
       showVisibility={!collaborating}
-      badge={collaborating ? <>
-        <Badge tone="slate">{t('books.badge.collabVisible')}</Badge>
-        <Badge tone={book.collaborator_role === 'editor' ? 'emerald' : 'sky'}>{book.collaborator_role === 'editor' ? t('books.role.editor') : t('books.role.viewer')}</Badge>
+      badge={(book.crawling || collaborating) ? <>
+        {book.crawling && <Badge tone="primary"><i className="fa-solid fa-spinner fa-spin mr-1 text-[10px]" aria-hidden="true" />{t('collect.crawling')}</Badge>}
+        {collaborating && <>
+          <Badge tone="slate">{t('books.badge.collabVisible')}</Badge>
+          <Badge tone={book.collaborator_role === 'editor' ? 'emerald' : 'sky'}>{book.collaborator_role === 'editor' ? t('books.role.editor') : t('books.role.viewer')}</Badge>
+        </>}
       </> : undefined}
       tagsMax={3}
       tagsLink={false}

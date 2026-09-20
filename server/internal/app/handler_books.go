@@ -210,6 +210,7 @@ func (a *App) ListBooks(c *gin.Context) {
 	}
 	a.attachChapterCounts(books)
 	a.attachBookTags(books)
+	a.attachCrawlingFlags(books)
 	if scope == "collaborating" {
 		for i := range books {
 			books[i].CollaboratorRole, _ = a.collaboratorRole(u, books[i].ID)
@@ -423,6 +424,7 @@ func (a *App) GetBook(c *gin.Context) {
 		return
 	}
 	a.attachBookTagsOne(book)
+	book.Crawling = a.bookIsCrawling(book.ID)
 	ok(c, book)
 }
 
@@ -438,6 +440,7 @@ func (a *App) GetBookBySlug(c *gin.Context) {
 		return
 	}
 	a.attachBookTagsOne(&book)
+	book.Crawling = a.bookIsCrawling(book.ID)
 	ok(c, book)
 }
 

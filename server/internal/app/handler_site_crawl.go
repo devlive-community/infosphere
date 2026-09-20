@@ -579,3 +579,38 @@ func (a *App) RetryCrawlPage(c *gin.Context) {
 	}
 	ok(c, gin.H{"retried": 1})
 }
+
+// attachCrawlingFlags 为一组书籍填充「采集中」标记：存在 pending/running 的整站采集任务即为采集中。
+// 插件禁用或表不存在时静默跳过（不影响列表）。
+func (a *App) attachCrawlingFlags(books []models.Book) {
+	if len(books) == 0 || !a.pluginEnabled(pluginContentCollect) || !a.DB.Migrator().HasTable(&models.CrawlJob{}) {
+		return
+	}
+	ids := make([]uint, 0, len(books))
+	for i := range books {
+		ids = append(ids, books[i].ID)
+	}
+	var activeBookIDs []uint
+	a.DB.Model(&models.CrawlJob{}).
+		Where("book_id IN ? AND status IN ?", ids, []string{"pending", "running"}).
+		Distinct().Pluck("book_id", &activeBookIDs)
+	active := map[uint]bool{}
+	for _, id := range activeBookIDs {
+		active[id] = true
+	}
+	for i := range books {
+		if active[books[i].ID] {
+			books[i].Crawling = true
+		}
+	}
+}
+
+// bookIsCrawling 单本是否正在采集（详情页用）。
+func (a *App) bookIsCrawling(bookID uint) bool {
+	if !a.pluginEnabled(pluginContentCollect) || !a.DB.Migrator().HasTable(&models.CrawlJob{}) {
+		return false
+	}
+	var count int64
+	a.DB.Model(&models.CrawlJob{}).Where("book_id = ? AND status IN ?", bookID, []string{"pending", "running"}).Count(&count)
+	return count > 0
+}

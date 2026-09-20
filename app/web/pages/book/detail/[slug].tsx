@@ -441,6 +441,12 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               </div>
             )}
 
+            {book.crawling && (
+              <div className="mt-4 flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50/60 px-3 py-2 text-sm text-primary-700">
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" /> {t('collect.crawlingHint')}
+              </div>
+            )}
+
             {/* 统计条 */}
             <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 text-sm text-slate-500 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
               <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {t('detail.chaptersCount', { n: totalChapters })}</span>

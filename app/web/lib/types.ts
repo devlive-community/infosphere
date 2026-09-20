@@ -64,6 +64,7 @@ export interface Book {
   export_formats?: string
   user?: Pick<User, 'id' | 'username' | 'avatar' | 'email' | 'bio' | 'github_url' | 'role'>
   tags?: Tag[]
+  crawling?: boolean
   created_at: string
   updated_at: string
 }

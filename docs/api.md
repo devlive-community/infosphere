@@ -472,6 +472,21 @@ Authorization: Bearer <token>
 
 > 安全边界：网页导入只允许 HTTP(S)，拒绝 localhost、内网、回环及链路本地地址；重定向和浏览器发起的子资源请求也执行同一校验。动态网页渲染依赖后台「无头浏览器」插件（与 PDF 导出共用同一 chrome-headless-shell），未安装则浏览器渲染不可用。所有导入章节都会生成 `create` 初始版本。PDF/ZIP 后台任务成功后立即删除源文件；最终失败任务保留源文件以供重试，超过 30 天由启动清理回收。
 
+### 内容采集插件（`content-collect`，含单页/整站两个子开关）
+
+> `/import/web`、`/import/web-content`、`/books/:id/documents/import-web` 均归入本插件并受「网页采集」子开关门控；插件或子开关禁用时相关接口 404、前端入口隐藏。整站采集受「整站采集」子开关门控。`/site` 额外暴露 `collect_page_enabled`、`collect_site_enabled` 供前端联动。
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| POST | `/collect/site/preview` | JSON `{url,render_mode?}`；抓取根页面，按导航/侧边栏推断目录树，并抽取一个样例页正文供内容区确认。返回 `{root_url,tree:[{url,title,depth,parent_url}],sample:{url,ok,title?,markdown?,error?},limit}` | `collect:create` |
+| POST | `/collect/site` | JSON `{root_url,title?,render_mode?,content_selector?,pages:[...]}`；创建草稿书 + 采集任务 + 页面清单并投递后台采集，返回 `{job,book}`。单次页数上限 `collect_site_page_limit`（默认 200） | `collect:create` |
+| GET | `/books/:id/collect/jobs?kind=site\|chapter` | 本书采集历史（需对书有编辑权） | `collect:read` |
+| GET | `/collect/jobs/:id` | 采集任务详情 + 页面清单（按 `sort_order`，供按目录结构展示），仅任务所有者 | `collect:read` |
+| POST | `/collect/jobs/:id/retry` | 重试该任务全部失败页并重新入队 | `collect:manage` |
+| POST | `/collect/pages/:id/retry` | 重试单个失败页 | `collect:manage` |
+
+> 采集在后台队列执行：逐页抓取→转 Markdown→按 `parent_url` 建章节层级；完成后按成功/失败计数置任务状态（succeeded/partial/failed）并通知用户。进行中（pending/running）的整站采集会让书籍列表卡片与详情页显示「采集中」。
+
 > ZIP 验收标准：导出再导入内容无损（含嵌套章节、草稿状态、评论开关、标签、封面与正文图片）。
 
 ## 阅读进度（登录用户）

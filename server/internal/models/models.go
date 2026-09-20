@@ -394,6 +394,8 @@ type Book struct {
 	User          *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	// Tags 由代码手动加载（attachBookTags），不走 GORM many2many——避免核心 Book 硬依赖标签插件表。
 	Tags []Tag `gorm:"-" json:"tags,omitempty"`
+	// Crawling 该书是否有进行中的整站采集任务（由 attachCrawlingFlags 按需填充，供列表/详情显示「采集中」）。
+	Crawling bool `gorm:"-" json:"crawling,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
