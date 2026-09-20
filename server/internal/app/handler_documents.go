@@ -52,7 +52,7 @@ func (a *App) ListDocumentTree(c *gin.Context) {
 
 	var docs []models.Document
 	query := a.DB.Where("book_id = ?", book.ID).
-		Select("id", "book_id", "parent_id", "title", "slug", "user_id", "sort_order", "status", "icon", "created_at", "updated_at")
+		Select("id", "book_id", "parent_id", "title", "slug", "user_id", "sort_order", "status", "icon", "external_url", "created_at", "updated_at")
 	if !a.canEditBookContent(u, book) {
 		query = query.Where("status = ?", "published")
 	}
