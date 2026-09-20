@@ -2527,6 +2527,8 @@ export const en: Record<string, string> = {
   'admin.settings.oauth.callback.github': 'GitHub “Developer settings → OAuth Apps”',
   'admin.settings.oauth.callback.google': 'Google Cloud Console “Credentials → OAuth client ID”',
   'admin.settings.oauth.callback.gitlab': 'GitLab “User settings → Applications”',
+  'admin.settings.oauth.callback.gitee': 'Gitee “Settings → Third-party apps → Create app”',
+  'admin.settings.oauth.callback.gitcode': 'GitCode “Account settings → OAuth apps”',
   'admin.settings.translation.apiBase': 'API base URL',
   'admin.settings.translation.apiBaseHintWithDefault': 'Leave empty to use default: {default}',
   'admin.settings.translation.apiBaseHint': 'Leave empty for default URL',

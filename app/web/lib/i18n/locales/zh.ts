@@ -2527,6 +2527,8 @@ export const zh: Record<string, string> = {
   'admin.settings.oauth.callback.github': 'GitHub「Developer settings → OAuth Apps」',
   'admin.settings.oauth.callback.google': 'Google Cloud Console「凭据 → OAuth 客户端 ID」',
   'admin.settings.oauth.callback.gitlab': 'GitLab「用户设置 → Applications」',
+  'admin.settings.oauth.callback.gitee': 'Gitee「设置 → 第三方应用 → 创建应用」',
+  'admin.settings.oauth.callback.gitcode': 'GitCode「账号设置 → 第三方应用 / OAuth 应用」',
   'admin.settings.translation.apiBase': 'API 地址',
   'admin.settings.translation.apiBaseHintWithDefault': '留空则使用默认：{default}',
   'admin.settings.translation.apiBaseHint': '留空使用默认地址',

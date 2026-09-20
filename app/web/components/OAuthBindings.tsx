@@ -11,10 +11,13 @@ interface Binding {
   created_at: string
 }
 
+// icon 为完整 FontAwesome 类名（无品牌图标的国内平台用 fa-solid）。
 const PROVIDER_META: Record<string, { label: string; icon: string }> = {
-  github: { label: 'GitHub', icon: 'fa-github' },
-  google: { label: 'Google', icon: 'fa-google' },
-  gitlab: { label: 'GitLab', icon: 'fa-gitlab' },
+  github: { label: 'GitHub', icon: 'fa-brands fa-github' },
+  google: { label: 'Google', icon: 'fa-brands fa-google' },
+  gitlab: { label: 'GitLab', icon: 'fa-brands fa-gitlab' },
+  gitee: { label: 'Gitee', icon: 'fa-solid fa-code-branch' },
+  gitcode: { label: 'GitCode', icon: 'fa-solid fa-code' },
 }
 
 // OAuthBindings 资料页第三方账号绑定管理：列出所有已启用的登录方式，分别显示绑定/未绑定与操作。
@@ -110,13 +113,13 @@ export default function OAuthBindings() {
       {providers.length === 0 ? (
         <div className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-400">{t('account.oauth.noneEnabled')}</div>
       ) : providers.map((provider) => {
-        const meta = PROVIDER_META[provider] || { label: provider, icon: 'fa-right-to-bracket' }
+        const meta = PROVIDER_META[provider] || { label: provider, icon: 'fa-solid fa-right-to-bracket' }
         const bound = bindings.find((b) => b.provider === provider)
         return (
           <div key={provider} className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white">
-                <i className={`fa-brands ${meta.icon} text-base`} aria-hidden="true" />
+                <i className={`${meta.icon} text-base`} aria-hidden="true" />
               </span>
               <div>
                 <div className="text-sm font-medium text-slate-900">{meta.label}</div>

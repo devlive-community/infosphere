@@ -15,6 +15,8 @@ export default function SettingsOAuth() {
     github: t('admin.settings.oauth.callback.github'),
     google: t('admin.settings.oauth.callback.google'),
     gitlab: t('admin.settings.oauth.callback.gitlab'),
+    gitee: t('admin.settings.oauth.callback.gitee'),
+    gitcode: t('admin.settings.oauth.callback.gitcode'),
   }
   const [providers, setProviders] = useState<OAuthProviderConfig[]>([])
   const [message, setMessage] = useState('')

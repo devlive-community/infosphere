@@ -28,13 +28,15 @@ type oauthProviderDef struct {
 }
 
 var oauthProviderRegistry = map[string]oauthProviderDef{
-	"github": {Key: "github", Label: "GitHub", AuthURL: "https://github.com/login/oauth/authorize", TokenURL: "https://github.com/login/oauth/access_token", Scopes: "read:user user:email", FetchUser: fetchGithubUser},
-	"google": {Key: "google", Label: "Google", AuthURL: "https://accounts.google.com/o/oauth2/v2/auth", TokenURL: "https://oauth2.googleapis.com/token", Scopes: "openid email profile", FetchUser: fetchGoogleUser},
-	"gitlab": {Key: "gitlab", Label: "GitLab", AuthURL: "https://gitlab.com/oauth/authorize", TokenURL: "https://gitlab.com/oauth/token", Scopes: "read_user", FetchUser: fetchGitlabUser},
+	"github":  {Key: "github", Label: "GitHub", AuthURL: "https://github.com/login/oauth/authorize", TokenURL: "https://github.com/login/oauth/access_token", Scopes: "read:user user:email", FetchUser: fetchGithubUser},
+	"google":  {Key: "google", Label: "Google", AuthURL: "https://accounts.google.com/o/oauth2/v2/auth", TokenURL: "https://oauth2.googleapis.com/token", Scopes: "openid email profile", FetchUser: fetchGoogleUser},
+	"gitlab":  {Key: "gitlab", Label: "GitLab", AuthURL: "https://gitlab.com/oauth/authorize", TokenURL: "https://gitlab.com/oauth/token", Scopes: "read_user", FetchUser: fetchGitlabUser},
+	"gitee":   {Key: "gitee", Label: "Gitee", AuthURL: "https://gitee.com/oauth/authorize", TokenURL: "https://gitee.com/oauth/token", Scopes: "user_info emails", FetchUser: fetchGiteeUser},
+	"gitcode": {Key: "gitcode", Label: "GitCode", AuthURL: "https://gitcode.com/oauth/authorize", TokenURL: "https://gitcode.com/oauth/token", Scopes: "user_info emails", FetchUser: fetchGitcodeUser},
 }
 
 // oauthProviderOrder 稳定的展示顺序。
-var oauthProviderOrder = []string{"github", "google", "gitlab"}
+var oauthProviderOrder = []string{"github", "google", "gitlab", "gitee", "gitcode"}
 
 func oauthBearerGet(url, token string) (*http.Response, error) {
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
@@ -113,6 +115,50 @@ func fetchGitlabUser(token string) (*oauthUserInfo, error) {
 		return nil, fmt.Errorf("gitlab 用户资料缺少 id")
 	}
 	return &oauthUserInfo{ID: strconv.FormatInt(g.ID, 10), Login: g.Username, Email: g.Email, AvatarURL: g.AvatarURL, ProfileURL: g.WebURL}, nil
+}
+
+// fetchGiteeStyleUser 读取 Gitee 兼容 v5 用户接口（Gitee / GitCode 同款 API 形状）。
+func fetchGiteeStyleUser(apiURL, token string) (*oauthUserInfo, error) {
+	// Gitee/GitCode 既支持 Bearer 头，也支持 access_token 查询参数；两者都带以提升兼容性。
+	sep := "?"
+	if strings.Contains(apiURL, "?") {
+		sep = "&"
+	}
+	resp, err := oauthBearerGet(apiURL+sep+"access_token="+token, token)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("用户资料接口返回 %d", resp.StatusCode)
+	}
+	var g struct {
+		ID        int64  `json:"id"`
+		Login     string `json:"login"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
+		HTMLURL   string `json:"html_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&g); err != nil {
+		return nil, err
+	}
+	if g.ID == 0 {
+		return nil, fmt.Errorf("用户资料缺少 id")
+	}
+	login := g.Login
+	if login == "" {
+		login = g.Name
+	}
+	return &oauthUserInfo{ID: strconv.FormatInt(g.ID, 10), Login: login, Email: g.Email, AvatarURL: g.AvatarURL, ProfileURL: g.HTMLURL}, nil
+}
+
+func fetchGiteeUser(token string) (*oauthUserInfo, error) {
+	return fetchGiteeStyleUser("https://gitee.com/api/v5/user", token)
+}
+
+func fetchGitcodeUser(token string) (*oauthUserInfo, error) {
+	return fetchGiteeStyleUser("https://api.gitcode.com/api/v5/user", token)
 }
 
 // oauthProviderConfig 读取某 provider 的凭据：ClientID 与 Secret 均非空且未显式停用视为已启用。
