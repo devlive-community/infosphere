@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
+import { Select } from '@/components/ui'
 
 interface Variant { slug: string; title: string; language: string; current: boolean; first_doc_slug?: string }
 
@@ -25,13 +26,13 @@ export default function BookTranslations({ bookId, linkTo = 'detail' }: { bookId
       ? `/book/reader/${encodeURIComponent(v.slug)}/${encodeURIComponent(v.first_doc_slug)}`
       : `/book/detail/${encodeURIComponent(v.slug)}`
   return (
-    <label className="flex min-w-0 items-center gap-2 text-sm">
+    <div className="flex min-w-0 items-center gap-2 text-sm">
       <span className="shrink-0 text-slate-400">{t('book.variant.language')}</span>
-      <select value={current?.slug || ''} aria-label={t('book.variant.language')}
-        onChange={(e) => { const v = items.find((x) => x.slug === e.target.value); if (v && !v.current) router.push(hrefFor(v)) }}
-        className="min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary-400">
-        {items.map((v) => <option key={v.slug} value={v.slug}>{v.language || v.title}</option>)}
-      </select>
-    </label>
+      <div className="min-w-0 flex-1">
+        <Select size="sm" value={current?.slug || ''}
+          onChange={(value) => { const v = items.find((x) => x.slug === value); if (v && !v.current) router.push(hrefFor(v)) }}
+          options={items.map((v) => ({ value: v.slug, label: v.language || v.title }))} />
+      </div>
+    </div>
   )
 }
