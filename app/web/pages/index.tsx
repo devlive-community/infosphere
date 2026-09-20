@@ -203,7 +203,7 @@ export default function Home({ site, siteUrl, stats, latest, hot, trending, tags
       {/* 按主题探索 */}
       {tags.length > 0 && (
         <section className="mt-12">
-          <SectionHead title={t('home.topics.title')} subtitle={t('home.topics.subtitle')} href="/explore" />
+          <SectionHead title={t('home.topics.title')} subtitle={t('home.topics.subtitle')} href="/tags" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
             {(tags || []).slice(0, 8).map((tag, i) => (
               <Link key={tag.id} href={`/explore?tag=${encodeURIComponent(tag.slug)}`}
@@ -268,7 +268,7 @@ export default function Home({ site, siteUrl, stats, latest, hot, trending, tags
         <div className="min-w-0 space-y-8">
           {tags.length > 0 && (
             <div>
-              <SectionHead title={t('home.hotTags.title')} subtitle={t('home.hotTags.subtitle')} href="/explore" />
+              <SectionHead title={t('home.hotTags.title')} subtitle={t('home.hotTags.subtitle')} href="/tags" />
               <div className="flex flex-wrap gap-2">
                 {(tags || []).map((tag) => (
                   <Link key={tag.id} href={`/explore?tag=${encodeURIComponent(tag.slug)}`}
