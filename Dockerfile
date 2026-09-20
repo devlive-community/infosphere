@@ -4,7 +4,7 @@
 
 # ---------- 构建阶段 ----------
 # 固定在构建机原生平台（BUILDPLATFORM），对目标架构交叉编译，避免在 QEMU 模拟下跑 Go 编译器（会失败/极慢）。
-FROM --platform=$BUILDPLATFORM golang:1.25-bookworm AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS builder
 
 ARG NODE_VERSION=24.20.0
 # buildx 自动注入的目标平台参数（如 TARGETOS=linux、TARGETARCH=amd64|arm64）
