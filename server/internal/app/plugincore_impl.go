@@ -1,0 +1,27 @@
+package app
+
+import (
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+
+	"infosphere/server/internal/models"
+	"infosphere/server/internal/plugincore"
+)
+
+// 本文件把 *App 适配为 plugincore.Core：插件子包通过该接口访问核心能力，避免与 app 包循环依赖。
+// 这些方法都是对既有 app 内部函数/字段的薄封装，行为与原来完全一致。
+var _ plugincore.Core = (*App)(nil)
+
+func (a *App) Gorm() *gorm.DB                                  { return a.DB }
+func (a *App) CurrentUser(c *gin.Context) *models.User         { return currentUser(c) }
+func (a *App) OK(c *gin.Context, data any)                     { ok(c, data) }
+func (a *App) Fail(c *gin.Context, status int, message string) { fail(c, status, message) }
+func (a *App) AtoiDefault(s string, def int) int               { return atoiDefault(s, def) }
+func (a *App) PluginEnabled(key string) bool                   { return a.pluginEnabled(key) }
+func (a *App) IsAdmin(u *models.User) bool                     { return IsAdmin(u) }
+func (a *App) CanReadBook(u *models.User, b *models.Book) bool { return a.canReadBook(u, b) }
+func (a *App) PreloadBookUser() *gorm.DB                       { return preloadBookUser(a.DB) }
+func (a *App) AttachChapterCounts(books []models.Book)         { a.attachChapterCounts(books) }
+func (a *App) AttachBookTags(books []models.Book)              { a.attachBookTags(books) }
+func (a *App) PubliclyReadableBookStatuses() []string          { return publiclyReadableBookStatuses }
+func (a *App) RateLimitReaction() gin.HandlerFunc              { return a.RateLimit(reactionRateLimit) }

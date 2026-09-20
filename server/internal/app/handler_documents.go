@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"infosphere/server/internal/models"
+	"infosphere/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -474,7 +475,7 @@ func (a *App) UpdateDocument(c *gin.Context) {
 	a.recordAchievementEvent(doc.UserID, "document.updated", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.updated:%d:%d", doc.ID, doc.UpdatedAt.UnixNano()))
 	// 章节首次发布（草稿→已发布）时通知关注者，并给作者发放成长经验
 	if publishedChapter && oldStatus != "published" {
-		a.notifyChapterPublished(book, doc)
+		plugincore.FireChapterPublished(book, doc) // 由「书籍关注」插件订阅并通知关注者
 		a.awardExperience(doc.UserID, "creation.chapter_published", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("creation.chapter_published:%d", doc.ID))
 	}
 	ok(c, doc)

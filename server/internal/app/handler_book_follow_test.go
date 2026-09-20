@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/authz"
+	"infosphere/server/internal/auth"
+	"infosphere/server/internal/config"
 	"infosphere/server/internal/models"
+	"infosphere/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,6 +20,7 @@ import (
 func TestBookFollowAndUpdateNotification(t *testing.T) {
 	app, author, db := newContentImportTestApp(t)
 	app.Notifications = newNotificationHub()
+	app.Config = &config.Config{Secret: "test-secret-book-follow"} // 令牌签发/校验用同一密钥
 	author.Role = "user"
 	db.Save(author)
 
@@ -34,37 +37,43 @@ func TestBookFollowAndUpdateNotification(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mkRouter := func(u *models.User) *gin.Engine {
-		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("user", u); c.Next() })
-		r.POST("/books/:id/follow", app.RequireFeaturePlugin(pluginBookFollow), app.RequirePermission(authz.FollowCreate), app.FollowBook)
-		r.DELETE("/books/:id/follow", app.RequireFeaturePlugin(pluginBookFollow), app.RequirePermission(authz.FollowDelete), app.UnfollowBook)
-		r.GET("/users/me/follows", app.RequireFeaturePlugin(pluginBookFollow), app.RequirePermission(authz.FollowRead), app.MyFollows)
-		r.PUT("/documents/:id", app.UpdateDocument)
-		return r
+	// 真实令牌 + 迁移后的插件路由（由 bookfollow 子包 RegisterRoutes 注册），端到端验证行为不变。
+	authorToken, _ := auth.GenerateToken(app.Config.Secret, author.ID, author.Username, author.Role)
+	followerToken, _ := auth.GenerateToken(app.Config.Secret, follower.ID, follower.Username, follower.Role)
+
+	r := gin.New()
+	grp := r.Group("")
+	for _, p := range plugincore.Behaviors() {
+		if p.Key() == pluginBookFollow {
+			p.RegisterRoutes(grp, app)
+		}
 	}
-	followerRouter := mkRouter(follower)
-	call := func(router *gin.Engine, method, path, body string) (int, map[string]any) {
+	r.PUT("/documents/:id", app.RequireAuth(), app.UpdateDocument)
+
+	call := func(method, path, body, token string) (int, map[string]any) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(method, path, strings.NewReader(body))
 		if body != "" {
 			req.Header.Set("Content-Type", "application/json")
 		}
-		router.ServeHTTP(rec, req)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		r.ServeHTTP(rec, req)
 		p := map[string]any{}
 		_ = json.Unmarshal(rec.Body.Bytes(), &p)
 		return rec.Code, p
 	}
 
-	if st, p := call(followerRouter, http.MethodPost, fmt.Sprintf("/books/%d/follow", book.ID), ""); st != http.StatusOK || p["data"].(map[string]any)["following"] != true {
+	if st, p := call(http.MethodPost, fmt.Sprintf("/books/%d/follow", book.ID), "", followerToken); st != http.StatusOK || p["data"].(map[string]any)["following"] != true {
 		t.Fatalf("关注失败: %d %v", st, p)
 	}
-	if st, p := call(followerRouter, http.MethodGet, "/users/me/follows", ""); st != http.StatusOK || int(p["data"].(map[string]any)["total"].(float64)) != 1 {
+	if st, p := call(http.MethodGet, "/users/me/follows", "", followerToken); st != http.StatusOK || int(p["data"].(map[string]any)["total"].(float64)) != 1 {
 		t.Fatalf("我的关注列表异常: %d %v", st, p)
 	}
 
-	// 作者发布章节 → 关注者收到 book_update 通知
-	if st, _ := call(mkRouter(author), http.MethodPut, fmt.Sprintf("/documents/%d", doc.ID), `{"status":"published"}`); st != http.StatusOK {
+	// 作者发布章节 → 关注者收到 book_update 通知（验证章节发布钩子）
+	if st, _ := call(http.MethodPut, fmt.Sprintf("/documents/%d", doc.ID), `{"status":"published"}`, authorToken); st != http.StatusOK {
 		t.Fatalf("发布章节失败: %d", st)
 	}
 	var notifCount int64
@@ -73,14 +82,14 @@ func TestBookFollowAndUpdateNotification(t *testing.T) {
 		t.Fatalf("关注者应收到 1 条更新通知，实际 %d", notifCount)
 	}
 
-	if st, p := call(followerRouter, http.MethodDelete, fmt.Sprintf("/books/%d/follow", book.ID), ""); st != http.StatusOK || p["data"].(map[string]any)["following"] != false {
+	if st, p := call(http.MethodDelete, fmt.Sprintf("/books/%d/follow", book.ID), "", followerToken); st != http.StatusOK || p["data"].(map[string]any)["following"] != false {
 		t.Fatalf("取关失败: %d %v", st, p)
 	}
 
 	// 禁用插件后接口 404
 	_ = app.setFeaturePluginEnabled(pluginInfoByKey(pluginBookFollow), false)
 	app.syncPluginPermissions()
-	if st, _ := call(followerRouter, http.MethodGet, "/users/me/follows", ""); st != http.StatusNotFound {
+	if st, _ := call(http.MethodGet, "/users/me/follows", "", followerToken); st != http.StatusNotFound {
 		t.Fatalf("禁用后我的关注应 404，实际 %d", st)
 	}
 	// 恢复（避免影响同包其它用例的全局 authz 状态）

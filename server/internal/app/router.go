@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"infosphere/server/internal/authz"
+	"infosphere/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 )
@@ -276,11 +277,7 @@ func (a *App) Router() *gin.Engine {
 		books.GET("/:id/reactions/me", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyBookReaction)
 		api.GET("/users/me/reactions", a.RequireAuth(), a.RequirePermission(authz.ReactionRead), a.MyReactions)
 
-		// ── 书籍关注（follow:*，「书籍关注」插件守卫） ──
-		books.POST("/:id/follow", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowCreate), a.RateLimit(reactionRateLimit), a.FollowBook)
-		books.DELETE("/:id/follow", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowDelete), a.RateLimit(reactionRateLimit), a.UnfollowBook)
-		books.GET("/:id/follow/me", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowRead), a.MyBookFollow)
-		api.GET("/users/me/follows", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowRead), a.MyFollows)
+		// ── 书籍关注等插件路由：由各插件子包（internal/plugins/<name>/）自行注册（迁移中） ──
 
 		// ── 用户成长等级（growth:*，「成长等级」插件守卫） ──
 		api.GET("/users/me/growth", a.RequireAuth(), a.RequireFeaturePlugin(pluginGrowth), a.RequirePermission(authz.GrowthRead), a.MyGrowth)
@@ -430,6 +427,11 @@ func (a *App) Router() *gin.Engine {
 
 		// 插件操作日志 SSE（自行按 query token 鉴权，EventSource 无法带请求头）
 		api.GET("/admin/plugins/:key/logs", a.AdminPluginLogs)
+	}
+
+	// 插件路由：各插件子包（internal/plugins/<name>/）自注册的行为在此统一挂载到 /api/v1。
+	for _, p := range plugincore.Behaviors() {
+		p.RegisterRoutes(api, a)
 	}
 
 	RegisterWeb(r, a.web)
