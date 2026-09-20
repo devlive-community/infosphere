@@ -443,7 +443,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
 
             {/* 统计条 */}
             <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 text-sm text-slate-500 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
-              <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {t('detail.chaptersCount', { n: chapters })}</span>
+              <span className="flex items-center gap-1.5"><BookIcon className="h-4 w-4" /> {t('detail.chaptersCount', { n: totalChapters })}</span>
               <span className="flex items-center gap-1.5"><ClockIcon className="h-4 w-4" /> {t('detail.readingMin', { n: readingMin })}</span>
               <span className="flex items-center gap-1.5"><EyeIcon className="h-4 w-4" /> {t('detail.readCount', { n: formatNumber(bookViews) })}</span>
               <span className="flex items-center gap-1.5"><CalendarIcon className="h-4 w-4" /> {t('detail.updatedAt', { date: fmtDate(book.updated_at) })}</span>
@@ -565,7 +565,10 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
           <div className="max-w-3xl">
             <div className="mb-4 flex items-baseline gap-3">
               <h2 className="text-xl font-bold text-slate-900">{t('detail.toc')}</h2>
-              <span className="text-sm text-slate-400">{t('detail.tocCount', { n: chapters })}</span>
+              <span className="text-sm text-slate-400">
+                {t('detail.tocCount', { n: chapters })}
+                {totalChapters > chapters && <span className="ml-1">{t('detail.tocCountTotal', { n: totalChapters })}</span>}
+              </span>
             </div>
 
             {user && totalChapters > 0 && (

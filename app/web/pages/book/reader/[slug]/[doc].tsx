@@ -8,7 +8,7 @@ import { API_BASE, formatDate, formatNumber, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
-import { ButtonLink, Tooltip } from '@/components/ui'
+import { ButtonLink, Input, Tooltip } from '@/components/ui'
 import DocTreeIcon from '@/components/DocTreeIcon'
 import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress, getReadingProgress } from '@/lib/reading-progress'
@@ -147,6 +147,26 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
 
   const flat = useMemo(() => flatten(tree), [tree])
   const headings = useMemo(() => extractHeadings(doc?.content), [doc])
+
+  // 目录搜索：按标题过滤（命中节点或其任意子孙命中即保留），搜索时全部展开命中分支
+  const [tocSearch, setTocSearch] = useState('')
+  const filteredTree = useMemo(() => {
+    const q = tocSearch.trim().toLowerCase()
+    if (!q) return tree
+    const filter = (docs: Document[]): Document[] => docs.reduce<Document[]>((acc, d) => {
+      const kids = d.children ? filter(d.children) : []
+      if (d.title.toLowerCase().includes(q) || kids.length) acc.push({ ...d, children: kids })
+      return acc
+    }, [])
+    return filter(tree)
+  }, [tree, tocSearch])
+  const searchExpanded = useMemo(() => {
+    if (!tocSearch.trim()) return null
+    const ids = new Set<number>()
+    const walk = (docs: Document[]) => docs.forEach((d) => { if (d.children?.length) { ids.add(d.id); walk(d.children) } })
+    walk(filteredTree)
+    return ids
+  }, [filteredTree, tocSearch])
 
   // 默认展开所有含子章节的节点
   // 默认展开所有含子章节的节点；切换语言/版本（book 变化）时同一组件实例会复用，需按 book 重新展开，
@@ -403,11 +423,17 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                 </Tooltip>
               )}
             </div>
+            <Input size="sm" value={tocSearch} onChange={(e) => setTocSearch(e.target.value)}
+              placeholder={t('reader.tocSearchPlaceholder')} aria-label={t('reader.tocSearchPlaceholder')} className="mb-2" />
             </div>
             <div ref={tocScrollRef} className="min-h-0 flex-1 overflow-y-auto">
               <div className="min-w-max pb-2 pl-4">
-                <ReaderTree items={tree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id}
-                  expanded={expanded} setExpanded={setExpanded} readSet={readSet} />
+                {filteredTree.length === 0 ? (
+                  <p className="py-6 pr-4 text-center text-xs text-slate-400">{t('reader.tocNoMatch')}</p>
+                ) : (
+                  <ReaderTree items={filteredTree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id}
+                    expanded={searchExpanded ?? expanded} setExpanded={setExpanded} readSet={readSet} />
+                )}
               </div>
             </div>
             <div className="shrink-0 border-t border-slate-100 px-4 py-2 text-center text-xs text-slate-400">
