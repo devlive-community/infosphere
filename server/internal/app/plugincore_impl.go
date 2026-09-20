@@ -20,6 +20,7 @@ func (a *App) AtoiDefault(s string, def int) int               { return atoiDefa
 func (a *App) PluginEnabled(key string) bool                   { return a.pluginEnabled(key) }
 func (a *App) IsAdmin(u *models.User) bool                     { return IsAdmin(u) }
 func (a *App) CanReadBook(u *models.User, b *models.Book) bool { return a.canReadBook(u, b) }
+func (a *App) FindBook(c *gin.Context) (*models.Book, int)     { return a.findBook(c) }
 func (a *App) PreloadBookUser() *gorm.DB                       { return preloadBookUser(a.DB) }
 func (a *App) AttachChapterCounts(books []models.Book)         { a.attachChapterCounts(books) }
 func (a *App) AttachBookTags(books []models.Book)              { a.attachBookTags(books) }

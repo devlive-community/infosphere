@@ -26,6 +26,7 @@ type Core interface {
 	// 书籍/用户领域共享工具（核心与多个插件复用）
 	IsAdmin(u *models.User) bool
 	CanReadBook(u *models.User, b *models.Book) bool
+	FindBook(c *gin.Context) (*models.Book, int)
 	PreloadBookUser() *gorm.DB
 	AttachChapterCounts(books []models.Book)
 	AttachBookTags(books []models.Book)
@@ -33,6 +34,7 @@ type Core interface {
 
 	// 路由中间件（返回 gin.HandlerFunc，供插件注册受保护路由）
 	RequireAuth() gin.HandlerFunc
+	OptionalAuth() gin.HandlerFunc
 	RequirePermission(perm authz.Permission) gin.HandlerFunc
 	RequireFeaturePlugin(key string) gin.HandlerFunc
 	RequireEmailVerified() gin.HandlerFunc

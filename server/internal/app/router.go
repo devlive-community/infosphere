@@ -152,8 +152,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/books/:id", a.GetBook)
 			public.GET("/books/slug/:slug", a.GetBookBySlug)
 			public.GET("/books/:id/documents", a.ListDocumentTree)
-			public.GET("/books/:id/translations", a.RequireFeaturePlugin(pluginBookTranslations), a.GetBookTranslations)
-			public.GET("/books/:id/versions", a.RequireFeaturePlugin(pluginBookVersions), a.GetBookVersions)
+			// /books/:id/translations 与 /books/:id/versions 由 book-translations / book-versions 插件子包自注册
 			public.GET("/books/:id/documents/slug/:slug", a.GetDocumentBySlug)
 			public.GET("/documents/:id", a.GetDocument)
 			public.GET("/tags", a.RequireFeaturePlugin(pluginTags), a.ListTags)
