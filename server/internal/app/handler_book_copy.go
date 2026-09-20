@@ -142,6 +142,7 @@ func (a *App) CopyBook(c *gin.Context) {
 			BookID: newBook.ID, UserID: u.ID, Title: d.Title,
 			Slug: a.uniqueDocSlug(newBook.ID, base), Content: d.Content,
 			Status: d.Status, SortOrder: idx, AllowComments: d.AllowComments,
+			Icon: d.Icon, ExternalURL: d.ExternalURL,
 		}
 		if err := a.DB.Create(&nd).Error; err != nil {
 			fail(c, http.StatusInternalServerError, "复制章节失败: "+err.Error())
@@ -209,26 +210,24 @@ func (a *App) CopyDocuments(c *gin.Context) {
 		children[pid] = append(children[pid], d)
 	}
 
-	// 展开选中集合为「选中节点 + 各自子树」，按源顺序前序遍历并去重
+	// 复制集合 = 选中节点 + 各自子树（仅计算成员，顺序稍后按源文档顺序确定，不受选择顺序影响）
 	copySet := map[uint]bool{}
-	ordered := make([]*models.Document, 0, len(srcDocs))
-	var addSubtree func(d *models.Document)
-	addSubtree = func(d *models.Document) {
+	var mark func(d *models.Document)
+	mark = func(d *models.Document) {
 		if copySet[d.ID] {
 			return
 		}
 		copySet[d.ID] = true
-		ordered = append(ordered, d)
 		for _, ch := range children[d.ID] {
-			addSubtree(ch)
+			mark(ch)
 		}
 	}
 	for _, id := range req.DocIDs {
 		if d, ok := byID[id]; ok {
-			addSubtree(d)
+			mark(d)
 		}
 	}
-	if len(ordered) == 0 {
+	if len(copySet) == 0 {
 		fail(c, http.StatusBadRequest, "没有可复制的章节")
 		return
 	}
@@ -238,9 +237,15 @@ func (a *App) CopyDocuments(c *gin.Context) {
 	a.DB.Model(&models.Document{}).Where("book_id = ? AND parent_id IS NULL", target.ID).Count(&topCount)
 	nextTop := int(topCount)
 
-	// 两遍：先建档记录 原 id -> 新 id，再重建父子（父在复制集合内映射，否则置为目标书顶层）
-	idMap := make(map[uint]uint, len(ordered))
-	for _, d := range ordered {
+	// 按「源文档顺序」(sort_order,id) 遍历建档，保证复制后顺序与原书一致；完整复制内容与各项配置
+	// （含图标、外链、评论开关、状态），做到与原章节一致。第二遍重建父子。
+	idMap := make(map[uint]uint, len(copySet))
+	copied := 0
+	for i := range srcDocs {
+		d := &srcDocs[i]
+		if !copySet[d.ID] {
+			continue
+		}
 		base := d.Slug
 		if base == "" {
 			base = slugify(d.Title)
@@ -249,6 +254,7 @@ func (a *App) CopyDocuments(c *gin.Context) {
 			BookID: target.ID, UserID: u.ID, Title: d.Title,
 			Slug: a.uniqueDocSlug(target.ID, base), Content: d.Content,
 			Status: d.Status, AllowComments: d.AllowComments,
+			Icon: d.Icon, ExternalURL: d.ExternalURL,
 		}
 		if d.ParentID == nil || !copySet[*d.ParentID] {
 			nd.SortOrder = nextTop
@@ -261,15 +267,20 @@ func (a *App) CopyDocuments(c *gin.Context) {
 			return
 		}
 		idMap[d.ID] = nd.ID
+		copied++
 	}
-	for _, d := range ordered {
+	for i := range srcDocs {
+		d := &srcDocs[i]
+		if !copySet[d.ID] {
+			continue
+		}
 		if d.ParentID != nil && copySet[*d.ParentID] {
 			a.DB.Model(&models.Document{}).Where("id = ?", idMap[d.ID]).Update("parent_id", idMap[*d.ParentID])
 		}
 	}
 
 	a.recordAudit(c, "document.copied", "book", strings.TrimSpace(target.Slug), "复制章节到书籍", map[string]any{
-		"source_book_id": src.ID, "target_book_id": target.ID, "copied": len(ordered),
+		"source_book_id": src.ID, "target_book_id": target.ID, "copied": copied,
 	})
-	ok(c, gin.H{"copied_documents": len(ordered), "target_book_id": target.ID, "target_slug": target.Slug})
+	ok(c, gin.H{"copied_documents": copied, "target_book_id": target.ID, "target_slug": target.Slug})
 }
