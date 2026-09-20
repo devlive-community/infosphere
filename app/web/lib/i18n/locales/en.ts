@@ -1118,6 +1118,18 @@ export const en: Record<string, string> = {
   'follows.subtitle': 'Books you follow; you get notified when they update',
   'follows.loading': 'Loading followed books…',
   'follows.empty': 'Not following any book yet—follow ones you like from their detail page',
+  'likes.seoTitle': 'My likes',
+  'likes.heading': 'My likes',
+  'likes.subtitle': 'All the books you liked',
+  'likes.loading': 'Loading liked books…',
+  'likes.empty': 'No liked books yet—like books you enjoy from their detail page',
+  'library.aria': 'My books navigation',
+  'library.tab.books': 'My books',
+  'library.tab.reading': 'Reading',
+  'library.tab.favorites': 'Favorites',
+  'library.tab.likes': 'Likes',
+  'library.tab.follows': 'Following',
+  'library.tab.export': 'Exports',
 
   // Notification settings
   'notify.seoTitle': 'Notifications',

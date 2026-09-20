@@ -1118,6 +1118,18 @@ export const zh: Record<string, string> = {
   'follows.subtitle': '你关注的书籍，更新时会收到通知',
   'follows.loading': '正在加载关注书籍…',
   'follows.empty': '还没有关注书籍，去书籍详情页关注感兴趣的作品吧',
+  'likes.seoTitle': '我的点赞',
+  'likes.heading': '我的点赞',
+  'likes.subtitle': '你点赞过的全部书籍',
+  'likes.loading': '正在加载点赞书籍…',
+  'likes.empty': '还没有点赞书籍，去书籍详情页点赞喜欢的作品吧',
+  'library.aria': '我的书籍导航',
+  'library.tab.books': '我的书籍',
+  'library.tab.reading': '我在读',
+  'library.tab.favorites': '我的收藏',
+  'library.tab.likes': '我的点赞',
+  'library.tab.follows': '我的关注',
+  'library.tab.export': '我的导出',
 
   // 通知设置
   'notify.seoTitle': '通知设置',

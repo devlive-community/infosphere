@@ -3,6 +3,7 @@ import Container from '@/components/Container'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useGridPageSize } from '@/lib/useGridPageSize'
+import MyLibraryTabs from '@/components/MyLibraryTabs'
 import { useTranslation } from '@/lib/i18n'
 import { Button, ButtonLink, EmptyState, Input, Loading, Pagination, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
@@ -274,6 +275,7 @@ export default function MyReading() {
           <h1 className="text-2xl font-bold text-ink">{t('user.reading.title')}</h1>
           <p className="mt-1 text-sm text-slate-500">{t('user.reading.description')}</p>
         </div>
+        <MyLibraryTabs active="reading" />
 
         {stats && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

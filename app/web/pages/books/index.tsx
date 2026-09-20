@@ -11,6 +11,7 @@ import { useRequireAuth , useApp} from '@/lib/auth'
 import { useGridPageSize } from '@/lib/useGridPageSize'
 import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
+import MyLibraryTabs from '@/components/MyLibraryTabs'
 import BookCopyDialog from '@/components/BookCopyDialog'
 import PDFReimportPanel from '@/components/PDFReimportPanel'
 import {
@@ -182,6 +183,8 @@ export default function MyBooks() {
           </div>
         </div>
       </div>
+
+      <MyLibraryTabs active="books" />
 
       <div className="mb-5">
         <SegmentedTabs value={scope} ariaLabel={t('books.scopeAria')}

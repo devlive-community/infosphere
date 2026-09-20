@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Container from '@/components/Container'
 import FeatureGate from '@/components/FeatureGate'
+import MyLibraryTabs from '@/components/MyLibraryTabs'
 import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
@@ -48,6 +49,7 @@ function MyFollowsInner() {
           <h1 className="text-2xl font-bold text-ink">{t('follows.heading')}</h1>
           <p className="mt-1 text-sm text-slate-500">{t('follows.subtitle')}</p>
         </div>
+        <MyLibraryTabs active="follows" />
 
         {loading || data === null ? (
           <Loading label={t('follows.loading')} />
