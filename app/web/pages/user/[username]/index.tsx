@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
@@ -9,6 +9,7 @@ import { Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import BookCard from '@/components/BookCard'
+import { useGridPageSize } from '@/lib/useGridPageSize'
 import AchievementIcon from '@/components/AchievementIcon'
 import { ArrowRightIcon, BookIcon, CalendarIcon, EyeIcon, GitHubIcon, GridIcon, ListIcon, ShareIcon } from '@/components/icons'
 import TagChips from '@/components/TagChips'
@@ -183,12 +184,29 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
     { value: 'views', label: t('user.home.sortViews') },
     { value: 'title', label: t('user.home.sortTitle') },
   ]
+  // 公开书籍列表：客户端按屏宽自适应每页数量（首屏用 SSR 数据，SEO 保持）
+  const { ref: gridRef, pageSize } = useGridPageSize({ minItemRem: 15, rows: 3, fallback: books.page_size || 9 })
+  const [data, setData] = useState<PageResult<Book>>(books)
+  const [page, setPage] = useState(books.page || 1)
+  const [sortState, setSortState] = useState(sort)
   const [loading, setLoading] = useState(false)
-  useEffect(() => { setLoading(false) }, [books])
+  const didMount = useRef(false)
+
+  useEffect(() => {
+    // 首次渲染沿用 SSR 数据，不重复请求；此后（翻页/排序/列数变化）客户端拉取
+    if (!didMount.current) { didMount.current = true; return }
+    let cancelled = false
+    setLoading(true)
+    api<PageResult<Book>>(`/users/${encodeURIComponent(profile.username)}/books`, { params: { page, page_size: pageSize, sort: sortState } })
+      .then((r) => { if (!cancelled) setData(r) })
+      .catch(() => { /* 保持原数据 */ })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [page, pageSize, sortState, profile.username])
 
   function changeSort(v: string) {
-    setLoading(true)
-    window.location.search = `?username=${encodeURIComponent(profile.username)}&sort=${encodeURIComponent(v)}`
+    setSortState(v)
+    setPage(1)
   }
   const profileUrl = `${siteUrl}/user/${encodeURIComponent(profile.username)}`
 
@@ -213,11 +231,7 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
     },
   }
 
-  const items = [...(books.items || [])].sort((a, b) => {
-    if (sort === 'views') return b.view_count - a.view_count
-    if (sort === 'title') return a.title.localeCompare(b.title, 'zh-CN')
-    return a.updated_at < b.updated_at ? 1 : -1
-  })
+  const items = data.items || [] // 由服务端按 sort 排序 + 分页
 
   return (
     <Container>
@@ -254,10 +268,10 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
               <h2 className="text-2xl font-bold text-ink">{t('user.home.publicBooksSection')}</h2>
-              <span className="text-sm text-slate-400">{t('user.home.publicBooksCount', { username: profile.username, count: String(books.total) })}</span>
+              <span className="text-sm text-slate-400">{t('user.home.publicBooksCount', { username: profile.username, count: String(data.total) })}</span>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={changeSort} options={sortOptions} />
+              <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sortState} onChange={changeSort} options={sortOptions} />
               <SegmentedTabs iconOnly value={view} ariaLabel={t('user.home.bookViewLabel')}
                 onChange={(value) => setView(value as 'grid' | 'list')} items={[
                   { value: 'grid', label: t('user.home.gridView'), icon: <GridIcon className="h-4 w-4" /> },
@@ -266,7 +280,8 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
             </div>
           </div>
 
-          {books.total === 0 ? (
+          <div ref={gridRef}>
+          {data.total === 0 ? (
             <p className="py-16 text-center text-slate-400">{t('user.home.noPublicBooks')}</p>
           ) : loading ? (
             <Loading />
@@ -275,11 +290,11 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
               {items.map((b) => <BookCard key={b.id} book={b} view={view} showAuthor={false} />)}
             </div>
           )}
+          </div>
         </section>
       </div>
 
-      <Pagination page={books.page} pageSize={books.page_size} total={books.total}
-        onChange={(p) => { setLoading(true); window.location.search = `?username=${encodeURIComponent(profile.username)}&sort=${encodeURIComponent(sort)}${p > 1 ? `&page=${p}` : ''}` }} />
+      <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
     </Container>
   )
 }
