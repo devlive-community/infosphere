@@ -28,6 +28,7 @@ type Core interface {
 	CanReadBook(u *models.User, b *models.Book) bool
 	FindBook(c *gin.Context) (*models.Book, int)
 	PreloadBookUser() *gorm.DB
+	PreloadBookUserOn(db *gorm.DB) *gorm.DB
 	AttachChapterCounts(books []models.Book)
 	AttachBookTags(books []models.Book)
 	PubliclyReadableBookStatuses() []string
@@ -38,7 +39,22 @@ type Core interface {
 	RequirePermission(perm authz.Permission) gin.HandlerFunc
 	RequireFeaturePlugin(key string) gin.HandlerFunc
 	RequireEmailVerified() gin.HandlerFunc
-	RateLimitReaction() gin.HandlerFunc // 互动类写操作的限流中间件（关注/点赞等复用同一策略）
+	RequireAdmin() gin.HandlerFunc
+	RequirePermissionMiddleware(perm authz.Permission) gin.HandlerFunc // 与 RequirePermission 同义（命名区分，供插件显式使用）
+	RateLimitReaction() gin.HandlerFunc                                 // 互动类写操作的限流中间件（关注/点赞等复用同一策略）
+
+	// 通用工具
+	Paginate(c *gin.Context) (page, pageSize int)
+	Slugify(s string) string
+	RandomSlug(prefix string) string
+}
+
+// PageResult 分页响应（核心与插件共用，保持 JSON 形状一致）。
+type PageResult struct {
+	Items    any   `json:"items"`
+	Total    int64 `json:"total"`
+	Page     int   `json:"page"`
+	PageSize int   `json:"page_size"`
 }
 
 // Plugin 插件的行为：注册路由与钩子。核心在构建路由时调用 RegisterRoutes。

@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"infosphere/server/internal/authz"
 	"infosphere/server/internal/models"
 	"infosphere/server/internal/plugincore"
 )
@@ -22,7 +23,15 @@ func (a *App) IsAdmin(u *models.User) bool                     { return IsAdmin(
 func (a *App) CanReadBook(u *models.User, b *models.Book) bool { return a.canReadBook(u, b) }
 func (a *App) FindBook(c *gin.Context) (*models.Book, int)     { return a.findBook(c) }
 func (a *App) PreloadBookUser() *gorm.DB                       { return preloadBookUser(a.DB) }
+func (a *App) PreloadBookUserOn(db *gorm.DB) *gorm.DB          { return preloadBookUser(db) }
 func (a *App) AttachChapterCounts(books []models.Book)         { a.attachChapterCounts(books) }
 func (a *App) AttachBookTags(books []models.Book)              { a.attachBookTags(books) }
 func (a *App) PubliclyReadableBookStatuses() []string          { return publiclyReadableBookStatuses }
 func (a *App) RateLimitReaction() gin.HandlerFunc              { return a.RateLimit(reactionRateLimit) }
+
+func (a *App) RequirePermissionMiddleware(perm authz.Permission) gin.HandlerFunc {
+	return a.RequirePermission(perm)
+}
+func (a *App) Paginate(c *gin.Context) (int, int) { return paginate(c) }
+func (a *App) Slugify(s string) string            { return slugify(s) }
+func (a *App) RandomSlug(prefix string) string    { return randomSlug(prefix) }
