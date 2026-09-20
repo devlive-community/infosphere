@@ -156,6 +156,12 @@
   /* ── 页面底色（通过 JS 内联 style 设置） ── */
 }
 
+/* 始终为纵向滚动条预留槽位：避免列表撑高触发滚动条时容器宽度突变，
+   进而让自适应网格（useGridPageSize）在列数间来回抖动闪烁。 */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background-color: var(--page-bg);
   @apply text-ink antialiased;
