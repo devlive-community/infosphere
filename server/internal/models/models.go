@@ -175,6 +175,7 @@ type UserNotificationPref struct {
 	System        bool `gorm:"default:true" json:"system"`
 	Achievement   bool `gorm:"default:true" json:"achievement"`
 	BookUpdate    bool `gorm:"default:true" json:"book_update"` // 关注书籍更新通知
+	Growth        bool `gorm:"default:true" json:"growth"`      // 成长升级通知
 }
 
 // LoginLockout 登录失败锁定计数（每账户一条，多实例共享）。
@@ -257,6 +258,7 @@ type AchievementDefinition struct {
 	Asset              *AchievementAsset `gorm:"foreignKey:AssetID" json:"asset,omitempty"`
 	SeriesKey          string            `gorm:"size:80;index" json:"series_key"`
 	Tier               int               `gorm:"default:1" json:"tier"`
+	RewardXP           int               `gorm:"default:0" json:"reward_xp"` // 解锁奖励成长经验（成长插件启用时生效）
 	SupersedesPrevious bool              `gorm:"default:false" json:"supersedes_previous"`
 	RuleLogic          string            `gorm:"size:10;default:all" json:"rule_logic"`    // all | any
 	GrantMode          string            `gorm:"size:20;default:auto" json:"grant_mode"`   // auto | manual
@@ -467,6 +469,59 @@ type Reaction struct {
 	Type      string    `gorm:"uniqueIndex:uk_user_book_type;size:20;not null" json:"type"` // like | favorite
 	CreatedAt time.Time `json:"created_at"`
 	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+}
+
+// ---- 用户成长等级（「成长等级」插件，默认关闭；建表由插件负责）----
+
+// LevelDefinition 等级定义：阈值严格递增，等级 1 的 min_xp=0。名称/说明 MVP 用固定字段。
+type LevelDefinition struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Level     int       `gorm:"uniqueIndex;not null" json:"level"` // 等级编号（1 起，唯一）
+	Key       string    `gorm:"size:50" json:"key"`
+	Name      string    `gorm:"size:120" json:"name"`
+	Description string  `gorm:"size:500" json:"description"`
+	IconType  string    `gorm:"size:10;default:'fa'" json:"icon_type"` // fa | image | svg
+	IconValue string    `gorm:"size:500;default:'fa-star'" json:"icon_value"`
+	Color     string    `gorm:"size:20;default:''" json:"color"`
+	MinXP     int       `gorm:"not null;default:0" json:"min_xp"`
+	SortOrder int       `gorm:"default:0" json:"sort_order"`
+	Status    string    `gorm:"size:20;default:'active'" json:"status"` // active | archived
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// UserGrowthProfile 用户成长资料：由 ExperienceEvent 汇总的权威快照（可从流水重建）。
+type UserGrowthProfile struct {
+	UserID         uint      `gorm:"primaryKey" json:"user_id"`
+	LifetimeXP     int64     `gorm:"default:0" json:"lifetime_xp"`
+	CurrentLevel   int       `gorm:"default:1" json:"current_level"`  // 当前等级编号
+	HighestLevel   int       `gorm:"default:1" json:"highest_level"`  // 达到过的最高等级
+	Public         bool      `gorm:"default:true" json:"public"`      // 是否公开展示等级
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// ExperienceEvent 不可变经验流水：dedupe_key 唯一保证幂等（重试/并发只落一条）。
+type ExperienceEvent struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	UserID     uint      `gorm:"index;not null" json:"user_id"`
+	RuleKey    string    `gorm:"size:60;not null" json:"rule_key"` // 如 achievement.unlocked / reading.chapter / admin.adjust
+	SourceType string    `gorm:"size:30" json:"source_type"`
+	SourceID   string    `gorm:"size:60" json:"source_id"`
+	DedupeKey  string    `gorm:"size:120;uniqueIndex;not null" json:"-"`
+	BaseXP     int       `json:"base_xp"`
+	FinalXP    int       `json:"final_xp"`
+	Reason     string    `gorm:"size:255" json:"reason,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// UserLevelHistory 升级/降级/人工调整历史。
+type UserLevelHistory struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"index;not null" json:"user_id"`
+	FromLevel int       `json:"from_level"`
+	ToLevel   int       `json:"to_level"`
+	Reason    string    `gorm:"size:120" json:"reason"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // BookFollow 用户关注书籍：关注后收到该书更新（新章节/状态）通知。由「书籍关注」插件建表。

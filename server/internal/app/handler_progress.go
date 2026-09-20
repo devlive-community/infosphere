@@ -92,6 +92,8 @@ func (a *App) SaveReadingProgress(c *gin.Context) {
 	readResult := a.DB.Where("user_id = ? AND doc_id = ?", u.ID, doc.ID).FirstOrCreate(&read)
 	if readResult.Error == nil && readResult.RowsAffected > 0 {
 		a.recordAchievementEvent(u.ID, "chapter.read", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("chapter.read:%d", read.ID))
+		// 成长经验：首次读章节 +5（成长插件启用时生效，dedupe 保证只结算一次）
+		a.RecordExperience(u.ID, "reading.chapter", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("reading.chapter:%d", read.ID), 5, "")
 	}
 	if dailyDelta > 0 {
 		bucket := currentTime().Unix() / 300

@@ -407,6 +407,25 @@ Authorization: Bearer <token>
 
 - 关注者在被关注书籍**发布新章节**（草稿→已发布）时收到 `book_update` 站内通知（作者本人除外），受用户「关注更新」通知偏好（`book_update`）开关控制。
 
+## 用户成长等级（「成长等级」插件，默认关闭）
+
+> `growth` 为 feature 插件（默认**关闭**，开关键 `growth_enabled`）。启用后建表、注册 `growth:*`/`experience:adjust` 权限并种子默认等级；禁用后本节端点与页面/入口一并停用（数据保留）。经验只由服务端权威事件产生（成就解锁奖励 `reward_xp`、首次读章节、管理员调整），流水不可变、`dedupe_key` 唯一保证幂等，等级由经验按 `min_xp` 阈值解析，升级写历史 + `growth` 通知。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/growth/settings` | 模块是否启用（不受插件守卫，禁用返回 `enabled:false`） | 公开 |
+| GET | `/growth/levels` | 等级阶梯（active） | 公开 |
+| GET | `/users/:username/growth` | 用户公开等级（用户隐藏则 `public:false`） | 公开 |
+| GET | `/users/me/growth` | 我的成长（等级/经验/进度/下一级） | `growth:read` |
+| GET | `/users/me/experience-events?page=` | 我的经验流水（分页） | `growth:read` |
+| PUT | `/users/me/growth/display` | `{public}` 切换是否公开等级 | `growth:update` |
+| GET | `/admin/growth/levels` | 全部等级（含归档） | `growth:manage` |
+| POST/PUT/DELETE | `/admin/growth/levels[/:id]` | 等级增删改（等级 1 不可删、阈值恒 0；编号唯一） | `growth:manage` |
+| POST | `/admin/growth/adjust` | `{username,xp,reason}` 人工加减经验（写审计，生成 adjustment 流水） | `experience:adjust` |
+
+- 成就定义新增 `reward_xp`（默认 0）：解锁时给作者奖励经验（每 user+achievement 只结算一次）。
+- 本次为 Phase 1（等级/流水/资料/成就联动/手工调整）；赛季、等级权益、版本快照、排行榜、追溯补算按 `user-level-system.md` 后续实现。
+
 ## 站内通知（登录用户）
 
 | 方法 | 路径 | 说明 | 权限 |

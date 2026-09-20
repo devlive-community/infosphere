@@ -32,6 +32,8 @@ const (
 	pluginBookTranslations = "book-translations"
 	pluginBookVersions     = "book-versions"
 	pluginBookFollow       = "book-follow"
+	pluginGrowth           = "growth"
+	cfgGrowthEnabled       = "growth_enabled"
 	// pluginKindRuntime 需要下载运行时依赖（二进制/镜像）的插件；pluginKindFeature 仅切换某项功能的启用/禁用。
 	pluginKindRuntime = "runtime"
 	pluginKindFeature = "feature"
@@ -107,6 +109,19 @@ var pluginRegistry = []pluginInfo{
 		Models:      []any{&models.BookFollow{}},
 		Tables:      []string{"book_follows"},
 		UserPerms:   []authz.Permission{authz.FollowRead, authz.FollowCreate, authz.FollowDelete},
+	},
+	{
+		Key:         pluginGrowth,
+		Name:        "成长等级",
+		Description: "用户成长等级：经验流水、等级、升级通知与公开徽标；经验来自成就解锁等权威事件。默认关闭，启用后建表、注册权限并种子默认等级；禁用后页面/入口/接口一并停用，数据保留。",
+		Kind:        pluginKindFeature,
+		Builtin:     true,
+		EnabledKey:  cfgGrowthEnabled,
+		Models:      []any{&models.LevelDefinition{}, &models.UserGrowthProfile{}, &models.ExperienceEvent{}, &models.UserLevelHistory{}},
+		Tables:      []string{"user_level_histories", "experience_events", "user_growth_profiles", "level_definitions"},
+		AdminPerms:  []authz.Permission{authz.GrowthManage, authz.ExperienceAdjust},
+		UserPerms:   []authz.Permission{authz.GrowthRead, authz.GrowthUpdate},
+		OnEnable:    func(a *App) error { a.seedDefaultLevels(); return nil },
 	},
 	{
 		Key:         pluginTags,

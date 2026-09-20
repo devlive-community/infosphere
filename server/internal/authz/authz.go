@@ -48,6 +48,12 @@ const (
 	FollowCreate Permission = "follow:create" // 关注书籍
 	FollowDelete Permission = "follow:delete" // 取消关注
 
+	// 用户成长等级（由「成长等级」插件动态注册）
+	GrowthRead        Permission = "growth:read"        // 查看自己的成长资料与经验流水
+	GrowthUpdate      Permission = "growth:update"      // 修改自己的等级展示偏好
+	GrowthManage      Permission = "growth:manage"      // 后台等级/设置管理（仅管理员）
+	ExperienceAdjust  Permission = "experience:adjust"  // 人工加减经验（仅管理员）
+
 	// 搜索
 	SearchRead Permission = "search:read" // 全局搜索书籍与章节（含匿名访问，仅公开内容）
 

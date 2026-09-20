@@ -40,6 +40,8 @@ func (a *App) emailPrefFor(u *models.User, ntype string) bool {
 		return p.Achievement
 	case "book_update":
 		return p.BookUpdate
+	case "growth":
+		return p.Growth
 	}
 	return false
 }
@@ -83,6 +85,7 @@ type notificationPrefs struct {
 	System        bool `json:"system"`
 	Achievement   bool `json:"achievement"`
 	BookUpdate    bool `json:"book_update"`
+	Growth        bool `json:"growth"`
 }
 
 type notificationPrefsUpdate struct {
@@ -93,19 +96,20 @@ type notificationPrefsUpdate struct {
 	System        bool  `json:"system"`
 	Achievement   *bool `json:"achievement"`
 	BookUpdate    *bool `json:"book_update"`
+	Growth        *bool `json:"growth"`
 }
 
 func prefsPayload(p models.UserNotificationPref) notificationPrefs {
 	return notificationPrefs{
 		Comment: p.Comment, Reaction: p.Reaction, Collaboration: p.Collaboration,
-		Moderation: p.Moderation, System: p.System, Achievement: p.Achievement, BookUpdate: p.BookUpdate,
+		Moderation: p.Moderation, System: p.System, Achievement: p.Achievement, BookUpdate: p.BookUpdate, Growth: p.Growth,
 	}
 }
 
 // GetNotificationPrefs GET /auth/notification-prefs（含总开关，供前端提示）
 func (a *App) GetNotificationPrefs(c *gin.Context) {
 	u := currentUser(c)
-	p := models.UserNotificationPref{UserID: u.ID, Comment: true, Reaction: true, Collaboration: true, Moderation: true, System: true, Achievement: true, BookUpdate: true}
+	p := models.UserNotificationPref{UserID: u.ID, Comment: true, Reaction: true, Collaboration: true, Moderation: true, System: true, Achievement: true, BookUpdate: true, Growth: true}
 	a.DB.Where("user_id = ?", u.ID).First(&p)
 	ok(c, gin.H{
 		"email_enabled": a.mailNotificationsEnabled(),
@@ -121,7 +125,7 @@ func (a *App) UpdateNotificationPrefs(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
-	existing := models.UserNotificationPref{UserID: u.ID, Achievement: true, BookUpdate: true}
+	existing := models.UserNotificationPref{UserID: u.ID, Achievement: true, BookUpdate: true, Growth: true}
 	a.DB.Where("user_id = ?", u.ID).First(&existing)
 	achievement := existing.Achievement
 	if req.Achievement != nil {
@@ -131,10 +135,14 @@ func (a *App) UpdateNotificationPrefs(c *gin.Context) {
 	if req.BookUpdate != nil {
 		bookUpdate = *req.BookUpdate
 	}
+	growth := existing.Growth
+	if req.Growth != nil {
+		growth = *req.Growth
+	}
 	p := models.UserNotificationPref{
 		UserID: u.ID, Comment: req.Comment, Reaction: req.Reaction,
 		Collaboration: req.Collaboration, Moderation: req.Moderation, System: req.System,
-		Achievement: achievement, BookUpdate: bookUpdate,
+		Achievement: achievement, BookUpdate: bookUpdate, Growth: growth,
 	}
 	a.DB.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, UpdateAll: true}).Create(&p)
 	ok(c, gin.H{"prefs": prefsPayload(p)})

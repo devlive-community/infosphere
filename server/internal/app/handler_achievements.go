@@ -937,6 +937,11 @@ func (a *App) evaluateAchievementForUser(userID uint, definition models.Achievem
 		a.Notify(userID, "achievement", fmt.Sprintf("已解锁成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
 		a.DB.Model(&models.UserAchievement{}).Where("user_id = ? AND achievement_id = ?", userID, definition.ID).Update("notified_at", now)
 	}
+	// 成长联动：成就解锁奖励经验（每 user+achievement 只结算一次；成长插件启用时生效）
+	if createdGrant && definition.RewardXP > 0 {
+		a.RecordExperience(userID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
+			fmt.Sprintf("achievement.unlocked:%d:%d", userID, definition.ID), definition.RewardXP, "")
+	}
 	return nil
 }
 
@@ -1278,6 +1283,11 @@ func (a *App) AdminGrantAchievement(c *gin.Context) {
 	a.recordAudit(c, "achievement.granted", "achievement_grant", auditID(grant.ID), definition.Name, map[string]any{"user_id": user.ID, "achievement_id": definition.ID, "created": created, "reactivated": reactivated})
 	if (created || reactivated) && a.achievementSettings().NotificationsEnabled {
 		a.Notify(user.ID, "achievement", fmt.Sprintf("已获得成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
+	}
+	// 成长联动：手工授予成就同样奖励经验（dedupe 保证与自动解锁不重复）
+	if (created || reactivated) && definition.RewardXP > 0 {
+		a.RecordExperience(user.ID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
+			fmt.Sprintf("achievement.unlocked:%d:%d", user.ID, definition.ID), definition.RewardXP, "")
 	}
 	ok(c, grant)
 }

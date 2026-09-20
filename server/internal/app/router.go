@@ -142,6 +142,9 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/users/:username", a.GetUserProfile)
 			public.GET("/users/:username/books", a.GetUserBooks)
 			public.GET("/users/:username/achievements", a.RequireFeaturePlugin(pluginAchievements), a.PublicUserAchievements)
+			public.GET("/growth/settings", a.GrowthSettings)
+			public.GET("/growth/levels", a.RequireFeaturePlugin(pluginGrowth), a.GrowthLevels)
+			public.GET("/users/:username/growth", a.RequireFeaturePlugin(pluginGrowth), a.PublicUserGrowth)
 			public.GET("/achievements/settings", a.PublicAchievementSettings)
 
 			public.GET("/books", a.ListBooks) // mine=true 时要求登录
@@ -268,6 +271,11 @@ func (a *App) Router() *gin.Engine {
 		books.GET("/:id/follow/me", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowRead), a.MyBookFollow)
 		api.GET("/users/me/follows", a.RequireAuth(), a.RequireFeaturePlugin(pluginBookFollow), a.RequirePermission(authz.FollowRead), a.MyFollows)
 
+		// ── 用户成长等级（growth:*，「成长等级」插件守卫） ──
+		api.GET("/users/me/growth", a.RequireAuth(), a.RequireFeaturePlugin(pluginGrowth), a.RequirePermission(authz.GrowthRead), a.MyGrowth)
+		api.GET("/users/me/experience-events", a.RequireAuth(), a.RequireFeaturePlugin(pluginGrowth), a.RequirePermission(authz.GrowthRead), a.MyExperienceEvents)
+		api.PUT("/users/me/growth/display", a.RequireAuth(), a.RequireFeaturePlugin(pluginGrowth), a.RequirePermission(authz.GrowthUpdate), a.UpdateMyGrowthDisplay)
+
 		// ── 阅读进度（user 语义，读自己写自己） ──
 		api.GET("/users/me/reading", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReading)
 		api.GET("/users/me/reading-stats", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReadingStats)
@@ -391,6 +399,16 @@ func (a *App) Router() *gin.Engine {
 				achAdmin.GET("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminListAchievementGrants)
 				achAdmin.POST("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminGrantAchievement)
 				achAdmin.POST("/admin/achievement-grants/:id/revoke", a.RequirePermission(authz.AchievementGrant), a.AdminRevokeAchievement)
+			}
+
+			// 成长等级管理（「成长等级」插件守卫）
+			growthAdmin := admin.Group("", a.RequireFeaturePlugin(pluginGrowth))
+			{
+				growthAdmin.GET("/admin/growth/levels", a.RequirePermission(authz.GrowthManage), a.AdminListLevels)
+				growthAdmin.POST("/admin/growth/levels", a.RequirePermission(authz.GrowthManage), a.AdminCreateLevel)
+				growthAdmin.PUT("/admin/growth/levels/:id", a.RequirePermission(authz.GrowthManage), a.AdminUpdateLevel)
+				growthAdmin.DELETE("/admin/growth/levels/:id", a.RequirePermission(authz.GrowthManage), a.AdminDeleteLevel)
+				growthAdmin.POST("/admin/growth/adjust", a.RequirePermission(authz.ExperienceAdjust), a.AdminAdjustExperience)
 			}
 		}
 
