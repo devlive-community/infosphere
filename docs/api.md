@@ -422,9 +422,13 @@ Authorization: Bearer <token>
 | GET | `/admin/growth/levels` | 全部等级（含归档） | `growth:manage` |
 | POST/PUT/DELETE | `/admin/growth/levels[/:id]` | 等级增删改（等级 1 不可删、阈值恒 0；编号唯一） | `growth:manage` |
 | POST | `/admin/growth/adjust` | `{username,xp,reason}` 人工加减经验（写审计，生成 adjustment 流水） | `experience:adjust` |
+| GET | `/admin/growth/rules` | 经验规则列表 | `growth:manage` |
+| PUT | `/admin/growth/rules/:id` | 更新规则 `{base_xp,daily_cap,enabled}` | `growth:manage` |
 
 - 成就定义新增 `reward_xp`（默认 0）：解锁时给作者奖励经验（每 user+achievement 只结算一次）。
-- 本次为 Phase 1（等级/流水/资料/成就联动/手工调整）；赛季、等级权益、版本快照、排行榜、追溯补算按 `user-level-system.md` 后续实现。
+- **经验规则**（`ExperienceRule`）：固定事件（`reading.chapter`、`creation.chapter_published`、`community.comment`）的经验金额与**每人每日上限**由规则表配置，启用时种子默认规则；成就/管理员调整不走规则（金额分别为 reward_xp / 手工值）。
+- 已接经验来源：首次读章节、章节发布（作者）、发表评论、成就解锁、管理员调整。公开主页头部显示等级徽标（用户可隐藏）。
+- 后续（Phase 3+）：更多来源与创作/社区权威事件、`growth.*` 成就指标双向联动、赛季、等级权益与会员合并、排行榜、追溯补算。见 `user-level-system.md`。
 
 ## 站内通知（登录用户）
 

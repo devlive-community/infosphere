@@ -500,6 +500,19 @@ type UserGrowthProfile struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// ExperienceRule 经验规则：可配置各事件类型的基础经验与每日上限（管理员在成长后台维护）。
+type ExperienceRule struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	RuleKey   string    `gorm:"size:60;uniqueIndex;not null" json:"rule_key"` // 如 reading.chapter / creation.chapter_published / community.comment
+	Label     string    `gorm:"size:120" json:"label"`
+	BaseXP    int       `gorm:"default:0" json:"base_xp"`
+	DailyCap  int       `gorm:"default:0" json:"daily_cap"` // 0=不限；每人每天该规则经验上限
+	Enabled   bool      `gorm:"default:true" json:"enabled"`
+	SortOrder int       `gorm:"default:0" json:"sort_order"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // ExperienceEvent 不可变经验流水：dedupe_key 唯一保证幂等（重试/并发只落一条）。
 type ExperienceEvent struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`

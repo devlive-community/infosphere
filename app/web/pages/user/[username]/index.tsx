@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
-import { formatNumber } from '@/lib/api'
+import { api, formatNumber } from '@/lib/api'
+import { useApp } from '@/lib/auth'
 import { resolveMediaUrl } from '@/lib/media'
 import { Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import Seo from '@/components/Seo'
@@ -75,6 +76,25 @@ function joinYear(input: string | null | undefined, t: (key: string, vars?: Reco
   return t('user.home.joinedAt', { year: String(d.getFullYear()), month: String(d.getMonth() + 1) })
 }
 
+// ProfileLevelBadge 公开主页头部的等级徽标（成长插件启用且用户未隐藏时显示）。
+function ProfileLevelBadge({ username }: { username: string }) {
+  const { site } = useApp()
+  const enabled = (site.feature_plugins || []).includes('growth')
+  const [level, setLevel] = useState<{ name: string; icon_type?: string; icon_value?: string } | null>(null)
+  useEffect(() => {
+    if (!enabled) return
+    api<{ public?: boolean; level?: { name: string; icon_type?: string; icon_value?: string } }>(`/users/${encodeURIComponent(username)}/growth`)
+      .then((r) => { if (r.public !== false && r.level) setLevel(r.level) })
+      .catch(() => { /* 忽略 */ })
+  }, [username, enabled])
+  if (!enabled || !level) return null
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
+      {level.icon_type !== 'image' && level.icon_type !== 'svg' && <i className={`fa-solid ${level.icon_value || 'fa-star'}`} aria-hidden="true" />}{level.name}
+    </span>
+  )
+}
+
 function AuthorProfileCard({ profile, siteUrl, share, t }: { profile: UserProfile; siteUrl: string; share: () => void; t: (key: string, vars?: Record<string, string>) => string }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -90,6 +110,7 @@ function AuthorProfileCard({ profile, siteUrl, share, t }: { profile: UserProfil
             {profile.role === 'admin' && (
               <span className="inline-flex items-center rounded-md bg-primary-50 px-2.5 py-1 text-sm font-medium text-primary-700 ring-1 ring-inset ring-primary-200">{t('user.home.admin')}</span>
             )}
+            <ProfileLevelBadge username={profile.username} />
           </h1>
           {profile.nickname && <p className="mt-1 text-sm text-slate-400">@{profile.username}</p>}
           {profile.bio && <p className="mt-3 max-w-lg text-[15px] leading-7 text-slate-500">{profile.bio}</p>}

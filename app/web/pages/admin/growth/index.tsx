@@ -4,7 +4,7 @@ import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
 import IconPicker from '@/components/IconPicker'
 import { api } from '@/lib/api'
-import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Select, useFeedback } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Select, Switch, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
 interface Level {
@@ -20,6 +20,7 @@ interface Level {
 }
 
 interface LevelForm { id?: number; level: number; name: string; description: string; icon_type: string; icon_value: string; color: string; min_xp: number; status: string }
+interface Rule { id: number; rule_key: string; label: string; base_xp: number; daily_cap: number; enabled: boolean }
 
 export default function AdminGrowth() {
   return <FeatureGate feature="growth"><AdminGrowthInner /></FeatureGate>
@@ -35,11 +36,27 @@ function AdminGrowthInner() {
   const [adjXP, setAdjXP] = useState('')
   const [adjReason, setAdjReason] = useState('')
   const [adjusting, setAdjusting] = useState(false)
+  const [rules, setRules] = useState<Rule[] | null>(null)
+  const [savingRule, setSavingRule] = useState<number | null>(null)
 
   const load = useCallback(() => {
     api<{ items: Level[] }>('/admin/growth/levels').then((r) => setLevels(r.items || [])).catch((e) => showToast({ title: t('admin.growth.loadFailed'), message: (e as Error).message, tone: 'error' }))
+    api<{ items: Rule[] }>('/admin/growth/rules').then((r) => setRules(r.items || [])).catch(() => {})
   }, [showToast, t])
   useEffect(() => { load() }, [load])
+
+  async function saveRule(rule: Rule) {
+    setSavingRule(rule.id)
+    try {
+      await api(`/admin/growth/rules/${rule.id}`, { method: 'PUT', body: { base_xp: rule.base_xp, daily_cap: rule.daily_cap, enabled: rule.enabled } })
+      showToast({ message: t('admin.growth.ruleSaved'), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('admin.growth.saveFailed'), message: (e as Error).message, tone: 'error' })
+    } finally { setSavingRule(null) }
+  }
+  function patchRule(id: number, patch: Partial<Rule>) {
+    setRules((rs) => (rs || []).map((r) => (r.id === id ? { ...r, ...patch } : r)))
+  }
 
   async function save() {
     if (!form || !form.name.trim()) return
@@ -125,6 +142,35 @@ function AdminGrowthInner() {
           </div>
         </Card>
       </div>
+
+      {/* 经验规则 */}
+      <Card className="mt-6 p-5">
+        <h2 className="font-bold text-slate-900">{t('admin.growth.rulesTitle')}</h2>
+        <p className="mt-1 text-xs text-slate-400">{t('admin.growth.rulesHint')}</p>
+        {rules === null ? <Loading className="py-6" /> : rules.length === 0 ? (
+          <div className="mt-3"><EmptyState>{t('admin.growth.rulesEmpty')}</EmptyState></div>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-[640px] w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs text-slate-500">
+                <tr><th className="px-4 py-2.5">{t('admin.growth.rule.event')}</th><th className="px-4 py-2.5">{t('admin.growth.rule.baseXp')}</th><th className="px-4 py-2.5">{t('admin.growth.rule.dailyCap')}</th><th className="px-4 py-2.5">{t('admin.growth.rule.enabled')}</th><th className="px-4 py-2.5 text-right">{t('admin.growth.col.action')}</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rules.map((r) => (
+                  <tr key={r.id}>
+                    <td className="px-4 py-2.5"><span className="block font-medium text-slate-800">{r.label || r.rule_key}</span><span className="font-mono text-xs text-slate-400">{r.rule_key}</span></td>
+                    <td className="px-4 py-2.5"><span className="inline-block w-24"><Input type="number" min={0} value={r.base_xp} onChange={(e) => patchRule(r.id, { base_xp: Math.max(0, Number(e.target.value) || 0) })} /></span></td>
+                    <td className="px-4 py-2.5"><span className="inline-block w-24"><Input type="number" min={0} value={r.daily_cap} onChange={(e) => patchRule(r.id, { daily_cap: Math.max(0, Number(e.target.value) || 0) })} /></span></td>
+                    <td className="px-4 py-2.5"><Switch ariaLabel={r.label} checked={r.enabled} onChange={(v) => patchRule(r.id, { enabled: v })} /></td>
+                    <td className="px-4 py-2.5 text-right"><Button size="sm" loading={savingRule === r.id} onClick={() => saveRule(r)}>{t('common.actions.save')}</Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-slate-400">{t('admin.growth.rule.capNote')}</p>
+          </div>
+        )}
+      </Card>
 
       <Modal open={form !== null} onClose={() => setForm(null)} title={form?.id ? t('admin.growth.editLevel') : t('admin.growth.addLevel')}
         footer={<><Button variant="outline" onClick={() => setForm(null)}>{t('common.actions.cancel')}</Button><Button loading={saving} onClick={save}>{t('common.actions.save')}</Button></>}>

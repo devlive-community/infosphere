@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strconv"
 	"testing"
 
 	"infosphere/server/internal/models"
@@ -56,6 +57,34 @@ func TestGrowthExperienceAndLeveling(t *testing.T) {
 		t.Fatalf("禁用后不应结算，实际 xp=%d", p.LifetimeXP)
 	}
 	// 恢复全局插件状态
+	_ = app.setFeaturePluginEnabled(pluginInfoByKey(pluginGrowth), true)
+	app.syncPluginPermissions()
+}
+
+// 经验规则：按 base_xp 发放、执行每日上限、禁用规则不发。
+func TestExperienceRuleAndDailyCap(t *testing.T) {
+	app, user, db := newContentImportTestApp(t)
+	app.Notifications = newNotificationHub()
+	_ = app.setSetting(cfgGrowthEnabled, "true", "test")
+	app.syncPluginState()
+	app.seedDefaultLevels()
+	// 自定规则：base 5、每日上限 10
+	db.Create(&models.ExperienceRule{RuleKey: "test.rule", Label: "T", BaseXP: 5, DailyCap: 10, Enabled: true})
+
+	for i := 0; i < 4; i++ {
+		app.awardExperience(user.ID, "test.rule", "x", "1", "cap-"+strconv.Itoa(i))
+	}
+	if p := app.growthProfile(user.ID); p.LifetimeXP != 10 {
+		t.Fatalf("每日上限应封顶在 10，实际 %d", p.LifetimeXP)
+	}
+
+	// 禁用规则不发经验
+	db.Model(&models.ExperienceRule{}).Where("rule_key = ?", "test.rule").Update("enabled", false)
+	app.awardExperience(user.ID, "test.rule", "x", "1", "disabled-1")
+	if p := app.growthProfile(user.ID); p.LifetimeXP != 10 {
+		t.Fatalf("禁用规则不应发经验，实际 %d", p.LifetimeXP)
+	}
+
 	_ = app.setFeaturePluginEnabled(pluginInfoByKey(pluginGrowth), true)
 	app.syncPluginPermissions()
 }

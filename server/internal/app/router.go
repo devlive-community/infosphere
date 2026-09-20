@@ -409,6 +409,8 @@ func (a *App) Router() *gin.Engine {
 				growthAdmin.PUT("/admin/growth/levels/:id", a.RequirePermission(authz.GrowthManage), a.AdminUpdateLevel)
 				growthAdmin.DELETE("/admin/growth/levels/:id", a.RequirePermission(authz.GrowthManage), a.AdminDeleteLevel)
 				growthAdmin.POST("/admin/growth/adjust", a.RequirePermission(authz.ExperienceAdjust), a.AdminAdjustExperience)
+				growthAdmin.GET("/admin/growth/rules", a.RequirePermission(authz.GrowthManage), a.AdminListExperienceRules)
+				growthAdmin.PUT("/admin/growth/rules/:id", a.RequirePermission(authz.GrowthManage), a.AdminUpdateExperienceRule)
 			}
 		}
 

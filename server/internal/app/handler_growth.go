@@ -33,6 +33,55 @@ func (a *App) seedDefaultLevels() {
 	}
 }
 
+// seedExperienceRules 首次启用时种子默认经验规则（已存在则跳过）。
+func (a *App) seedExperienceRules() {
+	var count int64
+	a.DB.Model(&models.ExperienceRule{}).Count(&count)
+	if count > 0 {
+		return
+	}
+	defaults := []models.ExperienceRule{
+		{RuleKey: "reading.chapter", Label: "阅读章节（首次）", BaseXP: 5, DailyCap: 50, Enabled: true, SortOrder: 1},
+		{RuleKey: "creation.chapter_published", Label: "发布章节", BaseXP: 10, DailyCap: 100, Enabled: true, SortOrder: 2},
+		{RuleKey: "community.comment", Label: "发表评论", BaseXP: 3, DailyCap: 30, Enabled: true, SortOrder: 3},
+	}
+	for i := range defaults {
+		a.DB.Create(&defaults[i])
+	}
+}
+
+// experienceRule 读取经验规则。
+func (a *App) experienceRule(ruleKey string) (models.ExperienceRule, bool) {
+	var r models.ExperienceRule
+	if a.DB.Where("rule_key = ?", ruleKey).First(&r).Error != nil {
+		return r, false
+	}
+	return r, true
+}
+
+// awardExperience 按「经验规则」给固定事件发经验：读取 base_xp，并执行每人每日上限。
+// 用于 reading/creation/community 等由规则决定金额的事件（成就/管理员调整用 RecordExperience 直接给金额）。
+func (a *App) awardExperience(userID uint, ruleKey, sourceType, sourceID, dedupeKey string) {
+	if !a.pluginEnabled(pluginGrowth) || userID == 0 {
+		return
+	}
+	r, ok := a.experienceRule(ruleKey)
+	if !ok || !r.Enabled || r.BaseXP == 0 {
+		return
+	}
+	if r.DailyCap > 0 {
+		var todaySum int64
+		start := analyticsDayStart(currentTime())
+		a.DB.Model(&models.ExperienceEvent{}).
+			Where("user_id = ? AND rule_key = ? AND created_at >= ?", userID, ruleKey, start).
+			Select("COALESCE(SUM(final_xp),0)").Scan(&todaySum)
+		if todaySum >= int64(r.DailyCap) {
+			return // 已达每日上限，不再入账
+		}
+	}
+	a.RecordExperience(userID, ruleKey, sourceType, sourceID, dedupeKey, r.BaseXP, "")
+}
+
 // resolveLevel 按经验总量解析当前等级编号（取 min_xp<=xp 的最高 active 等级；无则 1）。
 func (a *App) resolveLevel(xp int64) int {
 	var lvl models.LevelDefinition
@@ -297,6 +346,48 @@ func (a *App) AdminDeleteLevel(c *gin.Context) {
 	a.DB.Delete(&lvl)
 	a.recordAudit(c, "growth.level_deleted", "growth", strconv.Itoa(lvl.Level), lvl.Name, changedFields("deleted"))
 	ok(c, gin.H{"message": "已删除"})
+}
+
+// AdminListExperienceRules GET /admin/growth/rules 经验规则列表
+func (a *App) AdminListExperienceRules(c *gin.Context) {
+	rules := []models.ExperienceRule{}
+	a.DB.Order("sort_order ASC, id ASC").Find(&rules)
+	ok(c, gin.H{"items": rules})
+}
+
+// AdminUpdateExperienceRule PUT /admin/growth/rules/:id 更新经验规则（base_xp / daily_cap / enabled）
+func (a *App) AdminUpdateExperienceRule(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	var rule models.ExperienceRule
+	if err := a.DB.First(&rule, id).Error; err != nil {
+		fail(c, http.StatusNotFound, "规则不存在")
+		return
+	}
+	var req struct {
+		BaseXP   int  `json:"base_xp"`
+		DailyCap int  `json:"daily_cap"`
+		Enabled  bool `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	if req.BaseXP < 0 {
+		req.BaseXP = 0
+	}
+	if req.DailyCap < 0 {
+		req.DailyCap = 0
+	}
+	if err := a.DB.Model(&rule).Updates(map[string]any{"base_xp": req.BaseXP, "daily_cap": req.DailyCap, "enabled": req.Enabled}).Error; err != nil {
+		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
+		return
+	}
+	a.recordAudit(c, "growth.rule_updated", "growth", rule.RuleKey, rule.Label, changedFields("base_xp", "daily_cap", "enabled"))
+	ok(c, rule)
 }
 
 // AdminAdjustExperience POST /admin/growth/adjust 人工加减经验（必须写原因，生成 adjustment 流水）
