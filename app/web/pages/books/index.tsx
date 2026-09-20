@@ -66,7 +66,7 @@ export default function MyBooks() {
   const siteName = site.site_name || 'InfoSphere'
   const [status, setStatus] = useState('')
   const scope: 'owned' | 'collaborating' = router.query.scope === 'collaborating' ? 'collaborating' : 'owned'
-  const { ref: gridRef, pageSize } = useGridPageSize({ minItemRem: 15, rows: 3, fallback: 9 })
+  const { ref: gridRef, pageSize, ready } = useGridPageSize({ minItemRem: 15, rows: 3, fallback: 9 })
   const [page, setPage] = useState(1)
   const [keyword, setKeyword] = useState('')
   const [sort, setSort] = useState<SortKey>('updated')
@@ -95,7 +95,7 @@ export default function MyBooks() {
     }
   }
 
-  useEffect(() => { if (user && router.isReady) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, router.isReady, page, scope, status, keyword, sort, pageSize])
+  useEffect(() => { if (user && router.isReady && ready) load() /* eslint-disable-line react-hooks/exhaustive-deps */ }, [user, router.isReady, ready, page, scope, status, keyword, sort, pageSize])
 
   function changeScope(next: 'owned' | 'collaborating') {
     setStatus('')

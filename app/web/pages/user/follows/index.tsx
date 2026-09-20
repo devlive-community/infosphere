@@ -25,19 +25,19 @@ function MyFollowsInner() {
   const { site } = useApp()
   const { t } = useTranslation()
   const siteName = site.site_name || 'InfoSphere'
-  const { ref: gridRef, pageSize } = useGridPageSize({ minItemRem: 15, rows: 3, fallback: 9 })
+  const { ref: gridRef, pageSize, ready } = useGridPageSize({ minItemRem: 15, rows: 3, fallback: 9 })
   const [page, setPage] = useState(1)
   const [data, setData] = useState<{ items: FollowItem[]; total: number; page: number; page_size: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !ready) return
     setLoading(true)
     api<{ items: FollowItem[]; total: number; page: number; page_size: number }>('/users/me/follows', { params: { page, page_size: pageSize } })
       .then(setData)
       .catch(() => setData({ items: [], total: 0, page: 1, page_size: pageSize }))
       .finally(() => setLoading(false))
-  }, [user, page, pageSize])
+  }, [user, page, pageSize, ready])
 
   if (!user) return <Loading className="min-h-[60vh]" label={t('account.common.verifying')} />
 
@@ -51,20 +51,22 @@ function MyFollowsInner() {
         </div>
         <MyLibraryTabs active="follows" />
 
-        {loading || data === null ? (
-          <Loading label={t('follows.loading')} />
-        ) : data.total === 0 ? (
-          <EmptyState>{t('follows.empty')}</EmptyState>
-        ) : (
-          <>
-            <div ref={gridRef} className="grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
-              {data.items.map(({ book }) => (
-                <BookCard key={book.id} book={book} />
-              ))}
-            </div>
-            <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
-          </>
-        )}
+        <div ref={gridRef}>
+          {loading || data === null ? (
+            <Loading label={t('follows.loading')} />
+          ) : data.total === 0 ? (
+            <EmptyState>{t('follows.empty')}</EmptyState>
+          ) : (
+            <>
+              <div className="grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
+                {data.items.map(({ book }) => (
+                  <BookCard key={book.id} book={book} />
+                ))}
+              </div>
+              <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
+            </>
+          )}
+        </div>
       </Container>
     </>
   )
