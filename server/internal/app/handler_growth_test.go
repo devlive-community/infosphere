@@ -61,6 +61,44 @@ func TestGrowthExperienceAndLeveling(t *testing.T) {
 	app.syncPluginPermissions()
 }
 
+// 新增成就指标：growth.total_xp / growth.current_level / reading.books_completed / creator.published_words。
+func TestNewAchievementMetrics(t *testing.T) {
+	app, user, db := newContentImportTestApp(t)
+	app.Notifications = newNotificationHub()
+	_ = app.setSetting(cfgAchievementsEnabled, "true", "test")
+	_ = app.setSetting(cfgGrowthEnabled, "true", "test")
+	app.syncPluginState()
+	app.seedDefaultLevels()
+
+	// 成长：150 经验 → Lv.2
+	app.RecordExperience(user.ID, "test", "x", "1", "d1", 150, "")
+	if v, _ := app.evaluateAchievementMetric(user.ID, models.AchievementRule{MetricKey: "growth.total_xp", WindowType: "lifetime"}); v != 150 {
+		t.Fatalf("growth.total_xp 应为 150，实际 %d", v)
+	}
+	if v, _ := app.evaluateAchievementMetric(user.ID, models.AchievementRule{MetricKey: "growth.current_level", WindowType: "lifetime"}); v != 2 {
+		t.Fatalf("growth.current_level 应为 2，实际 %d", v)
+	}
+
+	// 创作字数：一本书两章已发布，正文各若干字
+	book := models.Book{Title: "B", Slug: "words-book", UserID: user.ID, Status: "published", IsPublic: true}
+	db.Create(&book)
+	db.Create(&models.Document{BookID: book.ID, UserID: user.ID, Title: "c1", Slug: "c1", Status: "published", Content: "12345"})
+	db.Create(&models.Document{BookID: book.ID, UserID: user.ID, Title: "c2", Slug: "c2", Status: "published", Content: "abc"})
+	if v, _ := app.evaluateAchievementMetric(user.ID, models.AchievementRule{MetricKey: "creator.published_words", WindowType: "lifetime"}); v != 8 {
+		t.Fatalf("creator.published_words 应为 8，实际 %d", v)
+	}
+
+	// 读完书籍：读过该书全部已发布章节
+	var docs []models.Document
+	db.Where("book_id = ?", book.ID).Find(&docs)
+	for _, d := range docs {
+		db.Create(&models.ReadChapter{UserID: user.ID, BookID: book.ID, DocID: d.ID})
+	}
+	if v, _ := app.evaluateAchievementMetric(user.ID, models.AchievementRule{MetricKey: "reading.books_completed", WindowType: "lifetime"}); v != 1 {
+		t.Fatalf("reading.books_completed 应为 1，实际 %d", v)
+	}
+}
+
 // 经验规则：按 base_xp 发放、执行每日上限、禁用规则不发。
 func TestExperienceRuleAndDailyCap(t *testing.T) {
 	app, user, db := newContentImportTestApp(t)

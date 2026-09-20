@@ -141,6 +141,10 @@ var achievementMetrics = []achievementMetric{
 	{Key: "creator.comments_received", Label: "作品获得评论", Category: "creation", Description: "本人作品收到的已发布评论数", Aggregation: "count", Unit: "条", Windows: []string{"lifetime", "rolling_days"}, AllowedFilters: []string{"replies_only"}},
 	{Key: "creator.published_books", Label: "发布书籍", Category: "creation", Description: "本人已发布状态的书籍数量", Aggregation: "count", Unit: "本", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "creator.tags_used", Label: "使用过的标签", Category: "creation", Description: "本人书籍上使用过的不同标签数", Aggregation: "distinct_count", Unit: "个", Windows: []string{"lifetime"}},
+	{Key: "creator.published_words", Label: "累计发布字数", Category: "creation", Description: "本人已发布章节正文的累计字符数", Aggregation: "sum", Unit: "字", Windows: []string{"lifetime"}},
+	{Key: "reading.books_completed", Label: "读完书籍", Category: "reading", Description: "已读完（读过全部已发布章节）的书籍数", Aggregation: "distinct_count", Unit: "本", Windows: []string{"lifetime"}},
+	{Key: "growth.total_xp", Label: "累计成长经验", Category: "account", Description: "成长系统累计经验（需启用成长插件）", Aggregation: "current", Unit: "经验", Windows: []string{"lifetime"}},
+	{Key: "growth.current_level", Label: "达到成长等级", Category: "account", Description: "当前成长等级编号（需启用成长插件）", Aggregation: "current", Unit: "级", Windows: []string{"lifetime"}},
 	{Key: "account.age_days", Label: "账号创建天数", Category: "account", Description: "从注册日期到当前的自然天数", Aggregation: "current", Unit: "天", Windows: []string{"lifetime"}},
 	{Key: "account.invited_users", Label: "邀请注册用户", Category: "account", Description: "通过本人邀请码注册的用户数", Aggregation: "count", Unit: "人", Windows: []string{"lifetime", "rolling_days"}},
 	{Key: "account.oauth_bindings", Label: "绑定第三方账号", Category: "account", Description: "当前绑定的 OAuth 提供方数量", Aggregation: "count", Unit: "个", Windows: []string{"lifetime"}},
@@ -770,6 +774,33 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 				Joins("JOIN books ON books.id = book_tags.book_id AND books.deleted_at IS NULL").
 				Where("books.user_id = ?", userID).
 				Distinct("book_tags.tag_id").Count(&value).Error
+		}
+	case "creator.published_words":
+		err = a.DB.Model(&models.Document{}).
+			Joins("JOIN books ON books.id = documents.book_id AND books.deleted_at IS NULL").
+			Where("books.user_id = ? AND documents.status = ? AND documents.deleted_at IS NULL", userID, "published").
+			Select("COALESCE(SUM(LENGTH(documents.content)), 0)").Scan(&value).Error
+	case "reading.books_completed":
+		err = a.DB.Raw(`SELECT COUNT(*) FROM (
+			SELECT rc.book_id FROM read_chapters rc
+			JOIN documents d ON d.id = rc.doc_id AND d.deleted_at IS NULL AND d.status = ?
+			WHERE rc.user_id = ?
+			GROUP BY rc.book_id
+			HAVING COUNT(DISTINCT rc.doc_id) >= (
+				SELECT COUNT(*) FROM documents pd WHERE pd.book_id = rc.book_id AND pd.deleted_at IS NULL AND pd.status = ?
+			)
+		) completed`, "published", userID, "published").Scan(&value).Error
+	case "growth.total_xp", "growth.current_level":
+		// 成长指标：需启用成长插件且表存在，否则记 0
+		if a.pluginEnabled(pluginGrowth) && a.DB.Migrator().HasTable("user_growth_profiles") {
+			var p models.UserGrowthProfile
+			if a.DB.Where("user_id = ?", userID).First(&p).Error == nil {
+				if rule.MetricKey == "growth.total_xp" {
+					value = p.LifetimeXP
+				} else {
+					value = int64(p.CurrentLevel)
+				}
+			}
 		}
 	case "creator.views_received":
 		q := a.DB.Model(&models.Book{}).Where("user_id = ?", userID)

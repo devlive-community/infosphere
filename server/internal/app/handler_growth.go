@@ -117,6 +117,8 @@ func (a *App) recalcGrowthProfile(userID uint) {
 		if newLevel > oldLevel {
 			a.Notify(userID, "growth", fmt.Sprintf("成长升级：Lv.%d", newLevel), map[string]any{"link": "/user/growth"})
 		}
+		// 成长→成就 双向联动：等级变化写成就事件，触发 growth.* 指标成就重新评估（每级去重）
+		a.recordAchievementEvent(userID, "growth.level_changed", "user", strconv.FormatUint(uint64(userID), 10), fmt.Sprintf("growth.level:%d:%d", userID, newLevel))
 	}
 }
 
