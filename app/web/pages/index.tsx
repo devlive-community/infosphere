@@ -9,6 +9,7 @@ import Container from '@/components/Container'
 import BookCard from '@/components/BookCard'
 import CoverImage from '@/components/CoverImage'
 import UserAvatar from '@/components/UserAvatar'
+import ResourceIcon from '@/components/ResourceIcon'
 import { formatNumber } from '@/lib/api'
 import { BookIcon, ChevronRightIcon, CloudIcon, CodeIcon, EyeIcon, FileTextIcon, ShieldIcon, UsersIcon } from '@/components/icons'
 import { useTranslation } from '@/lib/i18n'
@@ -207,7 +208,7 @@ export default function Home({ site, siteUrl, stats, latest, hot, trending, tags
             {(tags || []).slice(0, 8).map((tag, i) => (
               <Link key={tag.id} href={`/explore?tag=${encodeURIComponent(tag.slug)}`}
                 className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center transition-colors hover:border-primary-200 hover:bg-primary-50/40">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600"><i className={`fa-solid ${TOPIC_ICONS[i % TOPIC_ICONS.length]} text-lg`} aria-hidden="true" /></span>
+                <ResourceIcon iconType={tag.icon_type} iconValue={tag.icon_value} name={tag.name} fallback={TOPIC_ICONS[i % TOPIC_ICONS.length]} className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-primary-50 text-lg text-primary-600" />
                 <span className="w-full truncate text-sm font-medium text-slate-800">{tag.name}</span>
                 <span className="text-xs text-slate-400">{t('home.topics.count', { n: tag.book_count || 0 })}</span>
               </Link>
