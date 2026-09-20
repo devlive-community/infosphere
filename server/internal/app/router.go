@@ -339,6 +339,8 @@ func (a *App) Router() *gin.Engine {
 			admin.PUT("/site", a.RequirePermission(authz.SiteUpdate), a.UpdateSiteConfig)
 			admin.GET("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminGetOAuth)
 			admin.PUT("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminSaveOAuth)
+			admin.GET("/logs", a.RequirePermission(authz.SiteUpdate), a.AdminGetLogConfig)
+			admin.PUT("/logs", a.RequirePermission(authz.SiteUpdate), a.AdminUpdateLogConfig)
 			admin.GET("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminGetMail)
 			admin.PUT("/mail", a.RequirePermission(authz.SiteUpdate), a.AdminSaveMail)
 			admin.GET("/translation", a.RequirePermission(authz.SiteUpdate), a.AdminGetTranslation)

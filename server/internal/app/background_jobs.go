@@ -198,6 +198,7 @@ func (a *App) runMaintenanceCleanup(ctx context.Context, _ json.RawMessage) erro
 	if err := a.purgeScheduledAccountDeletions(now); err != nil {
 		return fmt.Errorf("清理到期注销账号失败: %w", err)
 	}
+	a.purgeOldLogs() // 清理超过留存天数的运行日志文件（失败静默，不阻断维护）
 	return nil
 }
 

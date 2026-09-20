@@ -40,6 +40,7 @@ type App struct {
 	web          *webRuntime
 	search       searchBackend
 	plugins      *pluginManager
+	logWriter    *dailyLogWriter
 }
 
 // New 创建应用实例；已安装时建立数据库连接
@@ -58,6 +59,8 @@ func New(cfg *config.Config) (*App, error) {
 			return nil, fmt.Errorf("数据库迁移失败: %w", err)
 		}
 		a.DB = db
+		// 运行日志：按天写入文件（可在系统设置中配置目录/等级/留存天数），便于排查错误
+		a.initLogging()
 		// 为已启用的 feature 插件建表并注册其动态权限（禁用的插件不建表/不授权）
 		a.syncPluginState()
 		a.RateLimits = newDBRateLimitStore(db) // 多实例共享限流计数（已安装才有数据库）
