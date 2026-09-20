@@ -23,13 +23,18 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
   const { site } = useApp()
   const cover = resolveMediaUrl(book.cover_image)
   const base = `/book/settings/${encodeURIComponent(book.slug)}`
-  // 多语言/版本都禁用时，隐藏「多语言与版本」设置 tab
+  // 多语言/版本都禁用时隐藏该 tab；只启用其一时 tab 名随之为「语言」或「版本」，两者都启用才叫「多语言与版本」。
   const features = site.feature_plugins || []
-  const localizationEnabled = features.includes('book-translations') || features.includes('book-versions')
+  const transEnabled = features.includes('book-translations')
+  const versionsEnabled = features.includes('book-versions')
+  const localizationEnabled = transEnabled || versionsEnabled
+  const localizationLabel = transEnabled && versionsEnabled
+    ? t('bookSettings.nav.localization')
+    : versionsEnabled ? t('bookSettings.nav.versions') : t('bookSettings.nav.languages')
 
-  const NAV: { key: BookSettingsTab; labelKey: string; icon: (p: { className?: string }) => JSX.Element; sub: string; danger?: boolean }[] = [
+  const NAV: { key: BookSettingsTab; labelKey: string; label?: string; icon: (p: { className?: string }) => JSX.Element; sub: string; danger?: boolean }[] = [
     { key: 'basic', labelKey: 'bookSettings.nav.basic', icon: GearIcon, sub: '' },
-    ...(localizationEnabled ? [{ key: 'localization' as BookSettingsTab, labelKey: 'bookSettings.nav.localization', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-language ${className || ''}`} aria-hidden="true" />, sub: 'localization' }] : []),
+    ...(localizationEnabled ? [{ key: 'localization' as BookSettingsTab, labelKey: 'bookSettings.nav.localization', label: localizationLabel, icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-language ${className || ''}`} aria-hidden="true" />, sub: 'localization' }] : []),
     { key: 'chapters', labelKey: 'bookSettings.nav.chapters', icon: ListIcon, sub: 'chapters' },
     { key: 'analytics', labelKey: 'bookSettings.nav.analytics', icon: ({ className }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" />, sub: 'analytics' },
     { key: 'collaborators', labelKey: 'bookSettings.nav.collaborators', icon: UsersIcon, sub: 'collaborators' },
@@ -38,7 +43,8 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
     { key: 'danger', labelKey: 'bookSettings.nav.danger', icon: TrashIcon, sub: 'danger', danger: true },
   ]
 
-  const activeLabel = t(NAV.find((n) => n.key === active)?.labelKey || 'common.settings')
+  const activeNav = NAV.find((n) => n.key === active)
+  const activeLabel = activeNav?.label ?? t(activeNav?.labelKey || 'common.settings')
   return (
     <>
       <Seo title={`${book.title} - ${activeLabel}`} noindex />
@@ -77,7 +83,7 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
                 return (
                   <Link key={item.key} href={item.sub ? `${base}/${item.sub}` : base}
                     className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${isActive ? activeCls : idleCls}`}>
-                    <Icon className="h-4 w-4" /> {t(item.labelKey)}
+                    <Icon className="h-4 w-4" /> {item.label ?? t(item.labelKey)}
                   </Link>
                 )
               })}

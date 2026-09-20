@@ -60,7 +60,7 @@ export default function BookSettingsLocalization({ book }: InferGetServerSidePro
   return (
     <BookSettingsLayout book={book} active="localization">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-bold text-slate-900">{t('bookSettings.localization.heading')}</h1>
+        <h1 className="text-xl font-bold text-slate-900">{transEnabled && versionsEnabled ? t('bookSettings.localization.heading') : versionsEnabled ? t('bookSettings.nav.versions') : t('bookSettings.nav.languages')}</h1>
         <p className="mt-1 text-sm text-slate-500">{t('bookSettings.localization.subheading')}</p>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
