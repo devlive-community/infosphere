@@ -1,11 +1,12 @@
 import type { GetServerSideProps } from 'next'
-import { authHeaderFrom, getSSRUser, isInstalled, serverApi } from './server-api'
+import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi } from './server-api'
 import type { Book, BookAccess, User } from './types'
 
 export interface BookSettingsProps {
   installed: true
   user: User
   book: Book
+  site: Record<string, string>
 }
 
 // getBookSettingsProps 书籍设置各 Tab 共用的 SSR 数据加载：
@@ -22,12 +23,13 @@ export const getBookSettingsProps: GetServerSideProps<BookSettingsProps> = async
   if (!slug) return { notFound: true }
   const headers = authHeaderFrom(req)
   try {
-    const [book, access] = await Promise.all([
+    const [book, access, site] = await Promise.all([
       serverApi<Book>(`/books/slug/${encodeURIComponent(slug)}`, { headers }),
       serverApi<BookAccess>(`/books/slug/${encodeURIComponent(slug)}/access`, { headers }),
+      getSiteConfig(),
     ])
     if (!access.can_manage) return { notFound: true }
-    return { props: { installed: true, user, book } }
+    return { props: { installed: true, user, book, site } }
   } catch {
     return { notFound: true }
   }
