@@ -1211,6 +1211,7 @@ export const zh: Record<string, string> = {
   'bookSettings.watermark.title': '阅读水印',
   'bookSettings.watermark.subtitle': '独立配置本书的文字水印，启用后在阅读页与导出/打印（PDF）上叠加显示。',
   'bookSettings.watermark.saved': '水印设置已保存',
+  'bookSettings.watermark.saveFailed': '保存失败',
   'growth.seoTitle': '我的成长',
   'growth.heading': '我的成长',
   'growth.subtitle': '你的等级、经验与升级记录',

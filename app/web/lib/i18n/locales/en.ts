@@ -1211,6 +1211,7 @@ export const en: Record<string, string> = {
   'bookSettings.watermark.title': 'Reading watermark',
   'bookSettings.watermark.subtitle': 'Configure the text watermark for this book independently; when enabled it overlays the reader and exports/print (PDF).',
   'bookSettings.watermark.saved': 'Watermark settings saved',
+  'bookSettings.watermark.saveFailed': 'Save failed',
   'growth.seoTitle': 'My growth',
   'growth.heading': 'My growth',
   'growth.subtitle': 'Your level, experience and level-up history',

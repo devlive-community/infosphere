@@ -24,7 +24,7 @@ export default function WatermarkSettings({ book }: InferGetServerSidePropsType<
       await api(`/books/${book.id}`, { method: 'PUT', body: { watermark_enabled: enabled, watermark_text: text.trim() } })
       showToast({ message: t('bookSettings.watermark.saved'), tone: 'success' })
     } catch (e) {
-      showToast({ title: t('books.error.save'), message: (e as Error).message, tone: 'error' })
+      showToast({ title: t('bookSettings.watermark.saveFailed'), message: (e as Error).message, tone: 'error' })
     } finally {
       setSaving(false)
     }
