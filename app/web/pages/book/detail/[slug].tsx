@@ -549,19 +549,21 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
         </section>
       </Container>
 
-      {/* 目录 / 评价 横向 Tab */}
+      {/* 关于这本书（始终显示在每个 Tab 上方） + 目录 / 评价 横向 Tab */}
       <Container>
-        <section className="border-t border-slate-200 py-10">
-          <SegmentedTabs className="mb-6 max-w-sm" value={activeTab} ariaLabel={t('detail.toc')} onChange={goTab}
-            items={[{ value: 'toc', label: t('detail.toc') }, { value: 'reviews', label: t('review.title') }]} />
-          {activeTab === 'toc' ? (
+        <section className="border-t border-slate-200 py-6">
           <div className="max-w-3xl">
             <h2 className="text-xl font-bold text-slate-900">{t('detail.about')}</h2>
             <div className="mt-4 min-w-0 space-y-3 text-[15px] leading-7 text-slate-600">
               {(book.description || t('detail.noDescription')).split('\n').filter(Boolean).map((para, i) => <p key={i} className="max-w-full [overflow-wrap:anywhere]">{para}</p>)}
             </div>
+          </div>
 
-            <div className="mb-4 mt-10 flex items-baseline gap-3">
+          <SegmentedTabs className="mb-6 mt-8 max-w-sm" value={activeTab} ariaLabel={t('detail.toc')} onChange={goTab}
+            items={[{ value: 'toc', label: t('detail.toc') }, { value: 'reviews', label: t('review.title') }]} />
+          {activeTab === 'toc' ? (
+          <div className="max-w-3xl">
+            <div className="mb-4 flex items-baseline gap-3">
               <h2 className="text-xl font-bold text-slate-900">{t('detail.toc')}</h2>
               <span className="text-sm text-slate-400">{t('detail.tocCount', { n: chapters })}</span>
             </div>

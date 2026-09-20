@@ -207,7 +207,6 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                   className="flex w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 bg-slate-50/60 py-6 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/40 disabled:opacity-60">
                   <UploadIcon className="h-5 w-5 text-slate-400" />
                   <span className="text-sm font-medium text-slate-600">{uploading ? t('bookForm.uploading') : t('bookForm.upload')}</span>
-                  <span className="text-xs text-slate-400">{t('bookForm.coverHint')}</span>
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { uploadCover(e.target.files?.[0]); e.target.value = '' }} />
                 <div className="flex items-center gap-3">

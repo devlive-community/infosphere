@@ -185,10 +185,6 @@ go run ./cmd/migrate-legacy -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/infospher
 
 REST API 挂载在 `/api/v1/*`，覆盖安装向导、认证、书籍与文档、搜索、评论、通知、协作、OAuth、导入导出、站点/存储/邮件设置等。完整端点、请求/响应与权限清单见 [docs/api.md](docs/api.md)。
 
-## 版本历史
-
-见 [CHANGELOG.md](CHANGELOG.md)。最新：**2026.0.2** —— 桌面客户端本地会话/多服务器/应用内 OAuth，阅读进度统计（我在读、数据概览、精细进度、每日目标、作者章节漏斗）。
-
 ## 鸣谢
 
 [JetBrains](https://www.jetbrains.com/) · [Tailwind CSS](https://tailwindcss.com/)

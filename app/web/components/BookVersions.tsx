@@ -25,7 +25,7 @@ export default function BookVersions({ bookId, linkTo = 'detail' }: { bookId: nu
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-slate-400">{t('book.variant.version')}</span>
-      {items.map((v) => (v.current ? (
+      {[...items].reverse().map((v) => (v.current ? (
         <span key={v.slug} className="rounded-md bg-primary-500 px-2.5 py-1 text-xs font-medium text-white">{v.version || v.title}</span>
       ) : (
         <Link key={v.slug} href={hrefFor(v)}
