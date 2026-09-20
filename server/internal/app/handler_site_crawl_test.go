@@ -44,6 +44,16 @@ func TestExtractNavTree(t *testing.T) {
 	}
 }
 
+// 采集 slug 由 URL 末段生成并保留大小写（用户明确要求不要转小写）。
+func TestCrawlSlugPreservesCase(t *testing.T) {
+	if got := crawlSlugFromURL("https://8.8.8.8/reference/AI-Concepts.html"); got != "AI-Concepts" {
+		t.Fatalf("应保留大小写 AI-Concepts，实际 %q", got)
+	}
+	if got := crawlSlugFromURL("https://8.8.8.8/Getting_Started"); got != "Getting-Started" {
+		t.Fatalf("下划线转中划线且保留大小写，实际 %q", got)
+	}
+}
+
 // 整站采集执行：按页面清单抓取→建章节，父子层级映射正确，任务状态与计数正确。
 func TestRunSiteCrawlJob(t *testing.T) {
 	app, owner, db := newContentImportTestApp(t)

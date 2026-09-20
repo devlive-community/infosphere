@@ -4,8 +4,9 @@ import { useRouter } from 'next/router'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { getBookSettingsProps } from '@/lib/book-settings'
 import { api } from '@/lib/api'
+import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
-import { Badge, Button, EmptyState, Loading, SegmentedTabs, useFeedback } from '@/components/ui'
+import { Badge, Button, ButtonLink, EmptyState, Loading, SegmentedTabs, useFeedback } from '@/components/ui'
 import { ChevronRightIcon } from '@/components/icons'
 
 export const getServerSideProps = getBookSettingsProps
@@ -40,6 +41,7 @@ const PAGE_TONE: Record<string, 'slate' | 'primary' | 'emerald' | 'rose'> = {
 
 export default function CrawlHistoryPage({ book }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
+  const { site } = useApp()
   const { showToast } = useFeedback()
   const router = useRouter()
   const kind = router.query.kind === 'chapter' ? 'chapter' : 'site'
@@ -86,9 +88,16 @@ export default function CrawlHistoryPage({ book }: InferGetServerSidePropsType<t
 
   return (
     <BookSettingsLayout book={book} active="crawl-history">
-      <div className="mb-5">
-        <h1 className="text-lg font-bold text-slate-900">{t('crawlHistory.title')}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t('crawlHistory.subtitle')}</p>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold text-slate-900">{t('crawlHistory.title')}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t('crawlHistory.subtitle')}</p>
+        </div>
+        {site.collect_site_enabled !== false && (
+          <ButtonLink href={`/books/collect?book_id=${book.id}&book=${encodeURIComponent(book.slug)}`} variant="outline" className="shrink-0">
+            <i className="fa-solid fa-spider" aria-hidden="true" /> {t('crawlHistory.newCrawl')}
+          </ButtonLink>
+        )}
       </div>
 
       {detail ? (

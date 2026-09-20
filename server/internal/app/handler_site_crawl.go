@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -291,6 +292,7 @@ func (a *App) StartSiteCrawl(c *gin.Context) {
 		Title           string      `json:"title"`
 		RenderMode      string      `json:"render_mode"`
 		ContentSelector string      `json:"content_selector"`
+		BookID          uint        `json:"book_id"` // 可选：采集到已有书籍（追加章节）；省略则新建草稿书
 		Pages           []crawlNode `json:"pages"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -306,27 +308,39 @@ func (a *App) StartSiteCrawl(c *gin.Context) {
 		req.Pages = req.Pages[:limit]
 	}
 
-	title := strings.TrimSpace(req.Title)
-	if title == "" {
-		if pu, err := url.Parse(req.RootURL); err == nil {
-			title = pu.Hostname()
-		} else {
-			title = "采集书籍"
+	// 采集到已有书籍（追加）或新建草稿书。
+	var book models.Book
+	if req.BookID != 0 {
+		if err := a.DB.First(&book, req.BookID).Error; err != nil {
+			fail(c, http.StatusNotFound, "目标书籍不存在")
+			return
 		}
-	}
-	// 创建草稿书（私有），采集完成前展示「采集中」。
-	book := models.Book{Title: truncateText(title, 255), UserID: u.ID, Status: "draft", IsPublic: false, Slug: randomSlug("book")}
-	for i := 0; i < 50; i++ {
-		var count int64
-		a.DB.Unscoped().Model(&models.Book{}).Where("slug = ?", book.Slug).Count(&count)
-		if count == 0 {
-			break
+		if !a.canEditBookContent(u, &book) {
+			fail(c, http.StatusForbidden, "无权写入目标书籍")
+			return
 		}
-		book.Slug = randomSlug("book")
-	}
-	if err := a.DB.Create(&book).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "创建书籍失败")
-		return
+	} else {
+		title := strings.TrimSpace(req.Title)
+		if title == "" {
+			if pu, err := url.Parse(req.RootURL); err == nil {
+				title = pu.Hostname()
+			} else {
+				title = "采集书籍"
+			}
+		}
+		book = models.Book{Title: truncateText(title, 255), UserID: u.ID, Status: "draft", IsPublic: false, Slug: randomSlug("book")}
+		for i := 0; i < 50; i++ {
+			var count int64
+			a.DB.Unscoped().Model(&models.Book{}).Where("slug = ?", book.Slug).Count(&count)
+			if count == 0 {
+				break
+			}
+			book.Slug = randomSlug("book")
+		}
+		if err := a.DB.Create(&book).Error; err != nil {
+			fail(c, http.StatusInternalServerError, "创建书籍失败")
+			return
+		}
 	}
 
 	mode := strings.ToLower(strings.TrimSpace(req.RenderMode))
@@ -388,6 +402,11 @@ func (a *App) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) error {
 	var pages []models.CrawlPage
 	a.DB.Where("job_id = ?", job.ID).Order("sort_order ASC").Find(&pages)
 
+	// 顶层排序基准：支持采集到「已有书籍」时，顶层章节追加到现有目录末尾（不覆盖已有顺序）。
+	var topBase int64
+	a.DB.Model(&models.Document{}).Where("book_id = ? AND parent_id IS NULL", book.ID).Count(&topBase)
+	topSort := int(topBase)
+
 	urlToDoc := map[string]uint{}
 	success, failed := 0, 0
 	for i := range pages {
@@ -421,7 +440,13 @@ func (a *App) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) error {
 		if title == "" {
 			title = lastURLSegment(page.URL)
 		}
-		doc, derr := a.crawlCreateDocument(&book, job.UserID, title, article.Markdown, parentID, page.SortOrder)
+		// 顶层章节追加到目标书目录末尾；子章节保留其相对顺序
+		sortOrder := page.SortOrder
+		if parentID == nil {
+			sortOrder = topSort
+			topSort++
+		}
+		doc, derr := a.crawlCreateDocument(&book, job.UserID, title, article.Markdown, page.URL, parentID, sortOrder)
 		if derr != nil {
 			failed++
 			a.DB.Model(page).Updates(map[string]any{"status": "failed", "error": truncateText(derr.Error(), 1000)})
@@ -451,11 +476,37 @@ func (a *App) finishCrawlJob(job *models.CrawlJob, status, lastErr string) {
 	a.DB.Model(job).Updates(map[string]any{"status": status, "finished_at": &now, "last_error": truncateText(lastErr, 1000)})
 }
 
+// crawlSlugPattern 与 slugify 不同：保留大小写（不转小写），仅把非字母数字压成中划线。
+var crawlSlugPattern = regexp.MustCompile(`[^A-Za-z0-9]+`)
+
+// crawlSlugFromURL 由源页面 URL 的末段生成章节 slug，保留原始大小写（用户明确要求不要转小写）。
+func crawlSlugFromURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	p := strings.Trim(u.Path, "/")
+	if p == "" {
+		return ""
+	}
+	parts := strings.Split(p, "/")
+	seg := strings.TrimSuffix(parts[len(parts)-1], ".html")
+	seg = strings.Trim(crawlSlugPattern.ReplaceAllString(seg, "-"), "-")
+	if len(seg) > 200 {
+		seg = seg[:200]
+	}
+	return seg
+}
+
 // crawlCreateDocument 在书内创建一章（唯一 slug），采集内容作为草稿章节。
-func (a *App) crawlCreateDocument(book *models.Book, userID uint, title, content string, parentID *uint, sortOrder int) (*models.Document, error) {
+// slug 优先取源 URL 末段（保留大小写），回退为标题的保留大小写 slug。
+func (a *App) crawlCreateDocument(book *models.Book, userID uint, title, content, sourceURL string, parentID *uint, sortOrder int) (*models.Document, error) {
 	doc := models.Document{BookID: book.ID, UserID: userID, Title: truncateText(strings.TrimSpace(title), 255), Content: content, Status: "draft", SortOrder: sortOrder, ParentID: parentID}
 	doc.Icon = extractDocIcon(content)
-	base := slugify(doc.Title)
+	base := crawlSlugFromURL(sourceURL)
+	if base == "" {
+		base = strings.Trim(crawlSlugPattern.ReplaceAllString(doc.Title, "-"), "-")
+	}
 	for i := 0; i < 50; i++ {
 		candidate := base
 		if candidate == "" {

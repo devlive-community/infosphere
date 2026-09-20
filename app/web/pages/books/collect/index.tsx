@@ -22,6 +22,8 @@ function CollectWizard() {
   const router = useRouter()
   const siteName = site.site_name || 'InfoSphere'
 
+  const targetBookId = router.query.book_id ? Number(router.query.book_id) : 0
+  const targetBookSlug = typeof router.query.book === 'string' ? router.query.book : ''
   const [url, setURL] = useState('https://')
   const [renderMode, setRenderMode] = useState<RenderMode>('auto')
   const [previewing, setPreviewing] = useState(false)
@@ -58,6 +60,7 @@ function CollectWizard() {
     try {
       const d = await api<{ book: { slug: string } }>('/collect/site', { method: 'POST', body: {
         root_url: preview.root_url, title: title.trim(), render_mode: renderMode, pages,
+        ...(targetBookId ? { book_id: targetBookId } : {}),
       } })
       showToast({ message: t('collect.started', { n: pages.length }), tone: 'success' })
       router.push(`/book/settings/${encodeURIComponent(d.book.slug)}/crawl-history`)
@@ -144,10 +147,14 @@ function CollectWizard() {
 
             {/* 确认启动 */}
             <div className="rounded-xl border border-slate-200 bg-white p-5 lg:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('collect.bookTitle')}</label>
+              {targetBookId ? (
+                <p className="mb-3 text-sm text-slate-600">{t('collect.appendTo', { slug: targetBookSlug })}</p>
+              ) : (
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('collect.bookTitle')}</label>
+              )}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('collect.bookTitlePlaceholder')} className="flex-1" />
-                <Button loading={submitting} disabled={included === 0} onClick={start} className="shrink-0">
+                {!targetBookId && <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('collect.bookTitlePlaceholder')} className="flex-1" />}
+                <Button loading={submitting} disabled={included === 0} onClick={start} className={targetBookId ? '' : 'shrink-0'}>
                   {t('collect.start', { n: included })}
                 </Button>
               </div>
