@@ -360,6 +360,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   }
 
   async function toggleFollow() {
+    if (!book) return
     if (!user) { router.push(`/login?redirect=${encodeURIComponent(router.asPath)}`); return }
     if (followBusy) return
     const next = !following
