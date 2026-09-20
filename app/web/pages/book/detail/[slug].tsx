@@ -643,7 +643,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                     return (
                       <li key={doc.id}>
                         {external ? (
-                          <a href={external} target="_blank" rel="noopener noreferrer" className={rowClass}>{inner}</a>
+                          <a href={external} target={doc.external_new_tab === false ? '_self' : '_blank'} rel={doc.external_new_tab === false ? undefined : 'noopener noreferrer'} className={rowClass}>{inner}</a>
                         ) : (
                           <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${doc.slug}`} className={rowClass}>{inner}</Link>
                         )}

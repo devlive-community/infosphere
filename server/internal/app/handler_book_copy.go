@@ -142,7 +142,7 @@ func (a *App) CopyBook(c *gin.Context) {
 			BookID: newBook.ID, UserID: u.ID, Title: d.Title,
 			Slug: a.uniqueDocSlug(newBook.ID, base), Content: d.Content,
 			Status: d.Status, SortOrder: idx, AllowComments: d.AllowComments,
-			Icon: d.Icon, ExternalURL: d.ExternalURL,
+			Icon: d.Icon, ExternalURL: d.ExternalURL, ExternalNewTab: d.ExternalNewTab,
 		}
 		if err := a.DB.Create(&nd).Error; err != nil {
 			fail(c, http.StatusInternalServerError, "复制章节失败: "+err.Error())
@@ -254,7 +254,7 @@ func (a *App) CopyDocuments(c *gin.Context) {
 			BookID: target.ID, UserID: u.ID, Title: d.Title,
 			Slug: a.uniqueDocSlug(target.ID, base), Content: d.Content,
 			Status: d.Status, AllowComments: d.AllowComments,
-			Icon: d.Icon, ExternalURL: d.ExternalURL,
+			Icon: d.Icon, ExternalURL: d.ExternalURL, ExternalNewTab: d.ExternalNewTab,
 		}
 		if d.ParentID == nil || !copySet[*d.ParentID] {
 			nd.SortOrder = nextTop

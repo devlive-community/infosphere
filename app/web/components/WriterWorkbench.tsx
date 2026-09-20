@@ -175,6 +175,7 @@ export default function Writer({ user }: WriterProps) {
   const [allowComments, setAllowComments] = useState(true)
   const [slug, setSlug] = useState('') // 文档路径；留空则由标题自动生成（沿用既有逻辑）
   const [externalUrl, setExternalUrl] = useState('') // 外链章节地址；非空时该章节是跳转外部地址的链接，不使用正文编辑器
+  const [externalNewTab, setExternalNewTab] = useState(true) // 外链打开方式：新窗口（默认）/当前窗口
 
   // 书籍设置表单
   const [bookForm, setBookForm] = useState<BookFormState>({ title: '', description: '', status: 'draft', isPublic: false, tags: [] as string[], chapterPrefix: '', childStatusFollowParent: false })
@@ -331,8 +332,8 @@ export default function Writer({ user }: WriterProps) {
   function resetForm() {
     setCurrent(null)
     setCreatingUnder(null)
-    setTitle(''); setContent(''); setStatus('draft'); setParentId(''); setSortOrder(0); setAllowComments(true); setSlug(''); setExternalUrl('')
-    snapshot.current = JSON.stringify(['', '', 'draft', '', 0, true, '', ''])
+    setTitle(''); setContent(''); setStatus('draft'); setParentId(''); setSortOrder(0); setAllowComments(true); setSlug(''); setExternalUrl(''); setExternalNewTab(true)
+    snapshot.current = JSON.stringify(['', '', 'draft', '', 0, true, '', '', true])
     loadedDocId.current = null
     setSaveState('saved')
   }
@@ -376,7 +377,8 @@ export default function Writer({ user }: WriterProps) {
         setAllowComments(full.allow_comments !== false)
         setSlug(full.slug || '')
         setExternalUrl(full.external_url || '')
-        snapshot.current = JSON.stringify([full.title, full.content || '', full.status, full.parent_id ? String(full.parent_id) : '', full.sort_order, full.allow_comments !== false, full.slug || '', full.external_url || ''])
+        setExternalNewTab(full.external_new_tab !== false)
+        snapshot.current = JSON.stringify([full.title, full.content || '', full.status, full.parent_id ? String(full.parent_id) : '', full.sort_order, full.allow_comments !== false, full.slug || '', full.external_url || '', full.external_new_tab !== false])
         loadedDocId.current = full.id
         setSaveState('saved')
         // 本地草稿恢复：若上次离开时有未保存内容且与服务端不同，提示恢复
@@ -418,7 +420,7 @@ export default function Writer({ user }: WriterProps) {
     }
     const payload = {
       title: title.trim(), content, status: effectiveStatus, sort_order: sortOrder,
-      external_url: externalUrl.trim(),
+      external_url: externalUrl.trim(), external_new_tab: externalNewTab,
       parent_id: parentId ? Number(parentId) : null, allow_comments: allowComments,
       // 文档路径：填了就用它，留空则不传（新建按标题自动生成，编辑保持原路径）
       ...(slug.trim() ? { slug: slug.trim() } : {}),
@@ -431,7 +433,7 @@ export default function Writer({ user }: WriterProps) {
       if (current) {
         const updated = await api<Document>(`/documents/${current.id}`, { method: 'PUT', body: payload })
         setSlug(updated.slug || '')
-        snapshot.current = JSON.stringify([updated.title, updated.content || '', updated.status, updated.parent_id ? String(updated.parent_id) : '', updated.sort_order, updated.allow_comments !== false, updated.slug || '', updated.external_url || ''])
+        snapshot.current = JSON.stringify([updated.title, updated.content || '', updated.status, updated.parent_id ? String(updated.parent_id) : '', updated.sort_order, updated.allow_comments !== false, updated.slug || '', updated.external_url || '', updated.external_new_tab !== false])
         loadedDocId.current = updated.id
         try { localStorage.removeItem(draftKey(updated.id)) } catch { /* 忽略 */ }
         setDraftRecovery(null)
@@ -442,7 +444,7 @@ export default function Writer({ user }: WriterProps) {
       } else {
         const created = await api<Document>(`/books/${book.id}/documents`, { method: 'POST', body: payload })
         setSlug(created.slug || '')
-        snapshot.current = JSON.stringify([created.title, created.content || '', created.status, created.parent_id ? String(created.parent_id) : '', created.sort_order, created.allow_comments !== false, created.slug || '', created.external_url || ''])
+        snapshot.current = JSON.stringify([created.title, created.content || '', created.status, created.parent_id ? String(created.parent_id) : '', created.sort_order, created.allow_comments !== false, created.slug || '', created.external_url || '', created.external_new_tab !== false])
         loadedDocId.current = created.id
         setCurrent(created)
         if (opts?.status) setStatus(opts.status)
@@ -464,7 +466,7 @@ export default function Writer({ user }: WriterProps) {
   // 脏状态检测；自动保存当前临时关闭，只保留手动保存、快捷键保存与发布。
   useEffect(() => {
     if (!book) return
-    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments, slug, externalUrl])
+    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, externalNewTab])
     if (key === snapshot.current) { setSaveState((s) => (s === 'saving' ? s : 'saved')); return }
     if (loadedDocId.current !== null && loadedDocId.current !== current?.id) return
     if (!current && !title.trim()) return
@@ -472,13 +474,13 @@ export default function Writer({ user }: WriterProps) {
     if (!AUTO_SAVE_ENABLED) return
     const timer = setTimeout(() => { saveRef.current() }, 1500)
     return () => clearTimeout(timer)
-  }, [book, title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, current])
+  }, [book, title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, externalNewTab, current])
 
   // 本地草稿备份：脏内容防抖写入 localStorage（服务端自动保存关闭时的兜底），保存后清除。
   useEffect(() => {
     const id = current?.id
     if (!id || loadedDocId.current !== id) return
-    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments, slug, externalUrl])
+    const key = JSON.stringify([title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, externalNewTab])
     if (key === snapshot.current) {
       try { localStorage.removeItem(draftKey(id)) } catch { /* 忽略 */ }
       return
@@ -487,7 +489,7 @@ export default function Writer({ user }: WriterProps) {
       try { localStorage.setItem(draftKey(id), JSON.stringify({ content, title, ts: Date.now() })) } catch { /* 忽略 */ }
     }, 800)
     return () => clearTimeout(timer)
-  }, [title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, current])
+  }, [title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, externalNewTab, current])
 
   // Ctrl/Cmd + S 手动保存
   useEffect(() => {
@@ -610,8 +612,8 @@ export default function Writer({ user }: WriterProps) {
       : 'draft'
     setParentId(newParent); setStatus(newStatus)
     setCurrent(null)
-    setTitle(''); setContent(''); setSortOrder(newSort); setAllowComments(true); setSlug('')
-    snapshot.current = JSON.stringify(['', '', newStatus, newParent, newSort, true, ''])
+    setTitle(''); setContent(''); setSortOrder(newSort); setAllowComments(true); setSlug(''); setExternalUrl(''); setExternalNewTab(true)
+    snapshot.current = JSON.stringify(['', '', newStatus, newParent, newSort, true, '', '', true])
     loadedDocId.current = null
     setSaveState('dirty') // 新章节等待用户手动保存或发布
     setTimeout(() => textareaRef.current?.focus(), 0)
@@ -671,10 +673,13 @@ export default function Writer({ user }: WriterProps) {
     setStatus(restored.status)
     setAllowComments(restored.allow_comments !== false)
     setSlug(restored.slug || '')
+    setExternalUrl(restored.external_url || '')
+    setExternalNewTab(restored.external_new_tab !== false)
     snapshot.current = JSON.stringify([
       restored.title, restored.content || '', restored.status,
       restored.parent_id ? String(restored.parent_id) : '', restored.sort_order,
       restored.allow_comments !== false, restored.slug || '',
+      restored.external_url || '', restored.external_new_tab !== false,
     ])
     loadedDocId.current = restored.id
     setCurrent(restored)
@@ -1706,6 +1711,15 @@ export default function Writer({ user }: WriterProps) {
             <Field label={t('writer.externalUrl')} hint={t('writer.externalUrlHint')}>
               <Input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} placeholder="https://…" />
             </Field>
+            {externalUrl.trim() && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">{t('writer.externalNewTab')}</span>
+                <button role="switch" aria-checked={externalNewTab} onClick={() => setExternalNewTab(!externalNewTab)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${externalNewTab ? 'bg-primary-500' : 'bg-slate-300'}`}>
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${externalNewTab ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">{t('writer.allowComments')}</span>
               <button role="switch" aria-checked={allowComments} onClick={() => setAllowComments(!allowComments)}

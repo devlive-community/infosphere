@@ -632,7 +632,7 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
                 </button>
               ) : <span className="ml-1 w-5 shrink-0" />}
               {(item.external_url || '').trim() ? (
-                <a href={(item.external_url || '').trim()} target="_blank" rel="noopener noreferrer"
+                <a href={(item.external_url || '').trim()} target={item.external_new_tab === false ? '_self' : '_blank'} rel={item.external_new_tab === false ? undefined : 'noopener noreferrer'}
                   className="flex flex-1 items-center gap-1.5 py-1.5 pl-1 pr-2 text-left">
                   <DocTreeIcon icon={item.icon} hasChildren={hasChildren} colorClass="text-slate-400" />
                   <span className="whitespace-nowrap text-slate-700">{chapterPrefix}{item.title}</span>

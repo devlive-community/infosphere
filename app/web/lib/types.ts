@@ -102,6 +102,7 @@ export interface Document {
   status: DocumentStatus
   icon?: string
   external_url?: string
+  external_new_tab?: boolean
   allow_comments?: boolean | null
   created_at: string
   updated_at: string

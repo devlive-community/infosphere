@@ -535,6 +535,7 @@ export const en: Record<string, string> = {
   'writer.externalUrl': 'External link',
   'writer.externalUrlHint': 'When set, this chapter becomes a link to that URL — readers open it in a new tab and no body is needed; leave empty for a normal chapter.',
   'writer.externalChapterNote': 'This is an external-link chapter. Readers who click it go straight to the URL below instead of an article body.',
+  'writer.externalNewTab': 'Open in a new window',
   'writer.docPathPlaceholder': 'Leave empty to auto-generate from title',
   'writer.allowComments': 'Allow comments once public',
   'writer.chapterInfo': 'Chapter info',

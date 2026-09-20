@@ -535,6 +535,7 @@ export const zh: Record<string, string> = {
   'writer.externalUrl': '外部链接',
   'writer.externalUrlHint': '填写后本章节将作为跳转到该地址的链接，读者点击直接在新标签打开，无需编写正文；留空则为普通章节。',
   'writer.externalChapterNote': '这是一个外链章节，读者点击将直接跳转到下方地址，不显示编辑器正文。',
+  'writer.externalNewTab': '在新窗口打开',
   'writer.docPathPlaceholder': '留空则按标题自动生成',
   'writer.allowComments': '公开后允许评论',
   'writer.chapterInfo': '本章信息',

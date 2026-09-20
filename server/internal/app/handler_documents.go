@@ -52,7 +52,7 @@ func (a *App) ListDocumentTree(c *gin.Context) {
 
 	var docs []models.Document
 	query := a.DB.Where("book_id = ?", book.ID).
-		Select("id", "book_id", "parent_id", "title", "slug", "user_id", "sort_order", "status", "icon", "external_url", "created_at", "updated_at")
+		Select("id", "book_id", "parent_id", "title", "slug", "user_id", "sort_order", "status", "icon", "external_url", "external_new_tab", "created_at", "updated_at")
 	if !a.canEditBookContent(u, book) {
 		query = query.Where("status = ?", "published")
 	}
@@ -86,7 +86,8 @@ type documentPayload struct {
 	Title          *string         `json:"title"`
 	Slug           *string         `json:"slug"`
 	Content        *string         `json:"content"`
-	ExternalURL    *string         `json:"external_url"` // 非空=外链章节（跳转外部地址，不渲染正文）
+	ExternalURL    *string         `json:"external_url"`     // 非空=外链章节（跳转外部地址，不渲染正文）
+	ExternalNewTab *bool           `json:"external_new_tab"` // 外链打开方式：true=新窗口（默认）| false=当前窗口
 	ParentID       json.RawMessage `json:"parent_id"`
 	SortOrder      *int            `json:"sort_order"`
 	Status         *string         `json:"status"`
@@ -184,6 +185,9 @@ func (a *App) CreateDocument(c *gin.Context) {
 			return
 		}
 		doc.ExternalURL = ext
+	}
+	if req.ExternalNewTab != nil {
+		doc.ExternalNewTab = req.ExternalNewTab
 	}
 	doc.Icon = extractDocIcon(doc.Content)
 	if req.SortOrder != nil {
@@ -371,6 +375,9 @@ func (a *App) UpdateDocument(c *gin.Context) {
 			return
 		}
 		doc.ExternalURL = ext
+	}
+	if req.ExternalNewTab != nil {
+		doc.ExternalNewTab = req.ExternalNewTab
 	}
 	if req.SortOrder != nil {
 		doc.SortOrder = *req.SortOrder
