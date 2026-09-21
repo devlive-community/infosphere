@@ -421,7 +421,8 @@ export default function Writer({ user }: WriterProps) {
     const payload = {
       title: title.trim(), content, status: effectiveStatus, sort_order: sortOrder,
       external_url: externalUrl.trim(), external_new_tab: externalNewTab,
-      parent_id: parentId ? Number(parentId) : null, allow_comments: allowComments,
+      // 外链章节强制关闭评论（无正文页面，公开后也不展示评论区）。
+      parent_id: parentId ? Number(parentId) : null, allow_comments: externalUrl.trim() ? false : allowComments,
       // 文档路径：填了就用它，留空则不传（新建按标题自动生成，编辑保持原路径）
       ...(slug.trim() ? { slug: slug.trim() } : {}),
       cascade_status: cascadeStatus,
@@ -1724,13 +1725,18 @@ export default function Writer({ user }: WriterProps) {
                 </button>
               </div>
             )}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700">{t('writer.allowComments')}</span>
-              <button role="switch" aria-checked={allowComments} onClick={() => setAllowComments(!allowComments)}
-                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${allowComments ? 'bg-primary-500' : 'bg-slate-300'}`}>
-                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${allowComments ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
+            {externalUrl.trim() ? (
+              // 外链章节仅是跳转链接、没有正文页面，因此不支持评论（公开后也不显示评论区）。
+              <p className="text-xs leading-5 text-slate-400">{t('writer.externalNoComments')}</p>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">{t('writer.allowComments')}</span>
+                <button role="switch" aria-checked={allowComments} onClick={() => setAllowComments(!allowComments)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${allowComments ? 'bg-primary-500' : 'bg-slate-300'}`}>
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${allowComments ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 border-t border-slate-100 pt-5">

@@ -197,6 +197,11 @@ func (a *App) CreateDocument(c *gin.Context) {
 	if req.AllowComments != nil {
 		doc.AllowComments = req.AllowComments
 	}
+	// 外链章节没有正文页面，强制关闭评论（公开后也不展示评论区）。
+	if doc.ExternalURL != "" {
+		off := false
+		doc.AllowComments = &off
+	}
 
 	slug := ""
 	if req.Slug != nil && *req.Slug != "" {
@@ -385,6 +390,11 @@ func (a *App) UpdateDocument(c *gin.Context) {
 	}
 	if req.AllowComments != nil {
 		doc.AllowComments = req.AllowComments
+	}
+	// 外链章节没有正文页面，强制关闭评论（公开后也不展示评论区）。
+	if doc.ExternalURL != "" {
+		off := false
+		doc.AllowComments = &off
 	}
 	cascadeStatus := ""
 	publishedChapter := false

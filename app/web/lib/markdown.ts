@@ -131,7 +131,7 @@ export { bindMarkdownInteractivity } from './markdown-extensions'
 // 无子章节时移除占位；children 为空数组即视为无子章节。
 export function fillChildrenToc(
   html: string,
-  children: { slug: string; title: string }[],
+  children: { slug: string; title: string; external_url?: string; external_new_tab?: boolean }[],
   bookSlug: string,
   chapterPrefix = '',
 ): string {
@@ -143,8 +143,16 @@ export function fillChildrenToc(
       '<ul class="space-y-1 text-sm" style="list-style:none;margin:0;padding:0">' +
       children
         .map((ch) => {
+          const label = esc(chapterPrefix + ch.title)
+          // 外链章节：仅接受 http(s)，跳转到外部地址（默认新标签）；非法协议回退为内部阅读链接，避免 javascript: 等注入。
+          const ext = (ch.external_url || '').trim()
+          if (ext && /^https?:\/\//i.test(ext)) {
+            const newTab = ch.external_new_tab !== false
+            const attrs = newTab ? ' target="_blank" rel="noopener noreferrer nofollow"' : ''
+            return `<li><a href="${esc(ext)}"${attrs} class="text-slate-600 hover:text-primary-600">${label}<span aria-hidden="true"> ↗</span></a></li>`
+          }
           const href = `/book/reader?slug=${encodeURIComponent(bookSlug)}&doc=${encodeURIComponent(ch.slug)}`
-          return `<li><a href="${href}" class="text-slate-600 hover:text-primary-600">${esc(chapterPrefix + ch.title)}</a></li>`
+          return `<li><a href="${href}" class="text-slate-600 hover:text-primary-600">${label}</a></li>`
         })
         .join('') +
       '</ul></nav>'

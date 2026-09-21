@@ -539,6 +539,7 @@ export const zh: Record<string, string> = {
   'writer.externalNewTab': '在新窗口打开',
   'writer.docPathPlaceholder': '留空则按标题自动生成',
   'writer.allowComments': '公开后允许评论',
+  'writer.externalNoComments': '外链章节仅是跳转链接、没有正文页面，不支持评论。',
   'writer.chapterInfo': '本章信息',
   'writer.createdTime': '创建时间',
   'writer.updatedTime': '更新时间',

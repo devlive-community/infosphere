@@ -539,6 +539,7 @@ export const en: Record<string, string> = {
   'writer.externalNewTab': 'Open in a new window',
   'writer.docPathPlaceholder': 'Leave empty to auto-generate from title',
   'writer.allowComments': 'Allow comments once public',
+  'writer.externalNoComments': 'External chapters are just redirect links with no content page, so comments are not supported.',
   'writer.chapterInfo': 'Chapter info',
   'writer.createdTime': 'Created',
   'writer.updatedTime': 'Updated',
