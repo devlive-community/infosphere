@@ -53,7 +53,7 @@ func (b *behavior) FollowBook(c *gin.Context) {
 		core.Fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
-	f := models.BookFollow{UserID: u.ID, BookID: book.ID}
+	f := BookFollow{UserID: u.ID, BookID: book.ID}
 	core.Gorm().Where("user_id = ? AND book_id = ?", u.ID, book.ID).FirstOrCreate(&f)
 	core.OK(c, gin.H{"following": true, "count": b.bookFollowerCount(book.ID)})
 }
@@ -67,7 +67,7 @@ func (b *behavior) UnfollowBook(c *gin.Context) {
 		core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
-	core.Gorm().Where("user_id = ? AND book_id = ?", u.ID, bookID).Delete(&models.BookFollow{})
+	core.Gorm().Where("user_id = ? AND book_id = ?", u.ID, bookID).Delete(&BookFollow{})
 	core.OK(c, gin.H{"following": false, "count": b.bookFollowerCount(uint(bookID))})
 }
 
@@ -81,13 +81,13 @@ func (b *behavior) MyBookFollow(c *gin.Context) {
 		return
 	}
 	var following int64
-	core.Gorm().Model(&models.BookFollow{}).Where("user_id = ? AND book_id = ?", u.ID, bookID).Count(&following)
+	core.Gorm().Model(&BookFollow{}).Where("user_id = ? AND book_id = ?", u.ID, bookID).Count(&following)
 	core.OK(c, gin.H{"following": following > 0, "count": b.bookFollowerCount(uint(bookID))})
 }
 
 func (b *behavior) bookFollowerCount(bookID uint) int64 {
 	var count int64
-	b.core.Gorm().Model(&models.BookFollow{}).Where("book_id = ?", bookID).Count(&count)
+	b.core.Gorm().Model(&BookFollow{}).Where("book_id = ?", bookID).Count(&count)
 	return count
 }
 
@@ -104,7 +104,7 @@ func (b *behavior) MyFollows(c *gin.Context) {
 		pageSize = p
 	}
 
-	q := core.Gorm().Model(&models.BookFollow{}).
+	q := core.Gorm().Model(&BookFollow{}).
 		Joins("JOIN books b ON b.id = book_follows.book_id").
 		Where("book_follows.user_id = ?", u.ID)
 	if !core.IsAdmin(u) {
@@ -112,7 +112,7 @@ func (b *behavior) MyFollows(c *gin.Context) {
 	}
 	var total int64
 	q.Session(&gorm.Session{}).Count(&total)
-	var follows []models.BookFollow
+	var follows []BookFollow
 	if err := q.Select("book_follows.*").Order("book_follows.created_at DESC").
 		Limit(pageSize).Offset((page - 1) * pageSize).Find(&follows).Error; err != nil {
 		core.Fail(c, http.StatusInternalServerError, "查询失败")
@@ -148,7 +148,7 @@ func (b *behavior) notifyBookFollowers(book *models.Book, title, link string) {
 	if book == nil || !core.PluginEnabled(plugins.KeyBookFollow) {
 		return
 	}
-	var follows []models.BookFollow
+	var follows []BookFollow
 	core.Gorm().Where("book_id = ?", book.ID).Find(&follows)
 	userIDs := make([]uint, 0, len(follows))
 	for _, f := range follows {

@@ -539,13 +539,8 @@ type UserLevelHistory struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// BookFollow 用户关注书籍：关注后收到该书更新（新章节/状态）通知。由「书籍关注」插件建表。
-type BookFollow struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"uniqueIndex:uk_user_book_follow;not null" json:"user_id"`
-	BookID    uint      `gorm:"uniqueIndex:uk_user_book_follow;index;not null" json:"book_id"`
-	CreatedAt time.Time `json:"created_at"`
-}
+// BookFollow 模型已迁至「书籍关注」插件子包 internal/plugins/bookfollow/models.go
+// （插件独占表，随插件启用建表、卸载清除；核心不再引用该类型）。
 
 // ReadingProgress 阅读进度：每个用户在每个书籍中最近读到的章节
 type ReadingProgress struct {
