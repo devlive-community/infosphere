@@ -1227,6 +1227,8 @@ export const zh: Record<string, string> = {
   'growth.ledgerEmpty': '还没有经验记录',
   'growth.rule.achievement.unlocked': '解锁成就',
   'growth.rule.reading.chapter': '阅读章节',
+  'growth.rule.creation.chapter_published': '发布章节',
+  'growth.rule.community.comment': '发表评论',
   'growth.rule.admin.adjust': '管理员调整',
 
   // 通知设置

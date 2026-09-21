@@ -1227,6 +1227,8 @@ export const en: Record<string, string> = {
   'growth.ledgerEmpty': 'No experience yet',
   'growth.rule.achievement.unlocked': 'Achievement unlocked',
   'growth.rule.reading.chapter': 'Read a chapter',
+  'growth.rule.creation.chapter_published': 'Published a chapter',
+  'growth.rule.community.comment': 'Posted a comment',
   'growth.rule.admin.adjust': 'Admin adjustment',
 
   // Notification settings
