@@ -2398,6 +2398,8 @@ export const en: Record<string, string> = {
   'admin.settings.site.helpDoc': 'Editor help document',
   'admin.settings.site.helpDocHint': 'The chapter opened by the "Help" button in the writer, usually explaining supported Markdown syntax.',
   'admin.settings.site.docUrlPlaceholder': '/book/reader/book-id/chapter-id',
+  'admin.settings.site.pickBook': 'Select a book…',
+  'admin.settings.site.pickChapter': 'Select a chapter…',
   'admin.settings.site.terms': 'Terms of service',
   'admin.settings.site.termsHint': 'Registration page will show a "Terms of Service" link pointing to this chapter.',
   'admin.settings.site.privacy': 'Privacy policy',

@@ -2398,6 +2398,8 @@ export const zh: Record<string, string> = {
   'admin.settings.site.helpDoc': '编辑器帮助文档',
   'admin.settings.site.helpDocHint': '写作台「帮助」按钮打开的章节，通常介绍支持的 Markdown 语法。',
   'admin.settings.site.docUrlPlaceholder': '/book/reader/书籍标识/章节标识',
+  'admin.settings.site.pickBook': '选择书籍…',
+  'admin.settings.site.pickChapter': '选择章节…',
   'admin.settings.site.terms': '用户协议',
   'admin.settings.site.termsHint': '注册页会展示《用户协议》链接指向该章节。',
   'admin.settings.site.privacy': '隐私政策',

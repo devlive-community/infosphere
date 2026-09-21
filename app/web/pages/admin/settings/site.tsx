@@ -4,6 +4,7 @@ import type { MailConfig } from '@/lib/admin'
 import { resolveMediaUrl } from '@/lib/media'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
+import ChapterLinkPicker from '@/components/ChapterLinkPicker'
 import { Button, Input, Textarea, Field, Switch, Select } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
@@ -178,13 +179,13 @@ export default function SettingsSite() {
             <p className="mb-3 text-xs text-slate-400">{t('admin.settings.site.legalDocsHint')}</p>
             <div className="space-y-4">
               <Field label={t('admin.settings.site.helpDoc')} hint={t('admin.settings.site.helpDocHint')}>
-                <Input value={helpDocUrl} onChange={(e) => setHelpDocUrl(e.target.value)} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
+                <ChapterLinkPicker value={helpDocUrl} onChange={setHelpDocUrl} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
               </Field>
               <Field label={t('admin.settings.site.terms')} hint={t('admin.settings.site.termsHint')}>
-                <Input value={termsUrl} onChange={(e) => setTermsUrl(e.target.value)} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
+                <ChapterLinkPicker value={termsUrl} onChange={setTermsUrl} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
               </Field>
               <Field label={t('admin.settings.site.privacy')} hint={t('admin.settings.site.privacyHint')}>
-                <Input value={privacyUrl} onChange={(e) => setPrivacyUrl(e.target.value)} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
+                <ChapterLinkPicker value={privacyUrl} onChange={setPrivacyUrl} placeholder={t('admin.settings.site.docUrlPlaceholder')} />
               </Field>
             </div>
           </div>
