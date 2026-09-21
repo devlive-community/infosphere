@@ -20,7 +20,9 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/var/lib/knowforge /var/www/knowforge/static /var/www/knowforge
+# 同时允许新旧数据目录可写：既有部署的数据仍在 /var/lib/infosphere，改名后不强制迁移即可继续读写；
+# 新部署使用 /var/lib/knowforge。二者取决于 env 里的 KNOWFORGE_DATA/INFO_SPHERE_DATA。
+ReadWritePaths=/var/lib/knowforge /var/lib/infosphere /var/www/knowforge/static /var/www/knowforge
 
 [Install]
 WantedBy=multi-user.target

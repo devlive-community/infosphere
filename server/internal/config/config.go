@@ -28,7 +28,23 @@ type Config struct {
 	InstalledAt string         `json:"installed_at,omitempty"`
 }
 
-// DataDir 返回数据目录，可通过环境变量 KNOWFORGE_DATA 覆盖，默认 ./data
+// init 兼容旧品牌环境变量：项目由 InfoSphere 改名为 KnowForge 后，环境变量前缀
+// INFO_SPHERE_* 改为 KNOWFORGE_*。为了让「仍使用旧 env 文件/密钥」的既有部署平滑升级，
+// 启动时把未设置的 KNOWFORGE_X 用旧的 INFO_SPHERE_X 值补齐（新值优先）。全部代码只读新前缀。
+func init() {
+	for _, base := range []string{
+		"DATA", "PORT", "WEB_PORT", "STATIC_ROOT", "API_URL",
+		"UPGRADE", "UPSTREAM_REPO", "TRUSTED_PROXIES", "SITE_URL", "ENV_FILE",
+	} {
+		if os.Getenv("KNOWFORGE_"+base) == "" {
+			if v := os.Getenv("INFO_SPHERE_" + base); v != "" {
+				_ = os.Setenv("KNOWFORGE_"+base, v)
+			}
+		}
+	}
+}
+
+// DataDir 返回数据目录，可通过环境变量 KNOWFORGE_DATA 覆盖（旧 INFO_SPHERE_DATA 亦兼容），默认 ./data
 func DataDir() string {
 	if dir := os.Getenv("KNOWFORGE_DATA"); dir != "" {
 		return dir

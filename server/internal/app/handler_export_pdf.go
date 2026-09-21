@@ -30,6 +30,9 @@ func requestToken(c *gin.Context) string {
 	if ck, err := c.Cookie("knowforge_token"); err == nil {
 		return ck
 	}
+	if ck, err := c.Cookie("infosphere_token"); err == nil { // 兼容改名前的旧 Cookie
+		return ck
+	}
 	return ""
 }
 

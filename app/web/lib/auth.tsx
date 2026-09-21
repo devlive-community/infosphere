@@ -241,6 +241,7 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
   const logout = useCallback(() => {
     clearSession()
     document.cookie = 'knowforge_token=; Max-Age=0; path=/'
+    document.cookie = 'infosphere_token=; Max-Age=0; path=/' // 一并清除改名前的旧 Cookie，避免后端回退读取导致「登出后仍登录」
     localStorage.removeItem('knowforge_theme')
     applyTheme(DEFAULT_THEME)
     setUser(null)

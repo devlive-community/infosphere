@@ -62,8 +62,11 @@ func (a *App) OptionalAuth() gin.HandlerFunc {
 func (a *App) resolveUser(c *gin.Context) *models.User {
 	token := strings.TrimSpace(strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer "))
 	if token == "" {
-		// SSR 场景：浏览器同源请求自动携带 Cookie
+		// SSR 场景：浏览器同源请求自动携带 Cookie。改名后优先读新 Cookie，
+		// 回退旧 Cookie infosphere_token，避免升级后既有登录会话被强制登出。
 		if ck, err := c.Cookie("knowforge_token"); err == nil {
+			token = strings.TrimSpace(ck)
+		} else if ck, err := c.Cookie("infosphere_token"); err == nil {
 			token = strings.TrimSpace(ck)
 		}
 	}
