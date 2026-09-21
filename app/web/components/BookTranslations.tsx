@@ -25,10 +25,12 @@ export default function BookTranslations({ bookId, linkTo = 'detail' }: { bookId
     linkTo === 'reader' && v.first_doc_slug
       ? `/book/reader/${encodeURIComponent(v.slug)}/${encodeURIComponent(v.first_doc_slug)}`
       : `/book/detail/${encodeURIComponent(v.slug)}`
+  // 详情页用内容宽度（避免全宽拉伸显得笨重）；阅读页侧栏窄，仍用全宽填满。
+  const compact = linkTo === 'detail'
   return (
-    <div className="flex min-w-0 items-center gap-2 text-sm">
+    <div className={`flex min-w-0 items-center gap-2 text-sm ${compact ? 'w-auto' : ''}`}>
       <span className="shrink-0 text-slate-400">{t('book.variant.language')}</span>
-      <div className="min-w-0 flex-1">
+      <div className={compact ? 'w-48 max-w-full' : 'min-w-0 flex-1'}>
         <Select size="sm" value={current?.slug || ''}
           onChange={(value) => { const v = items.find((x) => x.slug === value); if (v && !v.current) router.push(hrefFor(v)) }}
           options={items.map((v) => ({ value: v.slug, label: v.language || v.title }))} />
