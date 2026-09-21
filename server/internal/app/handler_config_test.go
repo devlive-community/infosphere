@@ -16,7 +16,7 @@ import (
 //   - 新增/更新自定义配置，非法键被拒
 //   - 删除自定义配置成功，删除系统关键键被拒
 func TestAdminConfigs(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

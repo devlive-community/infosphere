@@ -69,17 +69,17 @@ func prepareWebRuntime(apiPort int) (*webRuntime, error) {
 	if err != nil {
 		return nil, err
 	}
-	if staticRoot := os.Getenv("INFO_SPHERE_STATIC_ROOT"); staticRoot != "" {
+	if staticRoot := os.Getenv("KNOWFORGE_STATIC_ROOT"); staticRoot != "" {
 		if err := mergeStaticAssets(filepath.Join(runtimeDir, ".next", "static"), staticRoot); err != nil {
 			return nil, fmt.Errorf("合并 Next.js 静态资源失败: %w", err)
 		}
 	}
 
 	port := defaultWebPort
-	if raw := os.Getenv("INFO_SPHERE_WEB_PORT"); raw != "" {
+	if raw := os.Getenv("KNOWFORGE_WEB_PORT"); raw != "" {
 		parsed, parseErr := strconv.Atoi(raw)
 		if parseErr != nil || parsed <= 0 || parsed > 65535 {
-			return nil, fmt.Errorf("无效的 INFO_SPHERE_WEB_PORT: %q", raw)
+			return nil, fmt.Errorf("无效的 KNOWFORGE_WEB_PORT: %q", raw)
 		}
 		port = parsed
 	}
@@ -178,7 +178,7 @@ func (w *webRuntime) Start(apiPort int) error {
 		"NODE_ENV":            "production",
 		"PORT":                strconv.Itoa(w.port),
 		"HOSTNAME":            "127.0.0.1",
-		"INFO_SPHERE_API_URL": fmt.Sprintf("http://127.0.0.1:%d", apiPort),
+		"KNOWFORGE_API_URL": fmt.Sprintf("http://127.0.0.1:%d", apiPort),
 	})
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

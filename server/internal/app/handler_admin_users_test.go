@@ -25,7 +25,7 @@ func uid(item any) uint64 {
 //   - 角色变更与状态启停
 //   - 边界：操作自身被拒、保留最后一位启用管理员、删除拥有书籍的用户被拒
 func TestAdminUsers(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -200,7 +200,7 @@ func TestAdminUsers(t *testing.T) {
 
 // TestAdminDeleteUserWithRelatedData 覆盖：用户存在关联数据（如第三方绑定、阅读进度）时仍能成功删除（不因外键失败）。
 func TestAdminDeleteUserWithRelatedData(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

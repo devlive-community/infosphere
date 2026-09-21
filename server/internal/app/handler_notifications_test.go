@@ -17,7 +17,7 @@ import (
 
 // 通知模块集成测试：列表空数组 / 评论与点赞触发 / 已读标记 / SSE 首帧与鉴权 / 权限
 func TestNotifications(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

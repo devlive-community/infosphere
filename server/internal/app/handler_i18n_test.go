@@ -14,7 +14,7 @@ import (
 )
 
 func TestDynamicI18nWorkflow(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	a, owner, db := newContentImportTestApp(t)
 	a.Config = &config.Config{Installed: true, Secret: "i18n-test-secret"}
 	a.Notifications = newNotificationHub()

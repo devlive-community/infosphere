@@ -16,7 +16,7 @@ import (
 // TestLoginTwoPhaseTwoFactor 覆盖两步登录：第一步（用户名/密码/验证码）通过后下发 login_token，
 // 第二步仅凭 login_token + 动态码完成登录，不再校验验证码（修复验证码被消费后二次报错）。
 func TestLoginTwoPhaseTwoFactor(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

@@ -14,7 +14,7 @@ import (
 
 // 后台章节管理：验证跨书籍元数据检索，以及管理员复用既有章节更新/删除权限。
 func TestAdminDocuments(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

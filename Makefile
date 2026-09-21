@@ -64,11 +64,11 @@ lint: check-node
 
 ## 前端开发模式（浏览器与 SSR 均直连本机 API）
 dev-web: check-node
-	cd $(WEB_DIR) && NEXT_PUBLIC_API_BASE=http://localhost:6969 INFO_SPHERE_API_URL=http://localhost:6969 pnpm dev
+	cd $(WEB_DIR) && NEXT_PUBLIC_API_BASE=http://localhost:6969 KNOWFORGE_API_URL=http://localhost:6969 pnpm dev
 
 ## Go API 开发模式
 dev-server:
-	cd $(SERVER_DIR) && INFO_SPHERE_DATA=./data go run . -port 6969
+	cd $(SERVER_DIR) && KNOWFORGE_DATA=./data go run . -port 6969
 
 ## 清理构建产物
 clean:

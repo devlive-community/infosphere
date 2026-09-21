@@ -16,7 +16,7 @@ func uintStr(v uint) string { return strconv.FormatUint(uint64(v), 10) }
 
 // 外链章节：保存 external_url 后应能持久化并原样读回（防回归：#17 保存后被还原）。
 func TestDocumentExternalURLRoundTrip(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

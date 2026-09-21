@@ -20,7 +20,7 @@ import (
 
 // M16 导入导出集成测试：验收标准 = 导出再导入内容无损
 func TestBookExportImport(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

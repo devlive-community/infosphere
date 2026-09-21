@@ -88,9 +88,9 @@ docker compose up -d --build
 
 启动后访问 `http://<主机>:6969/install` 完成安装向导。数据（数据库、上传、配置）都在容器内 `/data`（对应数据卷 `knowforge-data`）。
 
-- 端口：`INFO_SPHERE_PORT`（默认 `6969`）
+- 端口：`KNOWFORGE_PORT`（默认 `6969`）
 - 数据目录：容器内固定为 `/data`，挂载数据卷或宿主目录持久化
-- 受信代理：经 nginx / 网关部署时设 `INFO_SPHERE_TRUSTED_PROXIES` 为代理 IP/CIDR（逗号分隔）
+- 受信代理：经 nginx / 网关部署时设 `KNOWFORGE_TRUSTED_PROXIES` 为代理 IP/CIDR（逗号分隔）
 - 外接数据库：安装向导中选择 MySQL / PostgreSQL 并填写连接信息即可
 - 升级：拉取新镜像重建容器（`docker compose pull && docker compose up -d`）
 - 镜像标签：`latest` 及具体版本（如 `ghcr.io/devlive-community/knowforge:1.2.3`、`1.2`）

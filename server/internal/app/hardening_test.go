@@ -23,7 +23,7 @@ import (
 
 // M11：登录用户搜索应能看到自己的私有书籍，他人不可见
 func TestSearchLoggedInVisibility(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)
@@ -92,7 +92,7 @@ func TestSearchLoggedInVisibility(t *testing.T) {
 
 // M16：导入 zip 的路径穿越与文件数上限必须拒绝
 func TestImportSecurity(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)
@@ -208,7 +208,7 @@ func TestImportSecurity(t *testing.T) {
 
 // M14×M16：editor 协作者可导出，viewer 不可
 func TestExportByCollaborator(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)
@@ -286,7 +286,7 @@ func TestExportByCollaborator(t *testing.T) {
 
 // M15：过期的找回令牌必须拒绝
 func TestPasswordResetExpiredToken(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

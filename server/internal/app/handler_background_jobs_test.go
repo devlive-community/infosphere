@@ -20,7 +20,7 @@ import (
 
 func TestCleanupExpiredImportSources(t *testing.T) {
 	dataDir := t.TempDir()
-	t.Setenv("INFO_SPHERE_DATA", dataDir)
+	t.Setenv("KNOWFORGE_DATA", dataDir)
 	dir := filepath.Join(dataDir, "import-jobs")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func TestCleanupExpiredImportSources(t *testing.T) {
 
 func TestMaintenanceCleanupRunsFromPersistentQueueAndIsIdempotent(t *testing.T) {
 	dataDir := t.TempDir()
-	t.Setenv("INFO_SPHERE_DATA", dataDir)
+	t.Setenv("KNOWFORGE_DATA", dataDir)
 	a, owner, db := newContentImportTestApp(t)
 	a.Config = &config.Config{Secret: "maintenance-background-task-secret"}
 	if err := a.configureJobQueue(); err != nil {
@@ -121,7 +121,7 @@ func TestMaintenanceCleanupRunsFromPersistentQueueAndIsIdempotent(t *testing.T) 
 }
 
 func TestAdminBackgroundJobs(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatal(err)

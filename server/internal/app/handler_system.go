@@ -65,7 +65,7 @@ type releaseInfo struct {
 
 // upstreamRepo 升级源仓库
 func upstreamRepo() string {
-	if repo := os.Getenv("INFO_SPHERE_UPSTREAM_REPO"); repo != "" {
+	if repo := os.Getenv("KNOWFORGE_UPSTREAM_REPO"); repo != "" {
 		return repo
 	}
 	return "devlive-community/knowforge"
@@ -171,8 +171,8 @@ func (a *App) SystemVersion(c *gin.Context) {
 
 // SystemUpgrade POST /system/upgrade 管理员触发在线升级
 func (a *App) SystemUpgrade(c *gin.Context) {
-	if os.Getenv("INFO_SPHERE_UPGRADE") != "enabled" {
-		fail(c, http.StatusBadRequest, "在线升级仅在 systemd 部署模式下启用（需设置 INFO_SPHERE_UPGRADE=enabled）")
+	if os.Getenv("KNOWFORGE_UPGRADE") != "enabled" {
+		fail(c, http.StatusBadRequest, "在线升级仅在 systemd 部署模式下启用（需设置 KNOWFORGE_UPGRADE=enabled）")
 		return
 	}
 	info, err := a.latestRelease()

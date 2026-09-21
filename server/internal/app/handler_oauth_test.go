@@ -15,7 +15,7 @@ import (
 // OAuth 模块集成测试：不访问 GitHub 外网，覆盖
 // providers 开关 / 管理员配置 / 授权跳转参数 / state 校验 / 绑定列表 / 解绑规则与权限
 func TestOAuthFlow(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -145,7 +145,7 @@ func TestOAuthFlow(t *testing.T) {
 
 // TestOAuthStateDBBacked 覆盖入库 state 的一次性与失效语义（多实例：不依赖进程内存）。
 func TestOAuthStateDBBacked(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

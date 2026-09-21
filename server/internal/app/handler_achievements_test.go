@@ -137,7 +137,7 @@ func TestAchievementEventIsDeduplicatedAndProcessed(t *testing.T) {
 }
 
 func TestAchievementAdminPermissionAndPublicPayload(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	app, regular, db := newContentImportTestApp(t)
 	app.Config = &config.Config{Installed: true, Secret: "achievement-permission-secret"}
 	app.Notifications = newNotificationHub()

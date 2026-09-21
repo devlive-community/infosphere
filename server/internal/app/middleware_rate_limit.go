@@ -106,7 +106,7 @@ var (
 
 // configureTrustedProxies 默认不信任任何转发头。部署在反向代理后时，需显式配置代理 IP/CIDR。
 func configureTrustedProxies(r *gin.Engine) {
-	raw := strings.TrimSpace(os.Getenv("INFO_SPHERE_TRUSTED_PROXIES"))
+	raw := strings.TrimSpace(os.Getenv("KNOWFORGE_TRUSTED_PROXIES"))
 	if raw == "" {
 		_ = r.SetTrustedProxies(nil)
 		return
@@ -119,7 +119,7 @@ func configureTrustedProxies(r *gin.Engine) {
 		}
 	}
 	if err := r.SetTrustedProxies(proxies); err != nil {
-		log.Printf("[security] INFO_SPHERE_TRUSTED_PROXIES 无效，已禁用转发头信任: %v", err)
+		log.Printf("[security] KNOWFORGE_TRUSTED_PROXIES 无效，已禁用转发头信任: %v", err)
 		_ = r.SetTrustedProxies(nil)
 	}
 }

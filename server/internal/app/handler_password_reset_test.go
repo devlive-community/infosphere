@@ -23,7 +23,7 @@ func (r *mailRecorder) Send(to, _, body string) error {
 
 // 找回密码集成测试：邮箱存在性不泄露 / 令牌一次性 / 旧令牌作废 / 密码生效 / 管理端配置
 func TestPasswordReset(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

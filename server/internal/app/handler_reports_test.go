@@ -13,7 +13,7 @@ import (
 )
 
 func TestContentReportModerationFlow(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, _ := config.Load()
 	a, err := New(cfg)
 	if err != nil {

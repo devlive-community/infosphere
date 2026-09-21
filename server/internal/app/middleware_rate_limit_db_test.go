@@ -14,7 +14,7 @@ import (
 // newInstalledApp 启动并安装一个临时 sqlite 应用，返回带 DB 的实例。
 func newInstalledApp(t *testing.T) *App {
 	t.Helper()
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

@@ -22,7 +22,7 @@ import (
 
 // 旧库迁移集成测试：sqlite 模拟旧版 MySQL schema → 迁移 → 校验数据无损与幂等
 func TestLegacyMigration(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

@@ -85,10 +85,10 @@ chmod +x knowforge-server
 ./knowforge-server -port 6969
 ```
 
-默认数据目录为当前目录下的 `./data`，通过环境变量 `INFO_SPHERE_DATA` 指定持久化路径：
+默认数据目录为当前目录下的 `./data`，通过环境变量 `KNOWFORGE_DATA` 指定持久化路径：
 
 ```bash
-INFO_SPHERE_DATA=/var/lib/knowforge ./knowforge-server -port 6969
+KNOWFORGE_DATA=/var/lib/knowforge ./knowforge-server -port 6969
 ```
 
 ---
@@ -113,7 +113,7 @@ make build
 启动：
 
 ```bash
-INFO_SPHERE_DATA=./data ./bin/knowforge-server -port 6969
+KNOWFORGE_DATA=./data ./bin/knowforge-server -port 6969
 ```
 
 ---
@@ -139,14 +139,14 @@ INFO_SPHERE_DATA=./data ./bin/knowforge-server -port 6969
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
-| `INFO_SPHERE_DATA` | `./data` | 数据目录（数据库、上传文件、config.json） |
-| `INFO_SPHERE_PORT` | `6969` | 服务监听端口（也可用 `-port` 参数） |
-| `INFO_SPHERE_WEB_PORT` | `6900` | 内嵌 Next.js SSR 内部端口，一般无需配置 |
-| `INFO_SPHERE_TRUSTED_PROXIES` | 空 | 受信任反向代理 IP 列表（逗号分隔），用于解析真实客户端 IP；本机 nginx 填 `127.0.0.1,::1` |
-| `INFO_SPHERE_SITE_URL` | 空 | 站点对外地址（如 `https://kb.example.com`），用于邮件链接与 sitemap 生成；nginx 已设置 `X-Forwarded-Host` 时可不配 |
-| `INFO_SPHERE_STATIC_ROOT` | 内置 | Next.js 静态资源目录；跨版本部署时指向共享目录可避免旧页面 404 |
-| `INFO_SPHERE_UPGRADE` | 空 | 在线升级开关，设为 `enabled` 启用 |
-| `INFO_SPHERE_UPSTREAM_REPO` | `devlive-community/knowforge` | 在线升级源仓库 |
+| `KNOWFORGE_DATA` | `./data` | 数据目录（数据库、上传文件、config.json） |
+| `KNOWFORGE_PORT` | `6969` | 服务监听端口（也可用 `-port` 参数） |
+| `KNOWFORGE_WEB_PORT` | `6900` | 内嵌 Next.js SSR 内部端口，一般无需配置 |
+| `KNOWFORGE_TRUSTED_PROXIES` | 空 | 受信任反向代理 IP 列表（逗号分隔），用于解析真实客户端 IP；本机 nginx 填 `127.0.0.1,::1` |
+| `KNOWFORGE_SITE_URL` | 空 | 站点对外地址（如 `https://kb.example.com`），用于邮件链接与 sitemap 生成；nginx 已设置 `X-Forwarded-Host` 时可不配 |
+| `KNOWFORGE_STATIC_ROOT` | 内置 | Next.js 静态资源目录；跨版本部署时指向共享目录可避免旧页面 404 |
+| `KNOWFORGE_UPGRADE` | 空 | 在线升级开关，设为 `enabled` 启用 |
+| `KNOWFORGE_UPSTREAM_REPO` | `devlive-community/knowforge` | 在线升级源仓库 |
 
 数据目录结构：
 
@@ -235,7 +235,7 @@ sudo certbot --nginx -d kb.example.com
 ## 升级
 
 - **Docker**：`docker compose pull && docker compose up -d`，数据在卷中不受影响
-- **在线升级**（需 `INFO_SPHERE_UPGRADE=enabled`）：管理后台一键升级，自动下载校验、替换二进制、重启服务，失败自动回滚
+- **在线升级**（需 `KNOWFORGE_UPGRADE=enabled`）：管理后台一键升级，自动下载校验、替换二进制、重启服务，失败自动回滚
 - **二进制**：下载新版本替换 `knowforge-server` 后 `sudo systemctl restart knowforge`
 - **数据库迁移**：升级后首次启动自动执行，无需手工操作
 
@@ -246,12 +246,12 @@ sudo certbot --nginx -d kb.example.com
 | 现象 | 排查方向 |
 |------|---------|
 | 访问 `/install` 跳转首页 | 系统已初始化过；如需重装，清空数据目录（会丢失全部数据） |
-| 端口被占用 | `INFO_SPHERE_PORT` 或 `-port` 参数换端口 |
+| 端口被占用 | `KNOWFORGE_PORT` 或 `-port` 参数换端口 |
 | sitemap.xml 返回 404 | 未在「站点设置」配置站点访问地址，或后台任务尚未运行（每日一次；保存站点地址后会立即触发） |
-| nginx 后客户端 IP 显示异常 | 设置 `INFO_SPHERE_TRUSTED_PROXIES=127.0.0.1,::1` |
+| nginx 后客户端 IP 显示异常 | 设置 `KNOWFORGE_TRUSTED_PROXIES=127.0.0.1,::1` |
 | 上传大文件失败 | 检查 nginx `client_max_body_size`（示例配置为 12m） |
 | 容器健康检查失败 | `docker compose logs knowforge` 查看启动日志；首次启动需等待约 40 秒 |
-| 升级后旧页面静态资源 404 | 配置 `INFO_SPHERE_STATIC_ROOT` 指向跨版本共享的静态目录（见 `deploy/nginx.conf.example`） |
+| 升级后旧页面静态资源 404 | 配置 `KNOWFORGE_STATIC_ROOT` 指向跨版本共享的静态目录（见 `deploy/nginx.conf.example`） |
 
 ---
 

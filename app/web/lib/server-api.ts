@@ -1,9 +1,9 @@
 // 服务端数据获取：getServerSideProps 专用。
-// 通过内网地址直连 Go API（INFO_SPHERE_API_URL，默认 http://127.0.0.1:6969），
+// 通过内网地址直连 Go API（KNOWFORGE_API_URL，默认 http://127.0.0.1:6969），
 // 不经过 nginx，也不受 CORS 限制。
 import type { User } from './types'
 
-const API_INTERNAL = process.env.INFO_SPHERE_API_URL || 'http://127.0.0.1:6969'
+const API_INTERNAL = process.env.KNOWFORGE_API_URL || 'http://127.0.0.1:6969'
 
 export class ServerApiError extends Error {
   status: number

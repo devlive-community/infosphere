@@ -67,7 +67,7 @@ func contentImportRouter(app *App, user *models.User) *gin.Engine {
 
 func TestImportPDFBookRunsAsOwnedBackgroundTask(t *testing.T) {
 	dataDir := t.TempDir()
-	t.Setenv("INFO_SPHERE_DATA", dataDir)
+	t.Setenv("KNOWFORGE_DATA", dataDir)
 	app, owner, db := newContentImportTestApp(t)
 	app.Config = &config.Config{Secret: "pdf-background-task-secret"}
 	if err := app.configureJobQueue(); err != nil {

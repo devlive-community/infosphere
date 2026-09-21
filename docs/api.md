@@ -153,7 +153,7 @@ Authorization: Bearer <token>
 | 上传图片 | 每用户 20 次 / 分钟 |
 | 提交内容举报 | 每用户 20 次 / 小时 |
 
-默认不信任 `X-Forwarded-For` 等代理头。只有反向代理的地址或 CIDR 被显式配置到 `INFO_SPHERE_TRUSTED_PROXIES` 后，服务才使用其传入的客户端 IP；多个值使用英文逗号分隔。
+默认不信任 `X-Forwarded-For` 等代理头。只有反向代理的地址或 CIDR 被显式配置到 `KNOWFORGE_TRUSTED_PROXIES` 后，服务才使用其传入的客户端 IP；多个值使用英文逗号分隔。
 
 ---
 

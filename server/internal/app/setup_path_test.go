@@ -10,7 +10,7 @@ import (
 
 func TestNormalizeSQLitePath(t *testing.T) {
 	dataDir := t.TempDir()
-	t.Setenv("INFO_SPHERE_DATA", dataDir)
+	t.Setenv("KNOWFORGE_DATA", dataDir)
 
 	// 空路径 → 数据目录默认值
 	cfg := config.DatabaseConfig{Type: "sqlite"}

@@ -16,7 +16,7 @@ import (
 //   - 按 created_at DESC 排序、含书籍作者 user 预加载
 //   - 不限可见性：草稿/私有书籍也出现（区别于公开 /explore/latest）
 func TestAdminActivity(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -128,7 +128,7 @@ func TestAdminActivity(t *testing.T) {
 
 // 空库时间线：recent_users/recent_books 仍为数组而非 null（仅安装后的管理员）
 func TestAdminActivityEmpty(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

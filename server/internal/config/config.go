@@ -28,9 +28,9 @@ type Config struct {
 	InstalledAt string         `json:"installed_at,omitempty"`
 }
 
-// DataDir 返回数据目录，可通过环境变量 INFO_SPHERE_DATA 覆盖，默认 ./data
+// DataDir 返回数据目录，可通过环境变量 KNOWFORGE_DATA 覆盖，默认 ./data
 func DataDir() string {
-	if dir := os.Getenv("INFO_SPHERE_DATA"); dir != "" {
+	if dir := os.Getenv("KNOWFORGE_DATA"); dir != "" {
 		return dir
 	}
 	return "./data"
@@ -80,7 +80,7 @@ func (c *Config) ListenPort(flagPort int) int {
 	if flagPort > 0 {
 		return flagPort
 	}
-	if p := os.Getenv("INFO_SPHERE_PORT"); p != "" {
+	if p := os.Getenv("KNOWFORGE_PORT"); p != "" {
 		var port int
 		if _, err := fmt.Sscanf(p, "%d", &port); err == nil && port > 0 {
 			return port

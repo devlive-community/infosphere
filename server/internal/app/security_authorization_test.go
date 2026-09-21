@@ -17,7 +17,7 @@ import (
 
 // TestAuthorizationBoundaries 覆盖公开数据、对象归属和令牌回跳地址的安全边界。
 func TestAuthorizationBoundaries(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatal(err)

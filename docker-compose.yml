@@ -14,7 +14,7 @@ services:
     ports:
       - "6969:6969"
     environment:
-      INFO_SPHERE_PORT: "6969"
+      KNOWFORGE_PORT: "6969"
       # 数据目录已在镜像中固定为 /data，无需覆盖
     volumes:
       - knowforge-data:/data

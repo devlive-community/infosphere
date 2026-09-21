@@ -131,7 +131,7 @@ func TestRateLimitUsesAuthenticatedUserAndTrustedProxyPolicy(t *testing.T) {
 	}
 
 	// 默认不信任 X-Forwarded-For；同一连接伪造不同地址仍共享额度。
-	t.Setenv("INFO_SPHERE_TRUSTED_PROXIES", "")
+	t.Setenv("KNOWFORGE_TRUSTED_PROXIES", "")
 	ipApp := &App{RateLimits: newMemoryRateLimitStore()}
 	ipRouter := gin.New()
 	configureTrustedProxies(ipRouter)
@@ -150,7 +150,7 @@ func TestRateLimitUsesAuthenticatedUserAndTrustedProxyPolicy(t *testing.T) {
 	}
 
 	// 显式信任代理后，才使用该代理传入的客户端地址。
-	t.Setenv("INFO_SPHERE_TRUSTED_PROXIES", "203.0.113.10")
+	t.Setenv("KNOWFORGE_TRUSTED_PROXIES", "203.0.113.10")
 	trustedApp := &App{RateLimits: newMemoryRateLimitStore()}
 	trustedRouter := gin.New()
 	configureTrustedProxies(trustedRouter)

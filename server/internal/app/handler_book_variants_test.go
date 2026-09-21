@@ -14,7 +14,7 @@ import (
 
 // TestBookTranslationsGrouping 覆盖翻译组：同 trans_group 的可见书籍聚合、私有书对匿名不可见、少于两本不成组。
 func TestBookTranslationsGrouping(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

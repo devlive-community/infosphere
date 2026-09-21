@@ -13,7 +13,7 @@ import (
 
 // 后台标签管理：创建（带图标）→ 列表可见 → 更新名称与图标；标签插件禁用后接口 404。
 func TestAdminTagManagementAndPluginGate(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

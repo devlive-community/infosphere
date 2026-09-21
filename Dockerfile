@@ -49,8 +49,8 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # 数据目录（config.json、SQLite、上传文件、解压的 Web 运行时都在此，需持久化）
-ENV INFO_SPHERE_DATA=/data \
-    INFO_SPHERE_PORT=6969
+ENV KNOWFORGE_DATA=/data \
+    KNOWFORGE_PORT=6969
 WORKDIR /app
 COPY --from=builder /out/knowforge-server /usr/local/bin/knowforge-server
 RUN mkdir -p /data
@@ -58,6 +58,6 @@ VOLUME ["/data"]
 EXPOSE 6969
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 \
-    CMD wget -qO- "http://127.0.0.1:${INFO_SPHERE_PORT}/api/v1/health" >/dev/null 2>&1 || exit 1
+    CMD wget -qO- "http://127.0.0.1:${KNOWFORGE_PORT}/api/v1/health" >/dev/null 2>&1 || exit 1
 
 ENTRYPOINT ["/usr/local/bin/knowforge-server"]

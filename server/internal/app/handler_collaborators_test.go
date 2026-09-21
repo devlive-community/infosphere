@@ -13,7 +13,7 @@ import (
 
 // 协作模块集成测试：权限边界 / editor 写权限 / viewer 只读 / 自行退出 / 邀请通知
 func TestCollaboration(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

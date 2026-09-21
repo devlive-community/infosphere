@@ -16,7 +16,7 @@ import (
 
 // DOCX 导出应产出结构合法、良构 XML 的 .docx（Word 严格解析 OOXML）。
 func TestExportBookDOCXStructure(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

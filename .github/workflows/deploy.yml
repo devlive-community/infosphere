@@ -89,11 +89,11 @@ jobs:
       # ── 打包发布：只有一个应用二进制 + systemd unit + env ──
       - name: Assemble release
         env:
-          INFO_SPHERE_ENV_FILE: ${{ secrets.INFO_SPHERE_ENV_FILE }}
+          KNOWFORGE_ENV_FILE: ${{ secrets.KNOWFORGE_ENV_FILE }}
         run: |
-          test -n "$INFO_SPHERE_ENV_FILE"
+          test -n "$KNOWFORGE_ENV_FILE"
           cp deploy/knowforge-api.service deploy/knowforge.sudoers release/
-          printf '%s\n' "$INFO_SPHERE_ENV_FILE" > release/knowforge.env
+          printf '%s\n' "$KNOWFORGE_ENV_FILE" > release/knowforge.env
           chmod 600 release/knowforge.env
           (cd release && sha256sum knowforge-server > SHA256SUMS)
           ls -la release/
@@ -131,6 +131,14 @@ jobs:
             sudo install -d -m 755 -o www-data -g www-data /var/lib/knowforge /var/lib/knowforge/uploads
             sudo install -d -m 755 -o www-data -g www-data /var/www/knowforge/static
 
+            # 从旧品牌 infosphere 迁移数据：仅当旧数据目录存在、且新目录还没有 config.json（即尚未迁移）时，
+            # 整体拷贝旧数据（含 sqlite、config.json、uploads）到新目录，避免改名后丢历史数据或写入只读旧路径。
+            if [ -d /var/lib/infosphere ] && [ ! -e /var/lib/knowforge/config.json ]; then
+              echo "检测到旧数据目录 /var/lib/infosphere，迁移到 /var/lib/knowforge …"
+              sudo cp -a /var/lib/infosphere/. /var/lib/knowforge/
+              sudo chown -R www-data:www-data /var/lib/knowforge
+            fi
+
             # 发布单文件
             sudo cp -a "$staged_dir/." "$release_dir/"
             sudo chmod 755 "$release_dir/knowforge-server"
@@ -145,8 +153,8 @@ jobs:
             sudo ln -sfn "$release_dir" "$deploy_root/current.next"
             sudo mv -Tf "$deploy_root/current.next" "$deploy_root/current"
 
-            # 首次单文件部署时停止并禁用旧的独立 Web unit，释放 6900 给 Go 托管的 Node 子进程
-            sudo systemctl disable --now knowforge-web.service || true
+            # 停止并禁用旧品牌单元（infosphere-*）与早期独立 Web unit，避免端口 6969/6900 冲突与残留
+            sudo systemctl disable --now infosphere-api.service infosphere-web.service knowforge-web.service 2>/dev/null || true
             sudo systemctl daemon-reload
             sudo systemctl enable knowforge-api.service
             sudo systemctl restart knowforge-api.service

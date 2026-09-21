@@ -17,7 +17,7 @@ import (
 
 // 存储驱动集成测试：本地上传回归 / 管理端配置读写与权限 / 七牛驱动全流程（模拟上传端点）
 func TestStorageDrivers(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // 安装守卫中间件：未安装时所有页面（除 /install）一律服务端重定向到安装向导；
 // 已安装时访问 /install 会被送回首页。安装状态来自 Go API（data/config.json）。
-const API_INTERNAL = process.env.INFO_SPHERE_API_URL || 'http://127.0.0.1:6969'
+const API_INTERNAL = process.env.KNOWFORGE_API_URL || 'http://127.0.0.1:6969'
 
 const INSTALL_PATH = '/install'
 

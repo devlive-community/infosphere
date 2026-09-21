@@ -13,7 +13,7 @@ import (
 
 // 后台书籍管理列表：验证管理员权限、私有内容可见、筛选与安全排序回退。
 func TestAdminBooks(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 
 	cfg, err := config.Load()
 	if err != nil {

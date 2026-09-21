@@ -10,9 +10,9 @@ Group=www-data
 WorkingDirectory=/var/www/knowforge/current
 ExecStart=/var/www/knowforge/current/knowforge-server -port 6969
 EnvironmentFile=/etc/knowforge/knowforge.env
-Environment=INFO_SPHERE_UPGRADE=enabled
-Environment=INFO_SPHERE_WEB_PORT=6900
-Environment=INFO_SPHERE_STATIC_ROOT=/var/www/knowforge/static
+Environment=KNOWFORGE_UPGRADE=enabled
+Environment=KNOWFORGE_WEB_PORT=6900
+Environment=KNOWFORGE_STATIC_ROOT=/var/www/knowforge/static
 Restart=always
 RestartSec=3
 TimeoutStopSec=15

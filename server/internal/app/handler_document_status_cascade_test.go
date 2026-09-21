@@ -14,7 +14,7 @@ import (
 
 // TestDocumentStatusCascadeAndFollowParent 覆盖：子章节状态跟随父章节的创建默认，以及父章节改状态时的级联。
 func TestDocumentStatusCascadeAndFollowParent(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

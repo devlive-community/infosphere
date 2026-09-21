@@ -14,7 +14,7 @@ import (
 
 // 特性插件（成就）：禁用时后台接口 404，启用后 200；启用/禁用切换即切换站点配置开关。
 func TestFeaturePluginGate(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)
@@ -96,7 +96,7 @@ func TestFeaturePluginGate(t *testing.T) {
 
 // 卸载插件必须真正删除，且不被进行中的安装 goroutine 重新写回（代次守卫）。
 func TestPluginUninstallGuardsAgainstStaleInstall(t *testing.T) {
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("加载配置失败: %v", err)

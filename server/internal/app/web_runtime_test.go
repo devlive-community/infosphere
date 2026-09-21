@@ -20,9 +20,9 @@ func TestEmbeddedWebRuntimeCanBePrepared(t *testing.T) {
 	if err := archive.Close(); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("INFO_SPHERE_DATA", t.TempDir())
-	t.Setenv("INFO_SPHERE_STATIC_ROOT", t.TempDir())
-	t.Setenv("INFO_SPHERE_WEB_PORT", "16900")
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
+	t.Setenv("KNOWFORGE_STATIC_ROOT", t.TempDir())
+	t.Setenv("KNOWFORGE_WEB_PORT", "16900")
 	web, err := prepareWebRuntime(16969)
 	if err != nil {
 		t.Fatal(err)

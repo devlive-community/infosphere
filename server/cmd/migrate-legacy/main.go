@@ -7,7 +7,7 @@
 //	go run ./cmd/migrate-legacy -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/knowforge"
 //	go run ./cmd/migrate-legacy -legacy-dsn "..." -dry-run   # 只统计不写入
 //
-// 目标库通过常规 INFO_SPHERE_* 环境变量/配置文件定位（与主服务一致）。
+// 目标库通过常规 KNOWFORGE_* 环境变量/配置文件定位（与主服务一致）。
 // 密码哈希（bcrypt）原样平移，迁移后用户可直接用原密码登录；
 // 用户名/邮箱、书籍 slug、第三方绑定 (provider,provider_id) 已存在的记录自动跳过，
 // 可重复执行（幂等），最终输出各实体的迁移/跳过数量。
