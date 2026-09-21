@@ -162,11 +162,18 @@ func metricByKey(key string) (achievementMetric, bool) {
 }
 
 func (a *App) AdminAchievementMetrics(c *gin.Context) {
-	items := append([]achievementMetric(nil), achievementMetrics...)
-	for index := range items {
-		if items[index].AllowedFilters == nil {
-			items[index].AllowedFilters = []string{}
+	// 成长（经验/等级）指标依赖「成长」插件：插件禁用时不在规则构建器里暴露，
+	// 避免管理员配出永远为 0 的规则（评估侧也已对 growth.* 做同样门禁）。
+	growthOn := a.pluginEnabled(pluginGrowth)
+	items := make([]achievementMetric, 0, len(achievementMetrics))
+	for _, metric := range achievementMetrics {
+		if !growthOn && strings.HasPrefix(metric.Key, "growth.") {
+			continue
 		}
+		if metric.AllowedFilters == nil {
+			metric.AllowedFilters = []string{}
+		}
+		items = append(items, metric)
 	}
 	ok(c, gin.H{"items": items})
 }
