@@ -16,9 +16,9 @@ import (
 	"regexp"
 	"strings"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/storage"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )

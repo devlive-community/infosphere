@@ -9,7 +9,7 @@ package plugins
 import (
 	"sort"
 
-	"infosphere/server/internal/authz"
+	"knowforge/server/internal/authz"
 )
 
 // 插件类型。

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"infosphere/server/internal/app"
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/app"
+	"knowforge/server/internal/config"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("infosphere %s (commit=%s built=%s)\n", app.Version, app.Commit, app.BuildDate)
+		fmt.Printf("knowforge %s (commit=%s built=%s)\n", app.Version, app.Commit, app.BuildDate)
 		return
 	}
 
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	if !cfg.Installed {
-		log.Println("InfoSphere 尚未安装，请访问 /install 进入安装向导")
+		log.Println("KnowForge 尚未安装，请访问 /install 进入安装向导")
 	}
 
 	listenPort := cfg.ListenPort(*port)

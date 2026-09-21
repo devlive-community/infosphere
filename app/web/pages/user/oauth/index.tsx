@@ -9,7 +9,7 @@ import OAuthBindings from '@/components/OAuthBindings'
 
 export default function OAuthSettings() {
   const { site } = useApp()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const user = useRequireAuth()
   const { t } = useTranslation()
 

@@ -101,7 +101,7 @@ func TestQiniuUploaderUpload(t *testing.T) {
 	defer fake.Close()
 
 	up := &QiniuUploader{
-		cfg:  Config{QiniuAccessKey: "ak-123", QiniuSecretKey: "sk-456", QiniuBucket: "infosphere", QiniuDomain: "https://cdn.example.com/"},
+		cfg:  Config{QiniuAccessKey: "ak-123", QiniuSecretKey: "sk-456", QiniuBucket: "knowforge", QiniuDomain: "https://cdn.example.com/"},
 		host: fake.URL,
 	}
 	url, err := up.Upload("20260102-abc.png", []byte("fake-image-bytes"))

@@ -38,7 +38,7 @@ jobs:
         working-directory: server
         env:
           CGO_ENABLED: "0"
-        run: go build -trimpath -o /tmp/infosphere-server .
+        run: go build -trimpath -o /tmp/knowforge-server .
 
   web:
     name: Web checks (typecheck + lint + test + build)

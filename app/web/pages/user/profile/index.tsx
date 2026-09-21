@@ -15,7 +15,7 @@ const MAX_BIO = 200
 
 export default function Profile() {
   const { site } = useApp()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const user = useRequireAuth()
   const { refreshUser } = useApp()
   const { t } = useTranslation()

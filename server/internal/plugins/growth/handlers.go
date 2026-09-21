@@ -10,10 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm/clause"
 
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugincore"
-	"infosphere/server/internal/plugins"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
+	"knowforge/server/internal/plugins"
 )
 
 // behavior 承载「成长等级」插件的对外端点。经验记账/等级重算等服务层（由核心阅读/评论/发布等事件触发）

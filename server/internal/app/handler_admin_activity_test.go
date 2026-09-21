@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 控制台时间线接口集成测试（/admin/activity，user:manage 仅管理员）：

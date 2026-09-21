@@ -1,12 +1,12 @@
-# InfoSphere 桌面客户端
+# KnowForge 桌面客户端
 
-基于 Tauri 2 的跨平台桌面客户端（macOS / Windows / Linux），连接自托管的 InfoSphere 服务器。
+基于 Tauri 2 的跨平台桌面客户端（macOS / Windows / Linux），连接自托管的 KnowForge 服务器。
 
 ## 开发
 
 ```bash
 pnpm install
-pnpm dev        # 需要已运行 InfoSphere 服务端
+pnpm dev        # 需要已运行 KnowForge 服务端
 ```
 
 ## 打包
@@ -25,7 +25,7 @@ pnpm build      # 产物在 src-tauri/target/release/bundle/
 
 ### 本地存储（SQLite）
 
-- 位置：系统应用配置目录下 `infosphere.db`（`rusqlite`，Rust 侧持有）。
+- 位置：系统应用配置目录下 `knowforge.db`（`rusqlite`，Rust 侧持有）。
   - `servers(url, name, token, updated_at)`：已连接的服务器与其登录令牌；
   - `app_state(active_server)`：当前激活的服务器。
 - 旧版 `config.json` 的 `server_url` 会在首次启动时自动迁移进 SQLite，随后删除旧文件。

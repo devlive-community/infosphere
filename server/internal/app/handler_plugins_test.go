@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 // 特性插件（成就）：禁用时后台接口 404，启用后 200；启用/禁用切换即切换站点配置开关。

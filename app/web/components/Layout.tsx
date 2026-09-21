@@ -144,11 +144,11 @@ function AnnouncementBanner() {
   const warning = site.announcement_tone === 'warning'
   const [dismissed, setDismissed] = useState(true)
   useEffect(() => {
-    try { setDismissed(localStorage.getItem('infosphere_announcement') === text) } catch { setDismissed(false) }
+    try { setDismissed(localStorage.getItem('knowforge_announcement') === text) } catch { setDismissed(false) }
   }, [text])
   if (!enabled || !text || dismissed) return null
   function dismiss() {
-    try { localStorage.setItem('infosphere_announcement', text) } catch { /* 忽略 */ }
+    try { localStorage.setItem('knowforge_announcement', text) } catch { /* 忽略 */ }
     setDismissed(true)
   }
   return (
@@ -169,7 +169,7 @@ function AnnouncementBanner() {
 export default function Layout({ title, children }: { title?: string; children: ReactNode }) {
   const { site, user } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const siteLogo = site.site_logo ? resolveMediaUrl(site.site_logo) : '/logo.png'
   const year = new Date().getFullYear()
 
@@ -201,7 +201,7 @@ export default function Layout({ title, children }: { title?: string; children: 
     if (!showReleaseModal || !site.version || release) return
     const v = site.version
     setRelease({ loading: true, body: '', url: '' })
-    const base = 'https://api.github.com/repos/devlive-community/infosphere/releases/tags/'
+    const base = 'https://api.github.com/repos/devlive-community/knowforge/releases/tags/'
     ;(async () => {
       for (const tag of [`v${v}`, v]) {
         try {
@@ -277,12 +277,12 @@ export default function Layout({ title, children }: { title?: string; children: 
                 ...(user ? [{ label: t('footer.link.myBooks'), href: '/books' }] : []),
               ]} />
               <FooterColumn title={t('footer.column.resources')} links={[
-                { label: t('footer.link.docs'), href: 'https://github.com/devlive-community/infosphere' },
-                { label: t('footer.link.issues'), href: 'https://github.com/devlive-community/infosphere/issues' },
+                { label: t('footer.link.docs'), href: 'https://github.com/devlive-community/knowforge' },
+                { label: t('footer.link.issues'), href: 'https://github.com/devlive-community/knowforge/issues' },
               ]} />
               <FooterColumn title={t('footer.column.community')} links={[
-                { label: t('footer.link.github'), href: 'https://github.com/devlive-community/infosphere' },
-                { label: t('footer.link.discussions'), href: 'https://github.com/devlive-community/infosphere/discussions' },
+                { label: t('footer.link.github'), href: 'https://github.com/devlive-community/knowforge' },
+                { label: t('footer.link.discussions'), href: 'https://github.com/devlive-community/knowforge/discussions' },
               ]} />
             </>
           )}
@@ -290,7 +290,7 @@ export default function Layout({ title, children }: { title?: string; children: 
         <div className="border-t border-white/10">
           <div className="mx-auto flex flex-col justify-between gap-2 px-4 py-4 text-xs text-slate-400 md:flex-row" style={{ maxWidth: 'var(--content-max-width)' }}>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span>© {year} {siteName} · Powered by InfoSphere</span>
+              <span>© {year} {siteName} · Powered by KnowForge</span>
               {site.site_beian && (
                 <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
                   {site.site_beian}
@@ -327,7 +327,7 @@ export default function Layout({ title, children }: { title?: string; children: 
             )}
           </div>
           <a
-            href={release?.url || 'https://github.com/devlive-community/infosphere/releases'}
+            href={release?.url || 'https://github.com/devlive-community/knowforge/releases'}
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full border border-slate-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"

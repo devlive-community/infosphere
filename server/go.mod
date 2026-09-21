@@ -1,4 +1,4 @@
-module infosphere/server
+module knowforge/server
 
 go 1.26
 

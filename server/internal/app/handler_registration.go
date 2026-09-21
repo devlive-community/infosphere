@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/mail"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/mail"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -245,7 +245,7 @@ func (a *App) sendActivationEmail(c *gin.Context, u *models.User) {
 	link := a.resetLinkBase(c) + "/verify-email?token=" + token
 	siteName := strings.TrimSpace(a.getSetting("site_name"))
 	if siteName == "" {
-		siteName = "InfoSphere"
+		siteName = "KnowForge"
 	}
 	mailSiteName := strings.NewReplacer("\r", " ", "\n", " ").Replace(siteName)
 	if err := a.enqueueEmail(c.Request.Context(), u.Email, "激活你的 "+mailSiteName+" 邮箱",

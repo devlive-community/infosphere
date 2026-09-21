@@ -112,7 +112,7 @@ func sendWithClient(client *smtp.Client, auth smtp.Auth, from, to string, msg []
 // buildMessage 组装 HTML 邮件；中文主题按 RFC 2047 base64 编码
 func buildMessage(from, to, subject, htmlBody string) []byte {
 	headers := strings.Join([]string{
-		"From: InfoSphere <" + from + ">",
+		"From: KnowForge <" + from + ">",
 		"To: " + to,
 		"Subject: =?UTF-8?B?" + base64.StdEncoding.EncodeToString([]byte(subject)) + "?=",
 		"Date: " + time.Now().Format(time.RFC1123Z),
@@ -137,7 +137,7 @@ func buildMessage(from, to, subject, htmlBody string) []byte {
 // NotificationHTML 生成站内通知的邮件正文
 func NotificationHTML(title, link, siteName string) string {
 	if strings.TrimSpace(siteName) == "" {
-		siteName = "InfoSphere"
+		siteName = "KnowForge"
 	}
 	safeTitle := html.EscapeString(title)
 	safeSite := html.EscapeString(siteName)
@@ -157,7 +157,7 @@ func NotificationHTML(title, link, siteName string) string {
 // VerifyEmailHTML 生成邮箱激活邮件正文
 func VerifyEmailHTML(link, siteName string, expireMinutes int) string {
 	if strings.TrimSpace(siteName) == "" {
-		siteName = "InfoSphere"
+		siteName = "KnowForge"
 	}
 	safeLink := html.EscapeString(link)
 	safeSiteName := html.EscapeString(siteName)
@@ -173,7 +173,7 @@ func VerifyEmailHTML(link, siteName string, expireMinutes int) string {
 // ResetPasswordHTML 生成找回密码邮件正文
 func ResetPasswordHTML(link, siteName string, expireMinutes int) string {
 	if strings.TrimSpace(siteName) == "" {
-		siteName = "InfoSphere"
+		siteName = "KnowForge"
 	}
 	safeLink := html.EscapeString(link)
 	safeSiteName := html.EscapeString(siteName)

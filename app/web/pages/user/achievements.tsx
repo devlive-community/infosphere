@@ -77,7 +77,7 @@ function MyAchievementsInner() {
 
   if (!user || loading) return <Loading className="min-h-[60vh]" label={t('myAch.loading')} />
 
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const percentage = data?.total ? Math.round((data.unlocked_count / data.total) * 100) : 0
 
   return (

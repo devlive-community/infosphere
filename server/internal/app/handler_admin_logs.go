@@ -20,7 +20,7 @@ func (a *App) AdminGetLogConfig(c *gin.Context) {
 	files := []logFile{}
 	if entries, err := os.ReadDir(a.logDir()); err == nil {
 		for _, e := range entries {
-			if e.IsDir() || !strings.HasPrefix(e.Name(), "infosphere-") || !strings.HasSuffix(e.Name(), ".log") {
+			if e.IsDir() || !strings.HasPrefix(e.Name(), "knowforge-") || !strings.HasSuffix(e.Name(), ".log") {
 				continue
 			}
 			info, ierr := e.Info()

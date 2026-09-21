@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 func TestNormalizeSQLitePath(t *testing.T) {
@@ -17,7 +17,7 @@ func TestNormalizeSQLitePath(t *testing.T) {
 	if err := normalizeDBConfig(&cfg); err != nil {
 		t.Fatalf("空路径应使用默认值: %v", err)
 	}
-	if cfg.Path != filepath.Join(dataDir, "infosphere.db") {
+	if cfg.Path != filepath.Join(dataDir, "knowforge.db") {
 		t.Fatalf("默认路径错误: %s", cfg.Path)
 	}
 
@@ -31,7 +31,7 @@ func TestNormalizeSQLitePath(t *testing.T) {
 	}
 
 	// 可写的绝对路径 → 保留
-	abs := filepath.Join(t.TempDir(), "abs", "infosphere.db")
+	abs := filepath.Join(t.TempDir(), "abs", "knowforge.db")
 	cfg = config.DatabaseConfig{Type: "sqlite", Path: abs}
 	if err := normalizeDBConfig(&cfg); err != nil {
 		t.Fatalf("可写绝对路径应通过: %v", err)
@@ -41,7 +41,7 @@ func TestNormalizeSQLitePath(t *testing.T) {
 	}
 
 	// 不可写的绝对路径 → 明确报错（模拟 systemd 沙箱只读文件系统：/proc 已存在但只读）
-	cfg = config.DatabaseConfig{Type: "sqlite", Path: "/proc/infosphere.db"}
+	cfg = config.DatabaseConfig{Type: "sqlite", Path: "/proc/knowforge.db"}
 	err := normalizeDBConfig(&cfg)
 	if err == nil {
 		t.Fatal("不可写目录应报错")

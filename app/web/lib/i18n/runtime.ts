@@ -33,7 +33,7 @@ export function normalizeLocale(value: string): string {
   try { return Intl.getCanonicalLocales(value)[0] || 'zh-CN' } catch { return 'zh-CN' }
 }
 export function cookieLocale(cookie = ''): string | undefined {
-  const value = cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith('infosphere_locale='))?.slice('infosphere_locale='.length)
+  const value = cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith('knowforge_locale='))?.slice('knowforge_locale='.length)
   try { return value ? normalizeLocale(decodeURIComponent(value)) : undefined } catch { return undefined }
 }
 export function resolvedMessages(snapshot: I18nSnapshot): Record<string, string> {

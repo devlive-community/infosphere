@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 // EPUB 导出应产出结构合法的 EPUB：mimetype 首位且非压缩、含 container/opf/nav 与章节。

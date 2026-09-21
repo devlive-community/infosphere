@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pquerna/otp/totp"
@@ -190,7 +190,7 @@ func (a *App) SetupTwoFactor(c *gin.Context) {
 	}
 	issuer := strings.TrimSpace(a.getSetting("site_name"))
 	if issuer == "" {
-		issuer = "InfoSphere"
+		issuer = "KnowForge"
 	}
 	key, err := totp.Generate(totp.GenerateOpts{Issuer: issuer, AccountName: u.Username})
 	if err != nil {

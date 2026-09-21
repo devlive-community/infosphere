@@ -10,7 +10,7 @@ body:
       label: 贡献准则
       description: 在继续操作之前，请阅读贡献指南。
       options:
-        - label: 我已阅读 [贡献指南](https://github.com/devlive-community/incubator-infosphere/blob/dev/CONTRIBUTING.md) 并完全同意
+        - label: 我已阅读 [贡献指南](https://github.com/devlive-community/incubator-knowforge/blob/dev/CONTRIBUTING.md) 并完全同意
           required: true
   - type: checkboxes
     attributes:

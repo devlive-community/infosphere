@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "org.devlive.infosphere"
+    namespace = "org.devlive.knowforge"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "org.devlive.infosphere"
+        applicationId = "org.devlive.knowforge"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

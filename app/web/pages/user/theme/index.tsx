@@ -11,7 +11,7 @@ import { SaveIcon } from '@/components/icons'
 
 export default function ThemeSettings() {
   const { site } = useApp()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const user = useRequireAuth()
   const { theme, applyTheme } = useApp()
   const { showToast } = useFeedback()

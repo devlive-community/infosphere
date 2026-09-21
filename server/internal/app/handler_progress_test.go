@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // TestCurrentReadingStreak 覆盖连续阅读天数的边界：空、连读、今天/昨天起算、断档。

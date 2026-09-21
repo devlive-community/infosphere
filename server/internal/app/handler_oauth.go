@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/auth"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -425,7 +425,7 @@ func (a *App) oauthFinish(c *gin.Context, origin string, u *models.User) {
 		c.Redirect(http.StatusFound, origin+"/login?oauth_error=token_issue_failed")
 		return
 	}
-	c.SetCookie("infosphere_token", token, 7*24*3600, "/", "", false, false)
+	c.SetCookie("knowforge_token", token, 7*24*3600, "/", "", false, false)
 	c.Redirect(http.StatusFound, origin+"/oauth/callback?token="+url.QueryEscape(token))
 }
 

@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"gorm.io/gorm"
 )

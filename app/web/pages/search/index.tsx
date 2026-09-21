@@ -97,7 +97,7 @@ export const getServerSideProps: GetServerSideProps<SearchPageProps> = async ({ 
 export default function SearchPage({ site, q, filters, tags, result }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const tagsEnabled = Array.isArray((site as Record<string, unknown>).feature_plugins) && ((site as Record<string, unknown>).feature_plugins as string[]).includes('tags')
   const [keyword, setKeyword] = useState(q)
   const [draft, setDraft] = useState(filters)

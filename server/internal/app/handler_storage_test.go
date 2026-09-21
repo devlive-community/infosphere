@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 存储驱动集成测试：本地上传回归 / 管理端配置读写与权限 / 七牛驱动全流程（模拟上传端点）
@@ -122,14 +122,14 @@ func TestStorageDrivers(t *testing.T) {
 	// 3. 切到七牛驱动（上传地址指向模拟端点），域名非法时 400
 	status, _ = request(http.MethodPut, "/api/v1/storage", map[string]any{
 		"driver": "qiniu", "qiniu_access_key": "ak-1", "qiniu_secret_key": "sk-1",
-		"qiniu_bucket": "infosphere", "qiniu_domain": "cdn.example.com",
+		"qiniu_bucket": "knowforge", "qiniu_domain": "cdn.example.com",
 	}, adminToken)
 	if status != 400 {
 		t.Fatalf("域名缺少协议应 400: %d", status)
 	}
 	status, _ = request(http.MethodPut, "/api/v1/storage", map[string]any{
 		"driver": "qiniu", "qiniu_access_key": "ak-1", "qiniu_secret_key": "sk-1",
-		"qiniu_bucket": "infosphere", "qiniu_domain": "https://cdn.example.com",
+		"qiniu_bucket": "knowforge", "qiniu_domain": "https://cdn.example.com",
 		"qiniu_upload_host": fakeQiniu.URL,
 	}, adminToken)
 	if status != 200 {
@@ -137,7 +137,7 @@ func TestStorageDrivers(t *testing.T) {
 	}
 	status, got := request(http.MethodGet, "/api/v1/storage", nil, adminToken)
 	data := got["data"].(map[string]any)
-	if status != 200 || data["driver"] != "qiniu" || data["qiniu_bucket"] != "infosphere" {
+	if status != 200 || data["driver"] != "qiniu" || data["qiniu_bucket"] != "knowforge" {
 		t.Fatalf("存储配置读取异常: %d %v", status, data)
 	}
 

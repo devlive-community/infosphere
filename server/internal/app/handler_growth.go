@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"gorm.io/gorm/clause"
 )

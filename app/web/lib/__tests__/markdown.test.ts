@@ -116,9 +116,9 @@ describe('M19 扩展', () => {
   })
 
   it('GitHub issue 引用：仓库前缀与默认仓库', () => {
-    const html = renderMarkdown('devlive-community/infosphere#123 和 #456')
-    expect(html).toContain('https://github.com/devlive-community/infosphere/issues/123')
-    expect(html).toContain('https://github.com/devlive-community/infosphere/issues/456')
+    const html = renderMarkdown('devlive-community/knowforge#123 和 #456')
+    expect(html).toContain('https://github.com/devlive-community/knowforge/issues/123')
+    expect(html).toContain('https://github.com/devlive-community/knowforge/issues/456')
   })
 
   it(':::api REST 文档卡', () => {

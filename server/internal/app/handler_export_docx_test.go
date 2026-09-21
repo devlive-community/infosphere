@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 // DOCX 导出应产出结构合法、良构 XML 的 .docx（Word 严格解析 OOXML）。

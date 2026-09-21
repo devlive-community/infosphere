@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 type mailRecorder struct {
@@ -165,7 +165,7 @@ func TestPasswordReset(t *testing.T) {
 	status, _ = request(http.MethodPut, "/api/v1/mail", map[string]any{
 		"driver": "smtp", "host": "smtp.example.com", "port": 465,
 		"username": "noreply", "password": "smtp-secret", "from": "noreply@example.com",
-		"site_url": "https://infosphere.example.com",
+		"site_url": "https://knowforge.example.com",
 	}, adminToken)
 	if status != 200 {
 		t.Fatalf("保存邮件配置失败: %d", status)
@@ -173,7 +173,7 @@ func TestPasswordReset(t *testing.T) {
 	status, got := request(http.MethodGet, "/api/v1/mail", nil, adminToken)
 	data := got["data"].(map[string]any)
 	if status != 200 || data["driver"] != "smtp" || data["host"] != "smtp.example.com" ||
-		data["site_url"] != "https://infosphere.example.com" {
+		data["site_url"] != "https://knowforge.example.com" {
 		t.Fatalf("邮件配置读取异常: %d %v", status, data)
 	}
 	status, _ = request(http.MethodPut, "/api/v1/mail", map[string]any{"driver": "sendgrid"}, adminToken)
@@ -194,7 +194,7 @@ func TestPasswordReset(t *testing.T) {
 	}
 	request(http.MethodPost, "/api/v1/auth/password/forgot", map[string]any{"email": "alice@test.local"}, "")
 	runNextJob()
-	if !strings.Contains(recorder.sends[len(recorder.sends)-1], "https://infosphere.example.com/reset-password?token=") {
+	if !strings.Contains(recorder.sends[len(recorder.sends)-1], "https://knowforge.example.com/reset-password?token=") {
 		t.Fatalf("邮件链接应使用 site_url: %q", recorder.sends[len(recorder.sends)-1])
 	}
 }

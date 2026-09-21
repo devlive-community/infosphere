@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"infosphere/server/internal/auth"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -20,7 +20,7 @@ func (a *App) issueToken(c *gin.Context, u *models.User) {
 		return
 	}
 	// 同步下发 Cookie：SSR 页面据此在服务端渲染登录态，避免刷新闪烁
-	c.SetCookie("infosphere_token", token, 7*24*3600, "/", "", false, false)
+	c.SetCookie("knowforge_token", token, 7*24*3600, "/", "", false, false)
 	ok(c, gin.H{"token": token, "user": u})
 }
 

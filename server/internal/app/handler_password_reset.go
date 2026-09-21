@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/mail"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/mail"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -103,7 +103,7 @@ func (a *App) ForgotPassword(c *gin.Context) {
 	link := a.resetLinkBase(c) + "/reset-password?token=" + token
 	siteName := strings.TrimSpace(a.getSetting("site_name"))
 	if siteName == "" {
-		siteName = "InfoSphere"
+		siteName = "KnowForge"
 	}
 	mailSiteName := strings.NewReplacer("\r", " ", "\n", " ").Replace(siteName)
 	if err := a.enqueueEmail(c.Request.Context(), email, "重置你的 "+mailSiteName+" 密码", mail.ResetPasswordHTML(link, siteName, 60)); err != nil {

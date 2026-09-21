@@ -297,7 +297,7 @@ export const en: Record<string, string> = {
   'bookSettings.data.pdfDesc': 'Render as PDF using your export-settings style; watermarked books keep their watermark. Requires the PDF export plugin installed by an admin.',
   'bookSettings.data.pdfBtn': 'Export PDF',
   'bookSettings.data.zipHeading': 'Data export',
-  'bookSettings.data.zipDesc': 'Package as a markdown zip (front-matter + chapter content + site images), importable into other InfoSphere sites.',
+  'bookSettings.data.zipDesc': 'Package as a markdown zip (front-matter + chapter content + site images), importable into other KnowForge sites.',
   'bookSettings.data.zipBtn': 'Export zip',
   'bookSettings.danger.confirmTitle': 'Move to trash',
   'bookSettings.danger.confirmMsg': 'Move “{title}” and all its chapters to trash? Recoverable within 30 days.',
@@ -678,7 +678,7 @@ export const en: Record<string, string> = {
   'install.doneDescPrefix': 'Site “{name}” is ready, and admin ',
   'install.doneDescSuffix': ' is signed in automatically.',
   'install.goHome': 'Go to home',
-  'install.welcome': 'Welcome to InfoSphere',
+  'install.welcome': 'Welcome to KnowForge',
   'install.subtitle': 'The setup wizard will help you initialize the database and site ({step}/2)',
   'install.chooseDb': 'Choose a database',
   'install.default': 'Default',
@@ -916,7 +916,7 @@ export const en: Record<string, string> = {
 
   // Home
   'home.seo.description': 'A simple yet powerful open-source knowledge platform with multi-database and multi-device support.',
-  'home.seo.jsonldDescription': 'InfoSphere knowledge platform',
+  'home.seo.jsonldDescription': 'KnowForge knowledge platform',
   'home.hero.titleLine1': 'Let knowledge settle,',
   'home.hero.titleLine2': 'let ideas flow',
   'home.hero.subtitle': 'Your own open-source knowledge space. Writing, organizing, publishing and reading all happen in one place.',
@@ -1412,7 +1412,7 @@ export const en: Record<string, string> = {
   'books.import.choosePdf': 'Click to choose a PDF document',
   'books.import.chooseZip': 'Click to choose a ZIP archive',
   'books.import.pdfHint': 'Up to 64MB; headings, paragraphs and lists are rebuilt automatically. Scanned PDFs need OCR first',
-  'books.import.zipHint': 'Restore a full book exported from InfoSphere',
+  'books.import.zipHint': 'Restore a full book exported from KnowForge',
   'books.import.nameLabel': 'Book name',
   'books.import.optional': '(optional)',
   'books.import.namePlaceholderWeb': 'Empty to use the page title',
@@ -1490,7 +1490,7 @@ export const en: Record<string, string> = {
   'bookForm.watermark.desc': 'The watermark overlays chapter content at low opacity without affecting selection, copying or link clicks.',
   'bookForm.watermark.label': 'Watermark Text',
   'bookForm.watermark.hint': 'Use the site name, author or copyright notice; the text is kept even when the watermark is off.',
-  'bookForm.watermark.placeholder': 'e.g. InfoSphere · For study only',
+  'bookForm.watermark.placeholder': 'e.g. KnowForge · For study only',
   'bookForm.section.publish': 'Publishing',
   'bookForm.visibility.private.title': 'Only me',
   'bookForm.visibility.private.desc': 'For work in progress',
@@ -1764,7 +1764,7 @@ export const en: Record<string, string> = {
   'admin.settings.logs.enable': 'Enable file logging',
   'admin.settings.logs.enableHint': 'When off, logs only go to stdout and are not written to files.',
   'admin.settings.logs.dir': 'Directory',
-  'admin.settings.logs.dirHint': 'Leave empty to use logs/ under the data dir; files are named infosphere-YYYY-MM-DD.log.',
+  'admin.settings.logs.dirHint': 'Leave empty to use logs/ under the data dir; files are named knowforge-YYYY-MM-DD.log.',
   'admin.settings.logs.level': 'Level',
   'admin.settings.logs.retention': 'Retention (days)',
   'admin.settings.logs.retentionHint': 'Log files older than this are pruned by the maintenance task (1–3650).',
@@ -2913,7 +2913,7 @@ export const en: Record<string, string> = {
   'user.home.publicAchievementsHint': 'Showing {username}\'s pinned or recently unlocked achievements',
   'user.home.achievementTier': 'Tier {tier}',
   // 全局
-  'global.loadingInfoSphere': 'Loading InfoSphere…',
+  'global.loadingKnowForge': 'Loading KnowForge…',
   'global.pageLoading': 'Loading page…',
 
   // Base UI components

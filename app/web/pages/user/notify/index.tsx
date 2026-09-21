@@ -33,7 +33,7 @@ const ITEMS: { key: keyof Prefs; labelKey: string; hintKey: string }[] = [
 export default function NotifyPrefs() {
   const { site } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const user = useRequireAuth()
   const { showToast } = useFeedback()
   const [prefs, setPrefs] = useState<Prefs | null>(null)

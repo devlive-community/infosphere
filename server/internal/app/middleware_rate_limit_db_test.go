@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 // newInstalledApp 启动并安装一个临时 sqlite 应用，返回带 DB 的实例。

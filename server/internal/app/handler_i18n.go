@@ -14,7 +14,7 @@ import (
 	"golang.org/x/text/language"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 )
 
 var errTranslationConflict = errors.New("翻译已被其他操作更新，请重新加载")
@@ -78,11 +78,11 @@ func localeChain(code string, rows []models.SiteLocale) []string {
 }
 
 func (a *App) requestLocale(c *gin.Context, rows []models.SiteLocale) string {
-	candidates := []string{c.Query("locale"), c.GetHeader("X-InfoSphere-Locale")}
+	candidates := []string{c.Query("locale"), c.GetHeader("X-KnowForge-Locale")}
 	if u := currentUser(c); u != nil {
 		candidates = append(candidates, u.PreferredLocale)
 	}
-	cookie, _ := c.Cookie("infosphere_locale")
+	cookie, _ := c.Cookie("knowforge_locale")
 	candidates = append(candidates, cookie)
 	tags, _, _ := language.ParseAcceptLanguage(c.GetHeader("Accept-Language"))
 	for _, tag := range tags {
@@ -413,7 +413,7 @@ func (a *App) UpdateUserLocale(c *gin.Context) {
 		fail(c, 500, "保存语言偏好失败")
 		return
 	}
-	c.SetCookie("infosphere_locale", code, 365*24*3600, "/", "", false, false)
+	c.SetCookie("knowforge_locale", code, 365*24*3600, "/", "", false, false)
 	ok(c, gin.H{"locale": code})
 }
 

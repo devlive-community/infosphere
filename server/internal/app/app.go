@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/database"
-	"infosphere/server/internal/jobqueue"
-	"infosphere/server/internal/mail"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/database"
+	"knowforge/server/internal/jobqueue"
+	"knowforge/server/internal/mail"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -108,7 +108,7 @@ func (a *App) Run(port int) error {
 			return err
 		}
 	}
-	log.Printf("InfoSphere 服务已启动: http://localhost%s", addr)
+	log.Printf("KnowForge 服务已启动: http://localhost%s", addr)
 
 	signalCtx, stopSignals := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stopSignals()

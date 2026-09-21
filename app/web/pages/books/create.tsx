@@ -12,7 +12,7 @@ export default function CreateBook() {
   const user = useRequireAuth()
   const { site } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const router = useRouter()
 
   if (!user) return <Loading className="min-h-[60vh]" label={t('book.create.verifying')} />

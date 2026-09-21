@@ -180,7 +180,7 @@ function RetentionSection() {
 export default function AuthorAnalyticsPage() {
   const user = useRequireAuth()
   const { site } = useApp()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const { t } = useTranslation()
   const [days, setDays] = useState('30')
   const [data, setData] = useState<AuthorAnalytics | null>(null)

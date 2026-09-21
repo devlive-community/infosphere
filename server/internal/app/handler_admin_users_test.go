@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // fmtUID 将用户 ID 格式化为路径片段

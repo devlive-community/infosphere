@@ -1,4 +1,4 @@
-// Package legacy 将旧版 InfoSphere（Node.js + MySQL）数据迁移到新版数据库。
+// Package legacy 将旧版 KnowForge（Node.js + MySQL）数据迁移到新版数据库。
 //
 // 旧版 schema（backend/scripts/schema.sql + 后续演进）：
 //   - users(id, username, email, password(bcrypt), role, avatar, last_login_at,
@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"gorm.io/gorm"
 )

@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugincore"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

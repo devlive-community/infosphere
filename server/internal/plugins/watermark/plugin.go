@@ -1,6 +1,6 @@
 package watermark
 
-import "infosphere/server/internal/plugins"
+import "knowforge/server/internal/plugins"
 
 func init() {
 	plugins.Register(plugins.Meta{

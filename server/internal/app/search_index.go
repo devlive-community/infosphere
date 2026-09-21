@@ -44,7 +44,7 @@ func configureSearchBackend(db *gorm.DB) searchBackend {
 
 func configureSQLiteSearch(db *gorm.DB) (searchBackend, error) {
 	statements := []string{
-		`CREATE TABLE IF NOT EXISTS infosphere_search_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS knowforge_search_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
 		`CREATE VIRTUAL TABLE IF NOT EXISTS books_search_fts USING fts5(title, description, content='books', content_rowid='id', tokenize='trigram')`,
 		`CREATE VIRTUAL TABLE IF NOT EXISTS documents_search_fts USING fts5(title, content, content='documents', content_rowid='id', tokenize='trigram')`,
 		`CREATE TRIGGER IF NOT EXISTS books_search_fts_ai AFTER INSERT ON books BEGIN
@@ -68,7 +68,7 @@ func configureSQLiteSearch(db *gorm.DB) (searchBackend, error) {
 		}
 	}
 	var version string
-	if err := db.Raw("SELECT value FROM infosphere_search_meta WHERE key = ?", "fts_schema").Scan(&version).Error; err != nil {
+	if err := db.Raw("SELECT value FROM knowforge_search_meta WHERE key = ?", "fts_schema").Scan(&version).Error; err != nil {
 		return searchBackendLike, err
 	}
 	if version != "fts5-trigram-v1" {
@@ -78,7 +78,7 @@ func configureSQLiteSearch(db *gorm.DB) (searchBackend, error) {
 		if err := db.Exec("INSERT INTO documents_search_fts(documents_search_fts) VALUES ('rebuild')").Error; err != nil {
 			return searchBackendLike, err
 		}
-		if err := db.Exec(`INSERT INTO infosphere_search_meta(key, value) VALUES (?, ?)
+		if err := db.Exec(`INSERT INTO knowforge_search_meta(key, value) VALUES (?, ?)
 			ON CONFLICT(key) DO UPDATE SET value = excluded.value`, "fts_schema", "fts5-trigram-v1").Error; err != nil {
 			return searchBackendLike, err
 		}

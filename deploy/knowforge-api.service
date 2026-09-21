@@ -1,5 +1,5 @@
 [Unit]
-Description=InfoSphere service (Go API + embedded Next.js)
+Description=KnowForge service (Go API + embedded Next.js)
 After=network-online.target
 Wants=network-online.target
 
@@ -7,12 +7,12 @@ Wants=network-online.target
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/infosphere/current
-ExecStart=/var/www/infosphere/current/infosphere-server -port 6969
-EnvironmentFile=/etc/infosphere/infosphere.env
+WorkingDirectory=/var/www/knowforge/current
+ExecStart=/var/www/knowforge/current/knowforge-server -port 6969
+EnvironmentFile=/etc/knowforge/knowforge.env
 Environment=INFO_SPHERE_UPGRADE=enabled
 Environment=INFO_SPHERE_WEB_PORT=6900
-Environment=INFO_SPHERE_STATIC_ROOT=/var/www/infosphere/static
+Environment=INFO_SPHERE_STATIC_ROOT=/var/www/knowforge/static
 Restart=always
 RestartSec=3
 TimeoutStopSec=15
@@ -20,7 +20,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/var/lib/infosphere /var/www/infosphere/static /var/www/infosphere
+ReadWritePaths=/var/lib/knowforge /var/www/knowforge/static /var/www/knowforge
 
 [Install]
 WantedBy=multi-user.target

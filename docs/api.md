@@ -1,4 +1,4 @@
-# InfoSphere API 接口契约
+# KnowForge API 接口契约
 
 > 本文档是全部 REST API 的权威契约，供 Web / 桌面端（Tauri）/ Android 客户端开发使用。
 > 任何端点变更必须同步更新本文档。
@@ -10,7 +10,7 @@
 
 ## 动态国际化
 
-语言使用规范化 BCP 47 代码（旧 `zh` 偏好兼容为 `zh-CN`）。界面语言包和内容翻译分别启用。语言选择依次使用 `locale` 查询参数、`X-InfoSphere-Locale`、当前用户偏好、`infosphere_locale` Cookie、`Accept-Language`、站点默认语言。业务逻辑标识、价格和权限不随语言变化。
+语言使用规范化 BCP 47 代码（旧 `zh` 偏好兼容为 `zh-CN`）。界面语言包和内容翻译分别启用。语言选择依次使用 `locale` 查询参数、`X-KnowForge-Locale`、当前用户偏好、`knowforge_locale` Cookie、`Accept-Language`、站点默认语言。业务逻辑标识、价格和权限不随语言变化。
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
@@ -45,7 +45,7 @@ Authorization: Bearer <token>
 ```
 
 - 令牌在登录 / 注册 / 安装完成时签发，有效期 7 天，HS256 签名
-- 签发时**同时下发 `infosphere_token` Cookie**（7 天，非 HttpOnly）：Web SSR 凭 Cookie 在服务端渲染登录态；客户端仍用 `Authorization: Bearer` 或同源 Cookie 均可
+- 签发时**同时下发 `knowforge_token` Cookie**（7 天，非 HttpOnly）：Web SSR 凭 Cookie 在服务端渲染登录态；客户端仍用 `Authorization: Bearer` 或同源 Cookie 均可
 - 登出时客户端清除 localStorage 并使 Cookie 过期（`Max-Age=0`）
 - `GET /auth/permissions` 可获取当前用户权限列表，客户端据此控制 UI 可见性
 

@@ -14,10 +14,10 @@ import (
 
 	"github.com/glebarez/sqlite"
 
-	"infosphere/server/internal/app"
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/legacy"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/app"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/legacy"
+	"knowforge/server/internal/models"
 )
 
 // 旧库迁移集成测试：sqlite 模拟旧版 MySQL schema → 迁移 → 校验数据无损与幂等

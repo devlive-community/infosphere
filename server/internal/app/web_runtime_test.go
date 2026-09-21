@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/webbundle"
+	"knowforge/server/internal/webbundle"
 )
 
 func TestEmbeddedWebRuntimeCanBePrepared(t *testing.T) {

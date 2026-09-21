@@ -117,7 +117,7 @@ export const getServerSideProps: GetServerSideProps<ReaderProps> = async ({ req,
 
 export default function Reader({ site, siteUrl, user, book, doc, html, tree, access, readDocIds }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const chapterPrefix = book?.chapter_prefix || ''
 
   const router = useRouter()
@@ -437,7 +437,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
               </div>
             </div>
             <div className="shrink-0 border-t border-slate-100 px-4 py-2 text-center text-xs text-slate-400">
-              Powered by InfoSphere
+              Powered by KnowForge
             </div>
           </aside>
         )}

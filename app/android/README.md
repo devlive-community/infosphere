@@ -1,6 +1,6 @@
-# InfoSphere Android 客户端
+# KnowForge Android 客户端
 
-Kotlin + Jetpack Compose 实现的 Android 客户端，连接自托管的 InfoSphere 服务器。
+Kotlin + Jetpack Compose 实现的 Android 客户端，连接自托管的 KnowForge 服务器。
 
 ## 构建
 

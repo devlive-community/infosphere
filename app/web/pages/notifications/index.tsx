@@ -38,7 +38,7 @@ export default function NotificationsPage() {
   const { showToast } = useFeedback()
   const { site } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const user = useRequireAuth()
   const router = useRouter()
   const [tab, setTab] = useState<'all' | 'unread'>('all')

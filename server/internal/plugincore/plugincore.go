@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/models"
 )
 
 // Core 插件从核心获得的能力（*app.App 实现）。按迁移需要逐步扩展，保持与原 app 内部函数一一对应。

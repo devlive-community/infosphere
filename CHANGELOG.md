@@ -29,7 +29,7 @@
 
 ### 桌面客户端
 
-- **本地会话与配置**：服务器地址、登录令牌改用本地 SQLite（`infosphere.db`）保存；旧 `config.json` 首启自动迁移。
+- **本地会话与配置**：服务器地址、登录令牌改用本地 SQLite（`knowforge.db`）保存；旧 `config.json` 首启自动迁移。
 - **令牌桥**：注入脚本同步 seed 令牌恢复登录态，并把 web 端登录/登出经 IPC 回写 SQLite（不改 `app/web` 代码）。
 - **多服务器**：设置页支持保存多台服务器、一键切换与删除；托盘「切换服务器」保留列表。
 - **应用内 GitHub OAuth**：授权回调链留在 webview 内完成，桌面端可直接第三方登录；修正 dev/prod 下本地页与回环地址的导航判定。
@@ -49,7 +49,7 @@
 
 ## [2026.0.0] - 2026-09-06
 
-InfoSphere 全新版本：后端从 Node.js/Express/EJS/MySQL 重构为 **Go + Next.js** 双服务架构，附带桌面与 Android 客户端。与旧版不共享运行时，可通过 `migrate-legacy` 命令迁移历史数据。
+KnowForge 全新版本：后端从 Node.js/Express/EJS/MySQL 重构为 **Go + Next.js** 双服务架构，附带桌面与 Android 客户端。与旧版不共享运行时，可通过 `migrate-legacy` 命令迁移历史数据。
 
 ### 架构
 
@@ -78,7 +78,7 @@ InfoSphere 全新版本：后端从 Node.js/Express/EJS/MySQL 重构为 **Go + N
 ### 数据迁移
 
 ```bash
-go run ./cmd/migrate-legacy -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/infosphere" [-dry-run]
+go run ./cmd/migrate-legacy -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/knowforge" [-dry-run]
 ```
 
 旧版 Node/MySQL 的用户（bcrypt 密码平移，原密码可直接登录）、书籍、章节树、第三方绑定、站点配置一次性迁入；唯一键冲突自动跳过，幂等可重跑。详见 [docs/migrate-legacy.md](docs/migrate-legacy.md)。

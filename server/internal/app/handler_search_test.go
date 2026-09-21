@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 搜索接口集成测试：匿名可搜公开内容、空结果必须是数组（防 nil 切片序列化 null）、章节结果带 doc_slug/book_slug

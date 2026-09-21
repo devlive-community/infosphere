@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"infosphere/server/internal/auth"
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/database"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/database"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -50,7 +50,7 @@ func (a *App) SetupStatus(c *gin.Context) {
 	} else {
 		// 安装器需要默认路径；安装完成后不再公开服务器文件系统位置。
 		resp["data_dir"] = config.DataDir()
-		resp["sqlite_default_path"] = filepath.Join(config.DataDir(), "infosphere.db")
+		resp["sqlite_default_path"] = filepath.Join(config.DataDir(), "knowforge.db")
 	}
 	ok(c, resp)
 }
@@ -187,7 +187,7 @@ func (a *App) SetupInstall(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "签发令牌失败")
 		return
 	}
-	c.SetCookie("infosphere_token", token, 7*24*3600, "/", "", false, false)
+	c.SetCookie("knowforge_token", token, 7*24*3600, "/", "", false, false)
 	ok(c, gin.H{"token": token, "user": admin})
 }
 
@@ -199,7 +199,7 @@ func normalizeDBConfig(cfg *config.DatabaseConfig) error {
 	switch cfg.Type {
 	case database.TypeSQLite:
 		if cfg.Path == "" {
-			cfg.Path = filepath.Join(config.DataDir(), "infosphere.db")
+			cfg.Path = filepath.Join(config.DataDir(), "knowforge.db")
 		} else if !filepath.IsAbs(cfg.Path) {
 			// 相对路径统一解析到数据目录，不受进程工作目录影响
 			cfg.Path = filepath.Join(config.DataDir(), cfg.Path)
@@ -209,11 +209,11 @@ func normalizeDBConfig(cfg *config.DatabaseConfig) error {
 				return fmt.Errorf("数据库目录 %s 无法创建或不可写: %w", dir, err)
 			}
 			// 实际写探测：systemd 沙箱（ProtectSystem=strict）下即使目录权限为 777 也会写入失败
-			probe := filepath.Join(dir, ".infosphere-write-probe")
+			probe := filepath.Join(dir, ".knowforge-write-probe")
 			if err := os.WriteFile(probe, []byte("ok"), 0o600); err != nil {
 				return fmt.Errorf(
 					"数据库目录 %s 不可写（服务账户无权限或被部署沙箱限制）。请使用数据目录内的路径，例如 %s",
-					dir, filepath.Join(config.DataDir(), "infosphere.db"))
+					dir, filepath.Join(config.DataDir(), "knowforge.db"))
 			}
 			_ = os.Remove(probe)
 		}

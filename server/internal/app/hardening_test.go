@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 // 加固测试：覆盖此前测试未守护的边界。

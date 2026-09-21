@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -114,7 +114,7 @@ func (a *App) BatchExportMyBooks(c *gin.Context) {
 
 	mf, err := outer.Create("manifest.txt")
 	if err == nil {
-		_, _ = mf.Write([]byte("# InfoSphere 批量导出\n# 每个 .zip 为一本书，可单独重新导入\n\n" + manifest.String()))
+		_, _ = mf.Write([]byte("# KnowForge 批量导出\n# 每个 .zip 为一本书，可单独重新导入\n\n" + manifest.String()))
 	}
 	if err := outer.Close(); err != nil {
 		fail(c, http.StatusInternalServerError, "打包失败: "+err.Error())

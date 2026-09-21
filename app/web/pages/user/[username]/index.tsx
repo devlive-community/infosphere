@@ -177,7 +177,7 @@ function KnowledgeNetwork() {
 export default function UserHome({ site, siteUrl, profile, books, sort, achievements }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { requestInput, showToast } = useFeedback()
   const { t, locale } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const sortOptions = [
     { value: 'updated', label: t('user.home.sortUpdated') },

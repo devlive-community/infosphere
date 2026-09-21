@@ -9,7 +9,7 @@ body:
       label: 贡献准则
       description: 在继续操作之前，请阅读贡献指南。
       options:
-        - label: 我已阅读 [贡献指南](https://github.com/devlive-community/incubator-infosphere/blob/dev/CONTRIBUTING.md) 并完全同意
+        - label: 我已阅读 [贡献指南](https://github.com/devlive-community/incubator-knowforge/blob/dev/CONTRIBUTING.md) 并完全同意
           required: true
   - type: checkboxes
     attributes:
@@ -68,8 +68,8 @@ body:
       label: 配置
       description: 请提供最小的 `application.properties` 来重现错误。
       placeholder: |-
-        site_name: InfoSphere 示例站点
-        site_url: http://try.infosphere.devlive.org
+        site_name: KnowForge 示例站点
+        site_url: http://try.knowforge.devlive.org
   - type: textarea
     attributes:
       label: 系统信息

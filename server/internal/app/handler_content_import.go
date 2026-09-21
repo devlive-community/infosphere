@@ -19,8 +19,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
@@ -898,7 +898,7 @@ func fetchStaticWebPage(ctx context.Context, target *url.URL) (webPage, error) {
 	if err != nil {
 		return webPage{}, err
 	}
-	request.Header.Set("User-Agent", "InfoSphere-Importer/1.0 (+https://infosphere.devlive.org)")
+	request.Header.Set("User-Agent", "KnowForge-Importer/1.0 (+https://knowforge.devlive.org)")
 	request.Header.Set("Accept", "text/html,application/xhtml+xml")
 	response, err := newSafeWebClient(ctx).Do(request)
 	if err != nil {

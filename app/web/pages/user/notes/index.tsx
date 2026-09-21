@@ -35,7 +35,7 @@ export default function MyNotesPage() {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [exporting, setExporting] = useState(false)
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
 
   const filters = [
     { value: 'all', label: t('user.notes.filterAll') },

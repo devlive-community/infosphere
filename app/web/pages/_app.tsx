@@ -27,7 +27,7 @@ function Shell({ children }: { children: ReactNode }) {
   if (!authReady && installed === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-warm">
-        <Loading label={t('global.loadingInfoSphere')} />
+        <Loading label={t('global.loadingKnowForge')} />
       </div>
     )
   }

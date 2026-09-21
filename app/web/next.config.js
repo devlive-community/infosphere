@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // SSR 独立部署模式：CI 将 .next/standalone 打包为 infosphere-web 服务
+  // SSR 独立部署模式：CI 将 .next/standalone 打包为 knowforge-web 服务
   output: 'standalone',
   // 允许通过 NEXT_DIST_DIR 隔离构建目录，避免本地 dev 与 build 共用 .next 互相覆盖
   distDir: process.env.NEXT_DIST_DIR || '.next',

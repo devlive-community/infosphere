@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // TestBookTranslationsGrouping 覆盖翻译组：同 trans_group 的可见书籍聚合、私有书对匿名不可见、少于两本不成组。

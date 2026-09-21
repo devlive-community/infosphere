@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"strings"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuin/goldmark/ast"

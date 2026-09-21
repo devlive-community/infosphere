@@ -24,7 +24,7 @@ func GenerateToken(secret string, userID uint, username, role string) (string, e
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "infosphere",
+			Issuer:    "knowforge",
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

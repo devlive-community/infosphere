@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 
 	"github.com/gin-gonic/gin"
 )
@@ -68,7 +68,7 @@ func upstreamRepo() string {
 	if repo := os.Getenv("INFO_SPHERE_UPSTREAM_REPO"); repo != "" {
 		return repo
 	}
-	return "devlive-community/infosphere"
+	return "devlive-community/knowforge"
 }
 
 var releaseCache struct {
@@ -198,7 +198,7 @@ func (a *App) SystemUpgrade(c *gin.Context) {
 	}
 
 	// 1. 下载并替换后端二进制
-	newBin := filepath.Join(workDir, "infosphere-server.new")
+	newBin := filepath.Join(workDir, "knowforge-server.new")
 	if err := downloadFile(serverAsset.BrowserDownloadURL, newBin); err != nil {
 		fail(c, http.StatusBadGateway, "下载后端升级包失败: "+err.Error())
 		return
@@ -229,23 +229,23 @@ func (a *App) SystemUpgrade(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "替换二进制失败: "+err.Error())
 		return
 	}
-	a.recordAudit(c, "system.upgraded", "system", "infosphere", "InfoSphere", map[string]any{
+	a.recordAudit(c, "system.upgraded", "system", "knowforge", "KnowForge", map[string]any{
 		"from_version": Version, "to_version": expectedVersion,
 	})
 
-	// 2. 响应后延迟重启唯一的 InfoSphere 服务。新二进制已同时包含
+	// 2. 响应后延迟重启唯一的 KnowForge 服务。新二进制已同时包含
 	// Go API、Next.js standalone 与 Node.js 运行时。
 	go func() {
 		time.Sleep(2 * time.Second)
-		_ = exec.Command("sudo", "systemctl", "restart", "infosphere-api").Run()
-		_ = exec.Command("sudo", "systemctl", "restart", "infosphere.service").Run() // 单机模式兜底
+		_ = exec.Command("sudo", "systemctl", "restart", "knowforge-api").Run()
+		_ = exec.Command("sudo", "systemctl", "restart", "knowforge.service").Run() // 单机模式兜底
 	}()
 	ok(c, gin.H{"message": "已升级到 " + strings.TrimPrefix(info.TagName, "v") + "，服务正在重启，页面稍后将自动刷新。"})
 }
 
 // findUpgradeAsset 在 Release 资产中定位包含 API 与 Web 运行时的当前平台单文件。
 func findUpgradeAsset(info *releaseInfo) *releaseAsset {
-	serverName := fmt.Sprintf("infosphere-server-%s-%s", runtime.GOOS, runtime.GOARCH)
+	serverName := fmt.Sprintf("knowforge-server-%s-%s", runtime.GOOS, runtime.GOARCH)
 	for i := range info.Assets {
 		if info.Assets[i].Name == serverName {
 			return &info.Assets[i]

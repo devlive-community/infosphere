@@ -1,9 +1,9 @@
 package contentcollect
 
 import (
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugins"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugins"
 )
 
 func init() {

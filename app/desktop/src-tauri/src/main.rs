@@ -10,12 +10,12 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 
-/// 数据库文件路径（应用配置目录下 infosphere.db）
+/// 数据库文件路径（应用配置目录下 knowforge.db）
 fn db_path(app: &AppHandle) -> Option<std::path::PathBuf> {
     app.path()
         .app_config_dir()
         .ok()
-        .map(|dir| dir.join("infosphere.db"))
+        .map(|dir| dir.join("knowforge.db"))
 }
 
 /// 旧版配置文件路径（应用配置目录下 config.json），用于一次性迁移
@@ -42,7 +42,7 @@ fn normalize_url(input: &str) -> Result<String, String> {
         .map_err(|e| format!("地址无效: {}", e))
 }
 
-/// 验证地址指向 InfoSphere 服务（/api/v1/setup/status 可达且结构正确）
+/// 验证地址指向 KnowForge 服务（/api/v1/setup/status 可达且结构正确）
 fn probe_server(url: &str) -> Result<(), String> {
     let status_url = format!("{}/api/v1/setup/status", url.trim_end_matches('/'));
     let resp = ureq::get(&status_url)
@@ -52,7 +52,7 @@ fn probe_server(url: &str) -> Result<(), String> {
         .into_string()
         .map_err(|e| e.to_string())?;
     if !resp.contains("\"success\"") || !resp.contains("installed") {
-        return Err("该地址不是 InfoSphere 服务".into());
+        return Err("该地址不是 KnowForge 服务".into());
     }
     Ok(())
 }
@@ -165,7 +165,7 @@ fn bridge_script(active_origin: &str, seed_token: &str) -> String {
   try {{
     var ACTIVE_ORIGIN = '{origin}';
     var SEED_TOKEN = '{token}';
-    var TOKEN_KEY = 'infosphere_token';
+    var TOKEN_KEY = 'knowforge_token';
     if (SEED_TOKEN && ACTIVE_ORIGIN && location.origin === ACTIVE_ORIGIN && !localStorage.getItem(TOKEN_KEY)) {{
       localStorage.setItem(TOKEN_KEY, SEED_TOKEN);
     }}
@@ -363,7 +363,7 @@ fn main() {
             // 否则授权页被弹到系统浏览器，桌面端拿不到回跳携带的登录令牌。
             let oauth_active = Arc::new(Mutex::new(false));
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
-                .title("InfoSphere")
+                .title("KnowForge")
                 .inner_size(1280.0, 840.0)
                 .min_inner_size(960.0, 640.0)
                 .initialization_script(bridge_script(&active_origin, &seed_token))
@@ -447,7 +447,7 @@ fn main() {
             let mut tray = TrayIconBuilder::with_id("main-tray")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .tooltip("InfoSphere")
+                .tooltip("KnowForge")
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show" => show_main(app),
                     "switch" => {
@@ -476,5 +476,5 @@ fn main() {
             bridge_clear_token
         ])
         .run(tauri::generate_context!())
-        .expect("InfoSphere 桌面端启动失败");
+        .expect("KnowForge 桌面端启动失败");
 }

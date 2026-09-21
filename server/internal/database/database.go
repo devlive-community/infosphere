@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
@@ -66,7 +66,7 @@ func Open(cfg config.DatabaseConfig) (*gorm.DB, error) {
 	case TypeSQLite:
 		path := cfg.Path
 		if path == "" {
-			path = "./data/infosphere.db"
+			path = "./data/knowforge.db"
 		}
 		db, err := gorm.Open(sqlite.Open(path+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"), &gorm.Config{})
 		if err != nil {

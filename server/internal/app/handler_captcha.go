@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

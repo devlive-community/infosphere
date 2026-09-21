@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 func TestCopyBook(t *testing.T) {

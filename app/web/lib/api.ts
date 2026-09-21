@@ -2,8 +2,8 @@
 // NEXT_PUBLIC_API_BASE 指向独立的 Go 服务，例如 http://localhost:6969
 export const API_BASE: string = process.env.NEXT_PUBLIC_API_BASE || ''
 
-const TOKEN_KEY = 'infosphere_token'
-const USER_KEY = 'infosphere_user'
+const TOKEN_KEY = 'knowforge_token'
+const USER_KEY = 'knowforge_user'
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null
@@ -57,8 +57,8 @@ export async function api<T = any>(
     : ''
   const headers: Record<string, string> = {}
   if (typeof document !== 'undefined') {
-    const locale = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith('infosphere_locale='))?.split('=')[1]
-    if (locale) { try { headers['X-InfoSphere-Locale'] = decodeURIComponent(locale) } catch { /* invalid cookie */ } }
+    const locale = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith('knowforge_locale='))?.split('=')[1]
+    if (locale) { try { headers['X-KnowForge-Locale'] = decodeURIComponent(locale) } catch { /* invalid cookie */ } }
   }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const t = token ?? getToken()

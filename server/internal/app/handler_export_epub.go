@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuin/goldmark"
@@ -293,7 +293,7 @@ nav li{margin:.4em 0;}`, setting.FontSize, codeBg, codeFg)
 	}
 	ncx := `<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
-<head><meta name="dtb:uid" content="urn:infosphere:` + html.EscapeString(bookID) + `"/></head>
+<head><meta name="dtb:uid" content="urn:knowforge:` + html.EscapeString(bookID) + `"/></head>
 <docTitle><text>` + html.EscapeString(book.Title) + `</text></docTitle>
 <navMap>` + navPoints.String() + `</navMap>
 </ncx>`
@@ -315,7 +315,7 @@ nav li{margin:.4em 0;}`, setting.FontSize, codeBg, codeFg)
 	opf := `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
 <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-<dc:identifier id="bookid">urn:infosphere:` + html.EscapeString(bookID) + `</dc:identifier>
+<dc:identifier id="bookid">urn:knowforge:` + html.EscapeString(bookID) + `</dc:identifier>
 <dc:title>` + html.EscapeString(book.Title) + `</dc:title>
 <dc:language>zh</dc:language>
 <dc:creator>` + html.EscapeString(author) + `</dc:creator>

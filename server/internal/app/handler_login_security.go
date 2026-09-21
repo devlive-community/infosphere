@@ -7,7 +7,7 @@ import (
 	"time"
 	"unicode"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm/clause"

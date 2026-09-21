@@ -20,7 +20,7 @@ function CollectWizard() {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
   const router = useRouter()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
 
   const targetBookId = router.query.book_id ? Number(router.query.book_id) : 0
   const targetBookSlug = typeof router.query.book === 'string' ? router.query.book : ''

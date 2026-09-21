@@ -41,9 +41,9 @@ export function I18nProvider({ children, initial }: { children: ReactNode; initi
   useEffect(() => { if (initial) setSnapshot(initial) }, [initial])
   useEffect(() => {
     let saved: string | null = null
-    try { saved = localStorage.getItem('infosphere_locale') } catch { /* storage unavailable */ }
+    try { saved = localStorage.getItem('knowforge_locale') } catch { /* storage unavailable */ }
     const legacy = !cookieLocale(document.cookie) && saved ? normalizeLocale(saved) : undefined
-    if (legacy) document.cookie = 'infosphere_locale=' + encodeURIComponent(legacy) + '; path=/; max-age=31536000; SameSite=Lax'
+    if (legacy) document.cookie = 'knowforge_locale=' + encodeURIComponent(legacy) + '; path=/; max-age=31536000; SameSite=Lax'
     if (!initial || legacy) void fetchI18nSnapshot(legacy).then(setSnapshot).catch(() => {})
   }, [initial])
   useEffect(() => {
@@ -61,8 +61,8 @@ export function I18nProvider({ children, initial }: { children: ReactNode; initi
       if (id !== requestID.current) return
       if (getToken()) await api('/auth/locale', { method: 'PUT', body: { locale: next.locale } })
       if (id !== requestID.current) return
-      document.cookie = 'infosphere_locale=' + encodeURIComponent(next.locale) + '; path=/; max-age=31536000; SameSite=Lax'
-      try { localStorage.setItem('infosphere_locale', next.locale) } catch { /* storage unavailable */ }
+      document.cookie = 'knowforge_locale=' + encodeURIComponent(next.locale) + '; path=/; max-age=31536000; SameSite=Lax'
+      try { localStorage.setItem('knowforge_locale', next.locale) } catch { /* storage unavailable */ }
       setSnapshot(next)
       await router.replace(router.asPath, undefined, { scroll: false })
     } catch (cause) {

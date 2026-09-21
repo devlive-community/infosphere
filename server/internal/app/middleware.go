@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"infosphere/server/internal/auth"
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -63,7 +63,7 @@ func (a *App) resolveUser(c *gin.Context) *models.User {
 	token := strings.TrimSpace(strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer "))
 	if token == "" {
 		// SSR 场景：浏览器同源请求自动携带 Cookie
-		if ck, err := c.Cookie("infosphere_token"); err == nil {
+		if ck, err := c.Cookie("knowforge_token"); err == nil {
 			token = strings.TrimSpace(ck)
 		}
 	}

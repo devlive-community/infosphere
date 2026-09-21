@@ -1,10 +1,10 @@
-// migrate-legacy 将旧版 InfoSphere（Node.js + MySQL）数据迁移到新版数据库。
+// migrate-legacy 将旧版 KnowForge（Node.js + MySQL）数据迁移到新版数据库。
 //
 // 前提：目标库已完成新版安装向导（data/config.json 的 installed=true）。
 //
 // 用法：
 //
-//	go run ./cmd/migrate-legacy -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/infosphere"
+//	go run ./cmd/migrate-legacy -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/knowforge"
 //	go run ./cmd/migrate-legacy -legacy-dsn "..." -dry-run   # 只统计不写入
 //
 // 目标库通过常规 INFO_SPHERE_* 环境变量/配置文件定位（与主服务一致）。
@@ -21,17 +21,17 @@ import (
 	"os"
 	"strings"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/database"
-	"infosphere/server/internal/legacy"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/database"
+	"knowforge/server/internal/legacy"
+	"knowforge/server/internal/models"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
 	legacyDSN := flag.String("legacy-dsn", os.Getenv("LEGACY_MYSQL_DSN"),
-		"旧库 MySQL DSN，例如 user:pass@tcp(127.0.0.1:3306)/infosphere")
+		"旧库 MySQL DSN，例如 user:pass@tcp(127.0.0.1:3306)/knowforge")
 	dryRun := flag.Bool("dry-run", false, "只统计可迁移数量，不写入")
 	flag.Parse()
 

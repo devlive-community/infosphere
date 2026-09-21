@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"infosphere/server/internal/auth"
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 func TestAdminAuditLogs(t *testing.T) {

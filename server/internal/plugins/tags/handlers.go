@@ -7,10 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugincore"
-	"infosphere/server/internal/plugins"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
+	"knowforge/server/internal/plugins"
 )
 
 // behavior 承载「标签」插件的端点 handler（书籍-标签的加载/同步等集成 glue 仍属核心书籍服务，留在 app）。

@@ -19,7 +19,7 @@ type DeletionStatus = {
 export default function DangerZone() {
   const { site, logout } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const user = useRequireAuth()
 
   const [deletion, setDeletion] = useState<DeletionStatus | null>(null)

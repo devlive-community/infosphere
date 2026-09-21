@@ -29,7 +29,7 @@ export default function Install() {
   const [setupLoading, setSetupLoading] = useState(true)
 
   const [dbType, setDbType] = useState<'sqlite' | 'mysql' | 'postgres'>('sqlite')
-  const [db, setDb] = useState({ host: '127.0.0.1', port: '', name: 'infosphere', user: 'root', password: '', path: '' })
+  const [db, setDb] = useState({ host: '127.0.0.1', port: '', name: 'knowforge', user: 'root', password: '', path: '' })
   const [sqliteDefaultPath, setSqliteDefaultPath] = useState('')
 
   useEffect(() => {
@@ -135,7 +135,7 @@ export default function Install() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-50 to-slate-50 px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-6 text-center">
-          <img src="/logo.png" alt="InfoSphere" className="mx-auto mb-3 h-16 w-16 object-contain" />
+          <img src="/logo.png" alt="KnowForge" className="mx-auto mb-3 h-16 w-16 object-contain" />
           <h1 className="text-2xl font-bold text-slate-900">{t('install.welcome')}</h1>
           <p className="mt-1 text-sm text-slate-500">{t('install.subtitle', { step })}</p>
         </div>
@@ -173,7 +173,7 @@ export default function Install() {
                 <div className="mt-4">
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('install.sqlitePath')}</label>
                   <Input value={db.path} onChange={(e) => setDb({ ...db, path: e.target.value })}
-                    placeholder={sqliteDefaultPath || 'data/infosphere.db'} />
+                    placeholder={sqliteDefaultPath || 'data/knowforge.db'} />
                   <p className="mt-1.5 text-xs text-slate-400">
                     {t('install.sqlitePathHint', { suffix: sqliteDefaultPath ? `：${sqliteDefaultPath}` : '' })}
                   </p>

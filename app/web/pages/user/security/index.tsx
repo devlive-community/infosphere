@@ -12,7 +12,7 @@ import { CalendarIcon, CheckCircleSmallIcon, HistoryIcon, ShieldIcon, UserCircle
 
 export default function Security() {
   const { site } = useApp()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const user = useRequireAuth()
   const { t } = useTranslation()
   const [oldPassword, setOldPassword] = useState('')

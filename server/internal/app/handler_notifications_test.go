@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 通知模块集成测试：列表空数组 / 评论与点赞触发 / 已读标记 / SSE 首帧与鉴权 / 权限

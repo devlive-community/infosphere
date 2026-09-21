@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 通用系统配置后台集成测试（config:manage，仅管理员）：

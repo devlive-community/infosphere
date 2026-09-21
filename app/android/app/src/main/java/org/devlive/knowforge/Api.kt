@@ -1,4 +1,4 @@
-package org.devlive.infosphere
+package org.devlive.knowforge
 
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -10,7 +10,7 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * InfoSphere API 客户端（OkHttp + org.json，零额外依赖）
+ * KnowForge API 客户端（OkHttp + org.json，零额外依赖）
  */
 object Api {
     var baseUrl: String = ""

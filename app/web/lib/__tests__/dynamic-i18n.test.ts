@@ -3,8 +3,8 @@ import { DEFAULT_SNAPSHOT, cookieLocale, formatMessage, normalizeLocale, resolve
 
 describe('dynamic language resolution', () => {
   it('normalizes legacy cookies and retains regional language tags', () => {
-    expect(cookieLocale('x=1; infosphere_locale=zh')).toBe('zh-CN')
-    expect(cookieLocale('infosphere_locale=%invalid')).toBeUndefined()
+    expect(cookieLocale('x=1; knowforge_locale=zh')).toBe('zh-CN')
+    expect(cookieLocale('knowforge_locale=%invalid')).toBeUndefined()
     expect(normalizeLocale('ja-JP')).toBe('ja-JP')
   })
   it('uses a dynamic locale, then configured fallback, before the built-in fallback', () => {

@@ -14,7 +14,7 @@ export default function OAuthCallback() {
   const router = useRouter()
   const { site, login } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const [error, setError] = useState('')
 
   useEffect(() => {

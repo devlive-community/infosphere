@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 func uintStr(v uint) string { return strconv.FormatUint(uint64(v), 10) }

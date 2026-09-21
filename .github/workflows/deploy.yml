@@ -13,7 +13,7 @@ env:
   NODE_VERSION: "24.20.0"
 
 concurrency:
-  group: infosphere-production
+  group: knowforge-production
   cancel-in-progress: false
 
 jobs:
@@ -82,9 +82,9 @@ jobs:
           mkdir -p ../release
           go build -trimpath \
             -ldflags="-s -w \
-              -X 'infosphere/server/internal/app.Commit=${COMMIT_SHA::7}' \
-              -X 'infosphere/server/internal/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" \
-            -o ../release/infosphere-server .
+              -X 'knowforge/server/internal/app.Commit=${COMMIT_SHA::7}' \
+              -X 'knowforge/server/internal/app.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" \
+            -o ../release/knowforge-server .
 
       # ── 打包发布：只有一个应用二进制 + systemd unit + env ──
       - name: Assemble release
@@ -92,10 +92,10 @@ jobs:
           INFO_SPHERE_ENV_FILE: ${{ secrets.INFO_SPHERE_ENV_FILE }}
         run: |
           test -n "$INFO_SPHERE_ENV_FILE"
-          cp deploy/infosphere-api.service deploy/infosphere.sudoers release/
-          printf '%s\n' "$INFO_SPHERE_ENV_FILE" > release/infosphere.env
-          chmod 600 release/infosphere.env
-          (cd release && sha256sum infosphere-server > SHA256SUMS)
+          cp deploy/knowforge-api.service deploy/knowforge.sudoers release/
+          printf '%s\n' "$INFO_SPHERE_ENV_FILE" > release/knowforge.env
+          chmod 600 release/knowforge.env
+          (cd release && sha256sum knowforge-server > SHA256SUMS)
           ls -la release/
 
       - name: Upload release to server
@@ -105,7 +105,7 @@ jobs:
           username: ${{ secrets.SSH_PRIVATE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "release/*"
-          target: "/tmp/infosphere-release-${{ github.sha }}"
+          target: "/tmp/knowforge-release-${{ github.sha }}"
           strip_components: 1
 
       - name: Activate release
@@ -119,26 +119,26 @@ jobs:
           envs: RELEASE_SHA
           script: |
             set -eu
-            deploy_root=/var/www/infosphere
-            staged_dir=/tmp/infosphere-release-$RELEASE_SHA
+            deploy_root=/var/www/knowforge
+            staged_dir=/tmp/knowforge-release-$RELEASE_SHA
             release_dir=$deploy_root/releases/$RELEASE_SHA
 
-            test -f "$staged_dir/infosphere-server"
-            test -s "$staged_dir/infosphere.env"
+            test -f "$staged_dir/knowforge-server"
+            test -s "$staged_dir/knowforge.env"
 
             # 目录骨架
-            sudo install -d -m 755 "$deploy_root/releases" "$release_dir" /etc/infosphere
-            sudo install -d -m 755 -o www-data -g www-data /var/lib/infosphere /var/lib/infosphere/uploads
-            sudo install -d -m 755 -o www-data -g www-data /var/www/infosphere/static
+            sudo install -d -m 755 "$deploy_root/releases" "$release_dir" /etc/knowforge
+            sudo install -d -m 755 -o www-data -g www-data /var/lib/knowforge /var/lib/knowforge/uploads
+            sudo install -d -m 755 -o www-data -g www-data /var/www/knowforge/static
 
             # 发布单文件
             sudo cp -a "$staged_dir/." "$release_dir/"
-            sudo chmod 755 "$release_dir/infosphere-server"
+            sudo chmod 755 "$release_dir/knowforge-server"
 
             # 配置与服务
-            sudo install -m 600 "$release_dir/infosphere.env" /etc/infosphere/infosphere.env
-            sudo install -m 644 "$release_dir/infosphere-api.service" /etc/systemd/system/infosphere-api.service
-            sudo install -m 440 "$release_dir/infosphere.sudoers" /etc/sudoers.d/infosphere
+            sudo install -m 600 "$release_dir/knowforge.env" /etc/knowforge/knowforge.env
+            sudo install -m 644 "$release_dir/knowforge-api.service" /etc/systemd/system/knowforge-api.service
+            sudo install -m 440 "$release_dir/knowforge.sudoers" /etc/sudoers.d/knowforge
             sudo visudo -c >/dev/null
 
             # 原子切换 current
@@ -146,10 +146,10 @@ jobs:
             sudo mv -Tf "$deploy_root/current.next" "$deploy_root/current"
 
             # 首次单文件部署时停止并禁用旧的独立 Web unit，释放 6900 给 Go 托管的 Node 子进程
-            sudo systemctl disable --now infosphere-web.service || true
+            sudo systemctl disable --now knowforge-web.service || true
             sudo systemctl daemon-reload
-            sudo systemctl enable infosphere-api.service
-            sudo systemctl restart infosphere-api.service
+            sudo systemctl enable knowforge-api.service
+            sudo systemctl restart knowforge-api.service
 
             # 健康检查：单服务包含当前 commit，内嵌 Web 与 Go 页面代理均可访问
             attempt=0
@@ -158,8 +158,8 @@ jobs:
               && curl -fsS -o /dev/null http://127.0.0.1:6969/; do
               attempt=$((attempt + 1))
               if [ "$attempt" -ge 15 ]; then
-                sudo systemctl status infosphere-api.service --no-pager || true
-                sudo journalctl -u infosphere-api.service -n 30 --no-pager || true
+                sudo systemctl status knowforge-api.service --no-pager || true
+                sudo journalctl -u knowforge-api.service -n 30 --no-pager || true
                 exit 1
               fi
               sleep 2
@@ -168,4 +168,4 @@ jobs:
             # 清理：仅保留最近 5 个版本
             sudo bash -c "ls -1dt $deploy_root/releases/*/ | tail -n +6 | xargs -r rm -rf"
             rm -rf "$staged_dir"
-            echo "InfoSphere 部署完成: $release_dir"
+            echo "KnowForge 部署完成: $release_dir"

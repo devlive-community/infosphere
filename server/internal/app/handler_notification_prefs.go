@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"infosphere/server/internal/mail"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/mail"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm/clause"
@@ -69,7 +69,7 @@ func (a *App) maybeSendNotificationEmail(userID uint, ntype, title string, paylo
 	}
 	siteName := strings.TrimSpace(a.getSetting("site_name"))
 	if siteName == "" {
-		siteName = "InfoSphere"
+		siteName = "KnowForge"
 	}
 	subject := strings.NewReplacer("\r", " ", "\n", " ").Replace("[" + siteName + "] " + title)
 	_ = a.enqueueEmail(context.Background(), u.Email, subject, mail.NotificationHTML(title, link, siteName))

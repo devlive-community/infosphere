@@ -3,7 +3,7 @@ package app
 import (
 	"time"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

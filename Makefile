@@ -1,4 +1,4 @@
-# InfoSphere 构建脚本
+# KnowForge 构建脚本
 # 架构：Go 服务托管内嵌的 Next.js SSR 与 Node.js 24 运行时
 SHELL := /bin/bash
 
@@ -11,7 +11,7 @@ TARGET_GOOS ?= $(shell go env GOOS)
 TARGET_GOARCH ?= $(shell go env GOARCH)
 WEB_RUNTIME := $(SERVER_DIR)/internal/webbundle/assets/web-runtime.tar.gz
 
-LDFLAGS := -s -w -X 'infosphere/server/internal/app.Version=$(VERSION)'
+LDFLAGS := -s -w -X 'knowforge/server/internal/app.Version=$(VERSION)'
 
 .PHONY: all build check-node web-install web-build web-runtime server-build release-linux clean dev-web dev-server lint test
 
@@ -20,7 +20,7 @@ all: build
 ## 本机构建：单个二进制（内嵌 Next.js standalone 与 Node.js 24）
 build: server-build
 	@echo ""
-	@echo "构建完成: $(BIN_DIR)/infosphere-server"
+	@echo "构建完成: $(BIN_DIR)/knowforge-server"
 	@echo ""
 
 ## 安装前端依赖
@@ -43,7 +43,7 @@ web-runtime: web-build
 ## 构建 Go 二进制（当前平台）
 server-build: web-runtime
 	mkdir -p $(BIN_DIR)
-	cd $(SERVER_DIR) && go build -trimpath -ldflags "$(LDFLAGS)" -o ../$(BIN_DIR)/infosphere-server .
+	cd $(SERVER_DIR) && go build -trimpath -ldflags "$(LDFLAGS)" -o ../$(BIN_DIR)/knowforge-server .
 	rm -f $(WEB_RUNTIME)
 
 ## 交叉编译 Linux 发布组合（本地复刻 CI 产物）
@@ -51,7 +51,7 @@ release-linux: web-build
 	mkdir -p $(BIN_DIR)
 	deploy/package-web-runtime.sh $(NODE_VERSION) linux amd64 $(WEB_RUNTIME)
 	cd $(SERVER_DIR) && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-		go build -trimpath -ldflags "$(LDFLAGS)" -o ../$(BIN_DIR)/infosphere-server-linux-amd64 .
+		go build -trimpath -ldflags "$(LDFLAGS)" -o ../$(BIN_DIR)/knowforge-server-linux-amd64 .
 	rm -f $(WEB_RUNTIME)
 
 ## 全部检查（等同 CI）

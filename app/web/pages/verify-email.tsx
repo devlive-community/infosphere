@@ -12,7 +12,7 @@ export default function VerifyEmail() {
   const router = useRouter()
   const { site, refreshUser } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
   const [message, setMessage] = useState('')
 

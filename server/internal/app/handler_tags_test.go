@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 后台标签管理：创建（带图标）→ 列表可见 → 更新名称与图标；标签插件禁用后接口 404。

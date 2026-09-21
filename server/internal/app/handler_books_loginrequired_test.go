@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 )
 
 // canReadBook 的「仅登录可读」门禁：公开可读书籍开启 LoginRequired 后，未登录游客不可读，

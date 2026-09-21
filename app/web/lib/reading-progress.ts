@@ -14,7 +14,7 @@ interface ProgressEntry {
   readSeconds?: number
 }
 
-const LOCAL_KEY = 'infosphere_reading_progress'
+const LOCAL_KEY = 'knowforge_reading_progress'
 
 function localRead(): Record<string, ProgressEntry> {
   if (typeof window === 'undefined') return {}

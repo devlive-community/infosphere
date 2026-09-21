@@ -82,7 +82,7 @@ export function applyTheme(s: ThemeSetting) {
     el.style.setProperty('--page-bg', s.page_bg)
   }
 
-  localStorage.setItem('infosphere_theme', JSON.stringify(s))
+  localStorage.setItem('knowforge_theme', JSON.stringify(s))
 }
 
 interface AppContextValue {
@@ -143,8 +143,8 @@ interface AppProviderProps {
 // ensureAuthCookie 老用户升级后补种令牌 Cookie，让下一次刷新 SSR 即可渲染登录态
 function ensureAuthCookie() {
   const token = getToken()
-  if (token && typeof document !== 'undefined' && !document.cookie.includes('infosphere_token=')) {
-    document.cookie = `infosphere_token=${token}; path=/; max-age=604800`
+  if (token && typeof document !== 'undefined' && !document.cookie.includes('knowforge_token=')) {
+    document.cookie = `knowforge_token=${token}; path=/; max-age=604800`
   }
 }
 
@@ -240,8 +240,8 @@ export function AppProvider({ children, initialSite, initialInstalled, initialUs
 
   const logout = useCallback(() => {
     clearSession()
-    document.cookie = 'infosphere_token=; Max-Age=0; path=/'
-    localStorage.removeItem('infosphere_theme')
+    document.cookie = 'knowforge_token=; Max-Age=0; path=/'
+    localStorage.removeItem('knowforge_theme')
     applyTheme(DEFAULT_THEME)
     setUser(null)
     router.push('/login')

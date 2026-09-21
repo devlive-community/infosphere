@@ -1,4 +1,4 @@
-# InfoSphere 单文件部署镜像
+# KnowForge 单文件部署镜像
 # Go 服务托管内嵌的 Next.js SSR 与 Node.js 运行时，最终产物是一个二进制。
 # 多阶段构建：builder 复刻 CI 构建流程，runtime 使用 glibc 基础镜像（内嵌 Node 为官方 glibc 版）。
 
@@ -37,7 +37,7 @@ RUN deploy/package-web-runtime.sh "${NODE_VERSION}" "${TARGETOS}" "${TARGETARCH}
       server/internal/webbundle/assets/web-runtime.tar.gz
 # CGO 关闭，Go 交叉编译到目标架构（无需 QEMU）
 RUN cd server && CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" \
-    go build -trimpath -ldflags "-s -w" -o /out/infosphere-server .
+    go build -trimpath -ldflags "-s -w" -o /out/knowforge-server .
 
 # ---------- 运行阶段 ----------
 FROM debian:bookworm-slim AS runtime
@@ -52,7 +52,7 @@ RUN set -eux; \
 ENV INFO_SPHERE_DATA=/data \
     INFO_SPHERE_PORT=6969
 WORKDIR /app
-COPY --from=builder /out/infosphere-server /usr/local/bin/infosphere-server
+COPY --from=builder /out/knowforge-server /usr/local/bin/knowforge-server
 RUN mkdir -p /data
 VOLUME ["/data"]
 EXPOSE 6969
@@ -60,4 +60,4 @@ EXPOSE 6969
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 \
     CMD wget -qO- "http://127.0.0.1:${INFO_SPHERE_PORT}/api/v1/health" >/dev/null 2>&1 || exit 1
 
-ENTRYPOINT ["/usr/local/bin/infosphere-server"]
+ENTRYPOINT ["/usr/local/bin/knowforge-server"]

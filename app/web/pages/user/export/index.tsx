@@ -129,7 +129,7 @@ const DEFAULTS: ExportSettings = { page_size: 'A4', include_cover: true, include
 
 export default function ExportSettingsPage() {
   const { site } = useApp()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const user = useRequireAuth()
   const { showToast } = useFeedback()
   const { t } = useTranslation()

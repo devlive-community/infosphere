@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 func TestAccountDeletionFlow(t *testing.T) {

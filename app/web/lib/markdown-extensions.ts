@@ -1,4 +1,4 @@
-// M17: InfoSphere 旧版 marked 扩展语法的 TS 移植。
+// M17: KnowForge 旧版 marked 扩展语法的 TS 移植。
 // 语法与旧版 backend/lib/extension/marked 保持兼容，输出改为纯 Tailwind 工具类 + data-* 钩子：
 //   :::tabs / === "标题"        多标签页（点击切换，见 bindMarkdownInteractivity）
 //   :::grid cols-3 gap-4        网格卡片（列表项分格）
@@ -873,7 +873,7 @@ const tableExtension: TokenizerAndRendererExtension = {
 // ── GitHub issue 链接 ────────────────────────────────────────────────────
 
 // 与旧版一致的默认仓库
-const issuesDefaultRepo = { owner: 'devlive-community', name: 'infosphere' }
+const issuesDefaultRepo = { owner: 'devlive-community', name: 'knowforge' }
 
 const issuesExtension: TokenizerAndRendererExtension = {
   name: 'md-issues',

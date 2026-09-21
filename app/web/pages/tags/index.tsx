@@ -26,7 +26,7 @@ function AllTagsInner() {
 
   return (
     <>
-      <Seo siteName={site.site_name || 'InfoSphere'} title={t('tags.all.title')} description={t('tags.all.subtitle')} />
+      <Seo siteName={site.site_name || 'KnowForge'} title={t('tags.all.title')} description={t('tags.all.subtitle')} />
       <Container>
         <div className="py-8">
           <h1 className="text-2xl font-bold text-ink">{t('tags.all.title')}</h1>

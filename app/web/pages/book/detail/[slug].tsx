@@ -225,7 +225,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
       .then((r) => setReadSet(new Set(r.doc_ids || [])))
       .catch(() => { /* 未登录或无进度：空集合 */ })
   }, [user?.id, book?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const chapterPrefix = book?.chapter_prefix || ''
 
   const canManage = access?.can_manage === true || (!!user && !!book && (user.id === book.user_id || user.role === 'admin'))

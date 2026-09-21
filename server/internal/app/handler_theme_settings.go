@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

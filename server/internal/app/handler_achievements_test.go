@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/auth"
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 func TestAchievementModuleDefaultsToDisabled(t *testing.T) {

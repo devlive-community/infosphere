@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 后台章节管理：验证跨书籍元数据检索，以及管理员复用既有章节更新/删除权限。

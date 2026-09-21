@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 )
 
 // 书籍-标签集成 glue：由核心书籍渲染/保存流程调用（列表、详情、复制、关注、导出等约 19 处），

@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/jobqueue"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/jobqueue"
+	"knowforge/server/internal/models"
 )
 
 func TestCleanupExpiredImportSources(t *testing.T) {

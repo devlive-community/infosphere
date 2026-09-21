@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 )
 
 // 成长等级：启用后种子等级，记账经验幂等、按阈值解析等级、升级写历史。

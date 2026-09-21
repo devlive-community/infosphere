@@ -1,26 +1,26 @@
-# InfoSphere 生产站点 nginx 配置示例。
+# KnowForge 生产站点 nginx 配置示例。
 #
-# 架构：nginx (:80/:443) → InfoSphere 单服务 (:6969)
+# 架构：nginx (:80/:443) → KnowForge 单服务 (:6969)
 # Go 服务在内部托管 Next.js SSR 与 Node.js 24，6900 不需要对 nginx 暴露。
 #
 # TLS：DNS 指向服务器后执行一次即可自动签发并配置 80→443 跳转：
-#   sudo certbot --nginx -d infosphere.devlive.org
+#   sudo certbot --nginx -d knowforge.devlive.org
 # 证书自动续期由 certbot.timer 负责。
 
 server {
     listen 80;
     listen [::]:80;
-    server_name infosphere.devlive.org 43.162.108.186;
+    server_name knowforge.devlive.org 43.162.108.186;
     client_max_body_size 12m;
 
     # Next.js 静态资源：优先读累积式共享目录（跨版本保留旧 chunk，
     # 已打开的旧页面不会因部署而 404），缺失时回退到应用服务
     location /_next/static/ {
-        alias /var/www/infosphere/static/;
-        try_files $uri @infosphere;
+        alias /var/www/knowforge/static/;
+        try_files $uri @knowforge;
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
-    location @infosphere {
+    location @knowforge {
         proxy_pass http://127.0.0.1:6969;
     }
 

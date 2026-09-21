@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 )
 
 // 页脚归一化：去除换行、按长度截断，避免破坏 PDF footerTemplate。

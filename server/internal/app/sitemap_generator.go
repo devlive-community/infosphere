@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 // sitemap 后台生成：直连数据库构建静态 sitemap 文件（index + 分片），

@@ -60,7 +60,7 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
 
 export default function Explore({ user, site, siteUrl, keyword, tag, tagName, sort, visibility, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   // 标签插件禁用时，隐藏所有标签入口（热门搜索、标签侧栏、全部标签链接）
   const featurePlugins = (site as Record<string, unknown>).feature_plugins
   const tagsEnabled = Array.isArray(featurePlugins) && (featurePlugins as string[]).includes('tags')

@@ -1,4 +1,4 @@
-// Package authz 定义 InfoSphere 的权限模型。
+// Package authz 定义 KnowForge 的权限模型。
 //
 // 权限标识统一使用 `功能:权限`（resource:action）格式，例如 user:read、book:create、
 // system:upgrade。所有认证后的 API 端点必须在路由注册时通过 RequirePermission 声明

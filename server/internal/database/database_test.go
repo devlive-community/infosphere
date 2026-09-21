@@ -4,8 +4,8 @@ import (
 	"sync"
 	"testing"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"

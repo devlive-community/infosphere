@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // M16 导入导出集成测试：验收标准 = 导出再导入内容无损

@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 协作模块集成测试：权限边界 / editor 写权限 / viewer 只读 / 自行退出 / 邀请通知

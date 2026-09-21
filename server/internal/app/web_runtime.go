@@ -22,14 +22,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/webbundle"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/webbundle"
 )
 
 const defaultWebPort = 6900
 
 // webRuntime is the embedded Node.js + Next.js process managed by the Go
-// service. Users still deploy and supervise a single InfoSphere binary.
+// service. Users still deploy and supervise a single KnowForge binary.
 type webRuntime struct {
 	runtimeDir  string
 	nodePath    string
@@ -145,7 +145,7 @@ func validateRuntime(runtimeDir string) (nodePath, nodeVersion string, err error
 	if stat, statErr := os.Stat(serverPath); statErr != nil || !stat.Mode().IsRegular() {
 		return "", "", fmt.Errorf("Web 运行时缺少 server.js")
 	}
-	versionRaw, err := os.ReadFile(filepath.Join(runtimeDir, ".infosphere-node-version"))
+	versionRaw, err := os.ReadFile(filepath.Join(runtimeDir, ".knowforge-node-version"))
 	if err != nil {
 		return "", "", fmt.Errorf("Web 运行时缺少 Node.js 版本标记: %w", err)
 	}

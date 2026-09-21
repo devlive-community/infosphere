@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/jobqueue"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/jobqueue"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

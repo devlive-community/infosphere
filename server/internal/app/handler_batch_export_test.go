@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 func TestBatchExportMyBooks(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 // OAuth 模块集成测试：不访问 GitHub 外网，覆盖

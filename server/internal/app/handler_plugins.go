@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/auth"
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugins"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugins"
 
 	"github.com/gin-gonic/gin"
 )

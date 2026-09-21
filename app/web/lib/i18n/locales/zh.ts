@@ -297,7 +297,7 @@ export const zh: Record<string, string> = {
   'bookSettings.data.pdfDesc': '按你的「导出设置」样式渲染为 PDF；开启水印的书籍会带上水印。需管理员在后台安装 PDF 导出插件。',
   'bookSettings.data.pdfBtn': '导出 PDF',
   'bookSettings.data.zipHeading': '数据导出',
-  'bookSettings.data.zipDesc': '打包为 markdown zip（front-matter + 章节正文 + 本站图片），可在其他 InfoSphere 站点导入。',
+  'bookSettings.data.zipDesc': '打包为 markdown zip（front-matter + 章节正文 + 本站图片），可在其他 KnowForge 站点导入。',
   'bookSettings.data.zipBtn': '导出 zip',
   'bookSettings.danger.confirmTitle': '移入回收站',
   'bookSettings.danger.confirmMsg': '确定将《{title}》及其全部章节移入回收站吗？可在 30 天内恢复。',
@@ -678,7 +678,7 @@ export const zh: Record<string, string> = {
   'install.doneDescPrefix': '站点「{name}」已就绪，管理员 ',
   'install.doneDescSuffix': ' 已自动登录。',
   'install.goHome': '进入首页',
-  'install.welcome': '欢迎使用 InfoSphere',
+  'install.welcome': '欢迎使用 KnowForge',
   'install.subtitle': '安装向导将帮助你完成数据库与站点初始化（{step}/2）',
   'install.chooseDb': '选择数据库',
   'install.default': '默认',
@@ -916,7 +916,7 @@ export const zh: Record<string, string> = {
 
   // 首页
   'home.seo.description': '简单而强大的开源知识管理系统，支持多数据库与多端访问。',
-  'home.seo.jsonldDescription': 'InfoSphere 知识管理系统',
+  'home.seo.jsonldDescription': 'KnowForge 知识管理系统',
   'home.hero.titleLine1': '让知识沉淀，',
   'home.hero.titleLine2': '也让灵感流动',
   'home.hero.subtitle': '一个属于你自己的开源知识空间。写作、整理、发布与阅读，在同一个地方自然发生。',
@@ -1412,7 +1412,7 @@ export const zh: Record<string, string> = {
   'books.import.choosePdf': '点击选择 PDF 文档',
   'books.import.chooseZip': '点击选择 ZIP 压缩包',
   'books.import.pdfHint': '最大 64MB；自动重建标题、段落与列表，扫描版需预先 OCR',
-  'books.import.zipHint': '用于恢复从 InfoSphere 导出的完整书籍',
+  'books.import.zipHint': '用于恢复从 KnowForge 导出的完整书籍',
   'books.import.nameLabel': '书籍名称',
   'books.import.optional': '（可选）',
   'books.import.namePlaceholderWeb': '留空则使用网页标题',
@@ -1490,7 +1490,7 @@ export const zh: Record<string, string> = {
   'bookForm.watermark.desc': '水印会以低透明度重复覆盖章节正文，不影响选择、复制和链接点击。',
   'bookForm.watermark.label': '水印内容',
   'bookForm.watermark.hint': '建议填写站点名、作者名或版权声明，关闭后仍会保留此内容。',
-  'bookForm.watermark.placeholder': '例如：InfoSphere · 仅供学习交流',
+  'bookForm.watermark.placeholder': '例如：KnowForge · 仅供学习交流',
   'bookForm.section.publish': '发布设置',
   'bookForm.visibility.private.title': '仅自己可见',
   'bookForm.visibility.private.desc': '适合尚未完成的内容',
@@ -1764,7 +1764,7 @@ export const zh: Record<string, string> = {
   'admin.settings.logs.enable': '启用文件日志',
   'admin.settings.logs.enableHint': '关闭后仅输出到标准输出（stdout），不写入文件。',
   'admin.settings.logs.dir': '存放目录',
-  'admin.settings.logs.dirHint': '留空则使用数据目录下的 logs/；日志文件名为 infosphere-年-月-日.log。',
+  'admin.settings.logs.dirHint': '留空则使用数据目录下的 logs/；日志文件名为 knowforge-年-月-日.log。',
   'admin.settings.logs.level': '日志等级',
   'admin.settings.logs.retention': '留存天数',
   'admin.settings.logs.retentionHint': '超过该天数的日志文件会在维护任务中自动清理（1–3650）。',
@@ -2913,7 +2913,7 @@ export const zh: Record<string, string> = {
   'user.home.publicAchievementsHint': '展示 {username} 置顶或最近解锁的成就',
   'user.home.achievementTier': '第 {tier} 级',
   // 全局
-  'global.loadingInfoSphere': '正在加载 InfoSphere…',
+  'global.loadingKnowForge': '正在加载 KnowForge…',
   'global.pageLoading': '页面加载中…',
 
   // 基础 UI 组件

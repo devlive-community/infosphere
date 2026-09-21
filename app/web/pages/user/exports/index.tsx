@@ -32,7 +32,7 @@ export default function MyExports() {
   const user = useRequireAuth()
   const { site } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const [page, setPage] = useState(1)
   const [data, setData] = useState<ExportPage | null>(null)
   const [loading, setLoading] = useState(true)

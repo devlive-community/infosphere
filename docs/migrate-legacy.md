@@ -1,6 +1,6 @@
 # 旧版数据迁移指南（Node.js/MySQL → Go 新版）
 
-`migrate-legacy` 命令把旧版 InfoSphere（Node.js 后端 + MySQL）的数据一次性迁移到新版（Go API，支持 SQLite/MySQL/PostgreSQL 目标）。
+`migrate-legacy` 命令把旧版 KnowForge（Node.js 后端 + MySQL）的数据一次性迁移到新版（Go API，支持 SQLite/MySQL/PostgreSQL 目标）。
 
 ## 迁移范围
 
@@ -23,11 +23,11 @@
    ```bash
    # 先 dry-run 核对数量，不写入
    go run ./cmd/migrate-legacy \
-     -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/infosphere" -dry-run
+     -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/knowforge" -dry-run
 
    # 正式迁移
    go run ./cmd/migrate-legacy \
-     -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/infosphere"
+     -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/knowforge"
    ```
 
    也可用环境变量 `LEGACY_MYSQL_DSN` 传递连接串。目标库通过常规 `INFO_SPHERE_*` 配置定位（与主服务一致）。
@@ -39,4 +39,4 @@
 - 目标库必须已完成新版安装（未安装时命令会拒绝执行）。
 - 旧库若与新库同库（同 MySQL 实例不同表前缀）不受影响：迁移按表名读取旧表、写入新表。
 - 旧库用户与新目标用户冲突时（如都叫 `admin`）会跳过该用户，其书籍/章节的作者归属会挂到目标同名账户下。
-- 迁移前建议备份目标库（SQLite 即复制 data 目录下的 `infosphere.db`）。
+- 迁移前建议备份目标库（SQLite 即复制 data 目录下的 `knowforge.db`）。

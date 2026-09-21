@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 func TestTranslationConfig(t *testing.T) {

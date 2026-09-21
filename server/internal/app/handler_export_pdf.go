@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
@@ -27,7 +27,7 @@ func requestToken(c *gin.Context) string {
 	if h := c.GetHeader("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		return strings.TrimSpace(h[7:])
 	}
-	if ck, err := c.Cookie("infosphere_token"); err == nil {
+	if ck, err := c.Cookie("knowforge_token"); err == nil {
 		return ck
 	}
 	return ""
@@ -77,7 +77,7 @@ func (a *App) resolveExportFooter(book *models.Book, u *models.User) string {
 	}
 	site := strings.TrimSpace(a.getSetting("site_name"))
 	if site == "" {
-		site = "InfoSphere"
+		site = "KnowForge"
 	}
 	return "Powered by " + site
 }
@@ -185,7 +185,7 @@ func (a *App) renderPDF(printURL, token string, setting models.UserExportSetting
 				return nil
 			}
 			// 为 127.0.0.1 设置登录 Cookie，使打印页 SSR 能渲染私有/作者内容
-			return network.SetCookie("infosphere_token", token).
+			return network.SetCookie("knowforge_token", token).
 				WithDomain("127.0.0.1").WithPath("/").Do(ctx)
 		}),
 		chromedp.Navigate(printURL),

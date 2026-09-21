@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugincore"
-	"infosphere/server/internal/plugins"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
+	"knowforge/server/internal/plugins"
 )
 
 // behavior 承载「书籍关注」插件的路由与 handler，通过 plugincore.Core 访问核心能力。

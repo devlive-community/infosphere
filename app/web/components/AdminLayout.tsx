@@ -59,7 +59,7 @@ function AdminUserMenu() {
 function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?: () => void }) {
   const { site } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
 
   const NAV: { key: AdminNavKey; labelKey: string; href: string; icon: (p: { className?: string }) => JSX.Element }[] = [
     { key: 'system', labelKey: 'admin.nav.system', href: '/admin/system', icon: GridIcon },
@@ -130,7 +130,7 @@ interface AdminLayoutProps {
 export default function AdminLayout({ current, breadcrumb, children }: AdminLayoutProps) {
   const { user, authReady, site } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const [drawer, setDrawer] = useState(false)
   const router = useRouter()
   useEffect(() => { setDrawer(false) }, [router.pathname])

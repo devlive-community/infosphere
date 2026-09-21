@@ -19,7 +19,7 @@ export default function Favorites() {
   const user = useRequireAuth()
   const { site } = useApp()
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const { ref: gridRef, pageSize, ready } = useGridPageSize({ minItemRem: 15, rows: 3, fallback: 9 })
   const [page, setPage] = useState(1)
   const [data, setData] = useState<{ items: FavItem[]; total: number; page: number; page_size: number } | null>(null)

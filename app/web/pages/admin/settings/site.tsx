@@ -128,7 +128,7 @@ export default function SettingsSite() {
       <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4">
           <Field label={t('admin.settings.site.siteName')}>
-            <Input value={siteName} onChange={(e) => setSiteName(e.target.value)} placeholder="InfoSphere" />
+            <Input value={siteName} onChange={(e) => setSiteName(e.target.value)} placeholder="KnowForge" />
           </Field>
           <Field label={t('admin.settings.mail.siteUrl')} hint={t('admin.settings.mail.siteUrlHint')}>
             <Input value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} placeholder="https://kb.example.com" />

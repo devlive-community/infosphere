@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/auth"
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugincore"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 )

@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"strings"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

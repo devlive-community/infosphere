@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugincore"
-	"infosphere/server/internal/plugins"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
+	"knowforge/server/internal/plugins"
 )
 
 // bookVariant 分组内的一本书（翻译组/版本组共用），供阅读页切换。

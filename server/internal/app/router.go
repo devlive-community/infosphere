@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/plugincore"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 )

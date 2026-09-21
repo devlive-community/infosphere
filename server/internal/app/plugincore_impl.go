@@ -4,9 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/models"
-	"infosphere/server/internal/plugincore"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 )
 
 // 本文件把 *App 适配为 plugincore.Core：插件子包通过该接口访问核心能力，避免与 app 包循环依赖。

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"

@@ -1,4 +1,4 @@
-package org.devlive.infosphere
+package org.devlive.knowforge
 
 import android.content.Context
 import android.graphics.Paint
@@ -75,7 +75,7 @@ import org.json.JSONObject
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val prefs = getSharedPreferences("infosphere", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("knowforge", Context.MODE_PRIVATE)
         prefs.getString("server_url", null)?.let { Api.configure(it) }
         prefs.getString("token", null)?.let { Api.setToken(it) }
 
@@ -158,7 +158,7 @@ private fun ServerScreen(onConnected: (String) -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("InfoSphere", fontSize = 28.sp, modifier = Modifier.padding(bottom = 4.dp))
+            Text("KnowForge", fontSize = 28.sp, modifier = Modifier.padding(bottom = 4.dp))
             Text("输入服务器地址以接入", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(32.dp))
             OutlinedTextField(
@@ -213,7 +213,7 @@ private fun LoginScreen(onLoggedIn: (JSONObject, String) -> Unit, onSkip: () -> 
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("登录 InfoSphere", fontSize = 24.sp, modifier = Modifier.padding(bottom = 28.dp))
+            Text("登录 KnowForge", fontSize = 24.sp, modifier = Modifier.padding(bottom = 28.dp))
             OutlinedTextField(value = username, onValueChange = { username = it },
                 label = { Text("用户名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))

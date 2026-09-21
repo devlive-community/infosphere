@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // TestAuthorizationBoundaries 覆盖公开数据、对象归属和令牌回跳地址的安全边界。

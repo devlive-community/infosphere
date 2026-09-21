@@ -12,5 +12,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "infosphere"
+rootProject.name = "knowforge"
 include(":app")

@@ -1,7 +1,7 @@
 [package]
-name = "infosphere-desktop"
+name = "knowforge-desktop"
 version = "2026.0.4"
-description = "InfoSphere 桌面客户端"
+description = "KnowForge 桌面客户端"
 edition = "2021"
 
 [build-dependencies]

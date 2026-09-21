@@ -1771,7 +1771,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "infosphere-desktop"
+name = "knowforge-desktop"
 version = "2026.0.1"
 dependencies = [
  "rusqlite",

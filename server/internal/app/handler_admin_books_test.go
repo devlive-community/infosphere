@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // 后台书籍管理列表：验证管理员权限、私有内容可见、筛选与安全排序回退。

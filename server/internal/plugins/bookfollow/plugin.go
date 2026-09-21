@@ -1,8 +1,8 @@
 package bookfollow
 
 import (
-	"infosphere/server/internal/authz"
-	"infosphere/server/internal/plugins"
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/plugins"
 )
 
 func init() {

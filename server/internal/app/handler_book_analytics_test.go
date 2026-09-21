@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 func TestBookAnalyticsAggregationAndAuthorization(t *testing.T) {
@@ -145,13 +145,13 @@ func TestClassifyAnalyticsSource(t *testing.T) {
 	cases := map[string]string{
 		"":                               "direct",
 		"not a url":                      "direct",
-		"https://infosphere.test/book":   "internal",
+		"https://knowforge.test/book":   "internal",
 		"https://www.baidu.com/s?wd=x":   "search",
 		"https://www.zhihu.com/question": "social",
 		"https://example.com/article":    "external",
 	}
 	for referrer, expected := range cases {
-		if actual := classifyAnalyticsSource(referrer, "infosphere.test:6969"); actual != expected {
+		if actual := classifyAnalyticsSource(referrer, "knowforge.test:6969"); actual != expected {
 			t.Errorf("来源分类 %q: got=%s want=%s", referrer, actual, expected)
 		}
 	}

@@ -30,7 +30,7 @@ function MyGrowthInner() {
   const { site } = useApp()
   const { t } = useTranslation()
   const { showToast } = useFeedback()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const [growth, setGrowth] = useState<Growth | null>(null)
   const [levels, setLevels] = useState<Level[]>([])
   const [events, setEvents] = useState<{ items: XPEvent[]; total: number; page: number; page_size: number } | null>(null)

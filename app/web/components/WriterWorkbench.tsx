@@ -122,7 +122,7 @@ export default function Writer({ user }: WriterProps) {
   const bookSlug = (router.query.slug as string) || ''
   // 路由为可选 catch-all（[[...doc]]）：doc 可能是数组或缺省
   const docSlug = Array.isArray(router.query.doc) ? (router.query.doc[0] || '') : ((router.query.doc as string) || '')
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
 
   const [book, setBook] = useState<Book | null>(null)
   const [tree, setTree] = useState<Document[]>([])

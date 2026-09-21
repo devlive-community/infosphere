@@ -28,6 +28,6 @@ if [ -d "${web_dir}/public" ]; then
 fi
 
 "${script_dir}/package-node-runtime.sh" "${node_version}" "${runtime_dir}/node" "${target_os}" "${node_arch}"
-printf '%s\n' "${node_version}" > "${runtime_dir}/.infosphere-node-version"
+printf '%s\n' "${node_version}" > "${runtime_dir}/.knowforge-node-version"
 tar -czf "${output}" -C "${runtime_dir}" .
 test -s "${output}"

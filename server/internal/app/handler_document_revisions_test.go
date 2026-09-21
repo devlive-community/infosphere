@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"testing"
 
-	"infosphere/server/internal/config"
-	"infosphere/server/internal/database"
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/database"
+	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

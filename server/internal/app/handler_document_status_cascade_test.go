@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // TestDocumentStatusCascadeAndFollowParent 覆盖：子章节状态跟随父章节的创建默认，以及父章节改状态时的级联。

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img width="96" src="app/web/public/logo.png" alt="InfoSphere" />
+<img width="96" src="app/web/public/logo.png" alt="KnowForge" />
 
-# InfoSphere
+# KnowForge
 
 **开源、自托管的知识管理与文档协作平台**
 
@@ -17,15 +17,15 @@
 
 ---
 
-## InfoSphere 是什么
+## KnowForge 是什么
 
-InfoSphere 是一个可以部署在自己服务器上的知识库 / 文档站 / 电子书平台。你可以像写书一样把知识整理成「书籍 → 章节」的多级结构，用内置的 Markdown 写作台创作，一键发布成对读者友好、对搜索引擎友好的公开站点；也可以邀请协作者共同维护、让读者评论与收藏、追踪自己的阅读进度。
+KnowForge 是一个可以部署在自己服务器上的知识库 / 文档站 / 电子书平台。你可以像写书一样把知识整理成「书籍 → 章节」的多级结构，用内置的 Markdown 写作台创作，一键发布成对读者友好、对搜索引擎友好的公开站点；也可以邀请协作者共同维护、让读者评论与收藏、追踪自己的阅读进度。
 
 它适合用来搭建：**团队/开源项目的文档站**、**个人博客或电子书**、**产品手册与知识库**、**技术教程站点**。
 
 整套系统编译为**一个二进制文件**，内置前端与运行时，零配置即可用 SQLite 跑起来——也可以随时切换到 MySQL / PostgreSQL。
 
-## 为什么选择 InfoSphere
+## 为什么选择 KnowForge
 
 - **🗂 数据自主可控** —— 完全自托管，内容、上传、数据库都在你自己的服务器上，不依赖任何第三方 SaaS。
 - **📦 部署极简** —— 单文件二进制内嵌 Next.js SSR 与 Node.js 运行时；一条 `docker run` 或一个二进制即可启动，默认零配置 SQLite，图形化安装向导完成初始化。
@@ -79,26 +79,26 @@ InfoSphere 是一个可以部署在自己服务器上的知识库 / 文档站 / 
 
 ```bash
 # 使用官方发布的镜像（GitHub Packages / GHCR，随每个 v* 版本自动发布 amd64/arm64）
-docker run -d --name infosphere -p 6969:6969 -v infosphere-data:/data \
-  ghcr.io/devlive-community/infosphere:latest
+docker run -d --name knowforge -p 6969:6969 -v knowforge-data:/data \
+  ghcr.io/devlive-community/knowforge:latest
 
 # 或用 Docker Compose 从源码本地构建
 docker compose up -d --build
 ```
 
-启动后访问 `http://<主机>:6969/install` 完成安装向导。数据（数据库、上传、配置）都在容器内 `/data`（对应数据卷 `infosphere-data`）。
+启动后访问 `http://<主机>:6969/install` 完成安装向导。数据（数据库、上传、配置）都在容器内 `/data`（对应数据卷 `knowforge-data`）。
 
 - 端口：`INFO_SPHERE_PORT`（默认 `6969`）
 - 数据目录：容器内固定为 `/data`，挂载数据卷或宿主目录持久化
 - 受信代理：经 nginx / 网关部署时设 `INFO_SPHERE_TRUSTED_PROXIES` 为代理 IP/CIDR（逗号分隔）
 - 外接数据库：安装向导中选择 MySQL / PostgreSQL 并填写连接信息即可
 - 升级：拉取新镜像重建容器（`docker compose pull && docker compose up -d`）
-- 镜像标签：`latest` 及具体版本（如 `ghcr.io/devlive-community/infosphere:1.2.3`、`1.2`）
+- 镜像标签：`latest` 及具体版本（如 `ghcr.io/devlive-community/knowforge:1.2.3`、`1.2`）
 
 ### 从源码构建
 
 ```bash
-make build          # bin/infosphere-server（内嵌 Next.js SSR + Node.js 24）
+make build          # bin/knowforge-server（内嵌 Next.js SSR + Node.js 24）
 make test           # 与 CI 一致的质量门禁（vet/test/tsc/lint）
 ```
 
@@ -118,7 +118,7 @@ make dev-web        # Next.js SSR（:3000，直连 :6969）
 - **CI/CD**：GitHub Actions 质量门禁 → `dev` 分支自动部署 → `v*` 标签发布多架构二进制与 Docker 镜像
 
 ```
-infosphere/
+knowforge/
 ├── server/               # Go 服务端（单文件二进制，内嵌前端产物）
 │   └── internal/
 │       ├── app/          # HTTP 路由、处理器、内嵌 Web 运行时管理
@@ -143,7 +143,7 @@ infosphere/
 
 ```
 nginx (:80/:443)
- └─ /* → infosphere-api（Go, 127.0.0.1:6969）
+ └─ /* → knowforge-api（Go, 127.0.0.1:6969）
           └─ 托管内嵌 Next.js + Node.js 24（内部 127.0.0.1:6900）
 ```
 
@@ -171,14 +171,14 @@ pnpm build          # 打包安装程序
 cd app/android && ./gradlew assembleDebug
 ```
 
-两端首次启动均填写 InfoSphere 服务器地址后接入，地址会被记住。
+两端首次启动均填写 KnowForge 服务器地址后接入，地址会被记住。
 
 ## 数据迁移
 
 从旧版（Node.js/Express/MySQL）迁移历史数据：
 
 ```bash
-go run ./cmd/migrate-legacy -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/infosphere" [-dry-run]
+go run ./cmd/migrate-legacy -legacy-dsn "user:pass@tcp(127.0.0.1:3306)/knowforge" [-dry-run]
 ```
 
 ## API

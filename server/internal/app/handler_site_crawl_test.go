@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"infosphere/server/internal/models"
+	"knowforge/server/internal/models"
 
 	"golang.org/x/net/html"
 )

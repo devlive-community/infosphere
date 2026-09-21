@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
-// 运行日志：按天生成文件（<log_dir>/infosphere-YYYY-MM-DD.log），可在系统设置中配置
+// 运行日志：按天生成文件（<log_dir>/knowforge-YYYY-MM-DD.log），可在系统设置中配置
 // 是否启用、存放目录、日志等级、留存天数。等级用于本应用的分级日志助手（Debugf/Infof/…）；
 // 标准库 log 的既有输出一并进入当天文件，便于排查。
 
@@ -42,7 +42,7 @@ func (w *dailyLogWriter) Write(p []byte) (int, error) {
 		if err := os.MkdirAll(w.dir, 0o755); err != nil {
 			return len(p), nil
 		}
-		f, err := os.OpenFile(filepath.Join(w.dir, "infosphere-"+today+".log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		f, err := os.OpenFile(filepath.Join(w.dir, "knowforge-"+today+".log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 		if err != nil {
 			return len(p), nil
 		}
@@ -133,10 +133,10 @@ func (a *App) purgeOldLogs() {
 	}
 	cutoff := time.Now().AddDate(0, 0, -a.logRetentionDays())
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasPrefix(e.Name(), "infosphere-") || !strings.HasSuffix(e.Name(), ".log") {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), "knowforge-") || !strings.HasSuffix(e.Name(), ".log") {
 			continue
 		}
-		datePart := strings.TrimSuffix(strings.TrimPrefix(e.Name(), "infosphere-"), ".log")
+		datePart := strings.TrimSuffix(strings.TrimPrefix(e.Name(), "knowforge-"), ".log")
 		day, perr := time.Parse("2006-01-02", datePart)
 		if perr != nil {
 			if info, ierr := e.Info(); ierr == nil {

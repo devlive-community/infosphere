@@ -113,7 +113,7 @@ const TOPIC_ICONS = ['fa-layer-group', 'fa-code', 'fa-database', 'fa-screwdriver
 
 export default function Home({ site, siteUrl, stats, latest, hot, trending, tags, authors }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   // 精选书籍：按屏宽自适应单行展示数量（列数 × 1 行）
   const { ref: featuredRef, pageSize: featuredCount } = useGridPageSize({ minItemRem: 15, rows: 1, fallback: 4 })
 
@@ -189,7 +189,7 @@ export default function Home({ site, siteUrl, stats, latest, hot, trending, tags
               </span>
             </div>
           ))}
-          <GitHubStarStat repo="devlive-community/infosphere" />
+          <GitHubStarStat repo="devlive-community/knowforge" />
         </div>
       </section>
 

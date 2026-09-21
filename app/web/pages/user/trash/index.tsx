@@ -24,7 +24,7 @@ export default function TrashPage() {
   const [data, setData] = useState<PageResult<TrashItem> | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
 
   const load = useCallback(async () => {
     if (!user) return

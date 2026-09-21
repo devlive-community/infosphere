@@ -243,7 +243,7 @@ function ReadingCard({ item }: { item: ReadingItem }) {
 export default function MyReading() {
   const user = useRequireAuth()
   const { site } = useApp()
-  const siteName = site.site_name || 'InfoSphere'
+  const siteName = site.site_name || 'KnowForge'
   const { t } = useTranslation()
   const { ref: gridRef, pageSize, ready } = useGridPageSize({ minItemRem: 18, rows: 3, fallback: 9 })
   const [page, setPage] = useState(1)

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"infosphere/server/internal/config"
+	"knowforge/server/internal/config"
 )
 
 // TestPublishChapterPromotesDraftBook 覆盖：发布章节时，草稿书籍自动提升为 in_progress；
