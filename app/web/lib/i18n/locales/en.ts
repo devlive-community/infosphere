@@ -2454,6 +2454,8 @@ export const en: Record<string, string> = {
   'admin.settings.oauth.loading': 'Loading OAuth config…',
   'admin.settings.oauth.enabled': 'Enabled',
   'admin.settings.oauth.disabled': 'Disabled',
+  'admin.settings.oauth.configured': 'Credentials set',
+  'admin.settings.oauth.notConfigured': 'Not configured',
   'admin.settings.oauth.instruction': 'Create an app in {platform} and enter credentials. Callback URL:',
   'admin.settings.oauth.enableStatus': 'Enable status',
   'admin.settings.oauth.enableStatusHint': 'When disabled, the login/registration page will not show this entry',

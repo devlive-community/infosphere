@@ -2454,6 +2454,8 @@ export const zh: Record<string, string> = {
   'admin.settings.oauth.loading': '正在加载第三方登录配置…',
   'admin.settings.oauth.enabled': '已启用',
   'admin.settings.oauth.disabled': '未启用',
+  'admin.settings.oauth.configured': '已配置凭据',
+  'admin.settings.oauth.notConfigured': '未配置',
   'admin.settings.oauth.instruction': '在 {platform} 创建应用后填入凭据，回调地址填写',
   'admin.settings.oauth.enableStatus': '启用状态',
   'admin.settings.oauth.enableStatusHint': '停用后登录/注册页不再显示该入口',
