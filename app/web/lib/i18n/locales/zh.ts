@@ -272,6 +272,7 @@ export const zh: Record<string, string> = {
   // 书籍语言/版本切换
   'book.variant.language': '语言',
   'book.variant.version': '版本',
+  'book.variant.latest': '最新版',
 
   // 书籍状态 / 可见性（多页共用）
   'book.status.draft': '草稿',
@@ -1479,6 +1480,8 @@ export const zh: Record<string, string> = {
   'bookForm.label.versionGroup': '版本分组',
   'bookForm.placeholder.versionGroup': '如 my-book-editions',
   'bookForm.versionGroupHint': '填写相同标识的书籍互为不同版本，阅读页可切换版本',
+  'bookForm.label.versionLatest': '标记为最新版',
+  'bookForm.versionLatestHint': '开启后，阅读页与详情页的版本选择器旁会显示「最新版」标记，方便读者识别',
   'bookForm.section.watermark': '阅读水印',
   'bookForm.watermark.title': '在阅读页显示水印',
   'bookForm.watermark.desc': '水印会以低透明度重复覆盖章节正文，不影响选择、复制和链接点击。',

@@ -18,6 +18,7 @@ type bookVariant struct {
 	Language     string `json:"language"`
 	Version      string `json:"version"`
 	Current      bool   `json:"current"`
+	IsLatest     bool   `json:"is_latest"`
 	FirstDocSlug string `json:"first_doc_slug"`
 }
 
@@ -37,7 +38,7 @@ func bookGroupSiblings(core plugincore.Core, u *models.User, book *models.Book, 
 		var firstDocSlug string
 		core.Gorm().Model(&models.Document{}).Where("book_id = ? AND status = ?", b.ID, "published").
 			Order("sort_order ASC, created_at ASC").Limit(1).Pluck("slug", &firstDocSlug)
-		out = append(out, bookVariant{Slug: b.Slug, Title: b.Title, Language: b.Language, Version: b.Version, Current: b.ID == book.ID, FirstDocSlug: firstDocSlug})
+		out = append(out, bookVariant{Slug: b.Slug, Title: b.Title, Language: b.Language, Version: b.Version, Current: b.ID == book.ID, IsLatest: b.VersionIsLatest, FirstDocSlug: firstDocSlug})
 	}
 	if len(out) <= 1 {
 		return []bookVariant{}

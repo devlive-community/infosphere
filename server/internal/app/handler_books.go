@@ -235,6 +235,7 @@ type bookPayload struct {
 	TransGroup              *string  `json:"trans_group"`
 	Version                 *string  `json:"version"`
 	VersionGroup            *string  `json:"version_group"`
+	VersionIsLatest         *bool    `json:"version_is_latest"`
 	WatermarkEnabled        *bool    `json:"watermark_enabled"`
 	WatermarkText           *string  `json:"watermark_text"`
 	ExportEnabled           *bool    `json:"export_enabled"`
@@ -347,6 +348,9 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 	if req.VersionGroup != nil {
 		book.VersionGroup = truncateText(strings.TrimSpace(*req.VersionGroup), 64)
+	}
+	if req.VersionIsLatest != nil {
+		book.VersionIsLatest = *req.VersionIsLatest
 	}
 	if req.WatermarkText != nil {
 		watermarkText, valid := normalizeWatermark(*req.WatermarkText)
@@ -508,6 +512,9 @@ func (a *App) UpdateBook(c *gin.Context) {
 	}
 	if req.VersionGroup != nil {
 		book.VersionGroup = truncateText(strings.TrimSpace(*req.VersionGroup), 64)
+	}
+	if req.VersionIsLatest != nil {
+		book.VersionIsLatest = *req.VersionIsLatest
 	}
 	if req.WatermarkText != nil {
 		watermarkText, valid := normalizeWatermark(*req.WatermarkText)

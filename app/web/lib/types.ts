@@ -54,6 +54,7 @@ export interface Book {
   trans_group?: string
   version?: string
   version_group?: string
+  version_is_latest?: boolean
   chapter_count?: number
   collaborator_role?: 'editor' | 'viewer'
   watermark_enabled: boolean

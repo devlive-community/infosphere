@@ -3,7 +3,7 @@ import type { InferGetServerSidePropsType } from 'next'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
-import { Button, ButtonLink, Input, useFeedback } from '@/components/ui'
+import { Button, ButtonLink, Input, Switch, useFeedback } from '@/components/ui'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { requireBookSettingsFeature } from '@/lib/book-settings'
 import type { Book } from '@/lib/types'
@@ -23,6 +23,7 @@ export default function BookSettingsLocalization({ book }: InferGetServerSidePro
   const [transGroup, setTransGroup] = useState(book.trans_group || '')
   const [version, setVersion] = useState(book.version || '')
   const [versionGroup, setVersionGroup] = useState(book.version_group || '')
+  const [versionIsLatest, setVersionIsLatest] = useState(book.version_is_latest || false)
   const [saving, setSaving] = useState(false)
 
   async function save() {
@@ -35,6 +36,7 @@ export default function BookSettingsLocalization({ book }: InferGetServerSidePro
           trans_group: transGroup.trim(),
           version: version.trim(),
           version_group: versionGroup.trim(),
+          version_is_latest: versionIsLatest,
         },
       })
       showToast({ message: t('bookSettings.localization.saved'), tone: 'success' })
@@ -84,6 +86,13 @@ export default function BookSettingsLocalization({ book }: InferGetServerSidePro
             <Input value={versionGroup} onChange={(e) => setVersionGroup(e.target.value)} placeholder={t('bookForm.placeholder.versionGroup')} maxLength={64} />
             <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.versionGroupHint')}</p>
           </div>}
+          {versionsEnabled && <div className="sm:col-span-2 flex items-start justify-between gap-4 rounded-xl border border-slate-200 p-4">
+            <div>
+              <div className="text-sm font-medium text-slate-900">{t('bookForm.label.versionLatest')}</div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookForm.versionLatestHint')}</p>
+            </div>
+            <Switch checked={versionIsLatest} onChange={setVersionIsLatest} ariaLabel={t('bookForm.label.versionLatest')} />
+          </div>}
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -91,7 +100,8 @@ export default function BookSettingsLocalization({ book }: InferGetServerSidePro
             language === (book.language || '') &&
             transGroup === (book.trans_group || '') &&
             version === (book.version || '') &&
-            versionGroup === (book.version_group || '')
+            versionGroup === (book.version_group || '') &&
+            versionIsLatest === (book.version_is_latest || false)
           } onClick={save}>
             {t('common.actions.save')}
           </Button>

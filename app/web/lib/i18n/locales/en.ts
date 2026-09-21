@@ -272,6 +272,7 @@ export const en: Record<string, string> = {
   // Book language/version switch
   'book.variant.language': 'Language',
   'book.variant.version': 'Version',
+  'book.variant.latest': 'Latest',
 
   // Book status / visibility (shared)
   'book.status.draft': 'Draft',
@@ -1479,6 +1480,8 @@ export const en: Record<string, string> = {
   'bookForm.label.versionGroup': 'Edition Group',
   'bookForm.placeholder.versionGroup': 'e.g. my-book-editions',
   'bookForm.versionGroupHint': 'Books sharing the same identifier are editions; readers can switch version',
+  'bookForm.label.versionLatest': 'Mark as latest version',
+  'bookForm.versionLatestHint': 'When on, a "Latest" badge shows next to the version picker on the reader and detail pages so readers can tell the newest edition',
   'bookForm.section.watermark': 'Reading Watermark',
   'bookForm.watermark.title': 'Show watermark on reading pages',
   'bookForm.watermark.desc': 'The watermark overlays chapter content at low opacity without affecting selection, copying or link clicks.',

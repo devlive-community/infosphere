@@ -380,8 +380,10 @@ type Book struct {
 	// Version 版本标签（如「v1」/「第一版」），配合 VersionGroup 组成多版本书组
 	Version string `gorm:"size:32;default:''" json:"version"`
 	// VersionGroup 版本分组标识：填相同非空标识的书籍互为不同版本，阅读页可切换版本
-	VersionGroup     string `gorm:"size:64;default:'';index" json:"version_group"`
-	WatermarkEnabled bool   `gorm:"default:false" json:"watermark_enabled"`
+	VersionGroup string `gorm:"size:64;default:'';index" json:"version_group"`
+	// VersionIsLatest 标记本书为版本组内的「最新版」，阅读页/详情页版本选择器旁展示「最新版」标记
+	VersionIsLatest  bool `gorm:"default:false" json:"version_is_latest"`
+	WatermarkEnabled bool `gorm:"default:false" json:"watermark_enabled"`
 	WatermarkText    string `gorm:"size:255;default:''" json:"watermark_text"`
 	// ExportEnabled 作者是否允许他人导出本书（公开书籍生效；作者/协作者不受限）
 	ExportEnabled bool `gorm:"default:true" json:"export_enabled"`
