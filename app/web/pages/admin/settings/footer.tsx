@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
@@ -28,6 +28,18 @@ export default function SettingsFooter() {
   const [footerGroups, setFooterGroups] = useState<FooterLinkGroup[]>(() => parseFooterGroups(site.site_footer_links))
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  // 直接刷新时 context.site 为空，需从 /site 拉取权威页脚配置回填，
+  // 未加载完成前禁用保存，避免用空值覆盖已存在的页脚链接。
+  useEffect(() => {
+    api<Record<string, unknown>>('/site')
+      .then((cfg) => {
+        setFooterGroups(parseFooterGroups(typeof cfg.site_footer_links === 'string' ? cfg.site_footer_links : undefined))
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
+  }, [])
 
   function updateGroup(gi: number, patch: Partial<FooterLinkGroup>) {
     setFooterGroups((prev) => prev.map((g, i) => (i === gi ? { ...g, ...patch } : g)))
@@ -97,7 +109,7 @@ export default function SettingsFooter() {
         </div>
         {message && <div className="mt-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
         <div className="mt-5 flex justify-end">
-          <Button loading={saving} onClick={save}>{t('admin.settings.footer.save')}</Button>
+          <Button loading={saving} disabled={!loaded} onClick={save}>{t('admin.settings.footer.save')}</Button>
         </div>
       </div>
     </SettingsLayout>

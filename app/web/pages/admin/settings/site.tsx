@@ -29,11 +29,34 @@ export default function SettingsSite() {
   const [annTone, setAnnTone] = useState(site.announcement_tone === 'warning' ? 'warning' : 'info')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
+  // 直接刷新 /admin/settings/site 时 pageProps 不含 site，context.site 为空，
+  // 若以空值初始化表单再保存，会把服务端已存在的配置整体覆盖丢失。
+  // 因此挂载后始终从 /site 拉取权威配置并回填，且未加载完成前禁用保存，杜绝「覆盖清空」。
   useEffect(() => {
     api<MailConfig>('/mail')
       .then((m) => setSiteUrl(m.site_url || ''))
       .catch(() => {})
+    api<Record<string, unknown>>('/site')
+      .then((cfg) => {
+        const str = (k: string) => (typeof cfg[k] === 'string' ? (cfg[k] as string) : '')
+        setSiteName(str('site_name'))
+        setSiteDesc(str('site_description'))
+        setSiteLogo(str('site_logo'))
+        setSiteFavicon(str('site_favicon'))
+        setSiteKeywords(str('site_keywords'))
+        setSiteFooterText(str('site_footer_text'))
+        setSiteBeian(str('site_beian'))
+        setHelpDocUrl(str('help_doc_url'))
+        setTermsUrl(str('terms_url'))
+        setPrivacyUrl(str('privacy_url'))
+        setAnnEnabled(str('announcement_enabled') === 'true')
+        setAnnText(str('announcement_text'))
+        setAnnTone(str('announcement_tone') === 'warning' ? 'warning' : 'info')
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
   }, [])
 
   async function saveSiteUrl() {
@@ -184,7 +207,7 @@ export default function SettingsSite() {
         </div>
         {message && <div className="mt-4 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
         <div className="mt-5 flex justify-end">
-          <Button loading={saving} onClick={save}>{t('admin.settings.site.save')}</Button>
+          <Button loading={saving} disabled={!loaded} onClick={save}>{t('admin.settings.site.save')}</Button>
         </div>
       </div>
     </SettingsLayout>
