@@ -222,7 +222,7 @@ nav li{margin:.4em 0;}`, setting.FontSize, codeBg, codeFg)
 			images[n] = d
 		}
 		body := `<h1 class="chapter-title">` + html.EscapeString(doc.Title) + `</h1>` + "\n" + renderEPUBChapterBody(content)
-		if book.WatermarkEnabled && strings.TrimSpace(book.WatermarkText) != "" {
+		if a.pluginEnabled(pluginWatermark) && book.WatermarkEnabled && strings.TrimSpace(book.WatermarkText) != "" {
 			body += `<p class="watermark">` + html.EscapeString(book.WatermarkText) + `</p>`
 		}
 		file := fmt.Sprintf("chapter-%04d.xhtml", idx)

@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import type { InferGetServerSidePropsType } from 'next'
 import { useRouter } from 'next/router'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
-import { getBookSettingsProps } from '@/lib/book-settings'
+import { requireBookSettingsFeature } from '@/lib/book-settings'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Badge, Button, ButtonLink, EmptyState, Loading, SegmentedTabs, useFeedback } from '@/components/ui'
 import { ChevronRightIcon } from '@/components/icons'
 
-export const getServerSideProps = getBookSettingsProps
+export const getServerSideProps = requireBookSettingsFeature('content-collect')
 
 interface CrawlJob {
   id: number

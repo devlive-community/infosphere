@@ -5,10 +5,10 @@ import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Button, ButtonLink, Input, useFeedback } from '@/components/ui'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
-import { getBookSettingsProps } from '@/lib/book-settings'
+import { requireBookSettingsFeature } from '@/lib/book-settings'
 import type { Book } from '@/lib/types'
 
-export const getServerSideProps = getBookSettingsProps
+export const getServerSideProps = requireBookSettingsFeature(['book-translations', 'book-versions'])
 
 // 书籍设置 · 多语言与版本：语言/翻译分组/版本/版本分组（仅可管理者）。
 // 多语言、版本各自是特性插件；禁用则隐藏对应字段，两者都禁用则整页 404。

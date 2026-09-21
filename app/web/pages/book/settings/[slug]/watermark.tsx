@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { InferGetServerSidePropsType } from 'next'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
-import { getBookSettingsProps } from '@/lib/book-settings'
+import { requireBookSettingsFeature } from '@/lib/book-settings'
 import { api } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { Button, Input, Switch, useFeedback } from '@/components/ui'
 
-export const getServerSideProps = getBookSettingsProps
+export const getServerSideProps = requireBookSettingsFeature('watermark')
 
 const MAX_WATERMARK = 60
 

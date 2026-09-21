@@ -34,3 +34,19 @@ export const getBookSettingsProps: GetServerSideProps<BookSettingsProps> = async
     return { notFound: true }
   }
 }
+
+// requireBookSettingsFeature 在 getBookSettingsProps 之上再加「插件启用」门禁：
+// 该书籍设置 Tab 属于某个 feature 插件（如 watermark / content-collect / 多语言与版本），
+// 插件禁用时直接 404，杜绝「插件已禁用但页面仍可通过 URL 直接访问」。features 传数组表示「任一启用即可」。
+export function requireBookSettingsFeature(features: string | string[]): GetServerSideProps<BookSettingsProps> {
+  const required = Array.isArray(features) ? features : [features]
+  return async (ctx) => {
+    const res = await getBookSettingsProps(ctx)
+    if ('props' in res && res.props) {
+      const props = res.props as BookSettingsProps
+      const enabled = (props.site as unknown as { feature_plugins?: string[] }).feature_plugins || []
+      if (!required.some((f) => enabled.includes(f))) return { notFound: true }
+    }
+    return res
+  }
+}

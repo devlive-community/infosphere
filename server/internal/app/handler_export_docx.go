@@ -412,7 +412,7 @@ func (a *App) writeBookDOCX(c *gin.Context, book *models.Book, includeDrafts boo
 		r.para("Heading1", docxRun(doc.Title, docxRunStyle{}))
 		r.src = []byte(content)
 		r.renderBlocks(parser.Parse(text.NewReader(r.src)))
-		if book.WatermarkEnabled && strings.TrimSpace(book.WatermarkText) != "" {
+		if a.pluginEnabled(pluginWatermark) && book.WatermarkEnabled && strings.TrimSpace(book.WatermarkText) != "" {
 			r.body.WriteString(`<w:p><w:pPr><w:jc w:val="center"/></w:pPr>` + docxRunGray(book.WatermarkText) + "</w:p>")
 		}
 	}
