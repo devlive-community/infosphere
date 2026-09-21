@@ -12,7 +12,7 @@ export const getServerSideProps = requireBookSettingsFeature(['book-translations
 
 // 书籍设置 · 多语言与版本：语言/翻译分组/版本/版本分组（仅可管理者）。
 // 多语言、版本各自是特性插件；禁用则隐藏对应字段，两者都禁用则整页 404。
-export default function BookSettingsLocalization({ book }: InferGetServerSidePropsType<typeof getBookSettingsProps>) {
+export default function BookSettingsLocalization({ book }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { showToast } = useFeedback()
   const { site } = useApp()
   const { t } = useTranslation()
