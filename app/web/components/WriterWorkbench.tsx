@@ -726,7 +726,7 @@ export default function Writer({ user }: WriterProps) {
     if (!target || !/^https?:\/\//.test(target)) return
     setCollecting(true)
     try {
-      const d = await api<{ title: string; markdown: string; source_url: string }>('/import/web-content', { method: 'POST', body: { url: target, render_mode: 'auto' } })
+      const d = await api<{ title: string; markdown: string; source_url: string }>('/import/web-content', { method: 'POST', body: { url: target, render_mode: 'auto', book_id: book?.id } })
       // 是否附带来源默认关闭（collectIncludeSource 开关）：关闭时不追加来源脚注。
       const sourceNote = collectIncludeSource ? `\n\n> ${t('writer.collectSource')}：[${t('writer.collectOrigin')}](${d.source_url})\n` : '\n'
       const block = (d.title ? `## ${d.title}\n\n` : '') + d.markdown + sourceNote

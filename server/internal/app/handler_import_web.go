@@ -49,6 +49,7 @@ type webImportPayload struct {
 	IncludeSource bool   `json:"include_source"` // 是否在 Markdown 末尾附加「来源：原始网页」链接（默认否）
 	ParentID      *uint  `json:"parent_id,omitempty"`
 	SortOrder     *int   `json:"sort_order,omitempty"`
+	BookID        *uint  `json:"book_id,omitempty"` // 插入正文式采集（/import/web-content）时带上，用于记录到该书的采集历史
 }
 
 // withSourceNote 按需在 Markdown 末尾附加来源链接（include 为 false 时原样返回）
@@ -98,6 +99,31 @@ func (a *App) ImportWebBook(c *gin.Context) {
 }
 
 // ImportWebDocument POST /books/:id/documents/import-web 抓取网页并建立草稿章节。
+// recordPageCrawl 把一次「单页网页采集」写入采集历史（CrawlJob kind + 一条 CrawlPage）。
+// 采集插件禁用或无书籍上下文时为空操作；失败也记录，便于用户在采集历史里看到。
+func (a *App) recordPageCrawl(bookID, userID uint, kind, rawURL, title string, docID uint, success bool, errMsg string) {
+	if bookID == 0 || !a.pluginEnabled(pluginContentCollect) {
+		return
+	}
+	now := time.Now()
+	status, ok, failed := "success", 1, 0
+	if !success {
+		status, ok, failed = "failed", 0, 1
+	}
+	job := models.CrawlJob{
+		UserID: userID, BookID: bookID, Kind: kind, RootURL: truncateText(rawURL, 1024),
+		RenderMode: "auto", Status: status, PageLimit: 1, Total: 1, Success: ok, Failed: failed,
+		LastError: errMsg, StartedAt: &now, FinishedAt: &now,
+	}
+	if a.DB.Create(&job).Error != nil {
+		return
+	}
+	a.DB.Create(&models.CrawlPage{
+		JobID: job.ID, URL: truncateText(rawURL, 1024), Title: truncateText(title, 512),
+		Status: status, Error: errMsg, DocID: docID,
+	})
+}
+
 func (a *App) ImportWebDocument(c *gin.Context) {
 	book, status := a.findBook(c)
 	if book == nil {
@@ -130,6 +156,7 @@ func (a *App) ImportWebDocument(c *gin.Context) {
 	defer cancel()
 	article, page, usedMode, err := a.collectWebArticle(ctx, req)
 	if err != nil {
+		a.recordPageCrawl(book.ID, u.ID, "chapter", req.URL, "", 0, false, publicWebImportError(err))
 		failWebImport(c, err)
 		return
 	}
@@ -139,9 +166,11 @@ func (a *App) ImportWebDocument(c *gin.Context) {
 	content := withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource)
 	doc, err := a.createImportedWebDocument(book, u, article.Title, content, req.ParentID, req.SortOrder)
 	if err != nil {
+		a.recordPageCrawl(book.ID, u.ID, "chapter", page.FinalURL.String(), article.Title, 0, false, err.Error())
 		fail(c, http.StatusInternalServerError, "创建网页章节失败: "+err.Error())
 		return
 	}
+	a.recordPageCrawl(book.ID, u.ID, "chapter", page.FinalURL.String(), doc.Title, doc.ID, true, "")
 	ok(c, gin.H{
 		"document": doc, "source_url": page.FinalURL.String(), "render_mode": usedMode,
 		"message": fmt.Sprintf("已采集为草稿章节《%s》", doc.Title),
@@ -157,11 +186,21 @@ func (a *App) CollectWebContent(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
 	defer cancel()
+	// 带 book_id 且当前用户可编辑该书时，把这次采集记录到该书的采集历史（kind=page）。
+	var crawlBookID uint
+	if req.BookID != nil {
+		var book models.Book
+		if a.DB.First(&book, *req.BookID).Error == nil && a.canEditBookContent(currentUser(c), &book) {
+			crawlBookID = book.ID
+		}
+	}
 	article, page, usedMode, err := a.collectWebArticle(ctx, req)
 	if err != nil {
+		a.recordPageCrawl(crawlBookID, currentUser(c).ID, "page", req.URL, "", 0, false, publicWebImportError(err))
 		failWebImport(c, err)
 		return
 	}
+	a.recordPageCrawl(crawlBookID, currentUser(c).ID, "page", page.FinalURL.String(), article.Title, 0, true, "")
 	ok(c, gin.H{
 		"title":       article.Title,
 		"markdown":    withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource),
