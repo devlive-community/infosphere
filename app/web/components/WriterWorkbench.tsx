@@ -461,7 +461,7 @@ export default function Writer({ user }: WriterProps) {
       showToast({ title: t('writer.saveFailed'), message: (e as Error).message, tone: 'error' })
       return false
     }
-  }, [book, title, content, status, parentId, sortOrder, allowComments, slug, current, loadTree]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [book, title, content, status, parentId, sortOrder, allowComments, slug, externalUrl, externalNewTab, current, loadTree]) // eslint-disable-line react-hooks/exhaustive-deps
   saveRef.current = save
 
   // 脏状态检测；自动保存当前临时关闭，只保留手动保存、快捷键保存与发布。
@@ -726,7 +726,9 @@ export default function Writer({ user }: WriterProps) {
     setCollecting(true)
     try {
       const d = await api<{ title: string; markdown: string; source_url: string }>('/import/web-content', { method: 'POST', body: { url: target, render_mode: 'auto' } })
-      const block = (d.title ? `## ${d.title}\n\n` : '') + d.markdown + `\n\n> ${t('writer.collectSource')}：[${t('writer.collectOrigin')}](${d.source_url})\n`
+      // 是否附带来源默认关闭（与「采集成新章节」共用 includeSource 开关）：关闭时不追加来源脚注。
+      const sourceNote = includeSource ? `\n\n> ${t('writer.collectSource')}：[${t('writer.collectOrigin')}](${d.source_url})\n` : '\n'
+      const block = (d.title ? `## ${d.title}\n\n` : '') + d.markdown + sourceNote
       insertText('\n' + block)
       showToast({ message: t('writer.webCollected'), tone: 'success' })
     } catch (e) {
