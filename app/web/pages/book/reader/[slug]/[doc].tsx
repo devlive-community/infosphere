@@ -34,21 +34,16 @@ interface ReaderProps {
 }
 
 const FONT_SIZES = [15, 16, 18, 20, 22]
-const WATERMARK_CELLS = Array.from({ length: 36 }, (_, index) => index)
 
 function WatermarkLayer({ text }: { text: string }) {
+  // 用可平铺的 SVG 背景铺满整篇正文（无论章节多长都均匀重复）。
+  // 原先的固定网格在长章节里会把水印拉得很稀疏，导致大片区域看不到水印。
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  const tile = `<svg xmlns='http://www.w3.org/2000/svg' width='260' height='170'><text x='130' y='95' fill='rgba(100,116,139,0.10)' font-family='sans-serif' font-size='13' letter-spacing='2' text-anchor='middle' transform='rotate(-28 130 95)'>${esc(text)}</text></svg>`
+  const url = `data:image/svg+xml,${encodeURIComponent(tile)}`
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden select-none">
-      <div className="grid h-full min-h-[640px] grid-cols-2 sm:grid-cols-3">
-        {WATERMARK_CELLS.map((cell) => (
-          <div key={cell} className="flex items-center justify-center overflow-hidden px-4">
-            <span className="-rotate-[28deg] whitespace-nowrap text-sm font-medium tracking-[0.16em] text-slate-500/10">
-              {text}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 select-none"
+      style={{ backgroundImage: `url("${url}")`, backgroundRepeat: 'repeat' }} />
   )
 }
 
@@ -376,12 +371,9 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
             {siteName}
           </Link>
           <span className="text-slate-300">/</span>
-          <span className="max-w-[220px] truncate font-medium text-slate-900">{book.title}</span>
-          <span className="text-slate-300">/</span>
+          {/* 点击书名直接回到书籍详情页（替代原「返回书籍」按钮） */}
           <Link href={`/book/detail/${encodeURIComponent(book.slug)}`}
-            className="flex shrink-0 items-center gap-1 text-slate-500 hover:text-primary-600">
-            <ChevronRightIcon className="h-4 w-4 rotate-180" /> {t('reader.backToBook')}
-          </Link>
+            className="max-w-[220px] truncate font-medium text-slate-900 hover:text-primary-600">{book.title}</Link>
         </div>
         <div className="hidden min-w-0 truncate text-sm font-medium text-slate-900 md:block">
           {doc ? `${chapterPrefix}${doc.title}` : book.title}
@@ -474,7 +466,8 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                   <ReaderAnnotations user={user} book={book} doc={doc} contentRef={contentRef} />
                   <div ref={contentRef} className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
 
-                  <Comments docId={doc.id} allowComments={doc.allow_comments !== false} />
+                  {/* 章节关闭评论时整个评论模块都不出现（不渲染标题/评论框/列表） */}
+                  {doc.allow_comments !== false && <Comments docId={doc.id} allowComments />}
 
                 {canEdit && (
                   <Link href={`/book/writer/${encodeURIComponent(book.slug)}/${doc.slug}`}
