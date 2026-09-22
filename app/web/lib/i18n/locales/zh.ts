@@ -1691,6 +1691,8 @@ export const zh: Record<string, string> = {
   'admin.growth.adjustFailed': '调整失败',
   'admin.growth.ruleSaved': '规则已保存',
   'admin.growth.rulesTitle': '经验规则',
+  'admin.growth.tab.levels': '等级',
+  'admin.growth.tab.rules': '经验规则',
   'admin.growth.rulesHint': '配置各事件的基础经验与每日上限（每人每天该规则可获经验的上限，0=不限）。',
   'admin.growth.rulesEmpty': '暂无经验规则',
   'admin.growth.rule.event': '事件',

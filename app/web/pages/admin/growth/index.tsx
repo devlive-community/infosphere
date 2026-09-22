@@ -4,7 +4,7 @@ import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
 import IconPicker from '@/components/IconPicker'
 import { api } from '@/lib/api'
-import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Select, Switch, useFeedback } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Select, SegmentedTabs, Switch, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
 interface Level {
@@ -38,6 +38,7 @@ function AdminGrowthInner() {
   const [adjusting, setAdjusting] = useState(false)
   const [rules, setRules] = useState<Rule[] | null>(null)
   const [savingRule, setSavingRule] = useState<number | null>(null)
+  const [tab, setTab] = useState<'levels' | 'rules'>('levels')
 
   const load = useCallback(() => {
     api<{ items: Level[] }>('/admin/growth/levels').then((r) => setLevels(r.items || [])).catch((e) => showToast({ title: t('admin.growth.loadFailed'), message: (e as Error).message, tone: 'error' }))
@@ -100,12 +101,17 @@ function AdminGrowthInner() {
           <h1 className="text-2xl font-bold text-slate-900">{t('admin.nav.growth')}</h1>
           <p className="mt-1.5 text-sm text-slate-500">{t('admin.growth.description')}</p>
         </div>
-        <Button onClick={() => setForm({ level: nextLevel, name: `Lv.${nextLevel}`, description: '', icon_type: 'fa', icon_value: 'fa-star', color: '', min_xp: 0, status: 'active' })}>
-          <i className="fa-solid fa-plus" aria-hidden="true" /> {t('admin.growth.addLevel')}
-        </Button>
+        {tab === 'levels' && (
+          <Button onClick={() => setForm({ level: nextLevel, name: `Lv.${nextLevel}`, description: '', icon_type: 'fa', icon_value: 'fa-star', color: '', min_xp: 0, status: 'active' })}>
+            <i className="fa-solid fa-plus" aria-hidden="true" /> {t('admin.growth.addLevel')}
+          </Button>
+        )}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <SegmentedTabs className="mt-6" value={tab} onChange={(v) => setTab(v as 'levels' | 'rules')} ariaLabel={t('admin.nav.growth')}
+        items={[{ value: 'levels', label: t('admin.growth.tab.levels') }, { value: 'rules', label: t('admin.growth.tab.rules') }]} />
+
+      <div className={`mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr] ${tab === 'levels' ? '' : 'hidden'}`}>
         <div>
           {levels === null ? <Loading className="py-16" label={t('admin.growth.loading')} /> : levels.length === 0 ? (
             <EmptyState>{t('admin.growth.empty')}</EmptyState>
@@ -143,8 +149,8 @@ function AdminGrowthInner() {
         </Card>
       </div>
 
-      {/* 经验规则 */}
-      <Card className="mt-6 p-5">
+      {/* 经验规则（仅在「经验规则」tab 显示） */}
+      <Card className={`mt-6 p-5 ${tab === 'rules' ? '' : 'hidden'}`}>
         <h2 className="font-bold text-slate-900">{t('admin.growth.rulesTitle')}</h2>
         <p className="mt-1 text-xs text-slate-400">{t('admin.growth.rulesHint')}</p>
         {rules === null ? <Loading className="py-6" /> : rules.length === 0 ? (

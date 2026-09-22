@@ -1691,6 +1691,8 @@ export const en: Record<string, string> = {
   'admin.growth.adjustFailed': 'Adjustment failed',
   'admin.growth.ruleSaved': 'Rule saved',
   'admin.growth.rulesTitle': 'Experience rules',
+  'admin.growth.tab.levels': 'Levels',
+  'admin.growth.tab.rules': 'Experience rules',
   'admin.growth.rulesHint': 'Configure base XP and a daily cap per event (max XP a user can earn per day from this rule; 0 = unlimited).',
   'admin.growth.rulesEmpty': 'No experience rules',
   'admin.growth.rule.event': 'Event',
