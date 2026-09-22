@@ -188,6 +188,7 @@ export default function Writer({ user }: WriterProps) {
   const scrollLock = useRef<'edit' | 'preview' | null>(null) // 分栏滚动同步防抖锁
   const [uploading, setUploading] = useState(false)
   const [collecting, setCollecting] = useState(false)
+  const [collectIncludeSource, setCollectIncludeSource] = useState(false) // 采集网页插入正文时是否附带「来源」脚注（默认关闭，可配置）
   const snapshot = useRef('') // 已保存/已加载表单的快照，用于脏状态判断
   const loadedDocId = useRef<number | null>(null) // 当前表单对应的文档，防止切换章节时误触发自动保存
   const saveRef = useRef<(opts?: { status?: DocumentStatus }) => Promise<boolean | undefined>>(async () => undefined)
@@ -726,8 +727,8 @@ export default function Writer({ user }: WriterProps) {
     setCollecting(true)
     try {
       const d = await api<{ title: string; markdown: string; source_url: string }>('/import/web-content', { method: 'POST', body: { url: target, render_mode: 'auto' } })
-      // 是否附带来源默认关闭（与「采集成新章节」共用 includeSource 开关）：关闭时不追加来源脚注。
-      const sourceNote = includeSource ? `\n\n> ${t('writer.collectSource')}：[${t('writer.collectOrigin')}](${d.source_url})\n` : '\n'
+      // 是否附带来源默认关闭（collectIncludeSource 开关）：关闭时不追加来源脚注。
+      const sourceNote = collectIncludeSource ? `\n\n> ${t('writer.collectSource')}：[${t('writer.collectOrigin')}](${d.source_url})\n` : '\n'
       const block = (d.title ? `## ${d.title}\n\n` : '') + d.markdown + sourceNote
       insertText('\n' + block)
       showToast({ message: t('writer.webCollected'), tone: 'success' })
@@ -1739,6 +1740,10 @@ export default function Writer({ user }: WriterProps) {
                 </button>
               </div>
             )}
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-sm font-medium text-slate-700">{t('writer.includeSource')}<span className="mt-0.5 block text-xs font-normal text-slate-400">{t('writer.includeSourceHint')}</span></span>
+              <Switch checked={collectIncludeSource} onChange={setCollectIncludeSource} ariaLabel={t('writer.includeSource')} />
+            </div>
           </div>
 
           <div className="mt-6 border-t border-slate-100 pt-5">
