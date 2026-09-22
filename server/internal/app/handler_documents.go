@@ -103,6 +103,54 @@ func validExternalURL(s string) bool {
 	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 }
 
+// uniqueChildSlug 为书内文档生成唯一 slug：
+//   - 先用 base；书内不冲突就直接用；
+//   - 冲突时逐级用祖先章节的 slug 作前缀（如 A/c 与 B/c → 后者变成 b-c，再冲突则 a-b-c…）；
+//   - 一直到根仍冲突，退回随机后缀（c-<随机 hex>）。
+//
+// excludeID 用于「更新自身」时排除本条；base 为空按随机生成。
+func (a *App) uniqueChildSlug(bookID uint, parentID *uint, base string, excludeID uint) string {
+	base = strings.Trim(base, "-")
+	taken := func(s string) bool {
+		if s == "" {
+			return true
+		}
+		var c int64
+		q := a.DB.Unscoped().Model(&models.Document{}).Where("book_id = ? AND slug = ?", bookID, s)
+		if excludeID != 0 {
+			q = q.Where("id <> ?", excludeID)
+		}
+		q.Count(&c)
+		return c > 0
+	}
+	if base == "" {
+		return randomSlug("doc")
+	}
+	if !taken(base) {
+		return base
+	}
+	// 逐级向上，用祖先 slug 作前缀
+	prefix := ""
+	for depth, pid := 0, parentID; depth < 20 && pid != nil; depth++ {
+		var parent models.Document
+		if err := a.DB.Select("id", "parent_id", "slug").First(&parent, *pid).Error; err != nil {
+			break
+		}
+		prefix = parent.Slug + "-" + prefix
+		if cand := strings.Trim(prefix, "-") + "-" + base; !taken(cand) {
+			return cand
+		}
+		pid = parent.ParentID
+	}
+	// 祖先前缀仍冲突：随机后缀兜底
+	for i := 0; i < 50; i++ {
+		if cand := randomSlug(base); !taken(cand) {
+			return cand
+		}
+	}
+	return randomSlug(base)
+}
+
 // parseParentID 解析 parent_id 三态：缺省(present=false)不改动；显式 null 表示置为顶级；数字表示挂到该父级
 func parseParentID(raw json.RawMessage) (present bool, id *uint, err error) {
 	if len(raw) == 0 {
@@ -203,35 +251,18 @@ func (a *App) CreateDocument(c *gin.Context) {
 		doc.AllowComments = &off
 	}
 
-	slug := ""
+	base := ""
 	if req.Slug != nil && *req.Slug != "" {
 		if !validSlug(*req.Slug) {
 			fail(c, http.StatusBadRequest, "slug 仅支持小写字母、数字和中划线")
 			return
 		}
-		slug = *req.Slug
+		base = *req.Slug
 	} else {
-		slug = slugify(*req.Title)
+		base = slugify(*req.Title)
 	}
-
-	for i := 0; i < 50; i++ {
-		candidate := slug
-		if candidate == "" {
-			candidate = randomSlug("doc")
-		} else if i > 0 {
-			candidate = slug + "-" + strconv.Itoa(i+1)
-		}
-		var count int64
-		a.DB.Unscoped().Model(&models.Document{}).Where("book_id = ? AND slug = ?", book.ID, candidate).Count(&count)
-		if count == 0 {
-			doc.Slug = candidate
-			break
-		}
-	}
-	if doc.Slug == "" {
-		fail(c, http.StatusConflict, "slug 生成失败，请手动指定")
-		return
-	}
+	// 冲突时递归用祖先章节 slug 作前缀（A/c 与 B/c → b-c），最终随机兜底。
+	doc.Slug = a.uniqueChildSlug(book.ID, doc.ParentID, base, 0)
 
 	if err := a.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&doc).Error; err != nil {
