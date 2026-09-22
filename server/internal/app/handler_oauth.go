@@ -198,13 +198,15 @@ func (a *App) OAuthCallback(c *gin.Context) {
 	}
 	// state 里记录的来源才是可信回跳地址
 	origin = stateOrigin
-	// 绑定模式（已登录用户）失败回跳账户页，登录/注册模式失败回跳登录页
+	// 绑定模式（已登录用户）失败回跳账户页，登录/注册模式失败回跳登录页。
+	// 带上 provider 标签，前端错误文案按实际第三方名展示（避免所有 provider 都显示 GitHub）。
 	failRedirect := func(code string) {
+		q := "oauth_error=" + code + "&provider=" + url.QueryEscape(def.Label)
 		if linkUserID != 0 {
-			c.Redirect(http.StatusFound, origin+"/user/oauth?oauth_error="+code)
+			c.Redirect(http.StatusFound, origin+"/user/oauth?"+q)
 			return
 		}
-		c.Redirect(http.StatusFound, origin+"/login?oauth_error="+code)
+		c.Redirect(http.StatusFound, origin+"/login?"+q)
 	}
 
 	clientID, clientSecret, enabled := a.oauthProviderConfig(provider)

@@ -93,9 +93,10 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   useEffect(() => {
     if (router.isReady && typeof router.query.oauth_error === 'string') {
       const code = router.query.oauth_error
-      setError(t(oauthErrorKey(code), { code }))
+      const provider = typeof router.query.provider === 'string' && router.query.provider ? router.query.provider : t('auth.oautherror.providerFallback')
+      setError(t(oauthErrorKey(code), { code, provider }))
     }
-  }, [router.isReady, router.query.oauth_error]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.oauth_error, router.query.provider]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 邀请链接：注册页带 ?invite=<码> 时预填邀请码
   useEffect(() => {

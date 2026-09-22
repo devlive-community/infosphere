@@ -53,9 +53,10 @@ export default function OAuthBindings() {
     const err = params.get('oauth_error')
     if (!linked && !err) return
     if (linked) setMessage(t('account.oauth.linked', { provider: PROVIDER_META[linked]?.label || linked }))
-    if (err) setError(t(oauthErrorKey(err), { code: err }))
+    if (err) setError(t(oauthErrorKey(err), { code: err, provider: params.get('provider') || t('auth.oautherror.providerFallback') }))
     params.delete('linked')
     params.delete('oauth_error')
+    params.delete('provider')
     const qs = params.toString()
     window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
