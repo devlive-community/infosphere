@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, ReactNode, KeyboardEvent } from 'react'
 import { useRouter } from 'next/router'
-import { API_BASE, getToken } from '@/lib/api'
+import { API_BASE, getToken, api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Button, Input, Textarea, Select, Switch } from '@/components/ui'
@@ -80,15 +80,31 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const authorName = user?.username || t('bookForm.you')
   const authorAvatar = user?.avatar ? (/^https?:\/\//.test(user.avatar) ? user.avatar : API_BASE + user.avatar) : ''
 
-  function addTag() {
-    const tag = tagInput.trim()
+  function addTagValue(raw: string) {
+    const tag = raw.trim()
     if (!tag || tags.includes(tag) || tags.length >= MAX_TAGS) { setTagInput(''); return }
     setTags([...tags, tag]); setTagInput('')
+    setTagSuggest([])
   }
+  function addTag() { addTagValue(tagInput) }
   function onTagKey(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') { e.preventDefault(); addTag() }
     else if (e.key === 'Backspace' && !tagInput && tags.length) setTags(tags.slice(0, -1))
   }
+
+  // 标签检索：输入时查现有标签，供作者直接引用（后端 /tags?q=，防抖；排除已选）。
+  const [tagSuggest, setTagSuggest] = useState<{ name: string; book_count?: number }[]>([])
+  useEffect(() => {
+    if (!tagsEnabled) return
+    const q = tagInput.trim()
+    if (!q) { setTagSuggest([]); return }
+    const h = setTimeout(() => {
+      api<{ name: string; book_count?: number }[]>('/tags', { params: { q, limit: 8 } })
+        .then((list) => setTagSuggest((list || []).filter((it) => !tags.includes(it.name))))
+        .catch(() => setTagSuggest([]))
+    }, 250)
+    return () => clearTimeout(h)
+  }, [tagInput, tags, tagsEnabled])
 
   async function uploadCover(file: File | undefined) {
     if (!file) return
@@ -180,17 +196,31 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
             </RowField>
             {tagsEnabled && (
             <RowField label={t('bookForm.label.tags')} hint={t('bookForm.hint.tags', { count: MAX_TAGS })}>
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition-colors focus-within:border-primary-500">
-                {tags.map((tag) => (
-                  <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
-                    {tag}
-                    <button type="button" aria-label={t('bookForm.aria.removeTag', { tag })} onClick={() => setTags(tags.filter((x) => x !== tag))}
-                      className="text-primary-400 hover:text-primary-700"><CloseIcon className="h-3 w-3" /></button>
-                  </span>
-                ))}
-                <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={onTagKey} onBlur={addTag}
-                  placeholder={tags.length >= MAX_TAGS ? t('bookForm.placeholder.tagFull') : t('bookForm.placeholder.tag')} disabled={tags.length >= MAX_TAGS}
-                  className="min-w-[140px] flex-1 border-0 bg-transparent p-0 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-0" />
+              <div className="relative">
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 transition-colors focus-within:border-primary-500">
+                  {tags.map((tag) => (
+                    <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200">
+                      {tag}
+                      <button type="button" aria-label={t('bookForm.aria.removeTag', { tag })} onClick={() => setTags(tags.filter((x) => x !== tag))}
+                        className="text-primary-400 hover:text-primary-700"><CloseIcon className="h-3 w-3" /></button>
+                    </span>
+                  ))}
+                  <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={onTagKey} onBlur={() => setTimeout(addTag, 150)}
+                    placeholder={tags.length >= MAX_TAGS ? t('bookForm.placeholder.tagFull') : t('bookForm.placeholder.tag')} disabled={tags.length >= MAX_TAGS}
+                    className="min-w-[140px] flex-1 border-0 bg-transparent p-0 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-0" />
+                </div>
+                {/* 现有标签检索结果：点选即引用，避免重复造词 */}
+                {tagSuggest.length > 0 && tags.length < MAX_TAGS && (
+                  <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                    {tagSuggest.map((s) => (
+                      <button key={s.name} type="button" onMouseDown={(e) => { e.preventDefault(); addTagValue(s.name) }}
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
+                        <span className="truncate">{s.name}</span>
+                        {typeof s.book_count === 'number' && <span className="ml-2 shrink-0 text-xs text-slate-400">{t('home.topics.count', { n: s.book_count })}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </RowField>
             )}
