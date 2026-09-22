@@ -332,6 +332,11 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const index = doc ? flat.findIndex((d) => d.id === doc.id) : -1
   const prev = index > 0 ? flat[index - 1] : null
   const next = index >= 0 && index < flat.length - 1 ? flat[index + 1] : null
+  // 上/下篇若是外链章节则跳转到外部地址（仅 http(s)），否则走内部阅读页。
+  const neighborExtURL = (n: { external_url?: string }) => {
+    const ext = (n.external_url || '').trim()
+    return /^https?:\/\//i.test(ext) ? ext : ''
+  }
   const readingMin = doc ? Math.max(1, Math.round((doc.content || '').replace(/\s/g, '').length / 400)) : 0
   const parentDoc = doc?.parent_id ? flat.find((d) => d.id === doc.parent_id) : null
   const author = book.user
@@ -493,16 +498,26 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
               {prev ? (
                 <div className="group flex min-w-0 flex-col gap-1.5 text-sm">
                   <span className="text-xs text-slate-400">{t('reader.prev')}</span>
-                  <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${prev.slug}`}
-                    className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{prev.title}</Link>
+                  {neighborExtURL(prev) ? (
+                    <a href={neighborExtURL(prev)} target={prev.external_new_tab === false ? '_self' : '_blank'} rel="noopener noreferrer nofollow"
+                      className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{prev.title} ↗</a>
+                  ) : (
+                    <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${prev.slug}`}
+                      className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{prev.title}</Link>
+                  )}
                   <AuthorAvatars users={book.user ? [book.user] : []} />
                 </div>
               ) : <span className="text-xs text-slate-300">{t('reader.firstChapter')}</span>}
               {next ? (
                 <div className="group flex min-w-0 flex-col items-end gap-1.5 text-right text-sm">
                   <span className="text-xs text-slate-400">{t('reader.next')}</span>
-                  <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${next.slug}`}
-                    className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{next.title}</Link>
+                  {neighborExtURL(next) ? (
+                    <a href={neighborExtURL(next)} target={next.external_new_tab === false ? '_self' : '_blank'} rel="noopener noreferrer nofollow"
+                      className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{next.title} ↗</a>
+                  ) : (
+                    <Link href={`/book/reader/${encodeURIComponent(book.slug)}/${next.slug}`}
+                      className="block truncate font-medium text-slate-800 group-hover:text-primary-600">{chapterPrefix}{next.title}</Link>
+                  )}
                   <AuthorAvatars users={book.user ? [book.user] : []} />
                 </div>
               ) : <span className="text-xs text-slate-300">{t('reader.lastChapter')}</span>}
