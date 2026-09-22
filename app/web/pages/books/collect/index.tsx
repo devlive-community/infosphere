@@ -6,7 +6,7 @@ import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { renderMarkdown } from '@/lib/markdown'
-import { Button, Input, Select, Loading, EmptyState, useFeedback } from '@/components/ui'
+import { Button, Input, Select, Loading, EmptyState, Checkbox, useFeedback } from '@/components/ui'
 import FeatureGate from '@/components/FeatureGate'
 
 interface CrawlNode { url: string; title: string; depth: number; parent_url: string }
@@ -133,12 +133,11 @@ function CollectWizard() {
                 <ul className="mt-3 max-h-80 space-y-0.5 overflow-y-auto">
                   {preview.tree.map((n) => (
                     <li key={n.url}>
-                      <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-slate-50"
+                      <div className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-slate-50"
                         style={{ paddingLeft: `${n.depth * 18 + 4}px` }}>
-                        <input type="checkbox" checked={!excluded.has(n.url)} onChange={() => toggle(n.url)}
-                          className="h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600" />
-                        <span className="truncate text-slate-700">{n.title || n.url}</span>
-                      </label>
+                        <Checkbox checked={!excluded.has(n.url)} onChange={() => toggle(n.url)} ariaLabel={n.title || n.url} />
+                        <span className="cursor-pointer truncate text-slate-700" onClick={() => toggle(n.url)}>{n.title || n.url}</span>
+                      </div>
                     </li>
                   ))}
                 </ul>

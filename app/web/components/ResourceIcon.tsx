@@ -14,7 +14,9 @@ export default function ResourceIcon({ iconType, iconValue, name, className, fal
     return <span className={base}><i className={`fa-solid ${iconValue}`} aria-hidden="true" /></span>
   }
   if ((iconType === 'image' || iconType === 'svg') && iconValue) {
-    return <span className={base}><img src={resolveMediaUrl(iconValue)} alt={name || ''} className="h-full w-full object-contain p-1" /></span>
+    // 图片/SVG logo 不套底色框：去掉 bg/border/ring/text 等装饰类，只保留尺寸与圆角，logo 干净展示。
+    const clean = base.replace(/\b(?:bg|border|ring|text)-[^\s]+/g, '').replace(/\bborder\b/g, '').replace(/\s+/g, ' ').trim()
+    return <span className={clean}><img src={resolveMediaUrl(iconValue)} alt={name || ''} className="h-full w-full object-contain" /></span>
   }
   return <span className={base}><i className={`fa-solid ${fallback}`} aria-hidden="true" /></span>
 }
