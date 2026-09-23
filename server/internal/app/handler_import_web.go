@@ -294,6 +294,8 @@ func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webA
 	if err != nil {
 		return webArticle{}, webPage{}, "", fmt.Errorf("网页正文解析失败: %w", err)
 	}
+	// 去掉文档站常见的「永久链接」锚点（如标题后的 [🔗](… "Permanent link")），避免误跳外链。
+	article.Markdown = stripPermalinkAnchors(article.Markdown)
 	return article, page, usedMode, nil
 }
 

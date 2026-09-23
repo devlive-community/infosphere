@@ -9,7 +9,7 @@ import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 
-export type BookSettingsTab = 'basic' | 'localization' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'danger' | 'crawl-history' | 'watermark'
+export type BookSettingsTab = 'basic' | 'localization' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'cleanup' | 'danger' | 'crawl-history' | 'watermark'
 
 interface BookSettingsLayoutProps {
   book: Book
@@ -42,6 +42,7 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
     ...(features.includes('watermark') ? [{ key: 'watermark' as BookSettingsTab, labelKey: 'bookSettings.nav.watermark', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-stamp ${className || ''}`} aria-hidden="true" />, sub: 'watermark' }] : []),
     { key: 'export', labelKey: 'bookSettings.nav.export', icon: ({ className }) => <i className={`fa-solid fa-file-export ${className || ''}`} aria-hidden="true" />, sub: 'export' },
     { key: 'data', labelKey: 'bookSettings.nav.data', icon: DownloadIcon, sub: 'data' },
+    { key: 'cleanup', labelKey: 'bookSettings.nav.cleanup', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-broom ${className || ''}`} aria-hidden="true" />, sub: 'cleanup' },
     { key: 'danger', labelKey: 'bookSettings.nav.danger', icon: TrashIcon, sub: 'danger', danger: true },
   ]
 
