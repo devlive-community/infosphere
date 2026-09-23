@@ -1474,6 +1474,8 @@ export const en: Record<string, string> = {
   'bookForm.slug.invalid': 'Only lowercase letters, digits and hyphens',
   'bookForm.label.prefix': 'Chapter Prefix',
   'bookForm.prefixHint': 'A unified prefix added to chapter titles',
+  'bookForm.label.defaultChapterStatus': 'Default chapter status',
+  'bookForm.defaultChapterStatusHint': 'Default status for new top-level chapters (sub-chapters still follow their parent).',
   'bookForm.label.followChild': 'Child chapters follow parent status',
   'bookForm.followChildHint': 'When enabled, new child chapters in the writer default to the parent’s publish status',
   'bookForm.placeholder.language': 'e.g. Chinese / English',

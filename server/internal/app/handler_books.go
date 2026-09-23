@@ -230,6 +230,7 @@ type bookPayload struct {
 	OrderCol                *string  `json:"order_col"`
 	OrderDir                *string  `json:"order_dir"`
 	ChapterPrefix           *string  `json:"chapter_prefix"`
+	DefaultChapterStatus    *string  `json:"default_chapter_status"`
 	ChildStatusFollowParent *bool    `json:"child_status_follow_parent"`
 	Language                *string  `json:"language"`
 	TransGroup              *string  `json:"trans_group"`
@@ -333,6 +334,9 @@ func (a *App) CreateBook(c *gin.Context) {
 	}
 	if req.ChapterPrefix != nil {
 		book.ChapterPrefix = *req.ChapterPrefix
+	}
+	if req.DefaultChapterStatus != nil && docStatuses[*req.DefaultChapterStatus] {
+		book.DefaultChapterStatus = *req.DefaultChapterStatus
 	}
 	if req.ChildStatusFollowParent != nil {
 		book.ChildStatusFollowParent = *req.ChildStatusFollowParent
@@ -497,6 +501,9 @@ func (a *App) UpdateBook(c *gin.Context) {
 	}
 	if req.ChapterPrefix != nil {
 		book.ChapterPrefix = *req.ChapterPrefix
+	}
+	if req.DefaultChapterStatus != nil && docStatuses[*req.DefaultChapterStatus] {
+		book.DefaultChapterStatus = *req.DefaultChapterStatus
 	}
 	if req.ChildStatusFollowParent != nil {
 		book.ChildStatusFollowParent = *req.ChildStatusFollowParent

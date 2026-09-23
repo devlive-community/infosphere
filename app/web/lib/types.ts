@@ -50,6 +50,7 @@ export interface Book {
   order_dir: 'asc' | 'desc'
   chapter_prefix: string
   child_status_follow_parent?: boolean
+  default_chapter_status?: string
   language?: string
   trans_group?: string
   version?: string

@@ -371,6 +371,8 @@ type Book struct {
 	OrderCol      string `gorm:"size:50;default:created_at" json:"order_col"`
 	OrderDir      string `gorm:"size:10;default:desc" json:"order_dir"`
 	ChapterPrefix string `gorm:"size:20;default:''" json:"chapter_prefix"`
+	// DefaultChapterStatus 新建「第一级」章节的默认发布状态（draft|published|archived），未显式指定状态时生效
+	DefaultChapterStatus string `gorm:"size:16;default:'draft'" json:"default_chapter_status"`
 	// ChildStatusFollowParent 新建子章节时默认发布状态跟随父章节（写作台创建时生效）
 	ChildStatusFollowParent bool `gorm:"default:false" json:"child_status_follow_parent"`
 	// Language 书籍语言标签（如「中文」/「English」），配合 TransGroup 组成多语言互译组

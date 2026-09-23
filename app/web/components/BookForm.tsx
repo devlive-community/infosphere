@@ -58,6 +58,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
   const [loginRequired, setLoginRequired] = useState(initial?.login_required || false)
   const [chapterPrefix, setChapterPrefix] = useState(initial?.chapter_prefix || '')
   const [childStatusFollowParent, setChildStatusFollowParent] = useState(initial?.child_status_follow_parent === true)
+  const [defaultChapterStatus, setDefaultChapterStatus] = useState(initial?.default_chapter_status || 'draft')
   const [language, setLanguage] = useState(initial?.language || '')
   const [transGroup, setTransGroup] = useState(initial?.trans_group || '')
   const [version, setVersion] = useState(initial?.version || '')
@@ -144,6 +145,7 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
         login_required: isPublic && loginRequired,
         chapter_prefix: chapterPrefix,
         child_status_follow_parent: childStatusFollowParent,
+      default_chapter_status: defaultChapterStatus,
         language: language.trim(),
         trans_group: transGroup.trim(),
         version: version.trim(),
@@ -274,6 +276,20 @@ export default function BookForm({ initial, heading, subheading, breadcrumb, sub
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('bookForm.label.prefix')}</label>
                 <Select value={chapterPrefix} onChange={setChapterPrefix} options={prefixOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))} />
                 <p className="mt-1.5 text-xs text-slate-400">{t('bookForm.prefixHint')}</p>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <label className="block text-sm font-medium text-slate-700">{t('bookForm.label.defaultChapterStatus')}</label>
+                  <p className="mt-0.5 text-xs text-slate-400">{t('bookForm.defaultChapterStatusHint')}</p>
+                </div>
+                <div className="w-40 shrink-0">
+                  <Select size="sm" value={defaultChapterStatus} onChange={setDefaultChapterStatus}
+                    options={[
+                      { value: 'draft', label: t('book.status.draft') },
+                      { value: 'published', label: t('book.status.published') },
+                      { value: 'archived', label: t('book.status.archived') },
+                    ]} />
+                </div>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">

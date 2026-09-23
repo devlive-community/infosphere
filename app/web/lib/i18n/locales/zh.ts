@@ -1474,6 +1474,8 @@ export const zh: Record<string, string> = {
   'bookForm.slug.invalid': '仅支持小写字母、数字和中划线',
   'bookForm.label.prefix': '章节前缀',
   'bookForm.prefixHint': '用于章节标题前的统一前缀',
+  'bookForm.label.defaultChapterStatus': '章节默认状态',
+  'bookForm.defaultChapterStatusHint': '新建第一级章节时的默认状态（子章节仍跟随父章节）。',
   'bookForm.label.followChild': '子章节状态跟随父章节',
   'bookForm.followChildHint': '开启后，写作台新建子章节的默认发布状态与父章节一致',
   'bookForm.placeholder.language': '如 中文 / English',

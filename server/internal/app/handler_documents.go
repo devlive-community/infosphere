@@ -207,6 +207,9 @@ func (a *App) CreateDocument(c *gin.Context) {
 		if book.ChildStatusFollowParent && req.Status == nil && docStatuses[parent.Status] {
 			statusStr = parent.Status
 		}
+	} else if req.Status == nil && book.DefaultChapterStatus != "" && docStatuses[book.DefaultChapterStatus] {
+		// 第一级章节（无父级）未显式指定状态时，采用书籍配置的「章节默认状态」。
+		statusStr = book.DefaultChapterStatus
 	}
 
 	doc := models.Document{
