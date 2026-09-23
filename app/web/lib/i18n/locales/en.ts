@@ -2913,6 +2913,7 @@ export const en: Record<string, string> = {
   'user.home.shareLabel': 'Profile link',
   'user.home.shareClose': 'Close',
   'user.home.publicBooksSection': 'Public Books',
+  'user.home.mergeVersions': 'Merge editions',
   'user.home.publicBooksCount': '{count} public works by {username}',
   'user.home.noPublicBooks': 'No public books yet',
   'user.home.gridView': 'Grid view',

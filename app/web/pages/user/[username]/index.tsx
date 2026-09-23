@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
 import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { api, formatNumber } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { resolveMediaUrl } from '@/lib/media'
-import { Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
+import { Pagination, SegmentedTabs, Select, Loading, Tooltip, Checkbox, useFeedback } from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import BookCard from '@/components/BookCard'
@@ -232,6 +232,21 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
   }
 
   const items = data.items || [] // 由服务端按 sort 排序 + 分页
+  const [mergeVersions, setMergeVersions] = useState(false)
+  // 合并相同书籍：同一 version_group 只保留一本（优先最新版），非多版本书原样展示。
+  const displayItems = useMemo(() => {
+    if (!mergeVersions) return items
+    const pickedIdx = new Map<string, number>()
+    const out: Book[] = []
+    for (const b of items) {
+      const g = (b.version_group || '').trim()
+      if (!g) { out.push(b); continue }
+      const idx = pickedIdx.get(g)
+      if (idx === undefined) { pickedIdx.set(g, out.length); out.push(b) }
+      else if (b.version_is_latest && !out[idx].version_is_latest) { out[idx] = b }
+    }
+    return out
+  }, [items, mergeVersions])
 
   return (
     <Container>
@@ -271,6 +286,11 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
               <span className="text-sm text-slate-400">{t('user.home.publicBooksCount', { username: profile.username, count: String(data.total) })}</span>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
+              {/* 合并相同书籍：多版本书折叠为最新版一本 */}
+              <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-sm text-slate-600">
+                <Checkbox checked={mergeVersions} onChange={setMergeVersions} ariaLabel={t('user.home.mergeVersions')} />
+                {t('user.home.mergeVersions')}
+              </label>
               <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sortState} onChange={changeSort} options={sortOptions} />
               <SegmentedTabs iconOnly value={view} ariaLabel={t('user.home.bookViewLabel')}
                 onChange={(value) => setView(value as 'grid' | 'list')} items={[
@@ -287,7 +307,7 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
             <Loading />
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]' : 'space-y-4'}>
-              {items.map((b) => <BookCard key={b.id} book={b} view={view} showAuthor={false} />)}
+              {displayItems.map((b) => <BookCard key={b.id} book={b} view={view} showAuthor={false} />)}
             </div>
           )}
           </div>

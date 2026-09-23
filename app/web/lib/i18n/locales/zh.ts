@@ -2913,6 +2913,7 @@ export const zh: Record<string, string> = {
   'user.home.shareLabel': '主页链接',
   'user.home.shareClose': '关闭',
   'user.home.publicBooksSection': '公开书籍',
+  'user.home.mergeVersions': '合并相同书籍',
   'user.home.publicBooksCount': '{username}发布的 {count} 本知识作品',
   'user.home.noPublicBooks': '暂无公开书籍',
   'user.home.gridView': '网格视图',
