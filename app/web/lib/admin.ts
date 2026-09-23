@@ -26,6 +26,8 @@ export interface OAuthProviderConfig {
   client_id: string
   client_secret: string
   enabled: boolean
+  icon_type?: string
+  icon_value?: string
 }
 
 export interface MailConfig {

@@ -108,9 +108,14 @@ func (a *App) OAuthProviders(c *gin.Context) {
 	list := make([]gin.H, 0, len(oauthProviderOrder))
 	for _, key := range oauthProviderOrder {
 		_, _, enabled := a.oauthProviderConfig(key)
-		list = append(list, gin.H{"provider": key, "enabled": enabled})
+		list = append(list, gin.H{
+			"provider":   key,
+			"enabled":    enabled,
+			"icon_type":  a.getSetting("oauth_" + key + "_icon_type"),
+			"icon_value": a.getSetting("oauth_" + key + "_icon_value"),
+		})
 	}
-	ok(c, gin.H{"providers": list})
+	ok(c, gin.H{"providers": list, "display_mode": oauthDisplayMode(a)})
 }
 
 // oauthRedirectURI 某 provider 的回调地址（须与授权时一致）
@@ -467,6 +472,9 @@ type oauthConfigUpdate struct {
 	ClientID     *string `json:"client_id"`
 	ClientSecret *string `json:"client_secret"`
 	Enabled      *bool   `json:"enabled"`
+	IconType     *string `json:"icon_type"`  // '' | fa | image | svg，自定义登录图标
+	IconValue    *string `json:"icon_value"` // fa 类名或已上传图片地址
+	DisplayMode  *string `json:"display_mode"` // 全局：button（按钮，默认）| icon（图标）
 }
 
 // AdminGetOAuth GET /admin/oauth 管理员读取各 provider 的 OAuth 配置
@@ -480,9 +488,19 @@ func (a *App) AdminGetOAuth(c *gin.Context) {
 			"client_id":     id,
 			"client_secret": secret,
 			"enabled":       a.getSetting("oauth_"+key+"_enabled") != "false",
+			"icon_type":     a.getSetting("oauth_" + key + "_icon_type"),
+			"icon_value":    a.getSetting("oauth_" + key + "_icon_value"),
 		})
 	}
-	ok(c, gin.H{"providers": list})
+	ok(c, gin.H{"providers": list, "display_mode": oauthDisplayMode(a)})
+}
+
+// oauthDisplayMode 第三方登录显示方式：button（默认）| icon。
+func oauthDisplayMode(a *App) string {
+	if a.getSetting("oauth_display_mode") == "icon" {
+		return "icon"
+	}
+	return "button"
 }
 
 // AdminSaveOAuth PUT /admin/oauth 管理员保存单个 provider 的 OAuth 配置
@@ -490,6 +508,21 @@ func (a *App) AdminSaveOAuth(c *gin.Context) {
 	var req oauthConfigUpdate
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	// 全局显示方式（按钮/图标）：与 provider 无关，可单独保存。
+	if req.DisplayMode != nil {
+		mode := "button"
+		if strings.TrimSpace(*req.DisplayMode) == "icon" {
+			mode = "icon"
+		}
+		if err := a.setSetting("oauth_display_mode", mode, "第三方登录显示方式"); err != nil {
+			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
+			return
+		}
+	}
+	if req.Provider == "" { // 仅保存全局设置
+		a.AdminGetOAuth(c)
 		return
 	}
 	def, ok2 := oauthProviderRegistry[req.Provider]
@@ -522,6 +555,14 @@ func (a *App) AdminSaveOAuth(c *gin.Context) {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}
+	}
+	if req.IconType != nil {
+		fields = append(fields, "icon_type")
+		_ = a.setSetting("oauth_"+req.Provider+"_icon_type", strings.TrimSpace(*req.IconType), def.Label+" 登录图标类型")
+	}
+	if req.IconValue != nil {
+		fields = append(fields, "icon_value")
+		_ = a.setSetting("oauth_"+req.Provider+"_icon_value", strings.TrimSpace(*req.IconValue), def.Label+" 登录图标")
 	}
 	a.recordAudit(c, "oauth.updated", "config", "oauth/"+req.Provider, def.Label+" OAuth", map[string]any{"changed_fields": fields})
 	a.AdminGetOAuth(c)

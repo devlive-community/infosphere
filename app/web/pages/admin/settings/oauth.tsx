@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
-import { Button, Input, Field, Switch, Loading } from '@/components/ui'
+import { Button, Input, Field, Switch, Select, Loading } from '@/components/ui'
+import IconPicker from '@/components/IconPicker'
 import { useTranslation } from '@/lib/i18n'
 import { OAuthProviderConfig } from '@/lib/admin'
 
@@ -38,15 +39,27 @@ export default function SettingsOAuth() {
   const [openKey, setOpenKey] = useState('') // 当前展开配置的 provider（accordion，默认全部折叠）
   const [siteOrigin, setSiteOrigin] = useState('')
   const [loading, setLoading] = useState(true)
+  const [displayMode, setDisplayMode] = useState('button') // 登录/注册页显示方式：button | icon
+  const [savingMode, setSavingMode] = useState(false)
 
   useEffect(() => {
     if (!isAdmin) return
     setSiteOrigin(window.location.origin)
-    api<{ providers: OAuthProviderConfig[] }>('/oauth')
-      .then((d) => setProviders(d.providers || []))
+    api<{ providers: OAuthProviderConfig[]; display_mode?: string }>('/oauth')
+      .then((d) => { setProviders(d.providers || []); setDisplayMode(d.display_mode === 'icon' ? 'icon' : 'button') })
       .catch((e) => setMessage((e as Error).message))
       .finally(() => setLoading(false))
   }, [isAdmin])
+
+  async function saveDisplayMode(mode: string) {
+    setDisplayMode(mode)
+    setSavingMode(true)
+    try {
+      await api('/oauth', { method: 'PUT', body: { display_mode: mode } })
+    } catch (e) {
+      setMessage((e as Error).message)
+    } finally { setSavingMode(false) }
+  }
 
   function patch(provider: string, changes: Partial<OAuthProviderConfig>) {
     setProviders((list) => list.map((p) => (p.provider === provider ? { ...p, ...changes } : p)))
@@ -58,7 +71,7 @@ export default function SettingsOAuth() {
     try {
       const d = await api<{ providers: OAuthProviderConfig[] }>('/oauth', {
         method: 'PUT',
-        body: { provider: p.provider, client_id: p.client_id, client_secret: p.client_secret, enabled: p.enabled },
+        body: { provider: p.provider, client_id: p.client_id, client_secret: p.client_secret, enabled: p.enabled, icon_type: p.icon_type || '', icon_value: p.icon_value || '' },
       })
       setProviders(d.providers || [])
       setMessage(t('admin.settings.oauth.saved', { label: p.label }))
@@ -73,6 +86,16 @@ export default function SettingsOAuth() {
     <SettingsLayout active="oauth" description={t('admin.settings.oauth.description')}>
       {loading ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label={t('admin.settings.oauth.loading')} /> : (
       <div className="max-w-2xl space-y-4">
+        {/* 全局：登录/注册页第三方入口显示方式 */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <Field label={t('admin.settings.oauth.displayMode')} hint={t('admin.settings.oauth.displayModeHint')}>
+            <div className="max-w-xs"><Select value={displayMode} onChange={saveDisplayMode} disabled={savingMode}
+              options={[
+                { value: 'button', label: t('admin.settings.oauth.displayButton') },
+                { value: 'icon', label: t('admin.settings.oauth.displayIcon') },
+              ]} /></div>
+          </Field>
+        </div>
         <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {providers.map((p) => {
             const on = p.enabled && !!p.client_id
@@ -114,6 +137,11 @@ export default function SettingsOAuth() {
                       </Field>
                       <Field label={t('admin.settings.oauth.enableStatus')} hint={t('admin.settings.oauth.enableStatusHint')}>
                         <Switch ariaLabel={t('admin.settings.oauth.enableSwitch', { label: p.label })} checked={p.enabled} onChange={(v) => patch(p.provider, { enabled: v })} />
+                      </Field>
+                      <Field label={t('admin.settings.oauth.icon')} hint={t('admin.settings.oauth.iconHint')}>
+                        <IconPicker value={{ icon_type: p.icon_type || '', icon_value: p.icon_value || '' }}
+                          onChange={(v) => patch(p.provider, { icon_type: v.icon_type, icon_value: v.icon_value })}
+                          fallback={PROVIDER_ICON[p.provider]?.replace('fa-brands ', '').replace('fa-solid ', '') || 'fa-right-to-bracket'} />
                       </Field>
                     </div>
                     <div className="mt-5 flex justify-end">

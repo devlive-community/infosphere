@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { API_BASE, api } from '@/lib/api'
 import { Button, Loading } from '@/components/ui'
+import { resolveMediaUrl } from '@/lib/media'
 import { useTranslation } from '@/lib/i18n'
 
 // icon 为完整 FontAwesome 类名（品牌图标用 fa-brands，无品牌图标的国内平台用 fa-solid）。
-const PROVIDER_META: Record<string, { label: string; icon: string }> = {
+export const PROVIDER_META: Record<string, { label: string; icon: string }> = {
   github: { label: 'GitHub', icon: 'fa-brands fa-github' },
   google: { label: 'Google', icon: 'fa-brands fa-google' },
   gitlab: { label: 'GitLab', icon: 'fa-brands fa-gitlab' },
@@ -12,39 +13,63 @@ const PROVIDER_META: Record<string, { label: string; icon: string }> = {
   gitcode: { label: 'GitCode', icon: 'fa-solid fa-code' },
 }
 
-// OAuthButtons 第三方登录入口：拉取启用中的 provider，渲染对应按钮（登录/注册页共用）
+interface Provider { provider: string; enabled: boolean; icon_type?: string; icon_value?: string }
+
+// providerIcon 优先用管理员自定义图标（image/svg 用图片，fa 用类名），否则回退品牌默认图标。
+function providerIcon(p: Provider, className: string) {
+  const iv = (p.icon_value || '').trim()
+  if (iv && (p.icon_type === 'image' || p.icon_type === 'svg')) {
+    return <img src={resolveMediaUrl(iv)} alt="" className={`${className} object-contain`} />
+  }
+  const cls = iv ? `fa-solid ${iv}` : (PROVIDER_META[p.provider]?.icon || 'fa-solid fa-right-to-bracket')
+  return <i className={`${cls} ${className}`} aria-hidden="true" />
+}
+
+// OAuthButtons 第三方登录入口：拉取启用中的 provider，按显示方式（按钮/图标）渲染（登录/注册页共用）
 export default function OAuthButtons({ label }: { label: string }) {
   const { t } = useTranslation()
-  const [enabled, setEnabled] = useState<string[]>([])
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [mode, setMode] = useState<'button' | 'icon'>('button')
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    api<{ providers: { provider: string; enabled: boolean }[] }>('/auth/oauth/providers')
-      .then((d) => setEnabled((d.providers || []).filter((p) => p.enabled).map((p) => p.provider)))
+    api<{ providers: Provider[]; display_mode?: string }>('/auth/oauth/providers')
+      .then((d) => {
+        setProviders((d.providers || []).filter((p) => p.enabled))
+        setMode(d.display_mode === 'icon' ? 'icon' : 'button')
+      })
       .catch(() => { /* providers 拉取失败时不展示入口 */ })
       .finally(() => setLoaded(true))
   }, [])
 
+  const go = (p: string) => { window.location.href = `${API_BASE}/api/v1/auth/oauth/${p}?origin=${encodeURIComponent(window.location.origin)}` }
+
   if (!loaded) return <Loading className="py-4" label={t('auth.oauth.loading')} />
-  if (enabled.length === 0) return null
+  if (providers.length === 0) return null
   return (
     <>
       <div className="flex items-center gap-3 py-1 text-xs text-slate-400">
         <span className="h-px flex-1 bg-slate-200" />{t('auth.oauth.divider')}<span className="h-px flex-1 bg-slate-200" />
       </div>
-      <div className="space-y-2">
-        {enabled.map((p) => {
-          const meta = PROVIDER_META[p] || { label: p, icon: 'fa-solid fa-right-to-bracket' }
-          return (
-            <Button key={p} variant="outline" type="button" className="w-full"
-              onClick={() => {
-                window.location.href = `${API_BASE}/api/v1/auth/oauth/${p}?origin=${encodeURIComponent(window.location.origin)}`
-              }}>
-              <i className={meta.icon} aria-hidden="true" />{t('auth.oauth.button', { provider: meta.label, label })}
+      {mode === 'icon' ? (
+        <div className="flex flex-wrap justify-center gap-3">
+          {providers.map((p) => (
+            <button key={p.provider} type="button" onClick={() => go(p.provider)}
+              aria-label={t('auth.oauth.button', { provider: PROVIDER_META[p.provider]?.label || p.provider, label })}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 text-lg text-slate-600 transition-colors hover:border-primary-300 hover:text-primary-600">
+              {providerIcon(p, 'h-5 w-5 text-[1.05rem]')}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {providers.map((p) => (
+            <Button key={p.provider} variant="outline" type="button" className="w-full" onClick={() => go(p.provider)}>
+              {providerIcon(p, 'h-4 w-4')}{t('auth.oauth.button', { provider: PROVIDER_META[p.provider]?.label || p.provider, label })}
             </Button>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </>
   )
 }
