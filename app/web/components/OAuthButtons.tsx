@@ -15,8 +15,8 @@ export const PROVIDER_META: Record<string, { label: string; icon: string }> = {
 
 interface Provider { provider: string; enabled: boolean; icon_type?: string; icon_value?: string }
 
-// providerIcon 优先用管理员自定义图标（image/svg 用图片，fa 用类名），否则回退品牌默认图标。
-function providerIcon(p: Provider, className: string) {
+// providerIcon 优先用管理员自定义图标（image/svg 用图片，fa 用类名），否则回退品牌默认图标。供登录页与后台复用。
+export function providerIcon(p: { provider: string; icon_type?: string; icon_value?: string }, className: string) {
   const iv = (p.icon_value || '').trim()
   if (iv && (p.icon_type === 'image' || p.icon_type === 'svg')) {
     return <img src={resolveMediaUrl(iv)} alt="" className={`${className} object-contain`} />

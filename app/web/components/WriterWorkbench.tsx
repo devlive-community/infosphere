@@ -608,10 +608,13 @@ export default function Writer({ user }: WriterProps) {
     } else {
       setCreatingUnder(null)
     }
-    // 子章节状态默认跟随父章节（书籍设置开启时）
-    const newStatus: DocumentStatus = parent && book?.child_status_follow_parent && STATUS_META[parent.status as BookStatus]
-      ? (parent.status as DocumentStatus)
-      : 'draft'
+    // 状态默认值：子章节跟随父章节（开启时）；第一级章节用书籍配置的「章节默认状态」。
+    let newStatus: DocumentStatus = 'draft'
+    if (parent) {
+      if (book?.child_status_follow_parent && STATUS_META[parent.status as BookStatus]) newStatus = parent.status as DocumentStatus
+    } else if (book?.default_chapter_status && STATUS_META[book.default_chapter_status as BookStatus]) {
+      newStatus = book.default_chapter_status as DocumentStatus
+    }
     setParentId(newParent); setStatus(newStatus)
     setCurrent(null)
     setTitle(''); setContent(''); setSortOrder(newSort); setAllowComments(true); setSlug(''); setExternalUrl(''); setExternalNewTab(true)

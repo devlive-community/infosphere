@@ -4,6 +4,7 @@ import { useApp } from '@/lib/auth'
 import SettingsLayout from '@/components/SettingsLayout'
 import { Button, Input, Field, Switch, Select, Loading } from '@/components/ui'
 import IconPicker from '@/components/IconPicker'
+import { providerIcon } from '@/components/OAuthButtons'
 import { useTranslation } from '@/lib/i18n'
 import { OAuthProviderConfig } from '@/lib/admin'
 
@@ -105,10 +106,8 @@ export default function SettingsOAuth() {
                 {/* 折叠头：图标 + 名称 + 配置/启用状态 + 展开箭头 */}
                 <button type="button" onClick={() => setOpenKey(open ? '' : p.provider)}
                   className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50">
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base ${PROVIDER_TINT[p.provider] || 'bg-slate-100 text-slate-600'}`}>
-                    {PROVIDER_ICON[p.provider]
-                      ? <i className={PROVIDER_ICON[p.provider]} aria-hidden="true" />
-                      : <span className="text-sm font-bold">{p.label.slice(0, 1)}</span>}
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg text-base ${p.icon_value && (p.icon_type === 'image' || p.icon_type === 'svg') ? 'bg-slate-50' : (PROVIDER_TINT[p.provider] || 'bg-slate-100 text-slate-600')}`}>
+                    {providerIcon(p, 'h-5 w-5')}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold text-slate-900">{p.label}</span>
