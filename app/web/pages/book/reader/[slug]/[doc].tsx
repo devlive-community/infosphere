@@ -118,6 +118,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const router = useRouter()
   const [fontIdx, setFontIdx] = useState(1)
   const [focus, setFocus] = useState(false)
+  const [mobileNav, setMobileNav] = useState(false) // 移动端目录/版本/语言抽屉
   const [activeHeading, setActiveHeading] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [readSet, setReadSet] = useState<Set<number>>(new Set(readDocIds))
@@ -139,6 +140,13 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   useEffect(() => {
     try { localStorage.setItem('reader:font-idx', String(fontIdx)) } catch { /* 忽略 */ }
   }, [fontIdx])
+
+  // 移动端目录抽屉：切换章节/版本/语言（路由变化）后自动关闭
+  useEffect(() => {
+    const close = () => setMobileNav(false)
+    router.events.on('routeChangeComplete', close)
+    return () => router.events.off('routeChangeComplete', close)
+  }, [router.events])
 
   const flat = useMemo(() => flatten(tree), [tree])
   const headings = useMemo(() => extractHeadings(doc?.content), [doc])
@@ -366,6 +374,11 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
       {/* 顶栏 */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4" style={{ height: 'var(--nav-height)' }}>
         <div className="flex min-w-0 items-center gap-2 text-sm">
+          {/* 移动端目录/版本/语言入口（桌面端在左侧栏） */}
+          <button type="button" onClick={() => setMobileNav(true)} aria-label={t('reader.toc')}
+            className="-ml-1 shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden">
+            <i className="fa-solid fa-list-ul" aria-hidden="true" />
+          </button>
           <Link href="/" className="flex shrink-0 items-center gap-2 font-bold text-slate-900">
             <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
             {siteName}
@@ -437,6 +450,33 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
               Powered by KnowForge
             </div>
           </aside>
+        )}
+
+        {/* 移动端：目录/版本/语言抽屉（桌面端见左侧栏；点章节/切版本后由路由变化自动关闭） */}
+        {mobileNav && (
+          <div className="fixed inset-0 z-[70] lg:hidden">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNav(false)} />
+            <div className="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col bg-white shadow-xl">
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
+                <span className="font-semibold text-slate-900">{t('reader.toc')}</span>
+                <button type="button" onClick={() => setMobileNav(false)} aria-label={t('common.actions.cancel')}
+                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
+              </div>
+              <div className="shrink-0 space-y-2 border-b border-slate-100 px-4 py-3"><BookTranslations bookId={book.id} linkTo="reader" /><BookVersions bookId={book.id} linkTo="reader" /></div>
+              <div className="shrink-0 px-4 py-2">
+                <Input size="sm" value={tocSearch} onChange={(e) => setTocSearch(e.target.value)}
+                  placeholder={t('reader.tocSearchPlaceholder')} aria-label={t('reader.tocSearchPlaceholder')} />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+                {filteredTree.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-slate-400">{t('reader.tocNoMatch')}</p>
+                ) : (
+                  <ReaderTree items={filteredTree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id}
+                    expanded={searchExpanded ?? expanded} setExpanded={setExpanded} readSet={readSet} />
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* 中：正文（内部滚动）+ 底部固定的上一篇/下一篇 */}
