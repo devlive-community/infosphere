@@ -13,7 +13,7 @@ import (
 	"knowforge/server/internal/plugins"
 )
 
-// behavior 承载「标签」插件的端点 handler（书籍-标签的加载/同步等集成 glue 仍属核心书籍服务，留在 app）。
+// behavior 「标签」插件：端点 handler（本文件）与书籍-标签集成（integration.go，经 plugincore 扩展点接入核心书籍流程）。
 type behavior struct{ core plugincore.Core }
 
 func init() { plugincore.RegisterBehavior(&behavior{}) }
@@ -291,6 +291,6 @@ func (b *behavior) BooksByTag(c *gin.Context) {
 		return
 	}
 	core.AttachChapterCounts(books)
-	core.AttachBookTags(books)
+	core.DecorateBookList(books)
 	core.OK(c, plugincore.PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }

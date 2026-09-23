@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -39,7 +40,6 @@ type searchOptions struct {
 	Query       string
 	Type        string
 	Author      string
-	Tag         string
 	BookSlug    string // 限定在某本书内搜索章节
 	UpdatedFrom *time.Time
 	UpdatedTo   *time.Time
@@ -83,7 +83,7 @@ func (a *App) GlobalSearch(c *gin.Context) {
 		books, documents = paginateMixedSearch(books, documents, options.Page, options.PageSize)
 	}
 	a.attachChapterCounts(books)
-	a.attachBookTags(books)
+	a.decorateBookList(books)
 	visibleTotal := bookTotal + documentTotal
 	if options.Type == "book" {
 		visibleTotal = bookTotal
@@ -100,7 +100,7 @@ func parseSearchOptions(c *gin.Context) (searchOptions, string) {
 	page, pageSize := paginate(c)
 	options := searchOptions{
 		Query: strings.TrimSpace(c.Query("q")), Type: strings.TrimSpace(c.DefaultQuery("type", "all")),
-		Author: strings.TrimSpace(c.Query("author")), Tag: strings.TrimSpace(c.Query("tag")), Page: page, PageSize: pageSize,
+		Author: strings.TrimSpace(c.Query("author")), Page: page, PageSize: pageSize,
 	}
 	options.BookSlug = strings.TrimSpace(c.Query("book"))
 	if options.BookSlug != "" {
@@ -118,7 +118,7 @@ func parseSearchOptions(c *gin.Context) (searchOptions, string) {
 	if options.Author != "" && !usernameRegex.MatchString(options.Author) {
 		return options, "作者用户名格式不正确"
 	}
-	if options.Tag != "" && len(options.Tag) > 50 {
+	if len(strings.TrimSpace(c.Query("tag"))) > 50 {
 		return options, "标签参数过长"
 	}
 	if value := strings.TrimSpace(c.Query("updated_from")); value != "" {
@@ -178,9 +178,8 @@ func (a *App) bookSearchQuery(c *gin.Context, options searchOptions) *gorm.DB {
 	if options.Author != "" {
 		query = query.Where("EXISTS (SELECT 1 FROM users su WHERE su.id = books.user_id AND su.username = ?)", options.Author)
 	}
-	if options.Tag != "" && a.tagsQueryable() {
-		query = query.Where("EXISTS (SELECT 1 FROM book_tags sbt JOIN tags st ON st.id = sbt.tag_id WHERE sbt.book_id = books.id AND st.slug = ?)", options.Tag)
-	}
+	// 插件提供的筛选条件（如标签插件的 ?tag=slug）
+	query = plugincore.ApplyBookFilters(a, c.Request.URL.Query(), query, "books.id")
 	if options.UpdatedFrom != nil {
 		query = query.Where("books.updated_at >= ?", *options.UpdatedFrom)
 	}
@@ -265,9 +264,7 @@ func (a *App) documentSearchQuery(c *gin.Context, options searchOptions) *gorm.D
 	if options.Author != "" {
 		query = query.Where("EXISTS (SELECT 1 FROM users su WHERE su.id = b.user_id AND su.username = ?)", options.Author)
 	}
-	if options.Tag != "" && a.tagsQueryable() {
-		query = query.Where("EXISTS (SELECT 1 FROM book_tags sbt JOIN tags st ON st.id = sbt.tag_id WHERE sbt.book_id = b.id AND st.slug = ?)", options.Tag)
-	}
+	query = plugincore.ApplyBookFilters(a, c.Request.URL.Query(), query, "b.id")
 	if options.UpdatedFrom != nil {
 		query = query.Where("documents.updated_at >= ?", *options.UpdatedFrom)
 	}

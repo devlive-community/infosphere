@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -44,7 +45,7 @@ func bookOrder(sort string) string {
 	return "books.updated_at DESC"
 }
 
-// decorateBookList 让插件回填列表书籍的非持久化字段（如内容采集插件的「采集中」标记）。
+// decorateBookList 让插件回填列表书籍的非持久化字段（标签插件的标签、内容采集插件的「采集中」标记等）。
 func (a *App) decorateBookList(books []models.Book) {
 	ptrs := make([]*models.Book, len(books))
 	for i := range books {
@@ -122,7 +123,7 @@ func (a *App) canReadBook(u *models.User, b *models.Book) bool {
 }
 
 func preloadBookUser(db *gorm.DB) *gorm.DB {
-	// 标签不再走 GORM Preload（Book.Tags 为 gorm:"-"）；Find 之后调用 a.attachBookTags 手动加载。
+	// 标签不再走 GORM Preload（Book.Tags 为 gorm:"-"）；Find 之后由书籍装饰钩子（标签插件）回填。
 	return db.
 		Preload("User", func(tx *gorm.DB) *gorm.DB {
 			// 公开书籍响应只能携带公开资料，禁止通过嵌套 User 泄露邮箱、登录时间和账户状态。
@@ -200,10 +201,8 @@ func (a *App) ListBooks(c *gin.Context) {
 	if username := c.Query("username"); username != "" {
 		query = query.Joins("JOIN users u ON u.id = books.user_id").Where("u.username LIKE ?", "%"+username+"%")
 	}
-	if tagSlug := c.Query("tag"); tagSlug != "" && a.pluginEnabled(pluginTags) && a.DB.Migrator().HasTable(&models.BookTag{}) {
-		query = query.Joins("JOIN book_tags bt ON bt.book_id = books.id").
-			Joins("JOIN tags t ON t.id = bt.tag_id AND t.slug = ?", tagSlug)
-	}
+	// 插件提供的筛选条件（如标签插件的 ?tag=slug）
+	query = plugincore.ApplyBookFilters(a, c.Request.URL.Query(), query, "books.id")
 	// 版本聚合：同一版本组只保留一本（服务端聚合，分页准确）
 	var versionCounts map[string]int
 	if c.Query("group_versions") == "true" && a.pluginEnabled(pluginBookVersions) {
@@ -224,7 +223,6 @@ func (a *App) ListBooks(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
-	a.attachBookTags(books)
 	a.decorateBookList(books)
 	a.attachVersionInfo(books, versionCounts, u)
 	if scope == "collaborating" {
@@ -236,30 +234,29 @@ func (a *App) ListBooks(c *gin.Context) {
 }
 
 type bookPayload struct {
-	Title                   *string  `json:"title"`
-	Description             *string  `json:"description"`
-	CoverImage              *string  `json:"cover_image"`
-	Slug                    *string  `json:"slug"`
-	Status                  *string  `json:"status"`
-	IsPublic                *bool    `json:"is_public"`
-	LoginRequired           *bool    `json:"login_required"`
-	OrderCol                *string  `json:"order_col"`
-	OrderDir                *string  `json:"order_dir"`
-	ChapterPrefix           *string  `json:"chapter_prefix"`
-	DefaultChapterStatus    *string  `json:"default_chapter_status"`
-	ChildStatusFollowParent *bool    `json:"child_status_follow_parent"`
-	Language                *string  `json:"language"`
-	TransGroup              *string  `json:"trans_group"`
-	Version                 *string  `json:"version"`
-	VersionGroup            *string  `json:"version_group"`
-	VersionIsLatest         *bool    `json:"version_is_latest"`
-	WatermarkEnabled        *bool    `json:"watermark_enabled"`
-	WatermarkText           *string  `json:"watermark_text"`
-	ExportEnabled           *bool    `json:"export_enabled"`
-	GuestExportEnabled      *bool    `json:"guest_export_enabled"`
-	ExportStyleShared       *bool    `json:"export_style_shared"`
-	ExportFormats           *string  `json:"export_formats"`
-	Tags                    []string `json:"tags"`
+	Title                   *string `json:"title"`
+	Description             *string `json:"description"`
+	CoverImage              *string `json:"cover_image"`
+	Slug                    *string `json:"slug"`
+	Status                  *string `json:"status"`
+	IsPublic                *bool   `json:"is_public"`
+	LoginRequired           *bool   `json:"login_required"`
+	OrderCol                *string `json:"order_col"`
+	OrderDir                *string `json:"order_dir"`
+	ChapterPrefix           *string `json:"chapter_prefix"`
+	DefaultChapterStatus    *string `json:"default_chapter_status"`
+	ChildStatusFollowParent *bool   `json:"child_status_follow_parent"`
+	Language                *string `json:"language"`
+	TransGroup              *string `json:"trans_group"`
+	Version                 *string `json:"version"`
+	VersionGroup            *string `json:"version_group"`
+	VersionIsLatest         *bool   `json:"version_is_latest"`
+	WatermarkEnabled        *bool   `json:"watermark_enabled"`
+	WatermarkText           *string `json:"watermark_text"`
+	ExportEnabled           *bool   `json:"export_enabled"`
+	GuestExportEnabled      *bool   `json:"guest_export_enabled"`
+	ExportStyleShared       *bool   `json:"export_style_shared"`
+	ExportFormats           *string `json:"export_formats"`
 }
 
 const maxWatermarkLength = 80
@@ -296,10 +293,48 @@ func (a *App) MyBookCounts(c *gin.Context) {
 	ok(c, counts)
 }
 
+// bindBookPayload 解析书籍请求体：核心字段绑定到 req；插件登记的扩展字段（plugincore.RegisterBookField，如 tags）
+// 按名收集并在保存前校验（出现且非 null 才收集），任一校验失败按参数错误处理。
+func bindBookPayload(c *gin.Context, req *bookPayload) (map[string]json.RawMessage, bool) {
+	raw, err := c.GetRawData()
+	if err != nil || json.Unmarshal(raw, req) != nil {
+		return nil, false
+	}
+	var all map[string]json.RawMessage
+	if json.Unmarshal(raw, &all) != nil {
+		return nil, false
+	}
+	ext := map[string]json.RawMessage{}
+	for _, f := range plugincore.BookFields() {
+		v, present := all[f.Name]
+		if !present || string(v) == "null" {
+			continue
+		}
+		if f.Validate != nil && f.Validate(v) != nil {
+			return nil, false
+		}
+		ext[f.Name] = v
+	}
+	return ext, true
+}
+
+// saveBookFields 书籍保存成功后交由插件保存其扩展字段（如标签关联）。
+func (a *App) saveBookFields(book *models.Book, ext map[string]json.RawMessage) error {
+	for _, f := range plugincore.BookFields() {
+		if v, ok := ext[f.Name]; ok && f.Save != nil {
+			if err := f.Save(a, book, v); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // CreateBook POST /books
 func (a *App) CreateBook(c *gin.Context) {
 	var req bookPayload
-	if err := c.ShouldBindJSON(&req); err != nil {
+	extFields, bound := bindBookPayload(c, &req)
+	if !bound {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
@@ -426,11 +461,9 @@ func (a *App) CreateBook(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "创建失败: "+err.Error())
 		return
 	}
-	if len(req.Tags) > 0 {
-		if err := a.syncBookTags(&book, req.Tags); err != nil {
-			fail(c, http.StatusInternalServerError, "标签关联失败: "+err.Error())
-			return
-		}
+	if err := a.saveBookFields(&book, extFields); err != nil {
+		fail(c, http.StatusInternalServerError, err.Error())
+		return
 	}
 	a.emitActivity(u.ID, "book.created", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.created:%d", book.ID))
 	ok(c, book)
@@ -447,7 +480,6 @@ func (a *App) GetBook(c *gin.Context) {
 		fail(c, http.StatusForbidden, "无权访问该书籍")
 		return
 	}
-	a.attachBookTagsOne(book)
 	plugincore.DecorateBooks(a, []*models.Book{book})
 	ok(c, book)
 }
@@ -463,7 +495,6 @@ func (a *App) GetBookBySlug(c *gin.Context) {
 		fail(c, http.StatusForbidden, "无权访问该书籍")
 		return
 	}
-	a.attachBookTagsOne(&book)
 	plugincore.DecorateBooks(a, []*models.Book{&book})
 	ok(c, book)
 }
@@ -483,7 +514,8 @@ func (a *App) UpdateBook(c *gin.Context) {
 	oldStatus, oldPublic := book.Status, book.IsPublic
 
 	var req bookPayload
-	if err := c.ShouldBindJSON(&req); err != nil {
+	extFields, bound := bindBookPayload(c, &req)
+	if !bound {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
@@ -590,11 +622,9 @@ func (a *App) UpdateBook(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
 	}
-	if req.Tags != nil {
-		if err := a.syncBookTags(book, req.Tags); err != nil {
-			fail(c, http.StatusInternalServerError, "标签关联失败: "+err.Error())
-			return
-		}
+	if err := a.saveBookFields(book, extFields); err != nil {
+		fail(c, http.StatusInternalServerError, err.Error())
+		return
 	}
 	if IsAdmin(u) && (oldStatus != book.Status || oldPublic != book.IsPublic) {
 		a.recordAudit(c, "book.moderated", "book", auditID(book.ID), book.Title, map[string]any{

@@ -57,6 +57,6 @@ func (a *App) AdminListBooks(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
-	a.attachBookTags(books)
+	a.decorateBookList(books)
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }

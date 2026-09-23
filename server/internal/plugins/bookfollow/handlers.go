@@ -127,7 +127,7 @@ func (b *behavior) MyFollows(c *gin.Context) {
 	if len(bookIDs) > 0 {
 		core.PreloadBookUser().Where("id IN ?", bookIDs).Find(&list)
 		core.AttachChapterCounts(list)
-		core.AttachBookTags(list)
+		core.DecorateBookList(list)
 	}
 	byID := make(map[uint]models.Book, len(list))
 	for _, bk := range list {

@@ -3,6 +3,7 @@ package app
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"knowforge/server/internal/config"
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 )
@@ -104,7 +106,7 @@ func (a *App) writeBookMarkdownZip(c *gin.Context, book *models.Book) {
 
 // buildBookMarkdownZip 将书籍打包为 markdown zip 字节（book.md + chapters/ + images/），供单本与批量导出复用。
 func (a *App) buildBookMarkdownZip(book *models.Book) ([]byte, error) {
-	a.attachBookTagsOne(book) // 手动加载标签（标签插件禁用时为空）
+	plugincore.DecorateBooks(a, []*models.Book{book}) // 由插件回填标签等（标签插件禁用时为空）
 	buf := &bytes.Buffer{}
 	w := zip.NewWriter(buf)
 
@@ -469,9 +471,16 @@ func (a *App) importBookFromZIP(stored storedZIP, u *models.User, customTitle st
 	if err := a.DB.Create(&book).Error; err != nil {
 		return zipImportResult{}, http.StatusInternalServerError, fmt.Errorf("创建书籍失败: %w", err)
 	}
-	if tags := lists["tags"]; len(tags) > 0 {
-		a.syncBookTags(&book, tags)
+	// book.md 中与插件扩展字段同名的列表（如 tags）交由插件保存；失败不阻断导入
+	ext := map[string]json.RawMessage{}
+	for _, f := range plugincore.BookFields() {
+		if items := lists[f.Name]; len(items) > 0 {
+			if raw, err := json.Marshal(items); err == nil {
+				ext[f.Name] = raw
+			}
+		}
 	}
+	_ = a.saveBookFields(&book, ext)
 
 	// ── 章节：两轮创建（先建全部，再按 slug 挂 parent）──
 	type pendingDoc struct {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -363,11 +364,19 @@ func hardDeleteBook(tx *gorm.DB, bookID uint) error {
 		{&models.ReadingProgress{}, "book_id = ?"},
 		{&models.ReadChapter{}, "book_id = ?"},
 		{&models.BookCollaborator{}, "book_id = ?"},
-		{&models.BookTag{}, "book_id = ?"},
 		{&models.BookAnalyticsDaily{}, "book_id = ?"},
 		{&models.ReadingAnnotation{}, "book_id = ?"},
 	} {
 		if err := tx.Unscoped().Where(deletion.where, bookID).Delete(deletion.model).Error; err != nil {
+			return err
+		}
+	}
+	// 插件登记的书籍归属表（如标签关联）；插件未启用时表可能不存在，跳过
+	for _, m := range plugincore.BookDataModels() {
+		if !tx.Migrator().HasTable(m) {
+			continue
+		}
+		if err := tx.Unscoped().Where("book_id = ?", bookID).Delete(m).Error; err != nil {
 			return err
 		}
 	}

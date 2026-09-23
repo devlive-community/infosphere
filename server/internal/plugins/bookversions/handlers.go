@@ -152,6 +152,6 @@ func (b *behavior) ListBookVersionBooks(c *gin.Context) {
 	}
 	items := books[start:end]
 	core.AttachChapterCounts(items)
-	core.AttachBookTags(items)
+	core.DecorateBookList(items)
 	core.OK(c, plugincore.PageResult{Items: items, Total: int64(total), Page: page, PageSize: pageSize})
 }

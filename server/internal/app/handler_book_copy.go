@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 )
@@ -108,16 +109,8 @@ func (a *App) CopyBook(c *gin.Context) {
 		return
 	}
 
-	// 复制标签（手动加载源书标签名，标签插件禁用时为空）
-	withTags := models.Book{ID: src.ID}
-	a.attachBookTagsOne(&withTags)
-	if len(withTags.Tags) > 0 {
-		names := make([]string, 0, len(withTags.Tags))
-		for _, t := range withTags.Tags {
-			names = append(names, t.Name)
-		}
-		_ = a.syncBookTags(&newBook, names)
-	}
+	// 插件复制自身关联数据（如标签插件复制标签）
+	plugincore.FireBookCopied(a, src, &newBook)
 
 	// 复制每本书的导出样式设置（PageSize/字号/页边距/页脚等）
 	var srcExport models.BookExportSetting

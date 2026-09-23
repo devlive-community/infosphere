@@ -175,7 +175,7 @@ func (a *App) MyReading(c *gin.Context) {
 		var list []models.Book
 		a.DB.Preload("User").Where("id IN ?", bookIDs).Find(&list)
 		a.attachChapterCounts(list)
-		a.attachBookTags(list)
+		a.decorateBookList(list)
 		for _, b := range list {
 			books[b.ID] = b
 		}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -88,7 +89,7 @@ func (a *App) ExploreHot(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
-	a.attachBookTags(books)
+	a.decorateBookList(books)
 	ok(c, books)
 }
 
@@ -101,7 +102,7 @@ func (a *App) ExploreLatest(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
-	a.attachBookTags(books)
+	a.decorateBookList(books)
 	ok(c, books)
 }
 
@@ -128,7 +129,7 @@ func (a *App) ExploreActiveAuthors(c *gin.Context) {
 
 // SiteStats GET /stats 站点统计
 func (a *App) SiteStats(c *gin.Context) {
-	var userCount, bookCount, docCount, tagCount int64
+	var userCount, bookCount, docCount int64
 	var views int64
 	a.DB.Model(&models.User{}).Count(&userCount)
 	publicBooks := a.DB.Model(&models.Book{}).Where("is_public = ? AND status IN ?", true, publiclyReadableBookStatuses)
@@ -137,22 +138,15 @@ func (a *App) SiteStats(c *gin.Context) {
 		Joins("JOIN books b ON b.id = documents.book_id").
 		Where("b.is_public = ? AND b.status IN ? AND documents.status = ?", true, publiclyReadableBookStatuses, "published").
 		Count(&docCount)
-	// 标签插件禁用/表不存在时 tag_count 记 0（表由标签插件建）
-	if a.pluginEnabled(pluginTags) && a.DB.Migrator().HasTable(&models.Tag{}) {
-		a.DB.Model(&models.Tag{}).
-			Joins("JOIN book_tags bt ON bt.tag_id = tags.id").
-			Joins("JOIN books b ON b.id = bt.book_id").
-			Where("b.is_public = ? AND b.status IN ?", true, publiclyReadableBookStatuses).
-			Distinct("tags.id").Count(&tagCount)
-	}
 	publicBooks.Select("COALESCE(SUM(view_count), 0)").Scan(&views)
-	ok(c, gin.H{
+	stats := gin.H{
 		"user_count":     userCount,
 		"book_count":     bookCount,
 		"document_count": docCount,
-		"tag_count":      tagCount,
 		"total_views":    views,
-	})
+	}
+	plugincore.CollectStats(a, true, stats) // 插件补充的统计（如标签插件的 tag_count，仅计公开书籍上的标签）
+	ok(c, stats)
 }
 
 // GetSiteConfig GET /site 公开站点配置
@@ -326,7 +320,7 @@ func (a *App) GetUserBooks(c *gin.Context) {
 		return
 	}
 	a.attachChapterCounts(books)
-	a.attachBookTags(books)
+	a.decorateBookList(books)
 	a.attachVersionInfo(books, versionCounts, currentUser(c))
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }

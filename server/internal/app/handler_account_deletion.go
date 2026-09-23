@@ -24,9 +24,12 @@ func (a *App) deleteUserCompletely(uid uint) error {
 		}
 		// 1. 书籍范围数据（含他人对这些书的互动/进度/标注/评论）
 		if len(bookIDs) > 0 {
-			// book_tags 表由标签插件建，未启用时不存在，先判存在
-			if tx.Migrator().HasTable("book_tags") {
-				if err := tx.Exec("DELETE FROM book_tags WHERE book_id IN ?", bookIDs).Error; err != nil {
+			// 插件登记的书籍归属表（如标签关联）；插件未启用时表可能不存在，先判存在
+			for _, m := range plugincore.BookDataModels() {
+				if !tx.Migrator().HasTable(m) {
+					continue
+				}
+				if err := tx.Unscoped().Where("book_id IN ?", bookIDs).Delete(m).Error; err != nil {
 					return err
 				}
 			}

@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -36,7 +37,8 @@ type Core interface {
 	PreloadBookUser() *gorm.DB
 	PreloadBookUserOn(db *gorm.DB) *gorm.DB
 	AttachChapterCounts(books []models.Book)
-	AttachBookTags(books []models.Book)
+	// DecorateBookList 让插件回填列表书籍的非持久化字段（标签、「采集中」标记等），见 OnDecorateBooks。
+	DecorateBookList(books []models.Book)
 	PubliclyReadableBookStatuses() []string
 
 	// 路由中间件（返回 gin.HandlerFunc，供插件注册受保护路由）
@@ -47,7 +49,7 @@ type Core interface {
 	RequireEmailVerified() gin.HandlerFunc
 	RequireAdmin() gin.HandlerFunc
 	RequirePermissionMiddleware(perm authz.Permission) gin.HandlerFunc // 与 RequirePermission 同义（命名区分，供插件显式使用）
-	RateLimitReaction() gin.HandlerFunc                                 // 互动类写操作的限流中间件（关注/点赞等复用同一策略）
+	RateLimitReaction() gin.HandlerFunc                                // 互动类写操作的限流中间件（关注/点赞等复用同一策略）
 
 	// 通用工具
 	Paginate(c *gin.Context) (page, pageSize int)
@@ -128,7 +130,9 @@ type ChapterPublishedHook func(core Core, book *models.Book, doc *models.Documen
 var chapterPublishedHooks []ChapterPublishedHook
 
 // OnChapterPublished 订阅章节发布事件。
-func OnChapterPublished(h ChapterPublishedHook) { chapterPublishedHooks = append(chapterPublishedHooks, h) }
+func OnChapterPublished(h ChapterPublishedHook) {
+	chapterPublishedHooks = append(chapterPublishedHooks, h)
+}
 
 // FireChapterPublished 由核心在章节发布成功后调用，依次通知订阅者。
 func FireChapterPublished(core Core, book *models.Book, doc *models.Document) {
@@ -274,7 +278,9 @@ var ErrTranslationConflict = errors.New("翻译已被其他操作更新，请重
 var localizedResourceFields = map[string]map[string]int{}
 
 // RegisterLocalizedResource 登记可翻译资源类型及其字段白名单。
-func RegisterLocalizedResource(kind string, fields map[string]int) { localizedResourceFields[kind] = fields }
+func RegisterLocalizedResource(kind string, fields map[string]int) {
+	localizedResourceFields[kind] = fields
+}
 
 // LocalizedResourceFields 返回资源类型的字段白名单。
 func LocalizedResourceFields(kind string) (map[string]int, bool) {
@@ -298,3 +304,85 @@ func RecordExperience(core Core, userID uint, ruleKey, sourceType, sourceID, ded
 		experienceRecorder(core, userID, ruleKey, sourceType, sourceID, dedupeKey, xp, reason)
 	}
 }
+
+// —— 书籍扩展字段：插件登记书籍创建/更新请求体中的额外字段（如 tags），核心负责校验与保存时机。——
+
+// BookField 书籍扩展字段。Validate 在保存前校验原始 JSON（失败按参数错误处理）；
+// Save 在书籍创建/更新成功后调用（字段出现且非 null 时），返回的错误原样作为失败提示。
+type BookField struct {
+	Name     string
+	Validate func(raw json.RawMessage) error
+	Save     func(core Core, book *models.Book, raw json.RawMessage) error
+}
+
+var bookFields []BookField
+
+// RegisterBookField 登记书籍扩展字段。
+func RegisterBookField(f BookField) { bookFields = append(bookFields, f) }
+
+// BookFields 返回全部已登记的书籍扩展字段。
+func BookFields() []BookField { return bookFields }
+
+// —— 书籍复制：核心复制书籍后调用，插件复制自身关联数据（如标签）。——
+
+// BookCopiedHook 书籍复制回调（src 源书，dst 新书）。
+type BookCopiedHook func(core Core, src, dst *models.Book) error
+
+var bookCopiedHooks []BookCopiedHook
+
+// OnBookCopied 订阅书籍复制。
+func OnBookCopied(h BookCopiedHook) { bookCopiedHooks = append(bookCopiedHooks, h) }
+
+// FireBookCopied 由核心在复制书籍后调用；插件失败不影响复制结果。
+func FireBookCopied(core Core, src, dst *models.Book) {
+	for _, h := range bookCopiedHooks {
+		_ = h(core, src, dst)
+	}
+}
+
+// —— 书籍筛选：书籍列表/搜索按请求参数追加插件提供的条件（如 ?tag=slug）。——
+
+// BookFilter 按 params 为 query 追加条件；bookIDColumn 为查询中书籍 id 列（如 books.id / b.id）。
+type BookFilter func(core Core, params url.Values, query *gorm.DB, bookIDColumn string) *gorm.DB
+
+var bookFilters []BookFilter
+
+// RegisterBookFilter 登记书籍筛选条件。
+func RegisterBookFilter(f BookFilter) { bookFilters = append(bookFilters, f) }
+
+// ApplyBookFilters 由核心在构造书籍列表/搜索查询时调用。
+func ApplyBookFilters(core Core, params url.Values, query *gorm.DB, bookIDColumn string) *gorm.DB {
+	for _, f := range bookFilters {
+		query = f(core, params, query, bookIDColumn)
+	}
+	return query
+}
+
+// —— 站点统计：插件为管理端/公开统计补充字段（如 tag_count）。——
+
+// StatsProvider 返回要合并进统计响应的字段；publicOnly 为公开统计（仅计公开可读内容）。
+type StatsProvider func(core Core, publicOnly bool) map[string]any
+
+var statsProviders []StatsProvider
+
+// RegisterStatsProvider 登记统计字段提供者。
+func RegisterStatsProvider(f StatsProvider) { statsProviders = append(statsProviders, f) }
+
+// CollectStats 把各插件提供的统计字段合并进 into。
+func CollectStats(core Core, publicOnly bool, into map[string]any) {
+	for _, f := range statsProviders {
+		for k, v := range f(core, publicOnly) {
+			into[k] = v
+		}
+	}
+}
+
+// —— 书籍数据：插件声明按 book_id 归属的表，核心彻底删除书籍/注销用户时一并清理（表不存在则跳过）。——
+
+var bookDataModels []any
+
+// RegisterBookDataModels 登记插件的书籍归属模型（需含 book_id 列）。
+func RegisterBookDataModels(models ...any) { bookDataModels = append(bookDataModels, models...) }
+
+// BookDataModels 返回全部已登记的书籍归属模型。
+func BookDataModels() []any { return bookDataModels }

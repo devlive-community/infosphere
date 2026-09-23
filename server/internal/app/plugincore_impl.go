@@ -26,7 +26,7 @@ func (a *App) FindBook(c *gin.Context) (*models.Book, int)     { return a.findBo
 func (a *App) PreloadBookUser() *gorm.DB                       { return preloadBookUser(a.DB) }
 func (a *App) PreloadBookUserOn(db *gorm.DB) *gorm.DB          { return preloadBookUser(db) }
 func (a *App) AttachChapterCounts(books []models.Book)         { a.attachChapterCounts(books) }
-func (a *App) AttachBookTags(books []models.Book)              { a.attachBookTags(books) }
+func (a *App) DecorateBookList(books []models.Book)            { a.decorateBookList(books) }
 func (a *App) PubliclyReadableBookStatuses() []string          { return publiclyReadableBookStatuses }
 func (a *App) RateLimitReaction() gin.HandlerFunc              { return a.RateLimit(reactionRateLimit) }
 
