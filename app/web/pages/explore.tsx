@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, siteUrlFrom } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Container from '@/components/Container'
-import { Button, Input, Loading, Pagination, SegmentedTabs, Select } from '@/components/ui'
+import { Button, Input, Loading, Pagination, SegmentedTabs, Select, Checkbox } from '@/components/ui'
 import Seo from '@/components/Seo'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
@@ -93,6 +93,21 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
     if (!tag && sort === 'latest') return a.updated_at < b.updated_at ? 1 : -1
     return 0
   })
+  const [mergeVersions, setMergeVersions] = useState(false)
+  // 合并相同书籍：同一 version_group 只保留一本（优先最新版）
+  const displayItems = useMemo(() => {
+    if (!mergeVersions) return items
+    const pickedIdx = new Map<string, number>()
+    const out: typeof items = []
+    for (const b of items) {
+      const g = (b.version_group || '').trim()
+      if (!g) { out.push(b); continue }
+      const idx = pickedIdx.get(g)
+      if (idx === undefined) { pickedIdx.set(g, out.length); out.push(b) }
+      else if (b.version_is_latest && !out[idx].version_is_latest) { out[idx] = b }
+    }
+    return out
+  }, [items, mergeVersions])
 
   const sectionTitle = tag ? t('explore.section.byTag', { tag: tagName }) : keyword ? t('explore.section.searchResult', { keyword }) : loginOnly ? t('explore.browse.loginOnly') : t('explore.section.allPublic')
 
@@ -227,6 +242,10 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
                 <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setLoading(true); window.location.href = v === 'hot' ? '/explore?sort=hot' : '/explore' }}
                   options={[{ value: 'latest', label: t('explore.browse.latest') }, { value: 'hot', label: t('explore.browse.hot') }]} />
               )}
+              <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-sm text-slate-600">
+                <Checkbox checked={mergeVersions} onChange={setMergeVersions} ariaLabel={t('user.home.mergeVersions')} />
+                {t('user.home.mergeVersions')}
+              </label>
               <SegmentedTabs iconOnly value={view} ariaLabel={t('explore.view.aria')}
                 onChange={(value) => setView(value as 'grid' | 'list')} items={[
                   { value: 'grid', label: t('explore.view.grid'), icon: <GridIcon className="h-4 w-4" /> },
@@ -243,7 +262,7 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
             </div>
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]' : 'space-y-4'}>
-              {items.map((b) => <BookCard key={b.id} book={b} view={view} />)}
+              {displayItems.map((b) => <BookCard key={b.id} book={b} view={view} />)}
             </div>
           )}
 
