@@ -81,6 +81,15 @@ type Core interface {
 	LocalizeResources(c *gin.Context, kind string, ids []uint) (map[uint]LocalizedResource, string, error)
 	// PublicBackgroundJob 后台任务的对外视图（不含 payload），与 /tasks/:id 返回形状一致。
 	PublicBackgroundJob(job *models.BackgroundJob) any
+
+	// 导出（PDF 导出插件所需；与 DOCX/EPUB 等核心导出共用同一套规则）
+	CanExportBook(u *models.User, book *models.Book) bool
+	ExportFormatAllowed(book *models.Book, format string) bool
+	ResolveExportStyle(style string, book *models.Book, u *models.User) models.UserExportSetting
+	ResolveExportFooter(book *models.Book, u *models.User) string
+	RecordBookExport(u *models.User, book *models.Book, format string)
+	// WebPort 内嵌 Web 运行时的本地端口（未运行为 0），供无头浏览器访问打印页。
+	WebPort() int
 }
 
 // ImportedChapter 导入/采集成书时的中性章节结构（避免暴露 app 内部类型）。

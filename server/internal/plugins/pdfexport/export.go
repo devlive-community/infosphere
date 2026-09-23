@@ -1,4 +1,4 @@
-package app
+package pdfexport
 
 import (
 	"context"
@@ -36,86 +36,37 @@ func requestToken(c *gin.Context) string {
 	return ""
 }
 
-// resolveExportStyle 依据 style 选择生效的导出样式：
-// author（且作者开启共享）用书籍作者样式，否则用请求者自己的样式（匿名用默认）。
-func (a *App) resolveExportStyle(style string, book *models.Book, u *models.User) models.UserExportSetting {
-	// 作者共享样式且请求作者样式：优先书籍自有导出样式，其次作者个人样式
-	if style == "author" && book.ExportStyleShared {
-		var bs models.BookExportSetting
-		if err := a.DB.Where("book_id = ?", book.ID).First(&bs).Error; err == nil {
-			return models.UserExportSetting{
-				PageSize: bs.PageSize, IncludeCover: bs.IncludeCover, IncludeToc: bs.IncludeToc,
-				FontSize: bs.FontSize, CodeTheme: bs.CodeTheme, Margin: bs.Margin,
-			}
-		}
-		var us models.UserExportSetting
-		if err := a.DB.Where("user_id = ?", book.UserID).First(&us).Error; err == nil {
-			return us
-		}
-		return defaultExportSetting(book.UserID)
-	}
-	// 否则用请求者自己的样式（匿名用默认）
-	if u == nil {
-		return defaultExportSetting(0)
-	}
-	var s models.UserExportSetting
-	if err := a.DB.Where("user_id = ?", u.ID).First(&s).Error; err != nil {
-		return defaultExportSetting(u.ID)
-	}
-	return s
-}
-
-// resolveExportFooter 解析每页页脚文案（Powered by …）：
-// 优先书籍自有配置，其次导出者个人配置，最后回退默认 "Powered by <站点名>"。
-func (a *App) resolveExportFooter(book *models.Book, u *models.User) string {
-	var bs models.BookExportSetting
-	if err := a.DB.Where("book_id = ?", book.ID).First(&bs).Error; err == nil && strings.TrimSpace(bs.Footer) != "" {
-		return bs.Footer
-	}
-	if u != nil {
-		var us models.UserExportSetting
-		if err := a.DB.Where("user_id = ?", u.ID).First(&us).Error; err == nil && strings.TrimSpace(us.Footer) != "" {
-			return us.Footer
-		}
-	}
-	site := strings.TrimSpace(a.getSetting("site_name"))
-	if site == "" {
-		site = "KnowForge"
-	}
-	return "Powered by " + site
-}
-
 // ExportBookPDF GET /books/:id/export/pdf?style=author|mine 通过无头 Chrome 导出 PDF
-func (a *App) ExportBookPDF(c *gin.Context) {
-	book, status := a.findBook(c)
+func (px *behavior) ExportBookPDF(c *gin.Context) {
+	book, status := px.core.FindBook(c)
 	if book == nil {
-		fail(c, status, "书籍不存在")
+		px.core.Fail(c, status, "书籍不存在")
 		return
 	}
-	u := currentUser(c)
+	u := px.core.CurrentUser(c)
 
-	if !a.canExportBook(u, book) {
-		fail(c, http.StatusForbidden, "该书籍未开放导出")
+	if !px.core.CanExportBook(u, book) {
+		px.core.Fail(c, http.StatusForbidden, "该书籍未开放导出")
 		return
 	}
-	if !formatAllowed(book, "pdf") {
-		fail(c, http.StatusForbidden, "作者未开放 PDF 导出")
+	if !px.core.ExportFormatAllowed(book, "pdf") {
+		px.core.Fail(c, http.StatusForbidden, "作者未开放 PDF 导出")
 		return
 	}
 
 	// 依赖 PDF 插件（chrome-headless-shell）
-	chromePath := a.installedChromePath()
+	chromePath := px.core.InstalledChromePath()
 	if chromePath == "" {
-		fail(c, http.StatusBadRequest, "PDF 导出插件尚未安装，请联系管理员在后台「插件」中安装")
+		px.core.Fail(c, http.StatusBadRequest, "PDF 导出插件尚未安装，请联系管理员在后台「插件」中安装")
 		return
 	}
-	webPort := a.web.Port()
+	webPort := px.core.WebPort()
 	if webPort == 0 {
-		fail(c, http.StatusServiceUnavailable, "Web 运行时不可用，无法生成 PDF")
+		px.core.Fail(c, http.StatusServiceUnavailable, "Web 运行时不可用，无法生成 PDF")
 		return
 	}
 
-	setting := a.resolveExportStyle(c.Query("style"), book, u)
+	setting := px.core.ResolveExportStyle(c.Query("style"), book, u)
 
 	// 打印页地址（内嵌 Web），样式作为查询参数下发，水印始终取自书籍作者设置
 	q := url.Values{}
@@ -127,13 +78,13 @@ func (a *App) ExportBookPDF(c *gin.Context) {
 	q.Set("toc", boolParam(setting.IncludeToc))
 	printURL := fmt.Sprintf("http://127.0.0.1:%d/book/print/%s?%s", webPort, url.PathEscape(book.Slug), q.Encode())
 
-	footer := a.resolveExportFooter(book, u)
-	pdf, err := a.renderPDF(printURL, requestToken(c), setting, footer)
+	footer := px.core.ResolveExportFooter(book, u)
+	pdf, err := px.renderPDF(printURL, requestToken(c), setting, footer)
 	if err != nil {
-		fail(c, http.StatusInternalServerError, "生成 PDF 失败: "+err.Error())
+		px.core.Fail(c, http.StatusInternalServerError, "生成 PDF 失败: "+err.Error())
 		return
 	}
-	a.recordBookExport(u, book, "pdf")
+	px.core.RecordBookExport(u, book, "pdf")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.pdf", book.Slug))
 	c.Data(http.StatusOK, "application/pdf", pdf)
 }
@@ -147,9 +98,9 @@ func boolParam(b bool) string {
 
 // renderPDF 用 chrome-headless-shell 打开打印页并输出 PDF；带上登录 Cookie 以渲染私有内容。
 // footer 为每页页脚文案，经 Chrome 原生 footerTemplate 渲染，保证出现在每一物理页底部。
-func (a *App) renderPDF(printURL, token string, setting models.UserExportSetting, footer string) ([]byte, error) {
+func (px *behavior) renderPDF(printURL, token string, setting models.UserExportSetting, footer string) ([]byte, error) {
 	execOpts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.ExecPath(a.installedChromePath()),
+		chromedp.ExecPath(px.core.InstalledChromePath()),
 		chromedp.Flag("headless", true),
 		chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("disable-gpu", true),

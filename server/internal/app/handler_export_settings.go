@@ -176,3 +176,52 @@ func (a *App) UpdateBookExportStyle(c *gin.Context) {
 	}
 	ok(c, s)
 }
+
+// resolveExportStyle 依据 style 选择生效的导出样式：
+// author（且作者开启共享）用书籍作者样式，否则用请求者自己的样式（匿名用默认）。
+func (a *App) resolveExportStyle(style string, book *models.Book, u *models.User) models.UserExportSetting {
+	// 作者共享样式且请求作者样式：优先书籍自有导出样式，其次作者个人样式
+	if style == "author" && book.ExportStyleShared {
+		var bs models.BookExportSetting
+		if err := a.DB.Where("book_id = ?", book.ID).First(&bs).Error; err == nil {
+			return models.UserExportSetting{
+				PageSize: bs.PageSize, IncludeCover: bs.IncludeCover, IncludeToc: bs.IncludeToc,
+				FontSize: bs.FontSize, CodeTheme: bs.CodeTheme, Margin: bs.Margin,
+			}
+		}
+		var us models.UserExportSetting
+		if err := a.DB.Where("user_id = ?", book.UserID).First(&us).Error; err == nil {
+			return us
+		}
+		return defaultExportSetting(book.UserID)
+	}
+	// 否则用请求者自己的样式（匿名用默认）
+	if u == nil {
+		return defaultExportSetting(0)
+	}
+	var s models.UserExportSetting
+	if err := a.DB.Where("user_id = ?", u.ID).First(&s).Error; err != nil {
+		return defaultExportSetting(u.ID)
+	}
+	return s
+}
+
+// resolveExportFooter 解析每页页脚文案（Powered by …）：
+// 优先书籍自有配置，其次导出者个人配置，最后回退默认 "Powered by <站点名>"。
+func (a *App) resolveExportFooter(book *models.Book, u *models.User) string {
+	var bs models.BookExportSetting
+	if err := a.DB.Where("book_id = ?", book.ID).First(&bs).Error; err == nil && strings.TrimSpace(bs.Footer) != "" {
+		return bs.Footer
+	}
+	if u != nil {
+		var us models.UserExportSetting
+		if err := a.DB.Where("user_id = ?", u.ID).First(&us).Error; err == nil && strings.TrimSpace(us.Footer) != "" {
+			return us.Footer
+		}
+	}
+	site := strings.TrimSpace(a.getSetting("site_name"))
+	if site == "" {
+		site = "KnowForge"
+	}
+	return "Powered by " + site
+}

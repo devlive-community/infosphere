@@ -41,10 +41,12 @@ func (a *App) Slugify(s string) string            { return slugify(s) }
 func (a *App) RandomSlug(prefix string) string    { return randomSlug(prefix) }
 
 // —— 内容采集插件所需 ——
-func (a *App) CanEditBookContent(u *models.User, b *models.Book) bool { return a.canEditBookContent(u, b) }
-func (a *App) GetSetting(key string) string                          { return a.getSetting(key) }
-func (a *App) InstalledChromePath() string                           { return a.installedChromePath() }
-func (a *App) JobQueue() *jobqueue.Queue                             { return a.jobQueue() }
+func (a *App) CanEditBookContent(u *models.User, b *models.Book) bool {
+	return a.canEditBookContent(u, b)
+}
+func (a *App) GetSetting(key string) string { return a.getSetting(key) }
+func (a *App) InstalledChromePath() string  { return a.installedChromePath() }
+func (a *App) JobQueue() *jobqueue.Queue    { return a.jobQueue() }
 func (a *App) UniqueChildSlug(bookID uint, parentID *uint, base string, excludeID uint) string {
 	return a.uniqueChildSlug(bookID, parentID, base, excludeID)
 }
@@ -64,7 +66,9 @@ func (a *App) NewDocumentRevision(doc *models.Document, userID uint, reason stri
 func (a *App) ExtractDocIcon(content string) string { return extractDocIcon(content) }
 
 // —— 成就插件所需 ——
-func (a *App) SetSetting(key, value, description string) error { return a.setSetting(key, value, description) }
+func (a *App) SetSetting(key, value, description string) error {
+	return a.setSetting(key, value, description)
+}
 func (a *App) LoadResourceTranslations(db *gorm.DB, kind string, id uint) (map[string]plugincore.ResourceTranslation, error) {
 	return loadResourceTranslations(db, kind, id)
 }
@@ -82,3 +86,19 @@ func (a *App) LocalizeResources(c *gin.Context, kind string, ids []uint) (map[ui
 	return a.localizeResources(c, kind, ids)
 }
 func (a *App) PublicBackgroundJob(job *models.BackgroundJob) any { return publicBackgroundJob(job) }
+
+// —— PDF 导出插件所需 ——
+func (a *App) CanExportBook(u *models.User, book *models.Book) bool { return a.canExportBook(u, book) }
+func (a *App) ExportFormatAllowed(book *models.Book, format string) bool {
+	return formatAllowed(book, format)
+}
+func (a *App) ResolveExportStyle(style string, book *models.Book, u *models.User) models.UserExportSetting {
+	return a.resolveExportStyle(style, book, u)
+}
+func (a *App) ResolveExportFooter(book *models.Book, u *models.User) string {
+	return a.resolveExportFooter(book, u)
+}
+func (a *App) RecordBookExport(u *models.User, book *models.Book, format string) {
+	a.recordBookExport(u, book, format)
+}
+func (a *App) WebPort() int { return a.web.Port() }

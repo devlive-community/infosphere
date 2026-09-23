@@ -157,7 +157,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/books/:id/export/markdown", a.ExportBookMarkdownPublic)
 			public.GET("/books/:id/export/epub", a.ExportBookEPUB)
 			public.GET("/books/:id/export/docx", a.ExportBookDOCX)
-			public.GET("/books/:id/export/pdf", a.ExportBookPDF) // PDF 依赖 pdf-export 插件
+			// /books/:id/export/pdf 由 pdf-export 插件子包注册
 			public.POST("/documents/:id/view", a.IncrementDocumentView)
 		}
 
