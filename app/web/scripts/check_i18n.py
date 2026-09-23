@@ -39,6 +39,10 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     ],
     # DocumentRevisionReason: writer.rev.${reason}
     'writer.rev.': ['create', 'save', 'publish', 'pre_restore', 'restore'],
+    # crawl-history: t(`crawlHistory.status.${job.status}`)，CrawlJob.Status 取值域（含单页采集 succeeded/failed）
+    'crawlHistory.status.': ['preview', 'pending', 'running', 'succeeded', 'partial', 'failed'],
+    # crawl-history: t(`crawlHistory.pageStatus.${p.status}`)，CrawlPage.Status 取值域
+    'crawlHistory.pageStatus.': ['pending', 'running', 'success', 'failed', 'skipped'],
 }
 
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）
