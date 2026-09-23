@@ -435,6 +435,48 @@ func TestExtractWebArticlePreservesMarkdownStructure(t *testing.T) {
 	}
 }
 
+// Docusaurus：<body class="navigation-with-keyboard"> 不能被当成导航整页丢弃；
+// Prism 逐行 <div class="token-line">…<br></div> 不应产生空行，<span class="token comment"> 不能被当成评论区删掉。
+func TestExtractWebArticleDocusaurusPrismCodeBlock(t *testing.T) {
+	pageURL, _ := url.Parse("https://8.8.8.8/docs/overview")
+	article, err := extractWebArticle(webPage{
+		FinalURL: pageURL,
+		HTML: `<html><head><title>Overview</title></head><body class="navigation-with-keyboard"><div id="__docusaurus"><main><article>
+			<h2 id="use-cli">Using CLI<a href="#use-cli" class="hash-link" title="Direct link to Using CLI">&#8203;</a></h2>
+			<p>The AWS CLI can be used from your local machine.</p>
+			<pre class="prism-code language-bash"><code class="codeBlockLines"><div class="token-line"><span class="token comment"># Create a bucket</span><span class="token plain"></span><br></div><div class="token-line"><span class="token plain">aws s3api create-bucket --bucket=s3bucket</span><br></div><div class="token-line"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line"><span class="token plain">aws s3api list-buckets</span><br></div></code><button class="copyButton">Copy</button></pre>
+		</article></main></div></body></html>`,
+	})
+	if err != nil {
+		t.Fatalf("Docusaurus 页面提取失败: %v", err)
+	}
+	want := "```bash\n# Create a bucket\naws s3api create-bucket --bucket=s3bucket\n\naws s3api list-buckets\n```"
+	if !strings.Contains(article.Markdown, want) {
+		t.Fatalf("代码块未按原样还原，期望包含:\n%s\n实际:\n%s", want, article.Markdown)
+	}
+	if cleaned := stripPermalinkAnchors(article.Markdown); strings.Contains(cleaned, "Direct link") || !strings.Contains(cleaned, "## Using CLI\n") {
+		t.Fatalf("标题永久链接锚点未清理:\n%s", cleaned)
+	}
+}
+
+func TestStripPermalinkAnchors(t *testing.T) {
+	cases := map[string]string{
+		"# Parquet Content-Defined Chunking[#](/book/reader/x/y#parquet-content-defined-chunking)": "# Parquet Content-Defined Chunking",
+		"## Use CLI[\u200b](https://a.io/docs#use-cli \"Direct link to Use CLI\")":                 "## Use CLI",
+		"## Title[¶](https://a.io/p#title \"Permanent link\")":                                     "## Title",
+		"## Title[](https://a.io/p#title)":                                                         "## Title",
+		"## Title [🔗](https://a.io/p#title)":                                                       "## Title",
+		"![](https://a.io/img.png#frag) 图片保留":                                                      "![](https://a.io/img.png#frag) 图片保留",
+		"见 [文档](https://a.io/p#sec) 说明":                                                            "见 [文档](https://a.io/p#sec) 说明",
+		"[#](https://a.io/p) 无锚点不动":                                                                "[#](https://a.io/p) 无锚点不动",
+	}
+	for in, want := range cases {
+		if got := strings.TrimRight(stripPermalinkAnchors(in+"\n"), "\n"); got != want {
+			t.Errorf("stripPermalinkAnchors(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestRenderPDFMarkdownPreservesDocumentStructure(t *testing.T) {
 	lines := []pdfLayoutLine{
 		{Text: "工程实践指南", FontSize: 24, Bold: true, Page: 1, X: 60, Y: 780, GapAfter: 30},

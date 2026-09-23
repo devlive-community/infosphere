@@ -712,9 +712,87 @@ func pruneIgnoredNodes(root *html.Node) {
 			child = next
 			continue
 		}
+		if child.Type == html.ElementNode && strings.EqualFold(child.Data, "pre") {
+			// 代码块内部不按 class 关键词剪枝（Prism 的 <span class="token comment"> 并非评论区），只规整为纯文本。
+			flattenPreText(child)
+			child = next
+			continue
+		}
 		pruneIgnoredNodes(child)
 		child = next
 	}
+}
+
+// preLineTags 语法高亮器常用来包裹「一行」的块级元素（Prism 的 div.token-line 等）。
+var preLineTags = map[string]bool{"div": true, "p": true, "li": true, "tr": true}
+
+// flattenPreText 把 <pre> 内的高亮标记还原为纯文本：<br> 与逐行块元素合计只产生一个换行，
+// 避免 Prism（<div class="token-line">…<br></div>）等结构转换后每行之间出现大面积空行；
+// 保留 <pre>/<code> 自身属性以便转换器识别语言。
+func flattenPreText(pre *html.Node) {
+	var b strings.Builder
+	endsWithNewline := true
+	write := func(s string) {
+		if s == "" {
+			return
+		}
+		b.WriteString(s)
+		endsWithNewline = strings.HasSuffix(s, "\n")
+	}
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		switch n.Type {
+		case html.TextNode:
+			write(n.Data)
+		case html.ElementNode:
+			tag := strings.ToLower(n.Data)
+			if tag == "br" {
+				write("\n")
+				return
+			}
+			// 复制按钮、行号等非代码内容
+			if tag == "button" || tag == "script" || tag == "style" || strings.EqualFold(attribute(n, "aria-hidden"), "true") {
+				return
+			}
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				walk(c)
+			}
+			if preLineTags[tag] && !endsWithNewline {
+				write("\n")
+			}
+		}
+	}
+	var code *html.Node
+	var findCode func(*html.Node)
+	findCode = func(n *html.Node) {
+		for c := n.FirstChild; c != nil && code == nil; c = c.NextSibling {
+			if c.Type == html.ElementNode && strings.EqualFold(c.Data, "code") {
+				code = c
+				return
+			}
+			findCode(c)
+		}
+	}
+	findCode(pre)
+	for c := pre.FirstChild; c != nil; c = c.NextSibling {
+		walk(c)
+	}
+	text := &html.Node{Type: html.TextNode, Data: strings.TrimRight(b.String(), "\n")}
+	for pre.FirstChild != nil {
+		pre.RemoveChild(pre.FirstChild)
+	}
+	if code != nil {
+		if code.Parent != nil {
+			code.Parent.RemoveChild(code)
+		}
+		for code.FirstChild != nil {
+			code.RemoveChild(code.FirstChild)
+		}
+		code.AppendChild(text)
+		pre.AppendChild(code)
+		return
+	}
+	pre.AppendChild(text)
 }
 
 var ignoredWebRegionTokens = map[string]bool{
@@ -746,6 +824,11 @@ func shouldIgnoreWebNode(node *html.Node) bool {
 	role := strings.ToLower(attribute(node, "role"))
 	if role == "banner" || role == "complementary" || role == "contentinfo" || role == "dialog" || role == "navigation" {
 		return true
+	}
+	// 结构性容器（html/body/main/article）不按 class/id 关键词忽略：
+	// 如 Docusaurus 的 <body class="navigation-with-keyboard"> 会分出 navigation，误把整页当导航丢弃。
+	if tag == "html" || tag == "body" || tag == "main" || tag == "article" {
+		return false
 	}
 	for _, token := range webRegionTokens(node) {
 		if ignoredWebRegionTokens[token] {

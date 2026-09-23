@@ -45,7 +45,11 @@ let currentBookSlug = ''
 
 const renderer: Renderer = new marked.Renderer()
 
-renderer.heading = (text: string, level: number): string => {
+// 标题内的永久链接锚点：<a …>#</a> / 零宽字符 / 图标符号，指向页内锚点（未经清理的旧采集内容）
+const headingPermalinkRe = /<a\b[^>]*href="[^"]*#[^"]*"[^>]*>(?:\s|&#8203;|&#x200b;|&#35;|[​-‍⁠﻿#🔗¶§↩⚓†‡])*<\/a>/giu
+
+renderer.heading = (rawText: string, level: number): string => {
+  const text = rawText.replace(headingPermalinkRe, '').trim()
   if (level === 2 || level === 3) {
     const id = `h-${++headingSeq}`
     return `<h${level} id="${id}" class="md-h">${text}</h${level}>`
@@ -171,7 +175,9 @@ export interface Heading {
 // 例如 `[](url)3. Executing the task` → `3. Executing the task`；`**加粗**` → `加粗`。
 export function headingPlainText(md: string): string {
   return md
+    .replace(/\[[\s​-‍⁠﻿]*[#🔗¶§↩⚓†‡]*[\s​-‍⁠﻿]*\]\([^)]*\)/gu, '') // 永久链接锚点（[#](…#x) 等）整体移除
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // 链接/图片取其文本（空文本即移除）
+    .replace(/[​-‍⁠﻿]/g, '') // 零宽字符
     .replace(/`([^`]+)`/g, '$1')               // 行内代码
     .replace(/(\*\*|\*|__|_|~~)/g, '')         // 加粗/斜体/删除线标记
     .replace(/<[^>]+>/g, '')                    // 残留 HTML 标签
