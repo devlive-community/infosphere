@@ -156,6 +156,73 @@ func countAnchors(n *html.Node) int {
 }
 
 // normalizeCrawlURL 解析并规范化爬取 URL：仅同域、http(s)、去 fragment；返回绝对地址，不合格返回空。
+// mdLinkURLRe 匹配 Markdown 链接的 URL 部分：](url) 或 ](url "title") 或 ](<url>)。
+var mdLinkURLRe = regexp.MustCompile(`\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)`)
+
+// rewriteInternalLinks 把正文里指向 urlToSlug（归一化绝对URL→章节slug）中页面的 http(s) 外链，
+// 改写为站内阅读链接 /book/reader/{book}/{slug}，并保留原 #anchor 作页内定位；未命中的外链保持不变。
+func rewriteInternalLinks(markdown string, urlToSlug map[string]string, bookSlug string) string {
+	if len(urlToSlug) == 0 {
+		return markdown
+	}
+	return mdLinkURLRe.ReplaceAllStringFunc(markdown, func(m string) string {
+		sub := mdLinkURLRe.FindStringSubmatch(m)
+		raw := sub[1]
+		low := strings.ToLower(raw)
+		if !strings.HasPrefix(low, "http://") && !strings.HasPrefix(low, "https://") {
+			return m
+		}
+		u, err := url.Parse(raw)
+		if err != nil {
+			return m
+		}
+		frag := u.Fragment
+		u.Fragment = ""
+		key := u.String()
+		slug, ok := urlToSlug[key]
+		if !ok {
+			slug, ok = urlToSlug[strings.TrimRight(key, "/")]
+		}
+		if !ok {
+			return m
+		}
+		internal := "/book/reader/" + bookSlug + "/" + slug
+		if frag != "" {
+			internal += "#" + frag
+		}
+		return "](" + internal + ")"
+	})
+}
+
+// rewriteCrawledInternalLinks 采集结束后，对本次采集到的章节做一遍内链改写（urlToDoc: 归一化URL→docID）。
+func (a *App) rewriteCrawledInternalLinks(book *models.Book, urlToDoc map[string]uint) {
+	if len(urlToDoc) == 0 {
+		return
+	}
+	ids := make([]uint, 0, len(urlToDoc))
+	for _, id := range urlToDoc {
+		ids = append(ids, id)
+	}
+	var docs []models.Document
+	a.DB.Where("id IN ?", ids).Find(&docs)
+	slugByID := make(map[uint]string, len(docs))
+	for i := range docs {
+		slugByID[docs[i].ID] = docs[i].Slug
+	}
+	urlToSlug := make(map[string]string, len(urlToDoc))
+	for u, id := range urlToDoc {
+		if s := slugByID[id]; s != "" {
+			urlToSlug[u] = s
+		}
+	}
+	for i := range docs {
+		d := &docs[i]
+		if nc := rewriteInternalLinks(d.Content, urlToSlug, book.Slug); nc != d.Content {
+			a.DB.Model(&models.Document{}).Where("id = ?", d.ID).Update("content", nc)
+		}
+	}
+}
+
 func normalizeCrawlURL(href string, base *url.URL) string {
 	href = strings.TrimSpace(href)
 	low := strings.ToLower(href)
@@ -471,6 +538,9 @@ func (a *App) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) error {
 		urlToDoc[page.URL] = doc.ID
 		a.DB.Model(page).Updates(map[string]any{"status": "success", "error": "", "doc_id": doc.ID, "title": truncateText(title, 500)})
 	}
+
+	// 采集完成后改写内链：正文里指向本次采集页面的外链改为站内阅读链接。
+	a.rewriteCrawledInternalLinks(&book, urlToDoc)
 
 	status := "succeeded"
 	if failed > 0 && success > 0 {

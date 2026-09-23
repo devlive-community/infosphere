@@ -12,17 +12,17 @@ export const getServerSideProps = getBookSettingsProps
 export default function BookCleanup({ book }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
-  const [running, setRunning] = useState(false)
+  const [running, setRunning] = useState('')
 
-  async function cleanPermalinks() {
-    setRunning(true)
+  async function run(path: string, doneKey: string) {
+    setRunning(path)
     try {
-      const r = await api<{ changed: number }>(`/books/${book.id}/cleanup/permalink-anchors`, { method: 'POST' })
-      showToast({ message: t('bookSettings.cleanup.permalink.done', { count: r.changed }), tone: 'success' })
+      const r = await api<{ changed: number }>(`/books/${book.id}/cleanup/${path}`, { method: 'POST' })
+      showToast({ message: t(doneKey, { count: r.changed }), tone: 'success' })
     } catch (e) {
       showToast({ title: t('bookSettings.cleanup.failed'), message: (e as Error).message, tone: 'error' })
     } finally {
-      setRunning(false)
+      setRunning('')
     }
   }
 
@@ -38,7 +38,14 @@ export default function BookCleanup({ book }: InferGetServerSidePropsType<typeof
             <div className="text-sm font-medium text-slate-900">{t('bookSettings.cleanup.permalink.title')}</div>
             <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookSettings.cleanup.permalink.desc')}</p>
           </div>
-          <Button loading={running} onClick={cleanPermalinks} className="shrink-0">{t('bookSettings.cleanup.run')}</Button>
+          <Button loading={running === 'permalink-anchors'} disabled={!!running} onClick={() => run('permalink-anchors', 'bookSettings.cleanup.permalink.done')} className="shrink-0">{t('bookSettings.cleanup.run')}</Button>
+        </div>
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 p-4">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-slate-900">{t('bookSettings.cleanup.internalLinks.title')}</div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookSettings.cleanup.internalLinks.desc')}</p>
+          </div>
+          <Button loading={running === 'internal-links'} disabled={!!running} onClick={() => run('internal-links', 'bookSettings.cleanup.internalLinks.done')} className="shrink-0">{t('bookSettings.cleanup.run')}</Button>
         </div>
       </div>
     </BookSettingsLayout>
