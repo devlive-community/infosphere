@@ -1,4 +1,5 @@
-import { ReactNode, useEffect, useRef, useState } from 'react'
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { Input } from '@/components/ui'
@@ -33,8 +34,23 @@ export default function BookSearchSelect({
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
   useEffect(() => { setQuery(value?.title || '') }, [value])
+
+  // 下拉用 Portal 挂到 body 并按输入框位置固定定位，避免被 Modal/overflow 容器裁剪。
+  useLayoutEffect(() => {
+    if (!open) { setPos(null); return }
+    const update = () => {
+      const r = boxRef.current?.getBoundingClientRect()
+      if (r) setPos({ top: r.bottom + 4, left: r.left, width: r.width })
+    }
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('scroll', update, true) }
+  }, [open, results.length, loading])
 
   useEffect(() => {
     if (!open) return
@@ -50,7 +66,8 @@ export default function BookSearchSelect({
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (!boxRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false)
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
@@ -62,8 +79,9 @@ export default function BookSearchSelect({
         onChange={(e) => { setQuery(e.target.value); if (value) onChange(null); setOpen(true) }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder || t('common.book.searchPlaceholder')} />
-      {open && (
-        <div className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+      {open && pos && typeof document !== 'undefined' && createPortal(
+        <div ref={menuRef} className="fixed z-[200] max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+          style={{ top: pos.top, left: pos.left, width: pos.width }}>
           {loading ? (
             <div className="px-3 py-2 text-sm text-slate-400">{t('common.book.searching')}</div>
           ) : results.length === 0 ? (
@@ -76,7 +94,8 @@ export default function BookSearchSelect({
               </button>
             ))
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

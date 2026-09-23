@@ -165,6 +165,7 @@ func (a *App) CopyBook(c *gin.Context) {
 type copyDocumentsRequest struct {
 	TargetBookID uint   `json:"target_book_id"`
 	DocIDs       []uint `json:"doc_ids"`
+	Move         bool   `json:"move"` // true=移动（复制后从源书删除选中章节，需源书写权限）
 }
 
 // CopyDocuments POST /books/:id/documents/copy 将选定章节（含各自子章节树）复制到目标书籍，保持目录结构。
@@ -183,6 +184,11 @@ func (a *App) CopyDocuments(c *gin.Context) {
 	var req copyDocumentsRequest
 	if err := c.ShouldBindJSON(&req); err != nil || len(req.DocIDs) == 0 || req.TargetBookID == 0 {
 		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	// 移动需要源书写权限（复制只需可读）
+	if req.Move && !a.canEditBookContent(u, src) {
+		fail(c, http.StatusForbidden, "无权从源书籍移动章节")
 		return
 	}
 	var target models.Book
@@ -279,8 +285,28 @@ func (a *App) CopyDocuments(c *gin.Context) {
 		}
 	}
 
-	a.recordAudit(c, "document.copied", "book", strings.TrimSpace(target.Slug), "复制章节到书籍", map[string]any{
-		"source_book_id": src.ID, "target_book_id": target.ID, "copied": copied,
+	// 移动：复制成功后从源书删除选中的章节（含子树）
+	moved := false
+	if req.Move && copied > 0 {
+		ids := make([]uint, 0, len(copySet))
+		for id := range copySet {
+			ids = append(ids, id)
+		}
+		if err := a.DB.Where("book_id = ? AND id IN ?", src.ID, ids).Delete(&models.Document{}).Error; err != nil {
+			fail(c, http.StatusInternalServerError, "移动时删除源章节失败: "+err.Error())
+			return
+		}
+		moved = true
+	}
+
+	action := "document.copied"
+	label := "复制章节到书籍"
+	if moved {
+		action = "document.moved"
+		label = "移动章节到书籍"
+	}
+	a.recordAudit(c, action, "book", strings.TrimSpace(target.Slug), label, map[string]any{
+		"source_book_id": src.ID, "target_book_id": target.ID, "copied": copied, "moved": moved,
 	})
-	ok(c, gin.H{"copied_documents": copied, "target_book_id": target.ID, "target_slug": target.Slug})
+	ok(c, gin.H{"copied_documents": copied, "moved": moved, "target_book_id": target.ID, "target_slug": target.Slug})
 }

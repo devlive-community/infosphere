@@ -46,6 +46,9 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
   const [menuFor, setMenuFor] = useState<number | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [copyIds, setCopyIds] = useState<number[] | null>(null) // 打开复制弹框的目标章节 id（多选或单条）
+  const [copyMode, setCopyMode] = useState<'copy' | 'move'>('copy') // 复制到书籍 / 移动到书籍
+  const [bulkMenuOpen, setBulkMenuOpen] = useState(false)
+  const openTransfer = (ids: number[], mode: 'copy' | 'move') => { setCopyMode(mode); setCopyIds(ids) }
 
   const load = useCallback(() => {
     api<Document[]>(`/books/${book.id}/documents`).then((d) => setDocs(d || [])).catch((e) => showToast({ title: t('bookSettings.chapters.error.load'), message: (e as Error).message, tone: 'error' }))
@@ -258,9 +261,13 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                 <HistoryIcon className="h-4 w-4 text-slate-400" /> {t('bookSettings.chapters.menu.history')}
               </Link>
-              <button role="menuitem" onClick={() => { setMenuFor(null); setCopyIds([doc.id]) }}
+              <button role="menuitem" onClick={() => { setMenuFor(null); openTransfer([doc.id], 'copy') }}
                 className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
                 <i className="fa-solid fa-copy w-4 text-center text-slate-400" aria-hidden="true" /> {t('bookSettings.chapters.menu.copyTo')}
+              </button>
+              <button role="menuitem" onClick={() => { setMenuFor(null); openTransfer([doc.id], 'move') }}
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                <i className="fa-solid fa-arrow-right-arrow-left w-4 text-center text-slate-400" aria-hidden="true" /> {t('bookSettings.chapters.menu.moveTo')}
               </button>
               <div className="my-1 border-t border-slate-100" />
               {STATUS_ACTIONS.filter((s) => s.value !== doc.status).map((s) => (
@@ -309,7 +316,16 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
               <span>{t('bookSettings.chapters.copy.selectedCount', { count: selected.size })}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" loading={bulkBusy} onClick={() => setCopyIds(Array.from(selected))}><i className="fa-solid fa-copy" aria-hidden="true" /> {t('bookSettings.chapters.copy.action')}</Button>
+              <DropdownMenu open={bulkMenuOpen} onOpenChange={setBulkMenuOpen} label={t('bookSettings.chapters.copy.action')}>
+                <button role="menuitem" onClick={() => { setBulkMenuOpen(false); openTransfer(Array.from(selected), 'copy') }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                  <i className="fa-solid fa-copy w-4 text-center text-slate-400" aria-hidden="true" /> {t('bookSettings.chapters.menu.copyTo')}
+                </button>
+                <button role="menuitem" onClick={() => { setBulkMenuOpen(false); openTransfer(Array.from(selected), 'move') }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                  <i className="fa-solid fa-arrow-right-arrow-left w-4 text-center text-slate-400" aria-hidden="true" /> {t('bookSettings.chapters.menu.moveTo')}
+                </button>
+              </DropdownMenu>
               <span className="mx-1 hidden h-5 w-px bg-slate-200 sm:block" />
               <span className="text-xs text-slate-400">{t('bookSettings.chapters.bulk.setStatus')}</span>
               {STATUS_ACTIONS.map((s) => (
@@ -333,7 +349,7 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
       </div>
 
       {copyIds !== null && (
-        <CopyToBookDialog sourceBookId={book.id} sourceBookSlug={book.slug} docIds={copyIds}
+        <CopyToBookDialog sourceBookId={book.id} sourceBookSlug={book.slug} docIds={copyIds} mode={copyMode}
           onClose={() => setCopyIds(null)}
           onDone={() => { setCopyIds(null); setSelected(new Set()) }} />
       )}
@@ -341,11 +357,12 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
   )
 }
 
-// CopyToBookDialog 将选定章节（含子章节）复制到目标书籍。
-function CopyToBookDialog({ sourceBookId, sourceBookSlug, docIds, onClose, onDone }: {
+// CopyToBookDialog 将选定章节（含子章节）复制或移动到目标书籍。
+function CopyToBookDialog({ sourceBookId, docIds, mode, onClose, onDone }: {
   sourceBookId: number
   sourceBookSlug: string
   docIds: number[]
+  mode: 'copy' | 'move'
   onClose: () => void
   onDone: () => void
 }) {
@@ -353,28 +370,29 @@ function CopyToBookDialog({ sourceBookId, sourceBookSlug, docIds, onClose, onDon
   const { showToast } = useFeedback()
   const [target, setTarget] = useState<BookLite | null>(null)
   const [saving, setSaving] = useState(false)
+  const isMove = mode === 'move'
 
   async function submit() {
     if (!target) return
     setSaving(true)
     try {
       const r = await api<{ copied_documents: number; target_slug: string }>(`/books/${sourceBookId}/documents/copy`, {
-        method: 'POST', body: { target_book_id: target.id, doc_ids: docIds },
+        method: 'POST', body: { target_book_id: target.id, doc_ids: docIds, move: isMove },
       })
-      showToast({ message: t('bookSettings.chapters.copy.done', { count: r.copied_documents }), tone: 'success' })
+      showToast({ message: t(isMove ? 'bookSettings.chapters.move.done' : 'bookSettings.chapters.copy.done', { count: r.copied_documents }), tone: 'success' })
       onDone()
     } catch (e) {
-      showToast({ title: t('bookSettings.chapters.copy.failed'), message: (e as Error).message, tone: 'error' })
+      showToast({ title: t(isMove ? 'bookSettings.chapters.move.failed' : 'bookSettings.chapters.copy.failed'), message: (e as Error).message, tone: 'error' })
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal open onClose={onClose} title={t('bookSettings.chapters.copy.title')}
-      footer={<><Button variant="outline" onClick={onClose}>{t('common.actions.cancel')}</Button><Button loading={saving} disabled={!target} onClick={submit}>{t('bookSettings.chapters.copy.confirm')}</Button></>}>
+    <Modal open onClose={onClose} title={t(isMove ? 'bookSettings.chapters.move.title' : 'bookSettings.chapters.copy.title')}
+      footer={<><Button variant="outline" onClick={onClose}>{t('common.actions.cancel')}</Button><Button loading={saving} disabled={!target} onClick={submit}>{t(isMove ? 'bookSettings.chapters.move.confirm' : 'bookSettings.chapters.copy.confirm')}</Button></>}>
       <div className="space-y-4">
-        <p className="text-sm text-slate-500">{t('bookSettings.chapters.copy.desc', { count: docIds.length })}</p>
+        <p className="text-sm text-slate-500">{t(isMove ? 'bookSettings.chapters.move.desc' : 'bookSettings.chapters.copy.desc', { count: docIds.length })}</p>
         <Field label={t('bookSettings.chapters.copy.target')}>
           {/* 通用可搜索书籍选择器：查自己的书（含协作），排除源书自身 */}
           <BookSearchSelect value={target} onChange={setTarget} endpoint="/books" searchParam="title"
