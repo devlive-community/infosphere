@@ -65,6 +65,8 @@ interface SelectProps {
   leading?: ReactNode
   menuPlacement?: 'top' | 'bottom'
   size?: ControlSize
+  searchable?: boolean // 开启后菜单顶部显示搜索框，客户端按 label 过滤（选项多时用）
+  searchPlaceholder?: string
 }
 
 interface SelectMenuPosition {
@@ -77,9 +79,13 @@ const SELECT_MENU_GAP = 4
 const SELECT_VIEWPORT_GAP = 8
 
 // Select 自绘下拉选择：选项层通过 Portal 脱离页面 overflow 与层叠上下文。
-export function Select({ options, value, onChange, className, placeholder, disabled, leading, menuPlacement = 'bottom', size = 'md' }: SelectProps) {
+export function Select({ options, value, onChange, className, placeholder, disabled, leading, menuPlacement = 'bottom', size = 'md', searchable, searchPlaceholder }: SelectProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const visibleOptions = searchable && query.trim()
+    ? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
+    : options
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLUListElement>(null)
@@ -122,6 +128,7 @@ export function Select({ options, value, onChange, className, placeholder, disab
   useEffect(() => {
     if (!open) {
       setMenuPosition(null)
+      setQuery('')
       return
     }
     const frame = window.requestAnimationFrame(updateMenuPosition)
@@ -166,7 +173,17 @@ export function Select({ options, value, onChange, className, placeholder, disab
         visibility: menuPosition ? 'visible' : 'hidden',
       }}
     >
-      {options.map((o) => {
+      {searchable && (
+        <li role="none" className="sticky top-0 z-10 -mx-1 -mt-1 mb-1 bg-white px-1 pt-1">
+          <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()} placeholder={searchPlaceholder || t('ui.input.selectPlaceholder')}
+            className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:outline-none" />
+        </li>
+      )}
+      {visibleOptions.length === 0 && (
+        <li role="none" className="px-3 py-2 text-sm text-slate-400">{t('ui.select.noMatch')}</li>
+      )}
+      {visibleOptions.map((o) => {
         const active = o.value === value
         return (
           <li key={o.value} role="none">

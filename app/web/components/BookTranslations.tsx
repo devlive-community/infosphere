@@ -31,7 +31,7 @@ export default function BookTranslations({ bookId, linkTo = 'detail' }: { bookId
     <div className={`flex min-w-0 items-center gap-2 text-sm ${compact ? 'w-auto' : ''}`}>
       <span className="shrink-0 text-slate-400">{t('book.variant.language')}</span>
       <div className={compact ? 'w-48 max-w-full' : 'min-w-0 flex-1'}>
-        <Select size="sm" value={current?.slug || ''}
+        <Select size="sm" searchable value={current?.slug || ''}
           onChange={(value) => { const v = items.find((x) => x.slug === value); if (v && !v.current) router.push(hrefFor(v)) }}
           options={items.map((v) => ({ value: v.slug, label: v.language || v.title }))} />
       </div>

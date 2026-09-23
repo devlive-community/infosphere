@@ -33,7 +33,7 @@ export default function BookVersions({ bookId, linkTo = 'detail' }: { bookId: nu
     <div className={`flex min-w-0 items-center gap-2 text-sm ${compact ? 'w-auto' : ''}`}>
       <span className="shrink-0 text-slate-400">{t('book.variant.version')}</span>
       <div className={compact ? 'w-48 max-w-full' : 'min-w-0 flex-1'}>
-        <Select size="sm" value={current?.slug || ''}
+        <Select size="sm" searchable value={current?.slug || ''}
           onChange={(value) => { const v = items.find((x) => x.slug === value); if (v && !v.current) router.push(hrefFor(v)) }}
           options={ordered.map((v) => ({ value: v.slug, label: (v.version || v.title) + (v.is_latest ? ` · ${latestLabel}` : '') }))} />
       </div>

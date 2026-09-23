@@ -2968,6 +2968,7 @@ export const zh: Record<string, string> = {
   'ui.dropdownMenu.close': '关闭菜单',
   'ui.loading.default': '加载中…',
   'ui.input.selectPlaceholder': '请选择',
+  'ui.select.noMatch': '无匹配项',
   'ui.contextMenu.label': '上下文菜单',
   'ui.button.processing': '处理中…',
 

@@ -2968,6 +2968,7 @@ export const en: Record<string, string> = {
   'ui.dropdownMenu.close': 'Close menu',
   'ui.loading.default': 'Loading…',
   'ui.input.selectPlaceholder': 'Select an option',
+  'ui.select.noMatch': 'No matches',
   'ui.contextMenu.label': 'Context menu',
   'ui.button.processing': 'Processing…',
 
