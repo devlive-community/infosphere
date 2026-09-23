@@ -18,7 +18,7 @@ func TestDynamicI18nWorkflow(t *testing.T) {
 	a, owner, db := newContentImportTestApp(t)
 	a.Config = &config.Config{Installed: true, Secret: "i18n-test-secret"}
 	a.Notifications = newNotificationHub()
-	if err := a.setSetting(cfgAchievementsEnabled, "true", "test"); err != nil {
+	if err := a.setSetting("achievements_enabled", "true", "test"); err != nil {
 		t.Fatal(err)
 	}
 	a.syncPluginState() // 启用成就插件：建表 + 注册权限

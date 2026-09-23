@@ -57,7 +57,7 @@ func TestFeaturePluginGate(t *testing.T) {
 	if st := do(http.MethodPost, "/api/v1/admin/plugins/"+pluginAchievements+"/install"); st != http.StatusOK {
 		t.Fatalf("启用成就插件应 200，实际 %d", st)
 	}
-	if !a.pluginEnabled(pluginAchievements) || a.getSetting(cfgAchievementsEnabled) != "true" {
+	if !a.pluginEnabled(pluginAchievements) || a.getSetting("achievements_enabled") != "true" {
 		t.Fatalf("启用后开关未置真")
 	}
 	if !a.DB.Migrator().HasTable("achievement_definitions") {

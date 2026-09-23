@@ -14,20 +14,16 @@ import (
 	"knowforge/server/internal/jobqueue"
 	"knowforge/server/internal/models"
 	"knowforge/server/internal/plugincore"
-
-	"gorm.io/gorm"
 )
 
 const (
-	emailSendJobType              = "email.send"
-	pdfImportJobType              = "content.import.pdf"
-	zipImportJobType              = "content.import.zip"
-	maintenanceJobType            = "maintenance.cleanup"
-	achievementRecalculateJobType = "achievement.recalculate"
-	achievementEvaluateJobType    = "achievement.evaluate"
-	importSourceRetention         = 30 * 24 * time.Hour
-	maintenanceInterval           = 24 * time.Hour
-	maintenanceCheckEvery         = time.Hour
+	emailSendJobType      = "email.send"
+	pdfImportJobType      = "content.import.pdf"
+	zipImportJobType      = "content.import.zip"
+	maintenanceJobType    = "maintenance.cleanup"
+	importSourceRetention = 30 * 24 * time.Hour
+	maintenanceInterval   = 24 * time.Hour
+	maintenanceCheckEvery = time.Hour
 )
 
 type emailSendJob struct {
@@ -53,14 +49,6 @@ type zipImportJob struct {
 	Title      string `json:"title,omitempty"`
 }
 
-type achievementRecalculateJob struct {
-	AchievementID uint `json:"achievement_id,omitempty"`
-}
-
-type achievementEvaluateJob struct {
-	EventID uint `json:"event_id"`
-}
-
 func (a *App) configureJobQueue() error {
 	queue, err := jobqueue.New(a.DB, a.Config.Secret)
 	if err != nil {
@@ -80,8 +68,6 @@ func (a *App) configureJobQueue() error {
 	queue.RegisterResult(zipImportJobType, a.runZIPImportJob)
 	queue.Register(maintenanceJobType, a.runMaintenanceCleanup)
 	queue.Register(sitemapJobType, a.runSitemapGenerate)
-	queue.Register(achievementRecalculateJobType, a.runAchievementRecalculateJob)
-	queue.Register(achievementEvaluateJobType, a.runAchievementEvaluateJob)
 	// 插件登记的后台任务（如内容采集插件的整站采集）
 	for _, job := range plugincore.Jobs() {
 		queue.Register(job.Type, job.Factory(a))
@@ -89,100 +75,8 @@ func (a *App) configureJobQueue() error {
 	a.jobsMu.Lock()
 	a.Jobs = queue
 	a.jobsMu.Unlock()
-	a.enqueuePendingAchievementEvents(queue)
+	plugincore.FireJobQueueSweep(a, queue)
 	return nil
-}
-
-func (a *App) enqueueAchievementRecalculation(achievementID uint) (*models.BackgroundJob, error) {
-	queue := a.jobQueue()
-	if queue == nil {
-		return nil, fmt.Errorf("任务队列未初始化")
-	}
-	return queue.Enqueue(context.Background(), achievementRecalculateJobType, achievementRecalculateJob{AchievementID: achievementID}, 3)
-}
-
-func (a *App) runAchievementRecalculateJob(ctx context.Context, raw json.RawMessage) error {
-	var job achievementRecalculateJob
-	if err := json.Unmarshal(raw, &job); err != nil {
-		return fmt.Errorf("解析成就重算任务失败: %w", err)
-	}
-	if !a.achievementSettings().Enabled {
-		return nil
-	}
-	definitions := []models.AchievementDefinition{}
-	query := a.DB.WithContext(ctx).Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).Where("status = ? AND grant_mode = ?", "active", "auto")
-	if job.AchievementID > 0 {
-		query = query.Where("id = ?", job.AchievementID)
-	}
-	if err := query.Find(&definitions).Error; err != nil {
-		return err
-	}
-	const batchSize = 200
-	for offset := 0; ; offset += batchSize {
-		users := []models.User{}
-		if err := a.DB.WithContext(ctx).Select("id").Where("is_active = ?", true).Order("id ASC").Limit(batchSize).Offset(offset).Find(&users).Error; err != nil {
-			return err
-		}
-		for _, user := range users {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-			for _, definition := range definitions {
-				if err := a.evaluateAchievementForUser(user.ID, definition); err != nil {
-					return fmt.Errorf("评估用户 %d 的成就 %d 失败: %w", user.ID, definition.ID, err)
-				}
-			}
-		}
-		if len(users) < batchSize {
-			break
-		}
-	}
-	return nil
-}
-
-func (a *App) enqueuePendingAchievementEvents(queue *jobqueue.Queue) {
-	if queue == nil || !a.achievementSettings().Enabled {
-		return
-	}
-	events := []models.AchievementEvent{}
-	stale := currentTime().Add(-time.Hour)
-	if err := a.DB.Where("processed_at IS NULL AND (enqueued_at IS NULL OR enqueued_at < ?)", stale).Order("id ASC").Limit(500).Find(&events).Error; err != nil {
-		return
-	}
-	for _, event := range events {
-		a.enqueueAchievementEvent(queue, event.ID)
-	}
-}
-
-func (a *App) enqueueAchievementEvent(queue *jobqueue.Queue, eventID uint) {
-	if queue == nil || eventID == 0 {
-		return
-	}
-	if _, err := queue.Enqueue(context.Background(), achievementEvaluateJobType, achievementEvaluateJob{EventID: eventID}, 5); err == nil {
-		a.DB.Model(&models.AchievementEvent{}).Where("id = ?", eventID).Update("enqueued_at", currentTime())
-	}
-}
-
-func (a *App) runAchievementEvaluateJob(ctx context.Context, raw json.RawMessage) error {
-	var job achievementEvaluateJob
-	if err := json.Unmarshal(raw, &job); err != nil || job.EventID == 0 {
-		return fmt.Errorf("成就评估任务参数无效")
-	}
-	var event models.AchievementEvent
-	if err := a.DB.WithContext(ctx).First(&event, job.EventID).Error; err != nil {
-		return nil
-	}
-	if event.ProcessedAt != nil || !a.achievementSettings().Enabled {
-		return nil
-	}
-	if err := a.evaluateAllAchievementsForUser(event.UserID); err != nil {
-		a.DB.Model(&event).Update("last_error", truncateText(err.Error(), 1000))
-		return err
-	}
-	now := currentTime()
-	return a.DB.Model(&event).Updates(map[string]any{"processed_at": now, "last_error": ""}).Error
 }
 
 func (a *App) runMaintenanceCleanup(ctx context.Context, _ json.RawMessage) error {
@@ -377,12 +271,12 @@ func (a *App) startJobSupervisor(ctx context.Context) {
 			go queue.Start(workerCtx)
 			a.enqueueMaintenanceIfDue(ctx, queue)
 			a.enqueueSitemapIfDue(ctx, queue)
-			a.enqueuePendingAchievementEvents(queue)
+			plugincore.FireJobQueueSweep(a, queue)
 			nextMaintenanceCheck = currentTime().Add(maintenanceCheckEvery)
 		} else if queue != nil && !currentTime().Before(nextMaintenanceCheck) {
 			a.enqueueMaintenanceIfDue(ctx, queue)
 			a.enqueueSitemapIfDue(ctx, queue)
-			a.enqueuePendingAchievementEvents(queue)
+			plugincore.FireJobQueueSweep(a, queue)
 			nextMaintenanceCheck = currentTime().Add(maintenanceCheckEvery)
 		}
 		select {

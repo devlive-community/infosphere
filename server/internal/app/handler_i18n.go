@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -15,9 +14,10 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 )
 
-var errTranslationConflict = errors.New("翻译已被其他操作更新，请重新加载")
+var errTranslationConflict = plugincore.ErrTranslationConflict
 
 func canonicalLocale(raw string) (string, error) {
 	if raw == "zh" {
@@ -417,17 +417,9 @@ func (a *App) UpdateUserLocale(c *gin.Context) {
 	ok(c, gin.H{"locale": code})
 }
 
-// Resource schemas are code-owned. Arbitrary administrator fields never become executable behavior.
-var localizedResourceFields = map[string]map[string]int{
-	"achievement": {"name": 120, "description": 500, "locked_hint": 255},
-}
-
-type resourceTranslation struct {
-	Fields    map[string]string `json:"fields"`
-	Published map[string]string `json:"published,omitempty"`
-	Revision  int               `json:"revision"`
-	Publish   bool              `json:"publish"`
-}
+// resourceTranslation 可翻译资源的一种语言；资源类型与字段白名单由插件经 plugincore.RegisterLocalizedResource 登记
+// （schema 由代码拥有，管理员的任意字段不会成为可执行行为）。
+type resourceTranslation = plugincore.ResourceTranslation
 
 func loadResourceTranslations(db *gorm.DB, kind string, id uint) (map[string]resourceTranslation, error) {
 	rows := []models.LocalizedResourceContent{}
@@ -439,62 +431,8 @@ func loadResourceTranslations(db *gorm.DB, kind string, id uint) (map[string]res
 	return result, err
 }
 
-func (a *App) prepareAchievementTranslations(req *achievementDefinitionRequest, id uint) error {
-	locales, err := a.siteLocales()
-	if err != nil {
-		return err
-	}
-	existing, err := loadResourceTranslations(a.DB, "achievement", id)
-	if err != nil {
-		return err
-	}
-	if req.Translations == nil {
-		// Legacy clients retain their two-language write contract during migration.
-		req.Translations = map[string]resourceTranslation{}
-		for code, fields := range map[string]map[string]string{"zh-CN": {"name": req.Name, "description": req.Description, "locked_hint": req.LockedHint}, "en": {"name": req.NameEn, "description": req.DescriptionEn, "locked_hint": req.LockedHintEn}} {
-			if fields["name"] != "" {
-				req.Translations[code] = resourceTranslation{Fields: fields, Revision: existing[code].Revision, Publish: true}
-			}
-		}
-	}
-	def := defaultLocale(locales)
-	fields := existing[def].Published
-	published := existing[def].Published
-	if tr, ok := req.Translations[def]; ok {
-		fields = tr.Fields
-		if tr.Publish {
-			published = tr.Fields
-		}
-	}
-	if req.Status == "active" && strings.TrimSpace(published["name"]) == "" {
-		return fmt.Errorf("启用成就前请发布默认语言名称")
-	}
-	// The compatibility cache is also used by notifications; never copy unpublished text into it.
-	if published["name"] != "" {
-		fields = published
-	}
-	if fields["name"] == "" && req.Name == "" {
-		return fmt.Errorf("请填写默认语言名称")
-	}
-	if fields["name"] != "" {
-		req.Name = fields["name"]
-		req.Description = fields["description"]
-		req.LockedHint = fields["locked_hint"]
-	}
-	return nil
-}
-
-func attachAchievementTranslations(tx *gorm.DB, d *models.AchievementDefinition) error {
-	translations, err := loadResourceTranslations(tx, "achievement", d.ID)
-	if err != nil {
-		return err
-	}
-	d.Translations, err = json.Marshal(translations)
-	return err
-}
-
 func saveResourceTranslations(tx *gorm.DB, kind string, id, actor uint, translations map[string]resourceTranslation) error {
-	schema, ok := localizedResourceFields[kind]
+	schema, ok := plugincore.LocalizedResourceFields(kind)
 	if !ok {
 		return fmt.Errorf("资源类型不支持翻译")
 	}
@@ -542,23 +480,22 @@ func saveResourceTranslations(tx *gorm.DB, kind string, id, actor uint, translat
 	return nil
 }
 
-func (a *App) localizeAchievements(c *gin.Context, defs []models.AchievementDefinition) error {
-	if len(defs) == 0 {
-		return nil
+// localizeResources 按请求语言回退链解析一组资源的已发布翻译（未启用内容翻译的语言视为空层），
+// 并设置 Content-Language / 禁止缓存响应头。返回请求语言代码。
+func (a *App) localizeResources(c *gin.Context, kind string, ids []uint) (map[uint]plugincore.LocalizedResource, string, error) {
+	result := map[uint]plugincore.LocalizedResource{}
+	if len(ids) == 0 {
+		return result, "", nil
 	}
 	locales, err := a.siteLocales()
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 	code := a.requestLocale(c, locales)
 	chain := localeChain(code, locales)
-	ids := []uint{}
-	for _, d := range defs {
-		ids = append(ids, d.ID)
-	}
 	rows := []models.LocalizedResourceContent{}
-	if err := a.DB.Where("resource_type = ? AND resource_id IN ?", "achievement", ids).Find(&rows).Error; err != nil {
-		return err
+	if err := a.DB.Where("resource_type = ? AND resource_id IN ?", kind, ids).Find(&rows).Error; err != nil {
+		return nil, "", err
 	}
 	byID := map[uint]map[string]map[string]string{}
 	contentLocales := map[string]bool{}
@@ -575,88 +512,16 @@ func (a *App) localizeAchievements(c *gin.Context, defs []models.AchievementDefi
 			byID[r.ResourceID][r.Locale] = map[string]string{}
 		}
 	}
-	for i := range defs {
-		d := &defs[i]
-		values := map[string]string{"name": d.Name, "description": d.Description, "locked_hint": d.LockedHint}
-		if len(byID[d.ID]) > 0 {
-			values = map[string]string{"name": "—", "description": "", "locked_hint": ""}
-		}
-		d.ResolvedLocale = "zh-CN"
+	for _, id := range ids {
+		res := plugincore.LocalizedResource{HasTranslations: len(byID[id]) > 0}
 		for j := len(chain) - 1; j >= 0; j-- {
-			if fields := byID[d.ID][chain[j]]; len(fields) > 0 {
-				for key, value := range fields {
-					values[key] = value
-				}
-				if fields["name"] != "" {
-					d.ResolvedLocale = chain[j]
-				}
+			if fields := byID[id][chain[j]]; len(fields) > 0 {
+				res.Layers = append(res.Layers, plugincore.LocalizedLayer{Locale: chain[j], Fields: fields})
 			}
 		}
-		d.Name = values["name"]
-		d.Description = values["description"]
-		d.LockedHint = values["locked_hint"]
-		d.NameEn = ""
-		d.DescriptionEn = ""
-		d.LockedHintEn = "" // compatibility fields must not leak untranslated hidden content
+		result[id] = res
 	}
 	c.Header("Content-Language", code)
 	c.Header("Cache-Control", "private, no-store")
-	return nil
-}
-
-func (a *App) AdminResourceTranslations(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		fail(c, 400, "资源ID无效")
-		return
-	}
-	if c.Param("kind") != "achievement" {
-		fail(c, 404, "资源不存在")
-		return
-	}
-	var d models.AchievementDefinition
-	if a.DB.First(&d, uint(id)).Error != nil {
-		fail(c, 404, "资源不存在")
-		return
-	}
-	if c.Request.Method == http.MethodPut {
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 256<<10)
-		var req struct {
-			Translations map[string]resourceTranslation `json:"translations"`
-		}
-		if c.ShouldBindJSON(&req) != nil || req.Translations == nil {
-			fail(c, 400, "参数错误")
-			return
-		}
-		if err := a.DB.Transaction(func(tx *gorm.DB) error {
-			if err := saveResourceTranslations(tx, "achievement", uint(id), currentUser(c).ID, req.Translations); err != nil {
-				return err
-			}
-			result := tx.Model(&d).Where("version = ?", d.Version).Updates(map[string]any{"version": gorm.Expr("version + 1"), "updated_by": currentUser(c).ID})
-			if result.Error != nil {
-				return result.Error
-			}
-			if result.RowsAffected != 1 {
-				return errTranslationConflict
-			}
-			if err := tx.Preload("Rules").First(&d, d.ID).Error; err != nil {
-				return err
-			}
-			return saveAchievementDefinitionVersion(tx, d, d.Rules, currentUser(c).ID)
-		}); err != nil {
-			status := 400
-			if errors.Is(err, errTranslationConflict) {
-				status = 409
-			}
-			fail(c, status, err.Error())
-			return
-		}
-		a.recordAudit(c, "i18n.resource_updated", "achievement", c.Param("id"), d.Name, changedFields("translations"))
-	}
-	result, err := loadResourceTranslations(a.DB, "achievement", uint(id))
-	if err != nil {
-		fail(c, 500, "读取翻译失败")
-		return
-	}
-	ok(c, gin.H{"translations": result})
+	return result, code, nil
 }

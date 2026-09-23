@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"knowforge/server/internal/authz"
 	"knowforge/server/internal/config"
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 	"knowforge/server/internal/plugins"
 
 	"github.com/gin-gonic/gin"
@@ -53,10 +55,10 @@ type pluginInfo struct {
 	OnEnable func(a *App) error `json:"-"` // 启用后的初始化钩子（如成就重算、种子等级）
 }
 
-// pluginOnEnable 各插件启用后的 app 侧行为钩子，按键关联（元数据在子包，行为在 app）。
+// pluginOnEnable 各插件启用后的 app 侧行为钩子，按键关联（元数据在子包，行为在 app）；
+// 已搬入子包的插件改用 plugincore.OnPluginEnabled 登记。
 var pluginOnEnable = map[string]func(a *App) error{
-	pluginAchievements: func(a *App) error { _, err := a.enqueueAchievementRecalculation(0); return err },
-	pluginGrowth:       func(a *App) error { a.seedDefaultLevels(); a.seedExperienceRules(); return nil },
+	pluginGrowth: func(a *App) error { a.seedDefaultLevels(); a.seedExperienceRules(); return nil },
 }
 
 // pluginRegistry 由各插件子包自注册的元数据构建（禁止在此硬编码「有哪些插件」）。
@@ -140,7 +142,7 @@ func (a *App) RequireFeaturePlugin(key string) gin.HandlerFunc {
 // setFeaturePluginEnabled 切换 feature 插件启用状态：优先写其复用的站点配置开关，否则以 Plugin.Installed 记录。
 func (a *App) setFeaturePluginEnabled(info *pluginInfo, enabled bool) error {
 	if info.EnabledKey != "" {
-		return a.setSetting(info.EnabledKey, boolText(enabled), info.Name+" 启用开关")
+		return a.setSetting(info.EnabledKey, strconv.FormatBool(enabled), info.Name+" 启用开关")
 	}
 	var p models.Plugin
 	if err := a.DB.Where("`key` = ?", info.Key).First(&p).Error; err != nil {
@@ -482,6 +484,9 @@ func (a *App) AdminInstallPlugin(c *gin.Context) {
 			}
 			if info.OnEnable != nil {
 				_ = info.OnEnable(a)
+			}
+			for _, hook := range plugincore.PluginEnabledHooks(info.Key) { // 插件子包登记的启用钩子（如成就重算）
+				_ = hook(a)
 			}
 		}
 		a.syncPluginPermissions() // 注册该插件权限

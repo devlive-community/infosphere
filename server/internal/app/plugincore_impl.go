@@ -62,3 +62,23 @@ func (a *App) NewDocumentRevision(doc *models.Document, userID uint, reason stri
 	return newDocumentRevision(doc, userID, reason)
 }
 func (a *App) ExtractDocIcon(content string) string { return extractDocIcon(content) }
+
+// —— 成就插件所需 ——
+func (a *App) SetSetting(key, value, description string) error { return a.setSetting(key, value, description) }
+func (a *App) LoadResourceTranslations(db *gorm.DB, kind string, id uint) (map[string]plugincore.ResourceTranslation, error) {
+	return loadResourceTranslations(db, kind, id)
+}
+func (a *App) SaveResourceTranslations(tx *gorm.DB, kind string, id, actor uint, translations map[string]plugincore.ResourceTranslation) error {
+	return saveResourceTranslations(tx, kind, id, actor, translations)
+}
+func (a *App) DefaultContentLocale() (string, error) {
+	locales, err := a.siteLocales()
+	if err != nil {
+		return "", err
+	}
+	return defaultLocale(locales), nil
+}
+func (a *App) LocalizeResources(c *gin.Context, kind string, ids []uint) (map[uint]plugincore.LocalizedResource, string, error) {
+	return a.localizeResources(c, kind, ids)
+}
+func (a *App) PublicBackgroundJob(job *models.BackgroundJob) any { return publicBackgroundJob(job) }

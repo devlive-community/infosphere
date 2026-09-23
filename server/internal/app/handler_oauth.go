@@ -424,7 +424,7 @@ func (a *App) createBinding(userID uint, provider string, info *oauthUserInfo, a
 		ProviderUsername: info.Login, ProviderEmail: info.Email, AccessToken: accessToken,
 	}
 	if err := a.DB.Create(&binding).Error; err == nil {
-		a.recordAchievementEvent(userID, "account.oauth_bound", "user_authentication", strconv.FormatUint(uint64(binding.ID), 10), fmt.Sprintf("account.oauth_bound:%d", binding.ID))
+		a.emitActivity(userID, "account.oauth_bound", "user_authentication", strconv.FormatUint(uint64(binding.ID), 10), fmt.Sprintf("account.oauth_bound:%d", binding.ID))
 	}
 }
 

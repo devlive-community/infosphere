@@ -59,8 +59,6 @@ func (a *App) Router() *gin.Engine {
 	i18nAdmin.PUT("/locales", a.RequirePermission(authz.I18nManage), a.AdminSaveI18nLocales)
 	i18nAdmin.GET("/messages/:locale", a.RequirePermission(authz.I18nManage), a.AdminI18nMessages)
 	i18nAdmin.PUT("/messages/:locale", a.RequirePermission(authz.I18nManage), a.AdminSaveI18nMessages)
-	i18nAdmin.GET("/resources/:kind/:id", a.RequirePermission(authz.AchievementManage), a.AdminResourceTranslations)
-	i18nAdmin.PUT("/resources/:kind/:id", a.RequirePermission(authz.AchievementManage), a.AdminResourceTranslations)
 	{
 		// ── 安装向导（仅未安装时可用，无业务权限） ──
 		setup := api.Group("/setup")
@@ -142,9 +140,7 @@ func (a *App) Router() *gin.Engine {
 			public.GET("/explore/latest", a.ExploreLatest)
 			public.GET("/users/:username", a.GetUserProfile)
 			public.GET("/users/:username/books", a.GetUserBooks)
-			public.GET("/users/:username/achievements", a.RequireFeaturePlugin(pluginAchievements), a.PublicUserAchievements)
 			// /growth/settings、/growth/levels、/users/:username/growth 由 growth 插件子包自注册
-			public.GET("/achievements/settings", a.PublicAchievementSettings)
 
 			public.GET("/books", a.ListBooks) // mine=true 时要求登录
 			public.GET("/books/:id", a.GetBook)
@@ -291,11 +287,6 @@ func (a *App) Router() *gin.Engine {
 		}
 
 		// ── 成就（本人完整进度；公开陈列见 public 组） ──
-		achievements := api.Group("/users/me/achievements", a.RequireAuth(), a.RequireFeaturePlugin(pluginAchievements))
-		{
-			achievements.GET("", a.RequirePermission(authz.AchievementRead), a.MyAchievements)
-			achievements.PUT("/:id/display", a.RequirePermission(authz.AchievementUpdate), a.UpdateMyAchievementDisplay)
-		}
 
 		// ── 上传 ──
 		api.POST("/upload", a.RequireAuth(), a.RequireEmailVerified(), a.RequirePermission(authz.UploadCreate), a.RateLimit(uploadRateLimit), a.Upload)
@@ -359,25 +350,6 @@ func (a *App) Router() *gin.Engine {
 			admin.POST("/admin/plugins/:key/install", a.RequirePermission(authz.PluginManage), a.AdminInstallPlugin)
 			admin.POST("/admin/plugins/:key/uninstall", a.RequirePermission(authz.PluginManage), a.AdminUninstallPlugin)
 
-			// 成就管理：模块设置、指标目录、定义、重算与人工授予。
-			// 整组挂「成就」特性插件启用守卫——插件禁用时后台接口一并 404（前端菜单同步隐藏）。
-			// 例外：achievement-settings 不挂守卫，禁用后仍可读取（返回 enabled=false），启用/禁用统一走插件页。
-			admin.GET("/admin/achievement-settings", a.RequirePermission(authz.AchievementManage), a.AdminGetAchievementSettings)
-			admin.PUT("/admin/achievement-settings", a.RequirePermission(authz.AchievementManage), a.AdminUpdateAchievementSettings)
-			achAdmin := admin.Group("", a.RequireFeaturePlugin(pluginAchievements))
-			{
-				achAdmin.GET("/admin/achievement-metrics", a.RequirePermission(authz.AchievementManage), a.AdminAchievementMetrics)
-				achAdmin.GET("/admin/achievements", a.RequirePermission(authz.AchievementManage), a.AdminListAchievements)
-				achAdmin.POST("/admin/achievements", a.RequirePermission(authz.AchievementManage), a.AdminCreateAchievement)
-				achAdmin.GET("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminGetAchievement)
-				achAdmin.PUT("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminUpdateAchievement)
-				achAdmin.DELETE("/admin/achievements/:id", a.RequirePermission(authz.AchievementManage), a.AdminDeleteAchievement)
-				achAdmin.POST("/admin/achievements/:id/recalculate", a.RequirePermission(authz.AchievementManage), a.AdminRecalculateAchievement)
-				achAdmin.POST("/admin/achievement-icons", a.RequirePermission(authz.AchievementManage), a.AdminUploadAchievementIcon)
-				achAdmin.GET("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminListAchievementGrants)
-				achAdmin.POST("/admin/achievement-grants", a.RequirePermission(authz.AchievementGrant), a.AdminGrantAchievement)
-				achAdmin.POST("/admin/achievement-grants/:id/revoke", a.RequirePermission(authz.AchievementGrant), a.AdminRevokeAchievement)
-			}
 
 			// 成长等级管理 /admin/growth/* 由 growth 插件子包自注册（自带 RequireAdmin + 特性插件守卫 + 权限）
 		}

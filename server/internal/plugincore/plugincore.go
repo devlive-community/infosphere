@@ -8,6 +8,7 @@ package plugincore
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -70,6 +71,18 @@ type Core interface {
 	NewDocumentRevision(doc *models.Document, userID uint, reason string) models.DocumentRevision
 	// ExtractDocIcon 从章节正文提取图标声明（与编辑器保存章节时的规则一致）。
 	ExtractDocIcon(content string) string
+
+	// 成就插件所需
+	SetSetting(key, value, description string) error
+	// LoadResourceTranslations / SaveResourceTranslations 读写可翻译资源（字段白名单见 RegisterLocalizedResource）。
+	LoadResourceTranslations(db *gorm.DB, kind string, id uint) (map[string]ResourceTranslation, error)
+	SaveResourceTranslations(tx *gorm.DB, kind string, id, actor uint, translations map[string]ResourceTranslation) error
+	// DefaultContentLocale 站点默认语言代码。
+	DefaultContentLocale() (string, error)
+	// LocalizeResources 按请求语言回退链解析资源的已发布翻译（并设置 Content-Language 等响应头），返回请求语言代码。
+	LocalizeResources(c *gin.Context, kind string, ids []uint) (map[uint]LocalizedResource, string, error)
+	// PublicBackgroundJob 后台任务的对外视图（不含 payload），与 /tasks/:id 返回形状一致。
+	PublicBackgroundJob(job *models.BackgroundJob) any
 }
 
 // ImportedChapter 导入/采集成书时的中性章节结构（避免暴露 app 内部类型）。
@@ -157,4 +170,107 @@ func DecorateBooks(core Core, books []*models.Book) {
 	for _, h := range booksDecorators {
 		h(core, books)
 	}
+}
+
+// —— 业务活动事件：核心在业务操作成功后发出（注册、建书、评论、阅读等），插件订阅（如成就评估）。——
+
+// ActivityEvent 一次业务活动；DedupeKey 用于订阅方幂等。
+type ActivityEvent struct {
+	UserID     uint
+	Type       string
+	SourceType string
+	SourceID   string
+	DedupeKey  string
+}
+
+// ActivityHandler 活动订阅回调；失败不得反向影响主业务。
+type ActivityHandler func(core Core, ev ActivityEvent)
+
+var activityHandlers []ActivityHandler
+
+// OnActivity 订阅业务活动事件。
+func OnActivity(h ActivityHandler) { activityHandlers = append(activityHandlers, h) }
+
+// FireActivity 由核心在业务操作成功后调用。
+func FireActivity(core Core, ev ActivityEvent) {
+	if ev.UserID == 0 {
+		return
+	}
+	for _, h := range activityHandlers {
+		h(core, ev)
+	}
+}
+
+// —— 任务队列巡检：核心在任务队列创建时及之后的周期巡检（与维护任务同频）时调用，插件可补投遗留任务。——
+
+var queueSweepHooks []func(core Core, queue *jobqueue.Queue)
+
+// OnJobQueueSweep 订阅任务队列巡检。
+func OnJobQueueSweep(h func(core Core, queue *jobqueue.Queue)) {
+	queueSweepHooks = append(queueSweepHooks, h)
+}
+
+// FireJobQueueSweep 由核心在任务队列创建及周期巡检时调用。
+func FireJobQueueSweep(core Core, queue *jobqueue.Queue) {
+	for _, h := range queueSweepHooks {
+		h(core, queue)
+	}
+}
+
+// —— 插件启用：插件在管理端被启用后的初始化（如成就全量重算）。——
+
+var pluginEnabledHooks = map[string][]func(core Core) error{}
+
+// OnPluginEnabled 订阅某插件被启用。
+func OnPluginEnabled(key string, h func(core Core) error) {
+	pluginEnabledHooks[key] = append(pluginEnabledHooks[key], h)
+}
+
+// PluginEnabledHooks 返回某插件的启用回调。
+func PluginEnabledHooks(key string) []func(core Core) error { return pluginEnabledHooks[key] }
+
+// —— 用户数据：插件声明按 user_id 归属的表，核心删除用户（注销/管理员删除）时一并清理（表不存在则跳过）。——
+
+var userDataModels []any
+
+// RegisterUserDataModels 登记插件的用户归属模型（需含 user_id 列）。
+func RegisterUserDataModels(models ...any) { userDataModels = append(userDataModels, models...) }
+
+// UserDataModels 返回全部已登记的用户归属模型。
+func UserDataModels() []any { return userDataModels }
+
+// —— 可翻译资源：插件登记资源类型的字段白名单（字段 → 最大字符数），核心负责存取与语言回退。——
+
+// ResourceTranslation 一种语言下的资源翻译（草稿 Fields / 已发布 Published，Revision 乐观锁）。
+type ResourceTranslation struct {
+	Fields    map[string]string `json:"fields"`
+	Published map[string]string `json:"published,omitempty"`
+	Revision  int               `json:"revision"`
+	Publish   bool              `json:"publish"`
+}
+
+// LocalizedLayer 语言回退链上的一层已发布翻译。
+type LocalizedLayer struct {
+	Locale string
+	Fields map[string]string
+}
+
+// LocalizedResource 资源的已发布翻译：Layers 按「兜底语言 → 请求语言」顺序排列，依次覆盖即得最终文案。
+type LocalizedResource struct {
+	HasTranslations bool
+	Layers          []LocalizedLayer
+}
+
+// ErrTranslationConflict 翻译被并发修改（Revision 不匹配）。
+var ErrTranslationConflict = errors.New("翻译已被其他操作更新，请重新加载")
+
+var localizedResourceFields = map[string]map[string]int{}
+
+// RegisterLocalizedResource 登记可翻译资源类型及其字段白名单。
+func RegisterLocalizedResource(kind string, fields map[string]int) { localizedResourceFields[kind] = fields }
+
+// LocalizedResourceFields 返回资源类型的字段白名单。
+func LocalizedResourceFields(kind string) (map[string]int, bool) {
+	f, ok := localizedResourceFields[kind]
+	return f, ok
 }

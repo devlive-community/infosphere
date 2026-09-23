@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -50,15 +51,14 @@ func (a *App) deleteUserCompletely(uid uint) error {
 			}
 		}
 		// 2. 用户自身数据（跨他人书籍的互动/进度、绑定、设置、2FA 等）
-		for _, m := range []any{
+		for _, m := range append([]any{
 			&models.UserAuthentication{}, &models.Notification{}, &models.BookCollaborator{},
 			&models.PasswordResetToken{}, &models.LoginChallenge{}, &models.TwoFactorStepUp{},
 			&models.UserNotificationPref{}, &models.TwoFactorBackupCode{}, &models.EmailVerificationToken{},
 			&models.Comment{}, &models.Reaction{}, &models.ReadingProgress{}, &models.ReadChapter{},
 			&models.ReadingAnnotation{}, &models.UserExportSetting{}, &models.UserReadingGoal{},
 			&models.ReadingDailyTime{}, &models.UserThemeSetting{},
-			&models.UserAchievementProgress{}, &models.UserAchievement{}, &models.AchievementEvent{},
-		} {
+		}, plugincore.UserDataModels()...) {
 			// 插件独占表（如成就）在插件未启用时不存在，跳过其清理
 			if !tx.Migrator().HasTable(m) {
 				continue

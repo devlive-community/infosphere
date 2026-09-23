@@ -20,7 +20,7 @@
 | GET/PUT | `/admin/i18n/locales` | GET 返回 `{items,revision}`；PUT 提交完整 items 和读取时 revision；禁止删除已有语言，可停用；校验唯一默认语言、有效回退与循环 | `i18n:manage`，仅管理员 |
 | GET | `/admin/i18n/messages/:locale` | `{locale,revision,draft,published}`，包括停用语言的历史语言包 | `i18n:manage`，仅管理员 |
 | PUT | `/admin/i18n/messages/:locale` | `{messages,revision,publish}`；覆盖该语言草稿，publish=true 同时更新发布版本。最大 2MB / 10000 条；后台编辑器检查 ICU 语法和变量 | `i18n:manage`，仅管理员 |
-| GET/PUT | `/admin/i18n/resources/:kind/:id` | 当前 kind 仅 `achievement`；读取/部分更新动态内容翻译，PUT `{translations}` 只写传入的语言 | `achievement:manage`，仅管理员 |
+| GET/PUT | `/admin/i18n/resources/achievement/:id` | 读取/部分更新成就的动态内容翻译，PUT `{translations}` 只写传入的语言（由「成就系统」插件注册；可翻译资源类型由插件经 `plugincore.RegisterLocalizedResource` 登记） | `achievement:manage`，仅管理员 |
 
 成就 POST/PUT 也接受 `translations`，与定义、规则和版本快照同事务保存。例如：
 

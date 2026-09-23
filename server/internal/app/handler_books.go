@@ -432,7 +432,7 @@ func (a *App) CreateBook(c *gin.Context) {
 			return
 		}
 	}
-	a.recordAchievementEvent(u.ID, "book.created", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.created:%d", book.ID))
+	a.emitActivity(u.ID, "book.created", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.created:%d", book.ID))
 	ok(c, book)
 }
 
@@ -603,7 +603,7 @@ func (a *App) UpdateBook(c *gin.Context) {
 			"owner_id":  book.UserID,
 		})
 	}
-	a.recordAchievementEvent(book.UserID, "book.updated", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.updated:%d:%d", book.ID, book.UpdatedAt.UnixNano()))
+	a.emitActivity(book.UserID, "book.updated", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.updated:%d:%d", book.ID, book.UpdatedAt.UnixNano()))
 	ok(c, book)
 }
 
@@ -671,7 +671,7 @@ func (a *App) IncrementBookView(c *gin.Context) {
 		return
 	}
 	bucket := currentTime().Unix() / 300
-	a.recordAchievementEvent(book.UserID, "book.viewed", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.viewed:%d:%d", book.UserID, bucket))
+	a.emitActivity(book.UserID, "book.viewed", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.viewed:%d:%d", book.UserID, bucket))
 	ok(c, gin.H{"view_count": viewCount})
 }
 

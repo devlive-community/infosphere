@@ -56,9 +56,9 @@ func (a *App) PutReaction(c *gin.Context) {
 			map[string]any{"link": fmt.Sprintf("/book/detail/%s", book.Slug)})
 	}
 	if tx.RowsAffected > 0 {
-		a.recordAchievementEvent(u.ID, "reaction.created", "reaction", strconv.FormatUint(uint64(reaction.ID), 10), fmt.Sprintf("reaction.given:%d", reaction.ID))
+		a.emitActivity(u.ID, "reaction.created", "reaction", strconv.FormatUint(uint64(reaction.ID), 10), fmt.Sprintf("reaction.given:%d", reaction.ID))
 		if book.UserID != u.ID {
-			a.recordAchievementEvent(book.UserID, "reaction.received", "reaction", strconv.FormatUint(uint64(reaction.ID), 10), fmt.Sprintf("reaction.received:%d", reaction.ID))
+			a.emitActivity(book.UserID, "reaction.received", "reaction", strconv.FormatUint(uint64(reaction.ID), 10), fmt.Sprintf("reaction.received:%d", reaction.ID))
 		}
 	}
 	ok(c, reaction)

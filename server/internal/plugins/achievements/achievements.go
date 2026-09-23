@@ -1,4 +1,4 @@
-package app
+package achievements
 
 import (
 	"encoding/json"
@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
+	"knowforge/server/internal/plugins"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -44,14 +46,14 @@ func achievementBoolValue(raw string, fallback bool) bool {
 	return raw == "true"
 }
 
-func (a *App) achievementSettings() achievementSettings {
+func (am *behavior) achievementSettings() achievementSettings {
 	rows := []models.SiteConfig{}
-	a.DB.Where("config_key IN ?", []string{cfgAchievementsEnabled, cfgAchievementsPublic, cfgAchievementsNotifications, cfgAchievementsAllowHide, cfgAchievementsShowcaseLimit}).Find(&rows)
+	am.core.Gorm().Where("config_key IN ?", []string{cfgAchievementsEnabled, cfgAchievementsPublic, cfgAchievementsNotifications, cfgAchievementsAllowHide, cfgAchievementsShowcaseLimit}).Find(&rows)
 	values := map[string]string{}
 	for _, row := range rows {
 		values[row.ConfigKey] = row.ConfigValue
 	}
-	limit := atoiDefault(values[cfgAchievementsShowcaseLimit], 6)
+	limit := am.core.AtoiDefault(values[cfgAchievementsShowcaseLimit], 6)
 	if limit < 1 {
 		limit = 1
 	} else if limit > 12 {
@@ -67,12 +69,14 @@ func (a *App) achievementSettings() achievementSettings {
 }
 
 // PublicAchievementSettings GET /achievements/settings 返回不敏感的模块状态。
-func (a *App) PublicAchievementSettings(c *gin.Context) {
-	s := a.achievementSettings()
-	ok(c, gin.H{"enabled": s.Enabled, "public_profile_enabled": s.PublicProfileEnabled, "showcase_limit": s.ShowcaseLimit})
+func (am *behavior) PublicAchievementSettings(c *gin.Context) {
+	s := am.achievementSettings()
+	am.core.OK(c, gin.H{"enabled": s.Enabled, "public_profile_enabled": s.PublicProfileEnabled, "showcase_limit": s.ShowcaseLimit})
 }
 
-func (a *App) AdminGetAchievementSettings(c *gin.Context) { ok(c, a.achievementSettings()) }
+func (am *behavior) AdminGetAchievementSettings(c *gin.Context) {
+	am.core.OK(c, am.achievementSettings())
+}
 
 func boolText(value bool) string {
 	if value {
@@ -82,10 +86,10 @@ func boolText(value bool) string {
 }
 
 // AdminUpdateAchievementSettings PUT /admin/achievement-settings。
-func (a *App) AdminUpdateAchievementSettings(c *gin.Context) {
+func (am *behavior) AdminUpdateAchievementSettings(c *gin.Context) {
 	var req achievementSettings
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		am.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	if req.ShowcaseLimit < 1 {
@@ -102,15 +106,15 @@ func (a *App) AdminUpdateAchievementSettings(c *gin.Context) {
 		{cfgAchievementsShowcaseLimit, strconv.Itoa(req.ShowcaseLimit), "公开主页成就陈列数量"},
 	}
 	for _, item := range settings {
-		if err := a.setSetting(item.key, item.value, item.description); err != nil {
-			fail(c, http.StatusInternalServerError, "保存成就设置失败")
+		if err := am.core.SetSetting(item.key, item.value, item.description); err != nil {
+			am.core.Fail(c, http.StatusInternalServerError, "保存成就设置失败")
 			return
 		}
 	}
-	a.recordAudit(c, "achievement.settings_updated", "achievement", "settings", "成就模块设置", changedFields(
+	am.core.RecordAudit(c, "achievement.settings_updated", "achievement", "settings", "成就模块设置", changedFields(
 		"public_profile_enabled", "notifications_enabled", "allow_user_hide", "showcase_limit",
 	))
-	ok(c, a.achievementSettings())
+	am.core.OK(c, am.achievementSettings())
 }
 
 type achievementMetric struct {
@@ -161,10 +165,10 @@ func metricByKey(key string) (achievementMetric, bool) {
 	return achievementMetric{}, false
 }
 
-func (a *App) AdminAchievementMetrics(c *gin.Context) {
+func (am *behavior) AdminAchievementMetrics(c *gin.Context) {
 	// 成长（经验/等级）指标依赖「成长」插件：插件禁用时不在规则构建器里暴露，
 	// 避免管理员配出永远为 0 的规则（评估侧也已对 growth.* 做同样门禁）。
-	growthOn := a.pluginEnabled(pluginGrowth)
+	growthOn := am.core.PluginEnabled(plugins.KeyGrowth)
 	items := make([]achievementMetric, 0, len(achievementMetrics))
 	for _, metric := range achievementMetrics {
 		if !growthOn && strings.HasPrefix(metric.Key, "growth.") {
@@ -175,7 +179,7 @@ func (a *App) AdminAchievementMetrics(c *gin.Context) {
 		}
 		items = append(items, metric)
 	}
-	ok(c, gin.H{"items": items})
+	am.core.OK(c, gin.H{"items": items})
 }
 
 type achievementRuleRequest struct {
@@ -190,31 +194,31 @@ type achievementRuleRequest struct {
 }
 
 type achievementDefinitionRequest struct {
-	Translations       map[string]resourceTranslation `json:"translations"`
-	Key                string                         `json:"key"`
-	Name               string                         `json:"name"`
-	NameEn             string                         `json:"name_en"`
-	Description        string                         `json:"description"`
-	DescriptionEn      string                         `json:"description_en"`
-	LockedHint         string                         `json:"locked_hint"`
-	LockedHintEn       string                         `json:"locked_hint_en"`
-	Category           string                         `json:"category"`
-	Status             string                         `json:"status"`
-	Rarity             string                         `json:"rarity"`
-	IconType           string                         `json:"icon_type"`
-	IconValue          string                         `json:"icon_value"`
-	AssetID            *uint                          `json:"asset_id"`
-	SeriesKey          string                         `json:"series_key"`
-	Tier               int                            `json:"tier"`
-	SupersedesPrevious bool                           `json:"supersedes_previous"`
-	RuleLogic          string                         `json:"rule_logic"`
-	GrantMode          string                         `json:"grant_mode"`
-	Visibility         string                         `json:"visibility"`
-	ProgressMode       string                         `json:"progress_mode"`
-	ActiveFrom         *time.Time                     `json:"active_from"`
-	ActiveUntil        *time.Time                     `json:"active_until"`
-	SortOrder          int                            `json:"sort_order"`
-	Rules              []achievementRuleRequest       `json:"rules"`
+	Translations       map[string]plugincore.ResourceTranslation `json:"translations"`
+	Key                string                                    `json:"key"`
+	Name               string                                    `json:"name"`
+	NameEn             string                                    `json:"name_en"`
+	Description        string                                    `json:"description"`
+	DescriptionEn      string                                    `json:"description_en"`
+	LockedHint         string                                    `json:"locked_hint"`
+	LockedHintEn       string                                    `json:"locked_hint_en"`
+	Category           string                                    `json:"category"`
+	Status             string                                    `json:"status"`
+	Rarity             string                                    `json:"rarity"`
+	IconType           string                                    `json:"icon_type"`
+	IconValue          string                                    `json:"icon_value"`
+	AssetID            *uint                                     `json:"asset_id"`
+	SeriesKey          string                                    `json:"series_key"`
+	Tier               int                                       `json:"tier"`
+	SupersedesPrevious bool                                      `json:"supersedes_previous"`
+	RuleLogic          string                                    `json:"rule_logic"`
+	GrantMode          string                                    `json:"grant_mode"`
+	Visibility         string                                    `json:"visibility"`
+	ProgressMode       string                                    `json:"progress_mode"`
+	ActiveFrom         *time.Time                                `json:"active_from"`
+	ActiveUntil        *time.Time                                `json:"active_until"`
+	SortOrder          int                                       `json:"sort_order"`
+	Rules              []achievementRuleRequest                  `json:"rules"`
 }
 
 func oneOf(value string, allowed ...string) bool {
@@ -413,8 +417,8 @@ func rulesFromRequest(id uint, requests []achievementRuleRequest) ([]models.Achi
 	return rules, nil
 }
 
-func saveAchievementDefinitionVersion(tx *gorm.DB, definition models.AchievementDefinition, rules []models.AchievementRule, actorID uint) error {
-	if err := attachAchievementTranslations(tx, &definition); err != nil {
+func (am *behavior) saveAchievementDefinitionVersion(tx *gorm.DB, definition models.AchievementDefinition, rules []models.AchievementRule, actorID uint) error {
+	if err := am.attachAchievementTranslations(tx, &definition); err != nil {
 		return err
 	}
 	definition.Rules = rules
@@ -429,13 +433,13 @@ func saveAchievementDefinitionVersion(tx *gorm.DB, definition models.Achievement
 	}).Create(&version).Error
 }
 
-func (a *App) validateAchievementAsset(req *achievementDefinitionRequest) error {
+func (am *behavior) validateAchievementAsset(req *achievementDefinitionRequest) error {
 	if req.IconType == "fa" {
 		req.AssetID = nil
 		return nil
 	}
 	var asset models.AchievementAsset
-	if req.AssetID == nil || a.DB.First(&asset, *req.AssetID).Error != nil {
+	if req.AssetID == nil || am.core.Gorm().First(&asset, *req.AssetID).Error != nil {
 		return fmt.Errorf("成就图标资源不存在")
 	}
 	if req.IconType != asset.Kind {
@@ -446,9 +450,9 @@ func (a *App) validateAchievementAsset(req *achievementDefinitionRequest) error 
 }
 
 // AdminListAchievements GET /admin/achievements。
-func (a *App) AdminListAchievements(c *gin.Context) {
-	page, pageSize := paginate(c)
-	query := a.DB.Model(&models.AchievementDefinition{})
+func (am *behavior) AdminListAchievements(c *gin.Context) {
+	page, pageSize := am.core.Paginate(c)
+	query := am.core.Gorm().Model(&models.AchievementDefinition{})
 	if q := strings.TrimSpace(c.Query("q")); q != "" {
 		query = query.Where("name LIKE ? OR achievement_key LIKE ?", "%"+q+"%", "%"+q+"%")
 	}
@@ -460,69 +464,69 @@ func (a *App) AdminListAchievements(c *gin.Context) {
 	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "查询成就失败")
+		am.core.Fail(c, http.StatusInternalServerError, "查询成就失败")
 		return
 	}
 	items := []models.AchievementDefinition{}
 	if err := query.Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).Preload("Asset").
 		Order("sort_order ASC, id DESC").Limit(pageSize).Offset((page - 1) * pageSize).Find(&items).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "查询成就失败")
+		am.core.Fail(c, http.StatusInternalServerError, "查询成就失败")
 		return
 	}
 	for index := range items {
-		if err := attachAchievementTranslations(a.DB, &items[index]); err != nil {
-			fail(c, 500, "读取翻译失败")
+		if err := am.attachAchievementTranslations(am.core.Gorm(), &items[index]); err != nil {
+			am.core.Fail(c, 500, "读取翻译失败")
 			return
 		}
 		if items[index].Rules == nil {
 			items[index].Rules = []models.AchievementRule{}
 		}
 	}
-	ok(c, PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
+	am.core.OK(c, plugincore.PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
 }
 
-func (a *App) AdminGetAchievement(c *gin.Context) {
+func (am *behavior) AdminGetAchievement(c *gin.Context) {
 	var definition models.AchievementDefinition
-	if err := a.DB.Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).Preload("Asset").First(&definition, c.Param("id")).Error; err != nil {
-		fail(c, http.StatusNotFound, "成就不存在")
+	if err := am.core.Gorm().Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).Preload("Asset").First(&definition, c.Param("id")).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "成就不存在")
 		return
 	}
 	if definition.Rules == nil {
 		definition.Rules = []models.AchievementRule{}
 	}
-	if err := attachAchievementTranslations(a.DB, &definition); err != nil {
-		fail(c, 500, "读取翻译失败")
+	if err := am.attachAchievementTranslations(am.core.Gorm(), &definition); err != nil {
+		am.core.Fail(c, 500, "读取翻译失败")
 		return
 	}
-	ok(c, definition)
+	am.core.OK(c, definition)
 }
 
-func (a *App) AdminCreateAchievement(c *gin.Context) {
+func (am *behavior) AdminCreateAchievement(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 	var req achievementDefinitionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		am.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
-	if err := a.prepareAchievementTranslations(&req, 0); err != nil {
-		fail(c, 400, err.Error())
+	if err := am.prepareAchievementTranslations(&req, 0); err != nil {
+		am.core.Fail(c, 400, err.Error())
 		return
 	}
 	if err := normalizeAchievementRequest(&req); err != nil {
-		fail(c, http.StatusBadRequest, err.Error())
+		am.core.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := a.validateAchievementAsset(&req); err != nil {
-		fail(c, http.StatusBadRequest, err.Error())
+	if err := am.validateAchievementAsset(&req); err != nil {
+		am.core.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	user := currentUser(c)
+	user := am.core.CurrentUser(c)
 	definition := definitionFromRequest(req, user.ID)
-	err := a.DB.Transaction(func(tx *gorm.DB) error {
+	err := am.core.Gorm().Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&definition).Error; err != nil {
 			return err
 		}
-		if err := saveResourceTranslations(tx, "achievement", definition.ID, user.ID, req.Translations); err != nil {
+		if err := am.core.SaveResourceTranslations(tx, "achievement", definition.ID, user.ID, req.Translations); err != nil {
 			return err
 		}
 		rules, err := rulesFromRequest(definition.ID, req.Rules)
@@ -534,17 +538,17 @@ func (a *App) AdminCreateAchievement(c *gin.Context) {
 				return err
 			}
 		}
-		return saveAchievementDefinitionVersion(tx, definition, rules, user.ID)
+		return am.saveAchievementDefinitionVersion(tx, definition, rules, user.ID)
 	})
 	if err != nil {
-		fail(c, http.StatusBadRequest, "创建失败，成就标识可能已经存在")
+		am.core.Fail(c, http.StatusBadRequest, "创建失败，成就标识可能已经存在")
 		return
 	}
-	a.recordAudit(c, "achievement.created", "achievement", auditID(definition.ID), definition.Name, map[string]any{"key": definition.Key, "status": definition.Status})
-	if definition.Status == "active" && definition.GrantMode == "auto" && a.achievementSettings().Enabled {
-		_, _ = a.enqueueAchievementRecalculation(definition.ID)
+	am.core.RecordAudit(c, "achievement.created", "achievement", auditID(definition.ID), definition.Name, map[string]any{"key": definition.Key, "status": definition.Status})
+	if definition.Status == "active" && definition.GrantMode == "auto" && am.achievementSettings().Enabled {
+		_, _ = am.enqueueAchievementRecalculation(definition.ID)
 	}
-	a.AdminGetAchievement(withParam(c, "id", strconv.FormatUint(uint64(definition.ID), 10)))
+	am.AdminGetAchievement(withParam(c, "id", strconv.FormatUint(uint64(definition.ID), 10)))
 }
 
 // withParam 只用于同一请求内复用读取 handler。
@@ -559,34 +563,34 @@ func withParam(c *gin.Context, key, value string) *gin.Context {
 	return c
 }
 
-func (a *App) AdminUpdateAchievement(c *gin.Context) {
+func (am *behavior) AdminUpdateAchievement(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 	var definition models.AchievementDefinition
-	if err := a.DB.First(&definition, c.Param("id")).Error; err != nil {
-		fail(c, http.StatusNotFound, "成就不存在")
+	if err := am.core.Gorm().First(&definition, c.Param("id")).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "成就不存在")
 		return
 	}
 	var req achievementDefinitionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		am.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	if definition.Status != "draft" {
 		req.Key = definition.Key
 	}
-	if err := a.prepareAchievementTranslations(&req, definition.ID); err != nil {
-		fail(c, 400, err.Error())
+	if err := am.prepareAchievementTranslations(&req, definition.ID); err != nil {
+		am.core.Fail(c, 400, err.Error())
 		return
 	}
 	if err := normalizeAchievementRequest(&req); err != nil {
-		fail(c, http.StatusBadRequest, err.Error())
+		am.core.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := a.validateAchievementAsset(&req); err != nil {
-		fail(c, http.StatusBadRequest, err.Error())
+	if err := am.validateAchievementAsset(&req); err != nil {
+		am.core.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	user := currentUser(c)
+	user := am.core.CurrentUser(c)
 	version := definition.Version
 	if definition.Status != "draft" || req.Status != "draft" {
 		version++
@@ -594,8 +598,8 @@ func (a *App) AdminUpdateAchievement(c *gin.Context) {
 	updates := definitionFromRequest(req, definition.CreatedBy)
 	updates.Version = version
 	updates.UpdatedBy = user.ID
-	err := a.DB.Transaction(func(tx *gorm.DB) error {
-		if err := saveResourceTranslations(tx, "achievement", definition.ID, user.ID, req.Translations); err != nil {
+	err := am.core.Gorm().Transaction(func(tx *gorm.DB) error {
+		if err := am.core.SaveResourceTranslations(tx, "achievement", definition.ID, user.ID, req.Translations); err != nil {
 			return err
 		}
 		if err := tx.Model(&definition).Select(
@@ -621,33 +625,33 @@ func (a *App) AdminUpdateAchievement(c *gin.Context) {
 		updates.ID = definition.ID
 		updates.CreatedAt = definition.CreatedAt
 		updates.UpdatedAt = currentTime()
-		return saveAchievementDefinitionVersion(tx, updates, rules, user.ID)
+		return am.saveAchievementDefinitionVersion(tx, updates, rules, user.ID)
 	})
 	if err != nil {
-		if err == errTranslationConflict {
-			fail(c, 409, err.Error())
+		if err == plugincore.ErrTranslationConflict {
+			am.core.Fail(c, 409, err.Error())
 		} else {
-			fail(c, 400, "保存成就失败："+err.Error())
+			am.core.Fail(c, 400, "保存成就失败："+err.Error())
 		}
 		return
 	}
-	a.recordAudit(c, "achievement.updated", "achievement", auditID(definition.ID), req.Name, map[string]any{"version": version, "status": req.Status})
-	if req.Status == "active" && a.achievementSettings().Enabled {
-		_, _ = a.enqueueAchievementRecalculation(definition.ID)
+	am.core.RecordAudit(c, "achievement.updated", "achievement", auditID(definition.ID), req.Name, map[string]any{"version": version, "status": req.Status})
+	if req.Status == "active" && am.achievementSettings().Enabled {
+		_, _ = am.enqueueAchievementRecalculation(definition.ID)
 	}
-	a.AdminGetAchievement(c)
+	am.AdminGetAchievement(c)
 }
 
-func (a *App) AdminDeleteAchievement(c *gin.Context) {
+func (am *behavior) AdminDeleteAchievement(c *gin.Context) {
 	var definition models.AchievementDefinition
-	if err := a.DB.First(&definition, c.Param("id")).Error; err != nil {
-		fail(c, http.StatusNotFound, "成就不存在")
+	if err := am.core.Gorm().First(&definition, c.Param("id")).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "成就不存在")
 		return
 	}
 	var grants int64
-	a.DB.Model(&models.UserAchievement{}).Where("achievement_id = ?", definition.ID).Count(&grants)
+	am.core.Gorm().Model(&models.UserAchievement{}).Where("achievement_id = ?", definition.ID).Count(&grants)
 	if definition.Status == "draft" && grants == 0 {
-		if err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := am.core.Gorm().Transaction(func(tx *gorm.DB) error {
 			if err := tx.Where("achievement_id = ?", definition.ID).Delete(&models.AchievementRule{}).Error; err != nil {
 				return err
 			}
@@ -662,15 +666,15 @@ func (a *App) AdminDeleteAchievement(c *gin.Context) {
 			}
 			return tx.Delete(&definition).Error
 		}); err != nil {
-			fail(c, http.StatusInternalServerError, "删除成就失败")
+			am.core.Fail(c, http.StatusInternalServerError, "删除成就失败")
 			return
 		}
-	} else if err := a.DB.Model(&definition).Updates(map[string]any{"status": "archived", "updated_by": currentUser(c).ID}).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "归档成就失败")
+	} else if err := am.core.Gorm().Model(&definition).Updates(map[string]any{"status": "archived", "updated_by": am.core.CurrentUser(c).ID}).Error; err != nil {
+		am.core.Fail(c, http.StatusInternalServerError, "归档成就失败")
 		return
 	}
-	a.recordAudit(c, "achievement.archived", "achievement", auditID(definition.ID), definition.Name, map[string]any{"deleted_draft": definition.Status == "draft" && grants == 0})
-	ok(c, gin.H{"message": "成就已归档或删除"})
+	am.core.RecordAudit(c, "achievement.archived", "achievement", auditID(definition.ID), definition.Name, map[string]any{"deleted_draft": definition.Status == "draft" && grants == 0})
+	am.core.OK(c, gin.H{"message": "成就已归档或删除"})
 }
 
 type achievementFilterValues struct {
@@ -691,14 +695,14 @@ func achievementWindowStart(rule models.AchievementRule) *time.Time {
 	var start time.Time
 	switch rule.WindowType {
 	case "calendar_day":
-		start = analyticsDayStart(now)
+		start = dayStart(now)
 	case "calendar_week":
 		start = weekStart(now)
 	case "calendar_month":
 		local := now.In(time.Local)
 		start = time.Date(local.Year(), local.Month(), 1, 0, 0, 0, 0, time.Local)
 	case "rolling_days":
-		start = analyticsDayStart(now).AddDate(0, 0, -(rule.WindowValue - 1))
+		start = dayStart(now).AddDate(0, 0, -(rule.WindowValue - 1))
 	default:
 		return nil
 	}
@@ -719,30 +723,30 @@ func applyStringFilter(query *gorm.DB, column string, values []string) *gorm.DB 
 	return query
 }
 
-func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule) (int64, error) {
+func (am *behavior) evaluateAchievementMetric(userID uint, rule models.AchievementRule) (int64, error) {
 	filters := ruleFilters(rule.Filters)
 	var value int64
 	var err error
 	switch rule.MetricKey {
 	case "reading.chapters_read":
-		q := applyAchievementWindow(a.DB.Model(&models.ReadChapter{}).Where("user_id = ?", userID), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.ReadChapter{}).Where("user_id = ?", userID), "created_at", rule)
 		err = q.Count(&value).Error
 	case "reading.books_started":
-		q := applyAchievementWindow(a.DB.Model(&models.ReadingProgress{}).Where("user_id = ?", userID), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.ReadingProgress{}).Where("user_id = ?", userID), "created_at", rule)
 		err = q.Distinct("book_id").Count(&value).Error
 	case "reading.minutes":
-		q := a.DB.Model(&models.ReadingDailyTime{}).Where("user_id = ?", userID)
+		q := am.core.Gorm().Model(&models.ReadingDailyTime{}).Where("user_id = ?", userID)
 		if start := achievementWindowStart(rule); start != nil {
 			q = q.Where("day >= ?", start.Format("2006-01-02"))
 		}
 		err = q.Select("COALESCE(SUM(seconds), 0)").Scan(&value).Error
 		value /= 60
 	case "reading.annotations":
-		q := applyAchievementWindow(a.DB.Model(&models.ReadingAnnotation{}).Where("user_id = ?", userID), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.ReadingAnnotation{}).Where("user_id = ?", userID), "created_at", rule)
 		q = applyStringFilter(q, "kind", filters.Kind)
 		err = q.Count(&value).Error
 	case "reading.reading_days":
-		q := a.DB.Model(&models.ReadingDailyTime{}).Where("user_id = ? AND seconds > 0", userID)
+		q := am.core.Gorm().Model(&models.ReadingDailyTime{}).Where("user_id = ? AND seconds > 0", userID)
 		if start := achievementWindowStart(rule); start != nil {
 			q = q.Where("day >= ?", start.Format("2006-01-02"))
 		}
@@ -752,43 +756,43 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 		if rule.MetricKey == "social.favorites_given" {
 			typeName = "favorite"
 		}
-		q := applyAchievementWindow(a.DB.Model(&models.Reaction{}).Where("user_id = ? AND type = ?", userID, typeName), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.Reaction{}).Where("user_id = ? AND type = ?", userID, typeName), "created_at", rule)
 		err = q.Count(&value).Error
 	case "social.comments_created":
-		q := applyAchievementWindow(a.DB.Model(&models.Comment{}).Where("user_id = ? AND status = ?", userID, "published"), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.Comment{}).Where("user_id = ? AND status = ?", userID, "published"), "created_at", rule)
 		if filters.RepliesOnly != nil && *filters.RepliesOnly {
 			q = q.Where("parent_id IS NOT NULL")
 		}
 		err = q.Count(&value).Error
 	case "creator.books_created":
-		q := applyAchievementWindow(a.DB.Model(&models.Book{}).Where("user_id = ?", userID), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.Book{}).Where("user_id = ?", userID), "created_at", rule)
 		q = applyStringFilter(q, "status", filters.Status)
 		if filters.IsPublic != nil {
 			q = q.Where("is_public = ?", *filters.IsPublic)
 		}
 		err = q.Count(&value).Error
 	case "creator.documents_created":
-		q := applyAchievementWindow(a.DB.Model(&models.Document{}).Where("user_id = ?", userID), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.Document{}).Where("user_id = ?", userID), "created_at", rule)
 		q = applyStringFilter(q, "status", filters.Status)
 		err = q.Count(&value).Error
 	case "creator.published_books":
-		q := applyAchievementWindow(a.DB.Model(&models.Book{}).Where("user_id = ? AND status = ?", userID, "published"), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.Book{}).Where("user_id = ? AND status = ?", userID, "published"), "created_at", rule)
 		err = q.Count(&value).Error
 	case "creator.tags_used":
 		// 标签表由标签插件建；未启用/已清除时该指标记 0
-		if a.pluginEnabled(pluginTags) && a.DB.Migrator().HasTable("book_tags") {
-			err = a.DB.Table("book_tags").
+		if am.core.PluginEnabled(plugins.KeyTags) && am.core.Gorm().Migrator().HasTable("book_tags") {
+			err = am.core.Gorm().Table("book_tags").
 				Joins("JOIN books ON books.id = book_tags.book_id AND books.deleted_at IS NULL").
 				Where("books.user_id = ?", userID).
 				Distinct("book_tags.tag_id").Count(&value).Error
 		}
 	case "creator.published_words":
-		err = a.DB.Model(&models.Document{}).
+		err = am.core.Gorm().Model(&models.Document{}).
 			Joins("JOIN books ON books.id = documents.book_id AND books.deleted_at IS NULL").
 			Where("books.user_id = ? AND documents.status = ? AND documents.deleted_at IS NULL", userID, "published").
 			Select("COALESCE(SUM(LENGTH(documents.content)), 0)").Scan(&value).Error
 	case "reading.books_completed":
-		err = a.DB.Raw(`SELECT COUNT(*) FROM (
+		err = am.core.Gorm().Raw(`SELECT COUNT(*) FROM (
 			SELECT rc.book_id FROM read_chapters rc
 			JOIN documents d ON d.id = rc.doc_id AND d.deleted_at IS NULL AND d.status = ?
 			WHERE rc.user_id = ?
@@ -799,9 +803,9 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 		) completed`, "published", userID, "published").Scan(&value).Error
 	case "growth.total_xp", "growth.current_level":
 		// 成长指标：需启用成长插件且表存在，否则记 0
-		if a.pluginEnabled(pluginGrowth) && a.DB.Migrator().HasTable("user_growth_profiles") {
+		if am.core.PluginEnabled(plugins.KeyGrowth) && am.core.Gorm().Migrator().HasTable("user_growth_profiles") {
 			var p models.UserGrowthProfile
-			if a.DB.Where("user_id = ?", userID).First(&p).Error == nil {
+			if am.core.Gorm().Where("user_id = ?", userID).First(&p).Error == nil {
 				if rule.MetricKey == "growth.total_xp" {
 					value = p.LifetimeXP
 				} else {
@@ -810,7 +814,7 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 			}
 		}
 	case "creator.views_received":
-		q := a.DB.Model(&models.Book{}).Where("user_id = ?", userID)
+		q := am.core.Gorm().Model(&models.Book{}).Where("user_id = ?", userID)
 		q = applyStringFilter(q, "status", filters.Status)
 		if filters.IsPublic != nil {
 			q = q.Where("is_public = ?", *filters.IsPublic)
@@ -821,12 +825,12 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 		if rule.MetricKey == "creator.favorites_received" {
 			typeName = "favorite"
 		}
-		q := a.DB.Model(&models.Reaction{}).Joins("JOIN books ON books.id = reactions.book_id AND books.deleted_at IS NULL").
+		q := am.core.Gorm().Model(&models.Reaction{}).Joins("JOIN books ON books.id = reactions.book_id AND books.deleted_at IS NULL").
 			Where("books.user_id = ? AND reactions.type = ?", userID, typeName)
 		q = applyAchievementWindow(q, "reactions.created_at", rule)
 		err = q.Count(&value).Error
 	case "creator.comments_received":
-		q := a.DB.Model(&models.Comment{}).
+		q := am.core.Gorm().Model(&models.Comment{}).
 			Joins("JOIN documents ON documents.id = comments.document_id AND documents.deleted_at IS NULL").
 			Joins("JOIN books ON books.id = documents.book_id AND books.deleted_at IS NULL").
 			Where("books.user_id = ? AND comments.status = ?", userID, "published")
@@ -837,20 +841,20 @@ func (a *App) evaluateAchievementMetric(userID uint, rule models.AchievementRule
 		err = q.Count(&value).Error
 	case "account.age_days":
 		var user models.User
-		if err = a.DB.Select("created_at").First(&user, userID).Error; err == nil {
+		if err = am.core.Gorm().Select("created_at").First(&user, userID).Error; err == nil {
 			value = int64(currentTime().Sub(user.CreatedAt).Hours() / 24)
 			if value < 0 {
 				value = 0
 			}
 		}
 	case "account.invited_users":
-		q := applyAchievementWindow(a.DB.Model(&models.User{}).Where("invited_by = ?", userID), "created_at", rule)
+		q := applyAchievementWindow(am.core.Gorm().Model(&models.User{}).Where("invited_by = ?", userID), "created_at", rule)
 		err = q.Count(&value).Error
 	case "account.oauth_bindings":
-		err = a.DB.Model(&models.UserAuthentication{}).Where("user_id = ?", userID).Count(&value).Error
+		err = am.core.Gorm().Model(&models.UserAuthentication{}).Where("user_id = ?", userID).Count(&value).Error
 	case "account.email_verified", "account.two_factor_enabled":
 		var user models.User
-		if err = a.DB.Select("email_verified", "two_factor_enabled").First(&user, userID).Error; err == nil {
+		if err = am.core.Gorm().Select("email_verified", "two_factor_enabled").First(&user, userID).Error; err == nil {
 			if (rule.MetricKey == "account.email_verified" && user.EmailVerified) || (rule.MetricKey == "account.two_factor_enabled" && user.TwoFactorEnabled) {
 				value = 1
 			}
@@ -900,14 +904,14 @@ func achievementIsEffective(definition models.AchievementDefinition, now time.Ti
 	return definition.ActiveUntil == nil || !now.After(*definition.ActiveUntil)
 }
 
-func (a *App) evaluateAchievementForUser(userID uint, definition models.AchievementDefinition) error {
+func (am *behavior) evaluateAchievementForUser(userID uint, definition models.AchievementDefinition) error {
 	if definition.GrantMode != "auto" || !achievementIsEffective(definition, currentTime()) || len(definition.Rules) == 0 {
 		return nil
 	}
 	values := make([]achievementRuleValue, 0, len(definition.Rules))
 	allMet, anyMet, percentSum, maxPercent := true, false, 0, 0
 	for _, rule := range definition.Rules {
-		value, err := a.evaluateAchievementMetric(userID, rule)
+		value, err := am.evaluateAchievementMetric(userID, rule)
 		if err != nil {
 			return err
 		}
@@ -932,7 +936,7 @@ func (a *App) evaluateAchievementForUser(userID uint, definition models.Achievem
 	raw, _ := json.Marshal(values)
 	now := currentTime()
 	createdGrant := false
-	err := a.DB.Transaction(func(tx *gorm.DB) error {
+	err := am.core.Gorm().Transaction(func(tx *gorm.DB) error {
 		progress := models.UserAchievementProgress{UserID: userID, AchievementID: definition.ID}
 		if err := tx.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "user_id"}, {Name: "achievement_id"}}, DoNothing: true,
@@ -971,29 +975,29 @@ func (a *App) evaluateAchievementForUser(userID uint, definition models.Achievem
 	if err != nil {
 		return err
 	}
-	if createdGrant && a.achievementSettings().NotificationsEnabled {
-		a.Notify(userID, "achievement", fmt.Sprintf("已解锁成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
-		a.DB.Model(&models.UserAchievement{}).Where("user_id = ? AND achievement_id = ?", userID, definition.ID).Update("notified_at", now)
+	if createdGrant && am.achievementSettings().NotificationsEnabled {
+		am.core.Notify(userID, "achievement", fmt.Sprintf("已解锁成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
+		am.core.Gorm().Model(&models.UserAchievement{}).Where("user_id = ? AND achievement_id = ?", userID, definition.ID).Update("notified_at", now)
 	}
 	// 成长联动：成就解锁奖励经验（每 user+achievement 只结算一次；成长插件启用时生效）
 	if createdGrant && definition.RewardXP > 0 {
-		a.RecordExperience(userID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
+		am.core.RecordExperience(userID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
 			fmt.Sprintf("achievement.unlocked:%d:%d", userID, definition.ID), definition.RewardXP, "")
 	}
 	return nil
 }
 
-func (a *App) evaluateAllAchievementsForUser(userID uint) error {
-	if !a.achievementSettings().Enabled {
+func (am *behavior) evaluateAllAchievementsForUser(userID uint) error {
+	if !am.achievementSettings().Enabled {
 		return nil
 	}
 	definitions := []models.AchievementDefinition{}
-	if err := a.DB.Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).
+	if err := am.core.Gorm().Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).
 		Where("status = ? AND grant_mode = ?", "active", "auto").Find(&definitions).Error; err != nil {
 		return err
 	}
 	for _, definition := range definitions {
-		if err := a.evaluateAchievementForUser(userID, definition); err != nil {
+		if err := am.evaluateAchievementForUser(userID, definition); err != nil {
 			return err
 		}
 	}
@@ -1001,17 +1005,17 @@ func (a *App) evaluateAllAchievementsForUser(userID uint) error {
 }
 
 // recordAchievementEvent 在业务操作成功后持久化一个幂等评估触发；失败不反向破坏主业务。
-func (a *App) recordAchievementEvent(userID uint, eventType, sourceType, sourceID, dedupeKey string) {
-	if userID == 0 || !a.achievementSettings().Enabled {
+func (am *behavior) recordAchievementEvent(userID uint, eventType, sourceType, sourceID, dedupeKey string) {
+	if userID == 0 || !am.achievementSettings().Enabled {
 		return
 	}
 	event := models.AchievementEvent{UserID: userID, Type: eventType, SourceType: sourceType, SourceID: sourceID, DedupeKey: dedupeKey}
-	result := a.DB.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "dedupe_key"}}, DoNothing: true}).Create(&event)
+	result := am.core.Gorm().Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "dedupe_key"}}, DoNothing: true}).Create(&event)
 	if result.Error != nil || result.RowsAffected == 0 {
 		return
 	}
-	if queue := a.jobQueue(); queue != nil {
-		a.enqueueAchievementEvent(queue, event.ID)
+	if queue := am.core.JobQueue(); queue != nil {
+		am.enqueueAchievementEvent(queue, event.ID)
 	}
 }
 
@@ -1022,34 +1026,34 @@ type userAchievementItem struct {
 	Unlocked   bool                            `json:"unlocked"`
 }
 
-func (a *App) MyAchievements(c *gin.Context) {
-	settings := a.achievementSettings()
+func (am *behavior) MyAchievements(c *gin.Context) {
+	settings := am.achievementSettings()
 	if !settings.Enabled {
-		ok(c, gin.H{"enabled": false, "allow_user_hide": settings.AllowUserHide, "items": []userAchievementItem{}, "unlocked_count": 0, "total": 0})
+		am.core.OK(c, gin.H{"enabled": false, "allow_user_hide": settings.AllowUserHide, "items": []userAchievementItem{}, "unlocked_count": 0, "total": 0})
 		return
 	}
-	user := currentUser(c)
+	user := am.core.CurrentUser(c)
 	// 打开「我的成就」时实时评估一次：刷新进度、并补授已达成但因事件未触发而尚未解锁的成就
 	// （保证进度条新鲜、「看到即解锁」）。失败不阻塞页面。
-	_ = a.evaluateAllAchievementsForUser(user.ID)
+	_ = am.evaluateAllAchievementsForUser(user.ID)
 	definitions := []models.AchievementDefinition{}
-	if err := a.DB.Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).Preload("Asset").
+	if err := am.core.Gorm().Preload("Rules", func(db *gorm.DB) *gorm.DB { return db.Order("sort_order ASC, id ASC") }).Preload("Asset").
 		Where("status = ?", "active").Order("sort_order ASC, id ASC").Find(&definitions).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "获取成就失败")
+		am.core.Fail(c, http.StatusInternalServerError, "获取成就失败")
 		return
 	}
 	progresses := []models.UserAchievementProgress{}
-	if err := a.localizeAchievements(c, definitions); err != nil {
-		fail(c, 500, "读取翻译失败")
+	if err := am.localizeAchievements(c, definitions); err != nil {
+		am.core.Fail(c, 500, "读取翻译失败")
 		return
 	}
-	a.DB.Where("user_id = ?", user.ID).Find(&progresses)
+	am.core.Gorm().Where("user_id = ?", user.ID).Find(&progresses)
 	progressByID := map[uint]*models.UserAchievementProgress{}
 	for index := range progresses {
 		progressByID[progresses[index].AchievementID] = &progresses[index]
 	}
 	grants := []models.UserAchievement{}
-	a.DB.Where("user_id = ? AND revoked_at IS NULL", user.ID).Find(&grants)
+	am.core.Gorm().Where("user_id = ? AND revoked_at IS NULL", user.ID).Find(&grants)
 	grantByID := map[uint]*models.UserAchievement{}
 	for index := range grants {
 		grantByID[grants[index].AchievementID] = &grants[index]
@@ -1083,19 +1087,19 @@ func (a *App) MyAchievements(c *gin.Context) {
 		}
 		items = append(items, userAchievementItem{Definition: definition, Progress: progress, Grant: grant, Unlocked: unlocked})
 	}
-	ok(c, gin.H{"enabled": true, "allow_user_hide": settings.AllowUserHide, "items": items, "unlocked_count": unlockedCount, "total": len(items)})
+	am.core.OK(c, gin.H{"enabled": true, "allow_user_hide": settings.AllowUserHide, "items": items, "unlocked_count": unlockedCount, "total": len(items)})
 }
 
-func (a *App) UpdateMyAchievementDisplay(c *gin.Context) {
-	settings := a.achievementSettings()
+func (am *behavior) UpdateMyAchievementDisplay(c *gin.Context) {
+	settings := am.achievementSettings()
 	if !settings.Enabled {
-		fail(c, http.StatusNotFound, "成就模块未开启")
+		am.core.Fail(c, http.StatusNotFound, "成就模块未开启")
 		return
 	}
-	user := currentUser(c)
+	user := am.core.CurrentUser(c)
 	var grant models.UserAchievement
-	if err := a.DB.Preload("Achievement").Where("id = ? AND user_id = ? AND revoked_at IS NULL", c.Param("id"), user.ID).First(&grant).Error; err != nil {
-		fail(c, http.StatusNotFound, "成就不存在")
+	if err := am.core.Gorm().Preload("Achievement").Where("id = ? AND user_id = ? AND revoked_at IS NULL", c.Param("id"), user.ID).First(&grant).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "成就不存在")
 		return
 	}
 	var req struct {
@@ -1103,17 +1107,17 @@ func (a *App) UpdateMyAchievementDisplay(c *gin.Context) {
 		ShowcaseOrder *int  `json:"showcase_order"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		am.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	updates := map[string]any{}
 	if req.IsPublic != nil {
 		if *req.IsPublic && (grant.Achievement == nil || grant.Achievement.Visibility == "private") {
-			fail(c, http.StatusForbidden, "该成就定义为仅本人可见")
+			am.core.Fail(c, http.StatusForbidden, "该成就定义为仅本人可见")
 			return
 		}
 		if !settings.AllowUserHide && !*req.IsPublic {
-			fail(c, http.StatusForbidden, "管理员未开放隐藏成就功能")
+			am.core.Fail(c, http.StatusForbidden, "管理员未开放隐藏成就功能")
 			return
 		}
 		updates["is_public"] = *req.IsPublic
@@ -1128,13 +1132,13 @@ func (a *App) UpdateMyAchievementDisplay(c *gin.Context) {
 		updates["showcase_order"] = order
 	}
 	if len(updates) > 0 {
-		if err := a.DB.Model(&grant).Updates(updates).Error; err != nil {
-			fail(c, http.StatusInternalServerError, "保存展示设置失败")
+		if err := am.core.Gorm().Model(&grant).Updates(updates).Error; err != nil {
+			am.core.Fail(c, http.StatusInternalServerError, "保存展示设置失败")
 			return
 		}
 	}
-	a.DB.First(&grant, grant.ID)
-	ok(c, grant)
+	am.core.Gorm().First(&grant, grant.ID)
+	am.core.OK(c, grant)
 }
 
 type publicAchievementDefinition struct {
@@ -1160,23 +1164,23 @@ type publicAchievementGrant struct {
 	UnlockedAt  time.Time                   `json:"unlocked_at"`
 }
 
-func (a *App) PublicUserAchievements(c *gin.Context) {
-	settings := a.achievementSettings()
+func (am *behavior) PublicUserAchievements(c *gin.Context) {
+	settings := am.achievementSettings()
 	if !settings.Enabled || !settings.PublicProfileEnabled {
-		ok(c, gin.H{"enabled": false, "items": []models.UserAchievement{}})
+		am.core.OK(c, gin.H{"enabled": false, "items": []models.UserAchievement{}})
 		return
 	}
 	var user models.User
-	if err := a.DB.Select("id").Where("username = ?", c.Param("username")).First(&user).Error; err != nil {
-		fail(c, http.StatusNotFound, "用户不存在")
+	if err := am.core.Gorm().Select("id").Where("username = ?", c.Param("username")).First(&user).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "用户不存在")
 		return
 	}
 	grants := []models.UserAchievement{}
-	if err := a.DB.Preload("Achievement", func(db *gorm.DB) *gorm.DB { return db.Preload("Asset") }).
+	if err := am.core.Gorm().Preload("Achievement", func(db *gorm.DB) *gorm.DB { return db.Preload("Asset") }).
 		Joins("JOIN achievement_definitions ON achievement_definitions.id = user_achievements.achievement_id").
 		Where("user_achievements.user_id = ? AND user_achievements.is_public = ? AND user_achievements.revoked_at IS NULL AND achievement_definitions.visibility IN ?", user.ID, true, []string{"public", "hidden"}).
 		Order("user_achievements.showcase_order DESC, user_achievements.unlocked_at DESC").Find(&grants).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "获取公开成就失败")
+		am.core.Fail(c, http.StatusInternalServerError, "获取公开成就失败")
 		return
 	}
 	highestTier := map[string]int{}
@@ -1186,8 +1190,8 @@ func (a *App) PublicUserAchievements(c *gin.Context) {
 			localized = append(localized, *grant.Achievement)
 		}
 	}
-	if err := a.localizeAchievements(c, localized); err != nil {
-		fail(c, 500, "读取翻译失败")
+	if err := am.localizeAchievements(c, localized); err != nil {
+		am.core.Fail(c, 500, "读取翻译失败")
 		return
 	}
 	localizedByID := map[uint]models.AchievementDefinition{}
@@ -1225,16 +1229,16 @@ func (a *App) PublicUserAchievements(c *gin.Context) {
 			break
 		}
 	}
-	ok(c, gin.H{"enabled": true, "items": items})
+	am.core.OK(c, gin.H{"enabled": true, "items": items})
 }
 
-func (a *App) AdminListAchievementGrants(c *gin.Context) {
-	page, pageSize := paginate(c)
-	query := a.DB.Model(&models.UserAchievement{})
-	if userID := atoiDefault(c.Query("user_id"), 0); userID > 0 {
+func (am *behavior) AdminListAchievementGrants(c *gin.Context) {
+	page, pageSize := am.core.Paginate(c)
+	query := am.core.Gorm().Model(&models.UserAchievement{})
+	if userID := am.core.AtoiDefault(c.Query("user_id"), 0); userID > 0 {
 		query = query.Where("user_id = ?", userID)
 	}
-	if achievementID := atoiDefault(c.Query("achievement_id"), 0); achievementID > 0 {
+	if achievementID := am.core.AtoiDefault(c.Query("achievement_id"), 0); achievementID > 0 {
 		query = query.Where("achievement_id = ?", achievementID)
 	}
 	if c.Query("revoked") == "true" {
@@ -1246,7 +1250,7 @@ func (a *App) AdminListAchievementGrants(c *gin.Context) {
 	query.Count(&total)
 	items := []models.UserAchievement{}
 	if err := query.Preload("Achievement").Order("unlocked_at DESC, id DESC").Limit(pageSize).Offset((page - 1) * pageSize).Find(&items).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "查询授予记录失败")
+		am.core.Fail(c, http.StatusInternalServerError, "查询授予记录失败")
 		return
 	}
 	userIDs := []uint{}
@@ -1255,7 +1259,7 @@ func (a *App) AdminListAchievementGrants(c *gin.Context) {
 	}
 	users := []models.User{}
 	if len(userIDs) > 0 {
-		a.DB.Select("id", "username", "avatar").Where("id IN ?", userIDs).Find(&users)
+		am.core.Gorm().Select("id", "username", "avatar").Where("id IN ?", userIDs).Find(&users)
 	}
 	userMap := map[uint]models.User{}
 	for _, user := range users {
@@ -1265,10 +1269,10 @@ func (a *App) AdminListAchievementGrants(c *gin.Context) {
 	for _, item := range items {
 		rows = append(rows, gin.H{"grant": item, "user": userMap[item.UserID]})
 	}
-	ok(c, PageResult{Items: rows, Total: total, Page: page, PageSize: pageSize})
+	am.core.OK(c, plugincore.PageResult{Items: rows, Total: total, Page: page, PageSize: pageSize})
 }
 
-func (a *App) AdminGrantAchievement(c *gin.Context) {
+func (am *behavior) AdminGrantAchievement(c *gin.Context) {
 	var req struct {
 		Username      string `json:"username"`
 		AchievementID uint   `json:"achievement_id"`
@@ -1276,21 +1280,21 @@ func (a *App) AdminGrantAchievement(c *gin.Context) {
 		IsPublic      *bool  `json:"is_public"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Username) == "" || req.AchievementID == 0 {
-		fail(c, http.StatusBadRequest, "用户和成就不能为空")
+		am.core.Fail(c, http.StatusBadRequest, "用户和成就不能为空")
 		return
 	}
 	var user models.User
-	if err := a.DB.Where("username = ?", strings.TrimSpace(req.Username)).First(&user).Error; err != nil {
-		fail(c, http.StatusNotFound, "用户不存在")
+	if err := am.core.Gorm().Where("username = ?", strings.TrimSpace(req.Username)).First(&user).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "用户不存在")
 		return
 	}
 	var definition models.AchievementDefinition
-	if err := a.DB.First(&definition, req.AchievementID).Error; err != nil {
-		fail(c, http.StatusNotFound, "成就不存在")
+	if err := am.core.Gorm().First(&definition, req.AchievementID).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "成就不存在")
 		return
 	}
 	if definition.Status != "active" {
-		fail(c, http.StatusBadRequest, "只能授予已启用的成就")
+		am.core.Fail(c, http.StatusBadRequest, "只能授予已启用的成就")
 		return
 	}
 	public := definition.Visibility != "private"
@@ -1301,10 +1305,10 @@ func (a *App) AdminGrantAchievement(c *gin.Context) {
 	var grant models.UserAchievement
 	created := false
 	reactivated := false
-	err := a.DB.Transaction(func(tx *gorm.DB) error {
+	err := am.core.Gorm().Transaction(func(tx *gorm.DB) error {
 		find := tx.Where("user_id = ? AND achievement_id = ?", user.ID, definition.ID).First(&grant)
 		if find.Error == gorm.ErrRecordNotFound {
-			grant = models.UserAchievement{UserID: user.ID, AchievementID: definition.ID, DefinitionVersion: definition.Version, Source: "manual", GrantorID: currentUser(c).ID, Reason: strings.TrimSpace(req.Reason), IsPublic: public, UnlockedAt: now}
+			grant = models.UserAchievement{UserID: user.ID, AchievementID: definition.ID, DefinitionVersion: definition.Version, Source: "manual", GrantorID: am.core.CurrentUser(c).ID, Reason: strings.TrimSpace(req.Reason), IsPublic: public, UnlockedAt: now}
 			created = true
 			return tx.Create(&grant).Error
 		}
@@ -1315,68 +1319,68 @@ func (a *App) AdminGrantAchievement(c *gin.Context) {
 			return nil
 		}
 		reactivated = true
-		return tx.Model(&grant).Updates(map[string]any{"source": "manual", "grantor_id": currentUser(c).ID, "reason": strings.TrimSpace(req.Reason), "is_public": public, "unlocked_at": now, "revoked_at": nil, "revoked_by": 0, "revoke_reason": ""}).Error
+		return tx.Model(&grant).Updates(map[string]any{"source": "manual", "grantor_id": am.core.CurrentUser(c).ID, "reason": strings.TrimSpace(req.Reason), "is_public": public, "unlocked_at": now, "revoked_at": nil, "revoked_by": 0, "revoke_reason": ""}).Error
 	})
 	if err != nil {
-		fail(c, http.StatusInternalServerError, "授予成就失败")
+		am.core.Fail(c, http.StatusInternalServerError, "授予成就失败")
 		return
 	}
-	a.recordAudit(c, "achievement.granted", "achievement_grant", auditID(grant.ID), definition.Name, map[string]any{"user_id": user.ID, "achievement_id": definition.ID, "created": created, "reactivated": reactivated})
-	if (created || reactivated) && a.achievementSettings().NotificationsEnabled {
-		a.Notify(user.ID, "achievement", fmt.Sprintf("已获得成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
+	am.core.RecordAudit(c, "achievement.granted", "achievement_grant", auditID(grant.ID), definition.Name, map[string]any{"user_id": user.ID, "achievement_id": definition.ID, "created": created, "reactivated": reactivated})
+	if (created || reactivated) && am.achievementSettings().NotificationsEnabled {
+		am.core.Notify(user.ID, "achievement", fmt.Sprintf("已获得成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
 	}
 	// 成长联动：手工授予成就同样奖励经验（dedupe 保证与自动解锁不重复）
 	if (created || reactivated) && definition.RewardXP > 0 {
-		a.RecordExperience(user.ID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
+		am.core.RecordExperience(user.ID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
 			fmt.Sprintf("achievement.unlocked:%d:%d", user.ID, definition.ID), definition.RewardXP, "")
 	}
-	ok(c, grant)
+	am.core.OK(c, grant)
 }
 
-func (a *App) AdminRevokeAchievement(c *gin.Context) {
+func (am *behavior) AdminRevokeAchievement(c *gin.Context) {
 	var grant models.UserAchievement
-	if err := a.DB.Preload("Achievement").Where("id = ? AND revoked_at IS NULL", c.Param("id")).First(&grant).Error; err != nil {
-		fail(c, http.StatusNotFound, "授予记录不存在")
+	if err := am.core.Gorm().Preload("Achievement").Where("id = ? AND revoked_at IS NULL", c.Param("id")).First(&grant).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "授予记录不存在")
 		return
 	}
 	var req struct {
 		Reason string `json:"reason"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Reason) == "" {
-		fail(c, http.StatusBadRequest, "撤销原因不能为空")
+		am.core.Fail(c, http.StatusBadRequest, "撤销原因不能为空")
 		return
 	}
 	now := currentTime()
-	if err := a.DB.Model(&grant).Updates(map[string]any{"revoked_at": now, "revoked_by": currentUser(c).ID, "revoke_reason": strings.TrimSpace(req.Reason)}).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "撤销成就失败")
+	if err := am.core.Gorm().Model(&grant).Updates(map[string]any{"revoked_at": now, "revoked_by": am.core.CurrentUser(c).ID, "revoke_reason": strings.TrimSpace(req.Reason)}).Error; err != nil {
+		am.core.Fail(c, http.StatusInternalServerError, "撤销成就失败")
 		return
 	}
-	a.recordAudit(c, "achievement.revoked", "achievement_grant", auditID(grant.ID), grant.Achievement.Name, map[string]any{"user_id": grant.UserID, "reason": strings.TrimSpace(req.Reason)})
-	ok(c, gin.H{"message": "成就已撤销"})
+	am.core.RecordAudit(c, "achievement.revoked", "achievement_grant", auditID(grant.ID), grant.Achievement.Name, map[string]any{"user_id": grant.UserID, "reason": strings.TrimSpace(req.Reason)})
+	am.core.OK(c, gin.H{"message": "成就已撤销"})
 }
 
-func (a *App) AdminRecalculateAchievement(c *gin.Context) {
+func (am *behavior) AdminRecalculateAchievement(c *gin.Context) {
 	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		am.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	var definition models.AchievementDefinition
-	if err := a.DB.First(&definition, uint(id64)).Error; err != nil {
-		fail(c, http.StatusNotFound, "成就不存在")
+	if err := am.core.Gorm().First(&definition, uint(id64)).Error; err != nil {
+		am.core.Fail(c, http.StatusNotFound, "成就不存在")
 		return
 	}
 	if definition.Status != "active" || definition.GrantMode != "auto" {
-		fail(c, http.StatusBadRequest, "只有已启用的自动成就可以重新计算")
+		am.core.Fail(c, http.StatusBadRequest, "只有已启用的自动成就可以重新计算")
 		return
 	}
-	job, err := a.enqueueAchievementRecalculation(definition.ID)
+	job, err := am.enqueueAchievementRecalculation(definition.ID)
 	if err != nil {
-		fail(c, http.StatusServiceUnavailable, "成就重算任务暂不可用")
+		am.core.Fail(c, http.StatusServiceUnavailable, "成就重算任务暂不可用")
 		return
 	}
-	a.recordAudit(c, "achievement.recalculated", "achievement", auditID(definition.ID), definition.Name, map[string]any{"task_id": job.ID})
-	c.JSON(http.StatusAccepted, gin.H{"success": true, "data": gin.H{"task": publicBackgroundJob(job)}})
+	am.core.RecordAudit(c, "achievement.recalculated", "achievement", auditID(definition.ID), definition.Name, map[string]any{"task_id": job.ID})
+	c.JSON(http.StatusAccepted, gin.H{"success": true, "data": gin.H{"task": am.core.PublicBackgroundJob(job)}})
 }
 
 // 保证定义列表输出稳定，供测试和后续注册表扩展时比较。

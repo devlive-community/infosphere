@@ -1,4 +1,4 @@
-package app
+package achievements
 
 import (
 	"bytes"
@@ -168,21 +168,21 @@ func achievementImageDimensions(data []byte, mimeType string) (int, int) {
 }
 
 // AdminUploadAchievementIcon POST /admin/achievement-icons。
-func (a *App) AdminUploadAchievementIcon(c *gin.Context) {
+func (am *behavior) AdminUploadAchievementIcon(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, achievementIconMaxBytes+(64<<10))
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		fail(c, http.StatusBadRequest, "请选择成就图标")
+		am.core.Fail(c, http.StatusBadRequest, "请选择成就图标")
 		return
 	}
 	defer file.Close()
 	if header.Size <= 0 || header.Size > achievementIconMaxBytes {
-		fail(c, http.StatusBadRequest, "成就图标不能超过 512 KB")
+		am.core.Fail(c, http.StatusBadRequest, "成就图标不能超过 512 KB")
 		return
 	}
 	data, err := io.ReadAll(io.LimitReader(file, achievementIconMaxBytes+1))
 	if err != nil || len(data) > achievementIconMaxBytes {
-		fail(c, http.StatusBadRequest, "读取成就图标失败")
+		am.core.Fail(c, http.StatusBadRequest, "读取成就图标失败")
 		return
 	}
 
@@ -190,42 +190,42 @@ func (a *App) AdminUploadAchievementIcon(c *gin.Context) {
 	mimeType, extension, raster := achievementRasterType(data)
 	if !raster {
 		if strings.ToLower(filepath.Ext(header.Filename)) != ".svg" && !bytes.Contains(bytes.ToLower(data[:minInt(len(data), 512)]), []byte("<svg")) {
-			fail(c, http.StatusBadRequest, "仅支持 PNG、JPEG、GIF、WebP 或 SVG 图标")
+			am.core.Fail(c, http.StatusBadRequest, "仅支持 PNG、JPEG、GIF、WebP 或 SVG 图标")
 			return
 		}
 		data, err = sanitizeAchievementSVG(data)
 		if err != nil {
-			fail(c, http.StatusBadRequest, err.Error())
+			am.core.Fail(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		kind, mimeType, extension = "svg", "image/svg+xml", ".svg"
 	}
 	width, height := achievementImageDimensions(data, mimeType)
 	if raster && mimeType != "image/webp" && (width < 32 || height < 32 || width > 1024 || height > 1024) {
-		fail(c, http.StatusBadRequest, "栅格图标尺寸必须在 32×32 到 1024×1024 之间")
+		am.core.Fail(c, http.StatusBadRequest, "栅格图标尺寸必须在 32×32 到 1024×1024 之间")
 		return
 	}
 	sum := sha256.Sum256(data)
 	hash := hex.EncodeToString(sum[:])
 	var existing models.AchievementAsset
-	if err := a.DB.Where("sha256 = ?", hash).First(&existing).Error; err == nil {
-		ok(c, existing)
+	if err := am.core.Gorm().Where("sha256 = ?", hash).First(&existing).Error; err == nil {
+		am.core.OK(c, existing)
 		return
 	}
 	name := "achievement-" + hash[:20] + extension
-	uploader := storage.FromSettings(a.DB, config.DataDir())
+	uploader := storage.FromSettings(am.core.Gorm(), config.DataDir())
 	url, err := uploader.Upload(name, data)
 	if err != nil {
-		fail(c, http.StatusInternalServerError, "保存成就图标失败")
+		am.core.Fail(c, http.StatusInternalServerError, "保存成就图标失败")
 		return
 	}
-	asset := models.AchievementAsset{Kind: kind, URL: url, MimeType: mimeType, Width: width, Height: height, SHA256: hash, UploadedBy: currentUser(c).ID}
-	if err := a.DB.Create(&asset).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "记录成就图标失败")
+	asset := models.AchievementAsset{Kind: kind, URL: url, MimeType: mimeType, Width: width, Height: height, SHA256: hash, UploadedBy: am.core.CurrentUser(c).ID}
+	if err := am.core.Gorm().Create(&asset).Error; err != nil {
+		am.core.Fail(c, http.StatusInternalServerError, "记录成就图标失败")
 		return
 	}
-	a.recordAudit(c, "achievement.icon_uploaded", "achievement_asset", auditID(asset.ID), name, map[string]any{"kind": kind, "mime_type": mimeType})
-	ok(c, asset)
+	am.core.RecordAudit(c, "achievement.icon_uploaded", "achievement_asset", auditID(asset.ID), name, map[string]any{"kind": kind, "mime_type": mimeType})
+	am.core.OK(c, asset)
 }
 
 func minInt(a, b int) int {

@@ -297,7 +297,7 @@ func (a *App) CreateDocument(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "创建失败: "+err.Error())
 		return
 	}
-	a.recordAchievementEvent(u.ID, "document.created", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.created:%d", doc.ID))
+	a.emitActivity(u.ID, "document.created", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.created:%d", doc.ID))
 	ok(c, doc)
 }
 
@@ -380,7 +380,7 @@ func (a *App) IncrementDocumentView(c *gin.Context) {
 		return
 	}
 	bucket := currentTime().Unix() / 300
-	a.recordAchievementEvent(book.UserID, "book.viewed", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.viewed:%d:%d", book.UserID, bucket))
+	a.emitActivity(book.UserID, "book.viewed", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.viewed:%d:%d", book.UserID, bucket))
 	ok(c, gin.H{"view_count": viewCount})
 }
 
@@ -536,7 +536,7 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
 	}
-	a.recordAchievementEvent(doc.UserID, "document.updated", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.updated:%d:%d", doc.ID, doc.UpdatedAt.UnixNano()))
+	a.emitActivity(doc.UserID, "document.updated", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.updated:%d:%d", doc.ID, doc.UpdatedAt.UnixNano()))
 	// 章节首次发布（草稿→已发布）时通知关注者，并给作者发放成长经验
 	if publishedChapter && oldStatus != "published" {
 		plugincore.FireChapterPublished(book, doc) // 由「书籍关注」插件订阅并通知关注者

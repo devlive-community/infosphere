@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -165,8 +166,8 @@ func (a *App) AdminDeleteUser(c *gin.Context) {
 			&models.Comment{}, &models.Reaction{}, &models.ReadingProgress{}, &models.ReadChapter{},
 			&models.ReadingAnnotation{}, &models.UserExportSetting{}, &models.UserReadingGoal{},
 			&models.ReadingDailyTime{}, &models.UserThemeSetting{},
-			&models.UserAchievementProgress{}, &models.UserAchievement{}, &models.AchievementEvent{},
 		}
+		related = append(related, plugincore.UserDataModels()...) // 插件登记的用户归属表（如成就）
 		for _, m := range related {
 			// 插件独占表（如成就）在插件未启用时不存在，跳过其清理
 			if !tx.Migrator().HasTable(m) {
