@@ -522,23 +522,8 @@ func (a *App) crawlCreateDocument(book *models.Book, userID uint, title, content
 	if base == "" {
 		base = strings.Trim(crawlSlugPattern.ReplaceAllString(doc.Title, "-"), "-")
 	}
-	for i := 0; i < 50; i++ {
-		candidate := base
-		if candidate == "" {
-			candidate = randomSlug("doc")
-		} else if i > 0 {
-			candidate = base + "-" + strconv.Itoa(i+1)
-		}
-		var count int64
-		a.DB.Unscoped().Model(&models.Document{}).Where("book_id = ? AND slug = ?", book.ID, candidate).Count(&count)
-		if count == 0 {
-			doc.Slug = candidate
-			break
-		}
-	}
-	if doc.Slug == "" {
-		doc.Slug = randomSlug("doc")
-	}
+	// 冲突时递归用祖先 slug 作前缀（b-c），最终随机兜底，不再用 xxx-2 计数后缀。
+	doc.Slug = a.uniqueChildSlug(book.ID, parentID, base, 0)
 	if err := a.DB.Create(&doc).Error; err != nil {
 		return nil, err
 	}

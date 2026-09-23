@@ -106,13 +106,14 @@ func (a *App) recordPageCrawl(bookID, userID uint, kind, rawURL, title string, d
 		return
 	}
 	now := time.Now()
-	status, ok, failed := "success", 1, 0
+	// Job 状态沿用整站采集的约定（succeeded/failed）；Page 状态用 success/failed（CrawlPage 约定）。
+	jobStatus, pageStatus, ok, failed := "succeeded", "success", 1, 0
 	if !success {
-		status, ok, failed = "failed", 0, 1
+		jobStatus, pageStatus, ok, failed = "failed", "failed", 0, 1
 	}
 	job := models.CrawlJob{
 		UserID: userID, BookID: bookID, Kind: kind, RootURL: truncateText(rawURL, 1024),
-		RenderMode: "auto", Status: status, PageLimit: 1, Total: 1, Success: ok, Failed: failed,
+		RenderMode: "auto", Status: jobStatus, PageLimit: 1, Total: 1, Success: ok, Failed: failed,
 		LastError: errMsg, StartedAt: &now, FinishedAt: &now,
 	}
 	if a.DB.Create(&job).Error != nil {
@@ -120,7 +121,7 @@ func (a *App) recordPageCrawl(bookID, userID uint, kind, rawURL, title string, d
 	}
 	a.DB.Create(&models.CrawlPage{
 		JobID: job.ID, URL: truncateText(rawURL, 1024), Title: truncateText(title, 512),
-		Status: status, Error: errMsg, DocID: docID,
+		Status: pageStatus, Error: errMsg, DocID: docID,
 	})
 }
 
@@ -352,29 +353,9 @@ func (a *App) createImportedWebDocument(book *models.Book, u *models.User, title
 	if sortOrder != nil {
 		doc.SortOrder = *sortOrder
 	}
-	baseSlug := slugify(title)
-	if baseSlug == "" {
-		baseSlug = randomSlug("doc")
-	}
+	// 与手动新建一致：冲突时递归用祖先 slug 作前缀（b-c），最终随机兜底，不再用 xxx-2 计数后缀。
+	doc.Slug = a.uniqueChildSlug(book.ID, parentID, slugify(title), 0)
 	err := a.DB.Transaction(func(tx *gorm.DB) error {
-		availableSlug := false
-		for suffix := 1; suffix <= 50; suffix++ {
-			doc.Slug = baseSlug
-			if suffix > 1 {
-				doc.Slug = fmt.Sprintf("%s-%d", baseSlug, suffix)
-			}
-			var count int64
-			if err := tx.Model(&models.Document{}).Where("book_id = ? AND slug = ?", book.ID, doc.Slug).Count(&count).Error; err != nil {
-				return err
-			}
-			if count == 0 {
-				availableSlug = true
-				break
-			}
-		}
-		if !availableSlug {
-			return errors.New("章节 slug 生成失败")
-		}
 		if err := tx.Create(&doc).Error; err != nil {
 			return err
 		}
