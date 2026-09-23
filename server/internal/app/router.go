@@ -323,6 +323,8 @@ func (a *App) Router() *gin.Engine {
 		admin := api.Group("", a.RequireAuth(), a.RequireAdmin())
 		{
 			admin.PUT("/site", a.RequirePermission(authz.SiteUpdate), a.UpdateSiteConfig)
+			admin.GET("/rate-limits", a.RequirePermission(authz.SiteUpdate), a.AdminGetRateLimits)
+			admin.PUT("/rate-limits", a.RequirePermission(authz.SiteUpdate), a.AdminUpdateRateLimits)
 			admin.GET("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminGetOAuth)
 			admin.PUT("/oauth", a.RequirePermission(authz.SiteUpdate), a.AdminSaveOAuth)
 			admin.GET("/logs", a.RequirePermission(authz.SiteUpdate), a.AdminGetLogConfig)

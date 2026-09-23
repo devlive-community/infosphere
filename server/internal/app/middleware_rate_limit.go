@@ -104,6 +104,33 @@ var (
 	}
 )
 
+// allRateLimitPolicies 全部限流策略清单（供管理端列出与配置）。Name 为稳定标识（配置键与前端文案都用它）。
+var allRateLimitPolicies = []*rateLimitPolicy{
+	&loginRateLimit, &registerRateLimit, &passwordForgotRateLimit, &passwordResetRateLimit,
+	&commentRateLimit, &reactionRateLimit, &uploadRateLimit, &reportRateLimit,
+}
+
+// rateLimitEnabled 全局限流开关（默认开启；配置为 "false" 时关闭全部限流）。
+func (a *App) rateLimitEnabled() bool {
+	return a.getSetting("ratelimit_enabled") != "false"
+}
+
+// effectiveRateLimit 读取某策略的生效上限/窗口：优先站点配置覆盖（limit 次 / window 秒），否则用内置默认。
+func (a *App) effectiveRateLimit(p rateLimitPolicy) (int, time.Duration) {
+	limit, window := p.Limit, p.Window
+	if v := a.getSetting("ratelimit_" + p.Name + "_limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	if v := a.getSetting("ratelimit_" + p.Name + "_window"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			window = time.Duration(n) * time.Second
+		}
+	}
+	return limit, window
+}
+
 // configureTrustedProxies 默认不信任任何转发头。部署在反向代理后时，需显式配置代理 IP/CIDR。
 func configureTrustedProxies(r *gin.Engine) {
 	raw := strings.TrimSpace(os.Getenv("KNOWFORGE_TRUSTED_PROXIES"))
@@ -141,12 +168,17 @@ func (a *App) RateLimit(policy rateLimitPolicy) gin.HandlerFunc {
 		a.RateLimits = newMemoryRateLimitStore()
 	}
 	return func(c *gin.Context) {
-		allowed, remaining, wait := a.RateLimits.Take(rateLimitKey(policy, c), policy.Limit, policy.Window, currentTime())
+		if !a.rateLimitEnabled() { // 全局关闭时直接放行
+			c.Next()
+			return
+		}
+		limit, window := a.effectiveRateLimit(policy)
+		allowed, remaining, wait := a.RateLimits.Take(rateLimitKey(policy, c), limit, window, currentTime())
 		retrySeconds := int(math.Ceil(wait.Seconds()))
 		if retrySeconds < 1 {
 			retrySeconds = 1
 		}
-		c.Header("X-RateLimit-Limit", strconv.Itoa(policy.Limit))
+		c.Header("X-RateLimit-Limit", strconv.Itoa(limit))
 		c.Header("X-RateLimit-Remaining", strconv.Itoa(remaining))
 		if !allowed {
 			c.Header("Retry-After", strconv.Itoa(retrySeconds))

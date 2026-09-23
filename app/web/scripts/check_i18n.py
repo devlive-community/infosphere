@@ -43,6 +43,9 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     'crawlHistory.status.': ['preview', 'pending', 'running', 'succeeded', 'partial', 'failed'],
     # crawl-history: t(`crawlHistory.pageStatus.${p.status}`)，CrawlPage.Status 取值域
     'crawlHistory.pageStatus.': ['pending', 'running', 'success', 'failed', 'skipped'],
+    # rate-limits: t(`admin.settings.rateLimit.policy.${name}`)，allRateLimitPolicies 的 Name 取值域
+    'admin.settings.rateLimit.policy.': ['auth_login', 'auth_register', 'password_forgot', 'password_reset',
+                                         'comment_create', 'reaction_update', 'upload_create', 'report_create'],
 }
 
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）

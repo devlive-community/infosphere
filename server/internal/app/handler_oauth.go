@@ -61,6 +61,9 @@ func (a *App) oauthStateTake(state string) (origin string, userID uint, ok bool)
 }
 
 func (a *App) getSetting(key string) string {
+	if a.DB == nil {
+		return ""
+	}
 	var cfg models.SiteConfig
 	if err := a.DB.Where("config_key = ?", key).First(&cfg).Error; err != nil {
 		return ""
