@@ -27,7 +27,7 @@ export default function SettingsRateLimits() {
 
   useEffect(() => {
     if (!isAdmin) return
-    api<{ enabled: boolean; policies: Policy[] }>('/admin/rate-limits')
+    api<{ enabled: boolean; policies: Policy[] }>('/rate-limits')
       .then((d) => { setEnabled(d.enabled); setPolicies(d.policies || []) })
       .catch((e) => showToast({ title: t('admin.settings.rateLimit.loadFailed'), message: (e as Error).message, tone: 'error' }))
       .finally(() => setLoading(false))
@@ -40,7 +40,7 @@ export default function SettingsRateLimits() {
   async function save() {
     setSaving(true)
     try {
-      const d = await api<{ enabled: boolean; policies: Policy[] }>('/admin/rate-limits', {
+      const d = await api<{ enabled: boolean; policies: Policy[] }>('/rate-limits', {
         method: 'PUT',
         body: { enabled, policies: policies.map((p) => ({ name: p.name, limit: p.limit, window_seconds: p.window_seconds })) },
       })
