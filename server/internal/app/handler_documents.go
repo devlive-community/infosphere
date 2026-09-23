@@ -103,6 +103,26 @@ func validExternalURL(s string) bool {
 	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 }
 
+// initialChapterStatus 未显式指定状态时新章节的初始状态（与 CreateDocument 规则一致，供采集/导入复用）：
+//   - 有父章节且书籍开启「子章节状态跟随父章节」→ 沿用父章节状态；
+//   - 第一级章节 → 书籍配置的「章节默认状态」；
+//   - 其余 → draft。
+func (a *App) initialChapterStatus(book *models.Book, parentID *uint) string {
+	if parentID != nil {
+		if book.ChildStatusFollowParent {
+			var parent models.Document
+			if a.DB.Select("status").Where("id = ? AND book_id = ?", *parentID, book.ID).First(&parent).Error == nil && docStatuses[parent.Status] {
+				return parent.Status
+			}
+		}
+		return "draft"
+	}
+	if docStatuses[book.DefaultChapterStatus] {
+		return book.DefaultChapterStatus
+	}
+	return "draft"
+}
+
 // uniqueChildSlug 为书内文档生成唯一 slug：
 //   - 先用 base；书内不冲突就直接用；
 //   - 冲突时逐级用祖先章节的 slug 作前缀（如 A/c 与 B/c → 后者变成 b-c，再冲突则 a-b-c…）；

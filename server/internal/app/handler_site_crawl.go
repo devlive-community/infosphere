@@ -586,7 +586,7 @@ func crawlSlugFromURL(raw string) string {
 // crawlCreateDocument 在书内创建一章（唯一 slug），采集内容作为草稿章节。
 // slug 优先取源 URL 末段（保留大小写），回退为标题的保留大小写 slug。
 func (a *App) crawlCreateDocument(book *models.Book, userID uint, title, content, sourceURL string, parentID *uint, sortOrder int) (*models.Document, error) {
-	doc := models.Document{BookID: book.ID, UserID: userID, Title: truncateText(strings.TrimSpace(title), 255), Content: content, Status: "draft", SortOrder: sortOrder, ParentID: parentID}
+	doc := models.Document{BookID: book.ID, UserID: userID, Title: truncateText(strings.TrimSpace(title), 255), Content: content, Status: a.initialChapterStatus(book, parentID), SortOrder: sortOrder, ParentID: parentID}
 	doc.Icon = extractDocIcon(content)
 	base := crawlSlugFromURL(sourceURL)
 	if base == "" {

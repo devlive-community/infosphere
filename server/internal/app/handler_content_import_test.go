@@ -650,3 +650,25 @@ func TestWebImportErrorHidesBrowserDiagnostics(t *testing.T) {
 		t.Fatalf("应返回可理解的浏览器错误提示: %q", message)
 	}
 }
+
+// 采集的第一级章节应采用书籍「章节默认状态」；子章节在开启跟随时沿用父章节状态。
+func TestImportedWebDocumentFollowsDefaultChapterStatus(t *testing.T) {
+	app, owner, db := newContentImportTestApp(t)
+	book := models.Book{Title: "默认状态书", Slug: "default-status", UserID: owner.ID, Status: "published", DefaultChapterStatus: "published"}
+	if err := db.Create(&book).Error; err != nil {
+		t.Fatal(err)
+	}
+	top, err := app.createImportedWebDocument(&book, owner, "第一级", "网页正文内容", nil, nil)
+	if err != nil || top.Status != "published" {
+		t.Fatalf("第一级采集章节应为书籍默认状态 published: status=%q err=%v", top.Status, err)
+	}
+	child, err := app.createImportedWebDocument(&book, owner, "子章节", "网页正文内容", &top.ID, nil)
+	if err != nil || child.Status != "draft" {
+		t.Fatalf("未开启跟随父章节时子章节应为草稿: status=%q err=%v", child.Status, err)
+	}
+	book.ChildStatusFollowParent = true
+	child2, err := app.createImportedWebDocument(&book, owner, "子章节二", "网页正文内容", &top.ID, nil)
+	if err != nil || child2.Status != "published" {
+		t.Fatalf("开启跟随父章节时子章节应沿用父章节状态: status=%q err=%v", child2.Status, err)
+	}
+}
