@@ -8,12 +8,13 @@ import Seo from '@/components/Seo'
 import Container from '@/components/Container'
 import { useTranslation } from '@/lib/i18n'
 import type { CollaborationInvitation } from '@/lib/types'
+import { notificationTitle, type NotificationPayload } from '@/lib/notification'
 
 interface NotificationItem {
   id: number
   type: string
   title: string
-  payload: { link?: string }
+  payload: NotificationPayload
   read_at: string | null
   created_at: string
 }
@@ -197,7 +198,7 @@ export default function NotificationsPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className={`block text-sm leading-6 ${n.read_at ? 'text-slate-500' : 'font-medium text-slate-900'}`}>
-                        {n.title}
+                        {notificationTitle(n, t)}
                       </span>
                       <span className="mt-0.5 block text-xs text-slate-400">{formatDate(n.created_at)}</span>
                     </span>

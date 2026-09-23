@@ -256,5 +256,7 @@ func (a *App) DeleteComment(c *gin.Context) {
 		return
 	}
 	a.DB.Delete(&comment)
+	sourceID := strconv.FormatUint(uint64(comment.ID), 10)
+	a.emitActivity(comment.UserID, "comment.deleted", "comment", sourceID, "comment.deleted:"+sourceID)
 	ok(c, gin.H{"message": "已删除"})
 }

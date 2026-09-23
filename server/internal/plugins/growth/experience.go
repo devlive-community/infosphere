@@ -21,7 +21,9 @@ func init() {
 		(&behavior{core: core}).recordExperience(userID, ruleKey, sourceType, sourceID, dedupeKey, xp, reason)
 	})
 	plugincore.OnActivity(func(core plugincore.Core, ev plugincore.ActivityEvent) {
-		(&behavior{core: core}).awardForActivity(ev)
+		b := &behavior{core: core}
+		b.awardForActivity(ev)
+		b.revokeForActivity(ev)
 	})
 	plugincore.OnChapterPublished(func(core plugincore.Core, _ *models.Book, doc *models.Document) {
 		id := strconv.FormatUint(uint64(doc.ID), 10)
@@ -121,6 +123,35 @@ func (b *behavior) ensureExperienceRules() {
 	}
 }
 
+// xpRevocations 内容被删除（评论、点赞/收藏、标注）时收回的规则：删除活动 → 对应的发放规则。
+// 以「规则键:来源 ID」定位原经验流水（与发放时的默认去重键一致），给各自的获得者记一条等额负经验，
+// 流水保留可追溯；防止「发了删、删了再发」刷经验。书籍/章节不在此列（作者整理内容不应被扣经验）。
+var xpRevocations = map[string][]string{
+	"comment.deleted":    {"community.comment", "community.comment_received"},
+	"reaction.deleted":   {"community.reaction", "community.reaction_received"},
+	"annotation.deleted": {"reading.annotation"},
+}
+
+// revokedReason 收回经验的流水说明（前端按 growth.reason.<值> 显示多语言文案）。
+const revokedReason = "revoked"
+
+// revokeForActivity 按删除活动收回对应经验（幂等：每条原流水只收回一次）。
+func (b *behavior) revokeForActivity(ev plugincore.ActivityEvent) {
+	rules, ok := xpRevocations[ev.Type]
+	if !ok || ev.SourceID == "" {
+		return
+	}
+	keys := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		keys = append(keys, rule+":"+ev.SourceID)
+	}
+	var granted []models.ExperienceEvent
+	b.core.Gorm().Where("dedupe_key IN ? AND final_xp > 0", keys).Find(&granted)
+	for _, g := range granted {
+		b.recordExperience(g.UserID, g.RuleKey, g.SourceType, g.SourceID, "revoke:"+g.DedupeKey, -g.FinalXP, revokedReason)
+	}
+}
+
 // awardForActivity 按目录把业务活动映射为经验（规则停用/插件禁用时为空操作）。
 func (b *behavior) awardForActivity(ev plugincore.ActivityEvent) {
 	for i := range xpCatalog {
@@ -206,12 +237,25 @@ func (b *behavior) recalcGrowthProfile(userID uint) {
 	if newLevel > p.HighestLevel {
 		p.HighestLevel = newLevel
 	}
-	db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, UpdateAll: true}).Create(&p)
+	// 只更新经验/等级列：public 等用户设置不能被重算覆盖（public 有 default:true，整行 upsert 会把「隐藏」改回公开）
+	db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"lifetime_xp", "current_level", "highest_level", "updated_at"}),
+	}).Create(&p)
 
 	if newLevel != oldLevel {
 		db.Create(&models.UserLevelHistory{UserID: userID, FromLevel: oldLevel, ToLevel: newLevel, Reason: "xp"})
 		if newLevel > oldLevel {
-			b.core.Notify(userID, "growth", fmt.Sprintf("成长升级：Lv.%d", newLevel), map[string]any{"link": "/user/growth"})
+			name := fmt.Sprintf("Lv.%d", newLevel)
+			var def models.LevelDefinition
+			if db.Where("level = ?", newLevel).First(&def).Error == nil && def.Name != "" {
+				name = def.Name
+			}
+			// title 为兜底文案；i18n 供前端按界面语言渲染（growth.notify.levelUp）
+			b.core.Notify(userID, "growth", "成长升级："+name, map[string]any{
+				"link": "/user/growth",
+				"i18n": map[string]any{"key": "growth.notify.levelUp", "params": map[string]any{"name": name, "level": newLevel}},
+			})
 		}
 		// 成长→成就 双向联动：等级变化发出活动，触发 growth.* 指标成就重新评估（每级去重）
 		plugincore.FireActivity(b.core, plugincore.ActivityEvent{

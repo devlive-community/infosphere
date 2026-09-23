@@ -9,6 +9,7 @@ import UserAvatar from '@/components/UserAvatar'
 import { api } from '@/lib/api'
 import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Pagination, Select, SegmentedTabs, Switch, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
+import { growthReasonLabel, growthRuleLabel } from '@/lib/growth'
 
 interface Level {
   id: number
@@ -27,14 +28,10 @@ interface Rule { id: number; rule_key: string; label: string; base_xp: number; d
 interface LedgerItem { id: number; rule_key: string; final_xp: number; reason?: string; created_at: string; user?: UserLite }
 type Tab = 'levels' | 'rules' | 'events'
 
-// ruleLabel 经验规则的显示名：优先 i18n（growth.rule.<key>），回退库中 label / 规则键。
+// useRuleLabel 经验规则显示名（i18n 优先）。
 function useRuleLabel() {
   const { t } = useTranslation()
-  return (key: string, fallback?: string) => {
-    const k = `growth.rule.${key}`
-    const v = t(k)
-    return v === k ? (fallback || key) : v
-  }
+  return (key: string, fallback?: string) => growthRuleLabel(t, key, fallback)
 }
 
 export default function AdminGrowth() {
@@ -291,7 +288,7 @@ function LedgerPanel({ rules }: { rules: Rule[] }) {
                   </td>
                   <td className="px-4 py-2.5"><span className="block text-slate-700">{ruleLabel(e.rule_key)}</span><span className="font-mono text-xs text-slate-400">{e.rule_key}</span></td>
                   <td className={`px-4 py-2.5 text-right font-medium tabular-nums ${e.final_xp < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{e.final_xp > 0 ? `+${e.final_xp}` : e.final_xp}</td>
-                  <td className="max-w-[16rem] truncate px-4 py-2.5 text-slate-500">{e.reason || '—'}</td>
+                  <td className="max-w-[16rem] truncate px-4 py-2.5 text-slate-500">{growthReasonLabel(t, e.reason) || '—'}</td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-slate-400">{new Date(e.created_at).toLocaleString()}</td>
                 </tr>
               ))}

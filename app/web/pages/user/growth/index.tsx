@@ -6,7 +6,8 @@ import Seo from '@/components/Seo'
 import { api, formatNumber } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
-import { Badge, Card, EmptyState, Loading, Pagination, Switch, useFeedback } from '@/components/ui'
+import { Badge, ButtonLink, Card, EmptyState, Loading, Pagination, Switch, useFeedback } from '@/components/ui'
+import { growthReasonLabel, growthRuleLabel } from '@/lib/growth'
 
 interface Level { id: number; level: number; name: string; icon_type?: string; icon_value?: string; color?: string; min_xp: number }
 interface Growth {
@@ -70,8 +71,13 @@ function MyGrowthInner() {
       <Seo siteName={siteName} title={t('growth.seoTitle')} noindex />
       <Container>
         <div className="py-8">
-          <h1 className="text-2xl font-bold text-ink">{t('growth.heading')}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t('growth.subtitle')}</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-ink">{t('growth.heading')}</h1>
+              <p className="mt-1 text-sm text-slate-500">{t('growth.subtitle')}</p>
+            </div>
+            <ButtonLink href="/growth/leaderboard" variant="outline"><i className="fa-solid fa-ranking-star" aria-hidden="true" /> {t('growth.leaderboard.link')}</ButtonLink>
+          </div>
 
           {/* 当前等级 + 进度 */}
           <Card className="mt-6 flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
@@ -128,8 +134,8 @@ function MyGrowthInner() {
                     {events.items.map((e) => (
                       <li key={e.id} className="flex items-center justify-between gap-3 py-2.5">
                         <span className="min-w-0">
-                          <span className="block truncate text-sm text-slate-700">{(() => { const k = `growth.rule.${e.rule_key}`; const v = t(k); return v === k ? e.rule_key : v })()}</span>
-                          <span className="text-xs text-slate-400">{new Date(e.created_at).toLocaleString()}{e.reason ? ` · ${e.reason}` : ''}</span>
+                          <span className="block truncate text-sm text-slate-700">{growthRuleLabel(t, e.rule_key)}</span>
+                          <span className="text-xs text-slate-400">{new Date(e.created_at).toLocaleString()}{e.reason ? ` · ${growthReasonLabel(t, e.reason)}` : ''}</span>
                         </span>
                         <span className={`shrink-0 text-sm font-semibold ${e.final_xp >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{e.final_xp >= 0 ? '+' : ''}{e.final_xp}</span>
                       </li>

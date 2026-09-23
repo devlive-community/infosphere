@@ -416,6 +416,7 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/growth/settings` | 模块是否启用（不受插件守卫，禁用返回 `enabled:false`） | 公开 |
 | GET | `/growth/levels` | 等级阶梯（active） | 公开 |
+| GET | `/growth/leaderboard?period=all / week / month&page&page_size` | 经验排行榜：`all` 按累计经验，`week`/`month` 按近 7/30 天流水之和（含收回的负经验）；仅含公开成长资料的启用用户。响应 `{items:[{rank,xp,user,level}],total,page,page_size,period,me?}`，登录时 `me` 为本人经验与名次（未公开也可见） | 公开 |
 | GET | `/users/:username/growth` | 用户公开等级（用户隐藏则 `public:false`） | 公开 |
 | GET | `/users/me/growth` | 我的成长（等级/经验/进度/下一级） | `growth:read` |
 | GET | `/users/me/experience-events?page=` | 我的经验流水（分页） | `growth:read` |

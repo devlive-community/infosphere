@@ -195,6 +195,8 @@ func (a *App) DeleteAnnotation(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "删除标注失败")
 		return
 	}
+	id := strconv.FormatUint(uint64(annotation.ID), 10)
+	a.emitActivity(annotation.UserID, "annotation.deleted", "annotation", id, "annotation.deleted:"+id)
 	ok(c, gin.H{"message": "已删除"})
 }
 

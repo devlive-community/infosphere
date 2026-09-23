@@ -30,6 +30,7 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	api.GET("/growth/settings", core.OptionalAuth(), b.GrowthSettings)
 	api.GET("/growth/levels", core.OptionalAuth(), feat, b.GrowthLevels)
 	api.GET("/users/:username/growth", core.OptionalAuth(), feat, b.PublicUserGrowth)
+	api.GET("/growth/leaderboard", core.OptionalAuth(), feat, b.Leaderboard)
 	// 本人
 	api.GET("/users/me/growth", core.RequireAuth(), feat, core.RequirePermissionMiddleware(authz.GrowthRead), b.MyGrowth)
 	api.GET("/users/me/experience-events", core.RequireAuth(), feat, core.RequirePermissionMiddleware(authz.GrowthRead), b.MyExperienceEvents)
@@ -143,10 +144,15 @@ func (b *behavior) UpdateMyGrowthDisplay(c *gin.Context) {
 		core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	// 先确保资料存在，再单独写 public（public 有 default:true，零值 false 在插入/整行 upsert 时会被默认值覆盖）
 	p := b.growthProfile(u.ID)
-	p.Public = req.Public
-	core.Gorm().Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, UpdateAll: true}).Create(&p)
-	core.OK(c, gin.H{"public": p.Public})
+	db := core.Gorm()
+	db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true}).Create(&p)
+	if err := db.Model(&models.UserGrowthProfile{}).Where("user_id = ?", u.ID).Update("public", req.Public).Error; err != nil {
+		core.Fail(c, http.StatusInternalServerError, "保存失败")
+		return
+	}
+	core.OK(c, gin.H{"public": req.Public})
 }
 
 // —— 管理端点 ——

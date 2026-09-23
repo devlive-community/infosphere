@@ -52,6 +52,11 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
                      'community.comment_received', 'community.reaction', 'community.reaction_received',
                      'account.registered', 'account.email_verified', 'account.two_factor_enabled',
                      'account.oauth_bound', 'account.invited_user', 'achievement.unlocked', 'admin.adjust'],
+    # growth: 经验流水系统原因码 t(`growth.reason.${reason}`)；排行榜周期 t(`growth.leaderboard.period.${p}`)
+    'growth.reason.': ['revoked'],
+    'growth.leaderboard.period.': ['all', 'month', 'week'],
+    # 通知 payload.i18n.key（服务端下发，lib/notification.ts 渲染）
+    'growth.notify.': ['levelUp'],
 }
 
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）

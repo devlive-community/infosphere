@@ -77,7 +77,13 @@ func (a *App) DeleteReaction(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "类型必须为 like 或 favorite")
 		return
 	}
+	var removed []models.Reaction
+	a.DB.Where("user_id = ? AND book_id = ? AND type = ?", u.ID, bookID, rType).Find(&removed)
 	a.DB.Where("user_id = ? AND book_id = ? AND type = ?", u.ID, bookID, rType).Delete(&models.Reaction{})
+	for _, r := range removed {
+		id := strconv.FormatUint(uint64(r.ID), 10)
+		a.emitActivity(u.ID, "reaction.deleted", "reaction", id, "reaction.deleted:"+id)
+	}
 	ok(c, gin.H{"message": "已取消"})
 }
 

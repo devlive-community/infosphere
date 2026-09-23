@@ -6,6 +6,7 @@ import { useApp } from '@/lib/auth'
 import { Button, Loading } from '@/components/ui'
 import { BellIcon } from '@/components/icons'
 import { useTranslation } from '@/lib/i18n'
+import { notificationTitle, type NotificationPayload } from '@/lib/notification'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -13,7 +14,7 @@ interface NotificationItem {
   id: number
   type: string
   title: string
-  payload: { link?: string }
+  payload: NotificationPayload
   read_at: string | null
   created_at: string
 }
@@ -152,7 +153,7 @@ export default function NotificationBell() {
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read_at ? 'bg-transparent' : 'bg-primary-500'}`} />
                   <span className="min-w-0 flex-1">
                     <span className={`block text-sm leading-5 ${n.read_at ? 'text-slate-500' : 'font-medium text-slate-900'}`}>
-                      {n.title}
+                      {notificationTitle(n, t)}
                     </span>
                     <span className="mt-0.5 block text-xs text-slate-400">{timeAgo(n.created_at, t)}</span>
                   </span>

@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"gorm.io/gorm"
 
 	"knowforge/server/internal/app"
+	"knowforge/server/internal/auth"
 	"knowforge/server/internal/config"
 	"knowforge/server/internal/models"
 	"knowforge/server/internal/plugincore"
@@ -243,5 +245,109 @@ func TestExperienceCatalogLedgerAndAdjust(t *testing.T) {
 	_, payload = e.do(t, http.MethodGet, "/api/v1/admin/growth/events?rule_key=community.reaction_received", "")
 	if int(payload["data"].(map[string]any)["total"].(float64)) != 1 {
 		t.Fatalf("按规则筛选经验流水应有 1 条: %v", payload)
+	}
+}
+
+func (e *testEnv) doAs(t *testing.T, u *models.User, method, path, body string) (int, map[string]any) {
+	t.Helper()
+	token, err := auth.GenerateToken(e.app.Config.Secret, u.ID, u.Username, u.Role)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := e.token
+	e.token = token
+	defer func() { e.token = saved }()
+	return e.do(t, method, path, body)
+}
+
+func (e *testEnv) enableRule(t *testing.T, key string, xp int) {
+	t.Helper()
+	e.do(t, http.MethodGet, "/api/v1/admin/growth/rules", "") // 补建目录规则
+	var rule models.ExperienceRule
+	if err := e.db.Where("rule_key = ?", key).First(&rule).Error; err != nil {
+		t.Fatal(err)
+	}
+	if status, payload := e.do(t, http.MethodPut, "/api/v1/admin/growth/rules/"+strconv.Itoa(int(rule.ID)), `{"base_xp":`+strconv.Itoa(xp)+`,"daily_cap":0,"enabled":true}`); status != http.StatusOK {
+		t.Fatalf("启用规则 %s 失败: %d %v", key, status, payload)
+	}
+}
+
+// 取消点赞/收藏（真实路由）→ 收回点赞者与作者因此获得的经验：记等额负流水、只收回一次，可再次获得。
+func TestDeletedContentRevokesExperience(t *testing.T) {
+	e := newTestEnv(t)
+	e.enableRule(t, "community.reaction", 2)
+	e.enableRule(t, "community.reaction_received", 3)
+	author := e.user(t, "growth-author")
+	fan := e.user(t, "growth-fan")
+	book := models.Book{Title: "R", Slug: "reaction-book", UserID: author.ID, Status: "published", IsPublic: true}
+	e.db.Create(&book)
+	path := "/api/v1/books/" + strconv.FormatUint(uint64(book.ID), 10) + "/reactions"
+
+	if status, payload := e.doAs(t, fan, http.MethodPost, path, `{"type":"like"}`); status != http.StatusOK {
+		t.Fatalf("点赞失败: %d %v", status, payload)
+	}
+	if growth.Profile(e.app, fan.ID).LifetimeXP != 2 || growth.Profile(e.app, author.ID).LifetimeXP != 3 {
+		t.Fatalf("点赞应给点赞者 2、作者 3 经验")
+	}
+	if status, payload := e.doAs(t, fan, http.MethodDelete, path+"?type=like", ""); status != http.StatusOK {
+		t.Fatalf("取消点赞失败: %d %v", status, payload)
+	}
+	if growth.Profile(e.app, fan.ID).LifetimeXP != 0 || growth.Profile(e.app, author.ID).LifetimeXP != 0 {
+		t.Fatalf("取消点赞应收回双方经验: fan=%d author=%d", growth.Profile(e.app, fan.ID).LifetimeXP, growth.Profile(e.app, author.ID).LifetimeXP)
+	}
+	var revoked []models.ExperienceEvent
+	e.db.Where("user_id = ? AND final_xp < 0", fan.ID).Find(&revoked)
+	if len(revoked) != 1 || revoked[0].Reason != "revoked" || revoked[0].RuleKey != "community.reaction" {
+		t.Fatalf("应留下一条收回流水: %+v", revoked)
+	}
+	// 重新点赞（新记录）可再次获得
+	e.doAs(t, fan, http.MethodPost, path, `{"type":"like"}`)
+	if growth.Profile(e.app, fan.ID).LifetimeXP != 2 {
+		t.Fatalf("重新点赞应再次获得经验，实际 %d", growth.Profile(e.app, fan.ID).LifetimeXP)
+	}
+}
+
+// 隐藏成长资料：无资料时隐藏也生效，且之后获得经验不会把资料改回公开；排行榜只列公开用户，本人仍可见自己的名次。
+func TestLeaderboardAndPrivacy(t *testing.T) {
+	e := newTestEnv(t)
+	alice, bob, carol := e.user(t, "lb-alice"), e.user(t, "lb-bob"), e.user(t, "lb-carol")
+	if status, _ := e.doAs(t, carol, http.MethodPut, "/api/v1/users/me/growth/display", `{"public":false}`); status != http.StatusOK {
+		t.Fatalf("隐藏成长资料失败: %d", status)
+	}
+	plugincore.RecordExperience(e.app, alice.ID, "test.grant", "x", "1", "lb-a", 100, "")
+	plugincore.RecordExperience(e.app, bob.ID, "test.grant", "x", "1", "lb-b", 50, "")
+	plugincore.RecordExperience(e.app, carol.ID, "test.grant", "x", "1", "lb-c", 300, "")
+	if growth.Profile(e.app, carol.ID).Public {
+		t.Fatal("获得经验后隐藏的成长资料不应被改回公开")
+	}
+
+	for _, period := range []string{"all", "week", "month"} {
+		status, payload := e.do(t, http.MethodGet, "/api/v1/growth/leaderboard?period="+period, "")
+		if status != http.StatusOK {
+			t.Fatalf("排行榜 %s 失败: %d %v", period, status, payload)
+		}
+		data := payload["data"].(map[string]any)
+		items := data["items"].([]any)
+		if int(data["total"].(float64)) != 2 || len(items) != 2 {
+			t.Fatalf("排行榜 %s 应只含 2 位公开用户: %v", period, data)
+		}
+		first := items[0].(map[string]any)
+		if first["user"].(map[string]any)["username"] != "lb-alice" || first["rank"].(float64) != 1 || first["xp"].(float64) != 100 || first["level"] == nil {
+			t.Fatalf("排行榜 %s 第一名应为 lb-alice(100) 并带等级: %v", period, first)
+		}
+	}
+	_, payload := e.doAs(t, carol, http.MethodGet, "/api/v1/growth/leaderboard", "")
+	me := payload["data"].(map[string]any)["me"].(map[string]any)
+	if me["rank"].(float64) != 1 || me["public"] != false || me["xp"].(float64) != 300 {
+		t.Fatalf("隐藏用户应能看到自己的名次: %v", me)
+	}
+
+	// 升级通知带 i18n 键与参数（前端按界面语言渲染）
+	var n models.Notification
+	if err := e.db.Where("user_id = ? AND type = ?", alice.ID, "growth").Order("id DESC").First(&n).Error; err != nil {
+		t.Fatalf("应有升级通知: %v", err)
+	}
+	if !strings.Contains(n.Payload, `"key":"growth.notify.levelUp"`) || !strings.Contains(n.Title, "Lv.2") {
+		t.Fatalf("升级通知应带 i18n 键且兜底标题含等级名: %s / %s", n.Title, n.Payload)
 	}
 }
