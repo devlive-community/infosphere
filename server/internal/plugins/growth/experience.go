@@ -12,7 +12,7 @@ import (
 	"knowforge/server/internal/plugins"
 )
 
-// 经验服务层：订阅核心事件（评论、首次读章节、章节发布）按经验规则发经验，
+// 经验服务层：订阅核心事件（业务活动目录 xpCatalog + 章节发布钩子）按经验规则发经验，
 // 为其他插件（如成就解锁奖励）提供幂等记账，并在等级变化时写历史、发通知、发出 growth.level_changed 活动。
 // 插件禁用时全部为安全空操作。
 
@@ -21,17 +21,7 @@ func init() {
 		(&behavior{core: core}).recordExperience(userID, ruleKey, sourceType, sourceID, dedupeKey, xp, reason)
 	})
 	plugincore.OnActivity(func(core plugincore.Core, ev plugincore.ActivityEvent) {
-		b := &behavior{core: core}
-		switch ev.Type {
-		case "comment.created":
-			b.awardExperience(ev.UserID, "community.comment", "comment", ev.SourceID, "community.comment:"+ev.SourceID)
-		case "chapter.read":
-			// 首次读章节：以已读记录 id 去重（与迁移前的去重键一致）
-			var read models.ReadChapter
-			if core.Gorm().Select("id").Where("user_id = ? AND doc_id = ?", ev.UserID, ev.SourceID).First(&read).Error == nil {
-				b.awardExperience(ev.UserID, "reading.chapter", "document", ev.SourceID, fmt.Sprintf("reading.chapter:%d", read.ID))
-			}
-		}
+		(&behavior{core: core}).awardForActivity(ev)
 	})
 	plugincore.OnChapterPublished(func(core plugincore.Core, _ *models.Book, doc *models.Document) {
 		id := strconv.FormatUint(uint64(doc.ID), 10)
@@ -41,7 +31,7 @@ func init() {
 	plugincore.OnPluginEnabled(plugins.KeyGrowth, func(core plugincore.Core) error {
 		b := &behavior{core: core}
 		b.seedDefaultLevels()
-		b.seedExperienceRules()
+		b.ensureExperienceRules()
 		return nil
 	})
 	// 删除用户时一并清理其成长数据
@@ -68,21 +58,84 @@ func (b *behavior) seedDefaultLevels() {
 	}
 }
 
-// seedExperienceRules 首次启用时种子默认经验规则（已存在则跳过）。
-func (b *behavior) seedExperienceRules() {
+// xpTrigger 经验触发器：核心业务活动 → 经验规则。目录由代码拥有（事件语义与去重方式固定），
+// 管理员只能调整各规则的经验值/每日上限/启停。Activity 为空表示由专门钩子触发（如章节发布）。
+type xpTrigger struct {
+	RuleKey   string
+	Activity  string
+	Label     string
+	BaseXP    int
+	DailyCap  int
+	Enabled   bool // 首次创建规则时的默认启停：原有 3 条默认启用，其余默认停用，避免升级后行为突变
+	SortOrder int
+	// Dedupe 去重键；为 nil 时用「规则键:来源 ID」（来源 ID 唯一标识一次行为，如评论/点赞/书籍 ID）
+	Dedupe func(b *behavior, ev plugincore.ActivityEvent) string
+}
+
+var xpCatalog = []xpTrigger{
+	{RuleKey: "reading.chapter", Activity: "chapter.read", Label: "阅读章节（首次）", BaseXP: 5, DailyCap: 50, Enabled: true, SortOrder: 1,
+		Dedupe: func(b *behavior, ev plugincore.ActivityEvent) string {
+			// 以已读记录 id 去重（与迁移前的去重键一致）
+			var read models.ReadChapter
+			if b.core.Gorm().Select("id").Where("user_id = ? AND doc_id = ?", ev.UserID, ev.SourceID).First(&read).Error != nil {
+				return ""
+			}
+			return fmt.Sprintf("reading.chapter:%d", read.ID)
+		}},
+	{RuleKey: "creation.chapter_published", Label: "发布章节", BaseXP: 10, DailyCap: 100, Enabled: true, SortOrder: 2},
+	{RuleKey: "community.comment", Activity: "comment.created", Label: "发表评论", BaseXP: 3, DailyCap: 30, Enabled: true, SortOrder: 3},
+	{RuleKey: "reading.time", Activity: "reading.time", Label: "阅读时长（每 5 分钟）", BaseXP: 1, DailyCap: 12, SortOrder: 4,
+		Dedupe: func(_ *behavior, ev plugincore.ActivityEvent) string { return ev.DedupeKey }}, // 形如 reading.time:<用户>:<5 分钟桶>
+	{RuleKey: "reading.annotation", Activity: "annotation.created", Label: "添加笔记标注", BaseXP: 2, DailyCap: 20, SortOrder: 5},
+	{RuleKey: "creation.book_created", Activity: "book.created", Label: "创建书籍", BaseXP: 5, DailyCap: 10, SortOrder: 6},
+	{RuleKey: "creation.chapter_created", Activity: "document.created", Label: "新建章节", BaseXP: 2, DailyCap: 20, SortOrder: 7},
+	{RuleKey: "community.comment_received", Activity: "comment.received", Label: "作品收到评论", BaseXP: 2, DailyCap: 20, SortOrder: 8},
+	{RuleKey: "community.reaction", Activity: "reaction.created", Label: "点赞/收藏", BaseXP: 1, DailyCap: 10, SortOrder: 9},
+	{RuleKey: "community.reaction_received", Activity: "reaction.received", Label: "作品获得点赞/收藏", BaseXP: 2, DailyCap: 20, SortOrder: 10},
+	{RuleKey: "account.registered", Activity: "account.registered", Label: "注册账号", BaseXP: 20, SortOrder: 11},
+	{RuleKey: "account.email_verified", Activity: "account.email_verified", Label: "验证邮箱", BaseXP: 10, SortOrder: 12},
+	{RuleKey: "account.two_factor_enabled", Activity: "account.two_factor_enabled", Label: "开启二次认证", BaseXP: 20, SortOrder: 13},
+	{RuleKey: "account.oauth_bound", Activity: "account.oauth_bound", Label: "绑定第三方账号", BaseXP: 5, DailyCap: 15, SortOrder: 14},
+	{RuleKey: "account.invited_user", Activity: "account.invited_user", Label: "邀请用户注册", BaseXP: 20, DailyCap: 100, SortOrder: 15},
+}
+
+// ensureExperienceRules 为目录中缺失的触发器补建规则（已存在的规则不改动，保留管理员的配置）。
+// 首次启用与管理端查看规则时调用，使升级后的新触发器出现在管理端（默认停用）。
+func (b *behavior) ensureExperienceRules() {
 	db := b.core.Gorm()
-	var count int64
-	db.Model(&models.ExperienceRule{}).Count(&count)
-	if count > 0 {
-		return
+	var existing []string
+	db.Model(&models.ExperienceRule{}).Pluck("rule_key", &existing)
+	have := make(map[string]bool, len(existing))
+	for _, k := range existing {
+		have[k] = true
 	}
-	defaults := []models.ExperienceRule{
-		{RuleKey: "reading.chapter", Label: "阅读章节（首次）", BaseXP: 5, DailyCap: 50, Enabled: true, SortOrder: 1},
-		{RuleKey: "creation.chapter_published", Label: "发布章节", BaseXP: 10, DailyCap: 100, Enabled: true, SortOrder: 2},
-		{RuleKey: "community.comment", Label: "发表评论", BaseXP: 3, DailyCap: 30, Enabled: true, SortOrder: 3},
+	for _, t := range xpCatalog {
+		if have[t.RuleKey] {
+			continue
+		}
+		rule := models.ExperienceRule{RuleKey: t.RuleKey, Label: t.Label, BaseXP: t.BaseXP, DailyCap: t.DailyCap, Enabled: t.Enabled, SortOrder: t.SortOrder}
+		if db.Create(&rule).Error == nil && !t.Enabled {
+			// enabled 列有 default:true，零值 false 在插入时会被默认值覆盖，需显式写回
+			db.Model(&models.ExperienceRule{}).Where("id = ?", rule.ID).Update("enabled", false)
+		}
 	}
-	for i := range defaults {
-		db.Create(&defaults[i])
+}
+
+// awardForActivity 按目录把业务活动映射为经验（规则停用/插件禁用时为空操作）。
+func (b *behavior) awardForActivity(ev plugincore.ActivityEvent) {
+	for i := range xpCatalog {
+		t := &xpCatalog[i]
+		if t.Activity == "" || t.Activity != ev.Type {
+			continue
+		}
+		dedupe := t.RuleKey + ":" + ev.SourceID
+		if t.Dedupe != nil {
+			dedupe = t.Dedupe(b, ev)
+		}
+		if dedupe == "" || ev.SourceID == "" {
+			continue
+		}
+		b.awardExperience(ev.UserID, t.RuleKey, ev.SourceType, ev.SourceID, dedupe)
 	}
 }
 

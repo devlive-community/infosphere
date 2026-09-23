@@ -183,3 +183,65 @@ func TestCoreEventsAwardExperience(t *testing.T) {
 		t.Fatalf("删除用户后经验流水应被清理，剩余 %d", left)
 	}
 }
+
+// 经验触发器目录：管理端查看规则时补建新增触发器（默认停用，原有 3 条保持启用）；
+// 启用后对应业务活动发经验；经验流水可按用户/规则筛选；人工调整可按用户 ID。
+func TestExperienceCatalogLedgerAndAdjust(t *testing.T) {
+	e := newTestEnv(t)
+	user := e.user(t, "growth-catalog")
+
+	status, payload := e.do(t, http.MethodGet, "/api/v1/admin/growth/rules", "")
+	if status != http.StatusOK {
+		t.Fatalf("读取经验规则失败: %d %v", status, payload)
+	}
+	rules := map[string]map[string]any{}
+	for _, it := range payload["data"].(map[string]any)["items"].([]any) {
+		r := it.(map[string]any)
+		rules[r["rule_key"].(string)] = r
+	}
+	if len(rules) < 15 {
+		t.Fatalf("应补建完整的触发器目录，实际 %d 条", len(rules))
+	}
+	for key, enabled := range map[string]bool{"reading.chapter": true, "community.comment": true, "creation.chapter_published": true, "community.reaction_received": false, "reading.annotation": false} {
+		if rules[key]["enabled"] != enabled {
+			t.Fatalf("规则 %s 默认启停应为 %v: %v", key, enabled, rules[key])
+		}
+	}
+
+	// 停用的规则不发经验；启用后发放，且按来源 ID 去重
+	received := plugincore.ActivityEvent{UserID: user.ID, Type: "reaction.received", SourceType: "reaction", SourceID: "7", DedupeKey: "reaction.received:7"}
+	plugincore.FireActivity(e.app, received)
+	if p := growth.Profile(e.app, user.ID); p.LifetimeXP != 0 {
+		t.Fatalf("停用规则不应发经验，实际 %d", p.LifetimeXP)
+	}
+	ruleID := int(rules["community.reaction_received"]["id"].(float64))
+	if status, payload := e.do(t, http.MethodPut, "/api/v1/admin/growth/rules/"+strconv.Itoa(ruleID), `{"base_xp":4,"daily_cap":0,"enabled":true}`); status != http.StatusOK {
+		t.Fatalf("启用规则失败: %d %v", status, payload)
+	}
+	plugincore.FireActivity(e.app, received)
+	plugincore.FireActivity(e.app, received)
+	if p := growth.Profile(e.app, user.ID); p.LifetimeXP != 4 {
+		t.Fatalf("启用后应发 4 经验且去重，实际 %d", p.LifetimeXP)
+	}
+
+	// 人工调整（按用户 ID），响应带用户名与最新经验
+	status, payload = e.do(t, http.MethodPost, "/api/v1/admin/growth/adjust", `{"user_id":`+strconv.FormatUint(uint64(user.ID), 10)+`,"xp":96,"reason":"活动奖励"}`)
+	if status != http.StatusOK || payload["data"].(map[string]any)["username"] != "growth-catalog" || payload["data"].(map[string]any)["lifetime_xp"].(float64) != 100 {
+		t.Fatalf("人工调整失败: %d %v", status, payload)
+	}
+
+	// 经验流水：按用户、按规则筛选，附用户信息
+	status, payload = e.do(t, http.MethodGet, "/api/v1/admin/growth/events?user_id="+strconv.FormatUint(uint64(user.ID), 10), "")
+	data := payload["data"].(map[string]any)
+	if status != http.StatusOK || int(data["total"].(float64)) != 2 {
+		t.Fatalf("按用户筛选经验流水应有 2 条: %d %v", status, payload)
+	}
+	first := data["items"].([]any)[0].(map[string]any)
+	if first["rule_key"] != "admin.adjust" || first["user"].(map[string]any)["username"] != "growth-catalog" {
+		t.Fatalf("经验流水应倒序并附用户信息: %v", first)
+	}
+	_, payload = e.do(t, http.MethodGet, "/api/v1/admin/growth/events?rule_key=community.reaction_received", "")
+	if int(payload["data"].(map[string]any)["total"].(float64)) != 1 {
+		t.Fatalf("按规则筛选经验流水应有 1 条: %v", payload)
+	}
+}

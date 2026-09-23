@@ -4,8 +4,10 @@ import AdminLayout from '@/components/AdminLayout'
 import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
 import IconPicker from '@/components/IconPicker'
+import UserSearchSelect, { type UserLite } from '@/components/UserSearchSelect'
+import UserAvatar from '@/components/UserAvatar'
 import { api } from '@/lib/api'
-import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Select, SegmentedTabs, Switch, useFeedback } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Pagination, Select, SegmentedTabs, Switch, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
 interface Level {
@@ -22,6 +24,18 @@ interface Level {
 
 interface LevelForm { id?: number; level: number; name: string; description: string; icon_type: string; icon_value: string; color: string; min_xp: number; status: string }
 interface Rule { id: number; rule_key: string; label: string; base_xp: number; daily_cap: number; enabled: boolean }
+interface LedgerItem { id: number; rule_key: string; final_xp: number; reason?: string; created_at: string; user?: UserLite }
+type Tab = 'levels' | 'rules' | 'events'
+
+// ruleLabel 经验规则的显示名：优先 i18n（growth.rule.<key>），回退库中 label / 规则键。
+function useRuleLabel() {
+  const { t } = useTranslation()
+  return (key: string, fallback?: string) => {
+    const k = `growth.rule.${key}`
+    const v = t(k)
+    return v === k ? (fallback || key) : v
+  }
+}
 
 export default function AdminGrowth() {
   return <FeatureGate feature="growth"><AdminGrowthInner /></FeatureGate>
@@ -33,14 +47,15 @@ function AdminGrowthInner() {
   const [levels, setLevels] = useState<Level[] | null>(null)
   const [form, setForm] = useState<LevelForm | null>(null)
   const [saving, setSaving] = useState(false)
-  const [adjUser, setAdjUser] = useState('')
+  const [adjUser, setAdjUser] = useState<UserLite | null>(null)
   const [adjXP, setAdjXP] = useState('')
   const [adjReason, setAdjReason] = useState('')
   const [adjusting, setAdjusting] = useState(false)
   const [rules, setRules] = useState<Rule[] | null>(null)
   const [savingRule, setSavingRule] = useState<number | null>(null)
   const router = useRouter()
-  const tab: 'levels' | 'rules' = router.query.tab === 'rules' ? 'rules' : 'levels' // tab 由 URL 驱动
+  const tab: Tab = router.query.tab === 'rules' ? 'rules' : router.query.tab === 'events' ? 'events' : 'levels' // tab 由 URL 驱动
+  const ruleLabel = useRuleLabel()
 
   const load = useCallback(() => {
     api<{ items: Level[] }>('/admin/growth/levels').then((r) => setLevels(r.items || [])).catch((e) => showToast({ title: t('admin.growth.loadFailed'), message: (e as Error).message, tone: 'error' }))
@@ -84,12 +99,12 @@ function AdminGrowthInner() {
   }
 
   async function adjust() {
-    if (!adjUser.trim() || !adjXP.trim() || !adjReason.trim()) { showToast({ message: t('admin.growth.adjustRequired'), tone: 'error' }); return }
+    if (!adjUser || !adjXP.trim() || !adjReason.trim()) { showToast({ message: t('admin.growth.adjustRequired'), tone: 'error' }); return }
     setAdjusting(true)
     try {
-      await api('/admin/growth/adjust', { method: 'POST', body: { username: adjUser.trim(), xp: Number(adjXP), reason: adjReason.trim() } })
-      setAdjUser(''); setAdjXP(''); setAdjReason('')
-      showToast({ message: t('admin.growth.adjustDone'), tone: 'success' })
+      const r = await api<{ username: string; lifetime_xp: number; level?: { name: string } }>('/admin/growth/adjust', { method: 'POST', body: { user_id: adjUser.id, xp: Number(adjXP), reason: adjReason.trim() } })
+      setAdjUser(null); setAdjXP(''); setAdjReason('')
+      showToast({ title: t('admin.growth.adjustDone'), message: t('admin.growth.adjustDoneDetail', { user: r.username, xp: r.lifetime_xp, level: r.level?.name || '' }), tone: 'success' })
     } catch (e) { showToast({ title: t('admin.growth.adjustFailed'), message: (e as Error).message, tone: 'error' }) }
     finally { setAdjusting(false) }
   }
@@ -114,6 +129,7 @@ function AdminGrowthInner() {
         items={[
           { value: 'levels', label: t('admin.growth.tab.levels'), href: '/admin/growth?tab=levels' },
           { value: 'rules', label: t('admin.growth.tab.rules'), href: '/admin/growth?tab=rules' },
+          { value: 'events', label: t('admin.growth.tab.events'), href: '/admin/growth?tab=events' },
         ]} />
 
       <div className={`mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr] ${tab === 'levels' ? '' : 'hidden'}`}>
@@ -146,7 +162,7 @@ function AdminGrowthInner() {
           <h2 className="font-bold text-slate-900">{t('admin.growth.adjustTitle')}</h2>
           <p className="mt-1 text-xs text-slate-400">{t('admin.growth.adjustHint')}</p>
           <div className="mt-4 space-y-3">
-            <Field label={t('admin.growth.adjustUser')}><Input value={adjUser} onChange={(e) => setAdjUser(e.target.value)} placeholder="username" /></Field>
+            <Field label={t('admin.growth.adjustUser')}><UserSearchSelect value={adjUser} onChange={setAdjUser} /></Field>
             <Field label={t('admin.growth.adjustXp')}><Input type="number" value={adjXP} onChange={(e) => setAdjXP(e.target.value)} placeholder="100 / -50" /></Field>
             <Field label={t('admin.growth.adjustReason')}><Input value={adjReason} onChange={(e) => setAdjReason(e.target.value)} /></Field>
             <div className="flex justify-end"><Button loading={adjusting} onClick={adjust}>{t('admin.growth.adjustSubmit')}</Button></div>
@@ -169,7 +185,7 @@ function AdminGrowthInner() {
               <tbody className="divide-y divide-slate-100">
                 {rules.map((r) => (
                   <tr key={r.id}>
-                    <td className="px-4 py-2.5"><span className="block font-medium text-slate-800">{r.label || r.rule_key}</span><span className="font-mono text-xs text-slate-400">{r.rule_key}</span></td>
+                    <td className="px-4 py-2.5"><span className="block font-medium text-slate-800">{ruleLabel(r.rule_key, r.label)}</span><span className="font-mono text-xs text-slate-400">{r.rule_key}</span></td>
                     <td className="px-4 py-2.5"><span className="inline-block w-24"><Input type="number" min={0} value={r.base_xp} onChange={(e) => patchRule(r.id, { base_xp: Math.max(0, Number(e.target.value) || 0) })} /></span></td>
                     <td className="px-4 py-2.5"><span className="inline-block w-24"><Input type="number" min={0} value={r.daily_cap} onChange={(e) => patchRule(r.id, { daily_cap: Math.max(0, Number(e.target.value) || 0) })} /></span></td>
                     <td className="px-4 py-2.5"><Switch ariaLabel={r.label} checked={r.enabled} onChange={(v) => patchRule(r.id, { enabled: v })} /></td>
@@ -178,10 +194,13 @@ function AdminGrowthInner() {
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-xs text-slate-400">{t('admin.growth.rule.capNote')}</p>
+            <p className="mt-2 text-xs text-slate-400">{t('admin.growth.rule.capNote')} {t('admin.growth.rule.catalogNote')}</p>
           </div>
         )}
       </Card>
+
+      {/* 经验流水（仅在「经验流水」tab 挂载，按需加载） */}
+      {tab === 'events' && <LedgerPanel rules={rules || []} />}
 
       <Modal open={form !== null} onClose={() => setForm(null)} title={form?.id ? t('admin.growth.editLevel') : t('admin.growth.addLevel')}
         footer={<><Button variant="outline" onClick={() => setForm(null)}>{t('common.actions.cancel')}</Button><Button loading={saving} onClick={save}>{t('common.actions.save')}</Button></>}>
@@ -204,5 +223,83 @@ function AdminGrowthInner() {
         )}
       </Modal>
     </AdminLayout>
+  )
+}
+
+// LedgerPanel 管理端经验流水：按用户/规则筛选、分页；筛选变化回到第一页。
+function LedgerPanel({ rules }: { rules: Rule[] }) {
+  const { t } = useTranslation()
+  const { showToast } = useFeedback()
+  const ruleLabel = useRuleLabel()
+  const [user, setUser] = useState<UserLite | null>(null)
+  const [ruleKey, setRuleKey] = useState('')
+  const [page, setPage] = useState(1)
+  const [data, setData] = useState<{ items: LedgerItem[]; total: number; page: number; page_size: number } | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => { setPage(1) }, [user, ruleKey])
+  useEffect(() => {
+    let alive = true
+    setLoading(true)
+    api<{ items: LedgerItem[]; total: number; page: number; page_size: number }>('/admin/growth/events', {
+      params: { page, page_size: 20, user_id: user?.id || undefined, rule_key: ruleKey || undefined },
+    })
+      .then((r) => { if (alive) setData(r) })
+      .catch((e) => { if (alive) showToast({ title: t('admin.growth.events.loadFailed'), message: (e as Error).message, tone: 'error' }) })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [page, user, ruleKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const ruleOptions = [
+    { value: '', label: t('admin.growth.events.allRules') },
+    ...rules.map((r) => ({ value: r.rule_key, label: ruleLabel(r.rule_key, r.label) })),
+    ...(['achievement.unlocked', 'admin.adjust'].filter((k) => !rules.some((r) => r.rule_key === k)).map((k) => ({ value: k, label: ruleLabel(k) }))),
+  ]
+
+  return (
+    <Card className="mt-6 p-5">
+      <h2 className="font-bold text-slate-900">{t('admin.growth.events.title')}</h2>
+      <p className="mt-1 text-xs text-slate-400">{t('admin.growth.events.hint')}</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:max-w-2xl">
+        <UserSearchSelect value={user} onChange={setUser} placeholder={t('admin.growth.events.filterUser')} />
+        <Select value={ruleKey} onChange={setRuleKey} options={ruleOptions} searchable />
+      </div>
+      {!data ? <Loading className="py-10" /> : data.total === 0 ? (
+        <div className="mt-4"><EmptyState>{t('admin.growth.events.empty')}</EmptyState></div>
+      ) : (
+        <div className={`mt-4 overflow-x-auto ${loading ? 'pointer-events-none opacity-60' : ''}`} aria-busy={loading}>
+          <table className="w-full min-w-[640px] text-sm">
+            <thead className="bg-slate-50 text-left text-xs text-slate-500">
+              <tr>
+                <th className="px-4 py-2.5">{t('admin.growth.events.col.user')}</th>
+                <th className="px-4 py-2.5">{t('admin.growth.events.col.rule')}</th>
+                <th className="px-4 py-2.5 text-right">{t('admin.growth.events.col.xp')}</th>
+                <th className="px-4 py-2.5">{t('admin.growth.events.col.reason')}</th>
+                <th className="px-4 py-2.5">{t('admin.growth.events.col.time')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.items.map((e) => (
+                <tr key={e.id}>
+                  <td className="px-4 py-2.5">
+                    {e.user ? (
+                      <button type="button" onClick={() => setUser(e.user || null)} className="flex items-center gap-2 text-left hover:text-primary-600">
+                        <UserAvatar user={e.user} size="h-6 w-6" link={false} tooltip={false} />
+                        <span className="truncate">{e.user.username}</span>
+                      </button>
+                    ) : <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-4 py-2.5"><span className="block text-slate-700">{ruleLabel(e.rule_key)}</span><span className="font-mono text-xs text-slate-400">{e.rule_key}</span></td>
+                  <td className={`px-4 py-2.5 text-right font-medium tabular-nums ${e.final_xp < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{e.final_xp > 0 ? `+${e.final_xp}` : e.final_xp}</td>
+                  <td className="max-w-[16rem] truncate px-4 py-2.5 text-slate-500">{e.reason || '—'}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-slate-400">{new Date(e.created_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
+        </div>
+      )}
+    </Card>
   )
 }

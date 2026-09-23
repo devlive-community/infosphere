@@ -47,6 +47,7 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	reg(http.MethodPost, "/admin/growth/adjust", authz.ExperienceAdjust, b.AdminAdjustExperience)
 	reg(http.MethodGet, "/admin/growth/rules", authz.GrowthManage, b.AdminListExperienceRules)
 	reg(http.MethodPut, "/admin/growth/rules/:id", authz.GrowthManage, b.AdminUpdateExperienceRule)
+	reg(http.MethodGet, "/admin/growth/events", authz.GrowthManage, b.AdminListExperienceEvents)
 }
 
 // —— 本子包私有的读取/组装辅助（与原 app 内实现一致）——
@@ -263,6 +264,7 @@ func (b *behavior) AdminDeleteLevel(c *gin.Context) {
 }
 
 func (b *behavior) AdminListExperienceRules(c *gin.Context) {
+	b.ensureExperienceRules() // 升级后补建新增触发器的规则（默认停用）
 	rules := []models.ExperienceRule{}
 	b.core.Gorm().Order("sort_order ASC, id ASC").Find(&rules)
 	b.core.OK(c, gin.H{"items": rules})
@@ -300,6 +302,7 @@ func (b *behavior) AdminUpdateExperienceRule(c *gin.Context) {
 		return
 	}
 	core.RecordAudit(c, "growth.rule_updated", "growth", rule.RuleKey, rule.Label, changedFields("base_xp", "daily_cap", "enabled"))
+	core.Gorm().First(&rule, rule.ID) // 返回保存后的值
 	core.OK(c, rule)
 }
 
@@ -307,21 +310,82 @@ func (b *behavior) AdminAdjustExperience(c *gin.Context) {
 	core := b.core
 	admin := core.CurrentUser(c)
 	var req struct {
+		UserID   uint   `json:"user_id"` // 优先按 ID（后台用户选择器）；兼容按用户名
 		Username string `json:"username"`
 		XP       int    `json:"xp"`
 		Reason   string `json:"reason"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Username) == "" || req.XP == 0 || strings.TrimSpace(req.Reason) == "" {
-		core.Fail(c, http.StatusBadRequest, "请填写用户名、非零经验与原因")
+	if err := c.ShouldBindJSON(&req); err != nil || (req.UserID == 0 && strings.TrimSpace(req.Username) == "") || req.XP == 0 || strings.TrimSpace(req.Reason) == "" {
+		core.Fail(c, http.StatusBadRequest, "请选择用户并填写非零经验与原因")
 		return
 	}
 	var target models.User
-	if err := core.Gorm().Where("username = ?", strings.TrimSpace(req.Username)).First(&target).Error; err != nil {
+	query := core.Gorm().Where("username = ?", strings.TrimSpace(req.Username))
+	if req.UserID != 0 {
+		query = core.Gorm().Where("id = ?", req.UserID)
+	}
+	if err := query.First(&target).Error; err != nil {
 		core.Fail(c, http.StatusNotFound, "用户不存在")
 		return
 	}
 	dedupe := fmt.Sprintf("admin.adjust:%d:%d:%d", target.ID, admin.ID, time.Now().UnixNano())
 	b.recordExperience(target.ID, "admin.adjust", "user", strconv.FormatUint(uint64(admin.ID), 10), dedupe, req.XP, strings.TrimSpace(req.Reason))
 	core.RecordAudit(c, "growth.experience_adjusted", "user", auditID(target.ID), target.Username, map[string]any{"xp": req.XP, "reason": req.Reason})
-	core.OK(c, b.growthPayload(b.growthProfile(target.ID)))
+	payload := b.growthPayload(b.growthProfile(target.ID))
+	payload["username"] = target.Username
+	core.OK(c, payload)
+}
+
+// experienceEventItem 管理端经验流水条目（附用户简要信息）。
+type experienceEventItem struct {
+	models.ExperienceEvent
+	User *experienceEventUser `json:"user,omitempty"`
+}
+
+type experienceEventUser struct {
+	ID       uint   `json:"id"`
+	Username string `json:"username"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}
+
+// AdminListExperienceEvents GET /admin/growth/events?user_id=&rule_key=&page=&page_size=
+// 全站经验流水（倒序），可按用户、规则筛选；供管理员核对经验来源与人工调整记录。
+func (b *behavior) AdminListExperienceEvents(c *gin.Context) {
+	core := b.core
+	page, pageSize := core.Paginate(c)
+	query := core.Gorm().Model(&models.ExperienceEvent{})
+	if uid := core.AtoiDefault(c.Query("user_id"), 0); uid > 0 {
+		query = query.Where("user_id = ?", uid)
+	}
+	if rule := strings.TrimSpace(c.Query("rule_key")); rule != "" {
+		query = query.Where("rule_key = ?", rule)
+	}
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		core.Fail(c, http.StatusInternalServerError, "查询失败")
+		return
+	}
+	events := []models.ExperienceEvent{}
+	if err := query.Order("created_at DESC, id DESC").Limit(pageSize).Offset((page - 1) * pageSize).Find(&events).Error; err != nil {
+		core.Fail(c, http.StatusInternalServerError, "查询失败")
+		return
+	}
+	ids := make([]uint, 0, len(events))
+	for _, e := range events {
+		ids = append(ids, e.UserID)
+	}
+	users := map[uint]*experienceEventUser{}
+	if len(ids) > 0 {
+		var rows []models.User
+		core.Gorm().Select("id", "username", "nickname", "avatar").Where("id IN ?", ids).Find(&rows)
+		for _, u := range rows {
+			users[u.ID] = &experienceEventUser{ID: u.ID, Username: u.Username, Nickname: u.Nickname, Avatar: u.Avatar}
+		}
+	}
+	items := make([]experienceEventItem, 0, len(events))
+	for _, e := range events {
+		items = append(items, experienceEventItem{ExperienceEvent: e, User: users[e.UserID]})
+	}
+	core.OK(c, plugincore.PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
 }

@@ -422,9 +422,10 @@ Authorization: Bearer <token>
 | PUT | `/users/me/growth/display` | `{public}` 切换是否公开等级 | `growth:update` |
 | GET | `/admin/growth/levels` | 全部等级（含归档） | `growth:manage` |
 | POST/PUT/DELETE | `/admin/growth/levels[/:id]` | 等级增删改（等级 1 不可删、阈值恒 0；编号唯一） | `growth:manage` |
-| POST | `/admin/growth/adjust` | `{username,xp,reason}` 人工加减经验（写审计，生成 adjustment 流水） | `experience:adjust` |
-| GET | `/admin/growth/rules` | 经验规则列表 | `growth:manage` |
+| POST | `/admin/growth/adjust` | `{user_id 或 username, xp, reason}` 人工加减经验（优先按 user_id；响应含 username 与最新经验/等级）（写审计，生成 adjustment 流水） | `experience:adjust` |
+| GET | `/admin/growth/rules` | 经验规则列表（按代码内的经验触发器目录补建缺失规则：原有阅读章节/发布章节/发表评论默认启用，其余业务活动如阅读时长、标注、建书、点赞、收到评论、账号安全等默认停用） | `growth:manage` |
 | PUT | `/admin/growth/rules/:id` | 更新规则 `{base_xp,daily_cap,enabled}` | `growth:manage` |
+| GET | `/admin/growth/events?user_id&rule_key&page&page_size` | 全站经验流水（倒序），可按用户/规则筛选，条目附 `user{id,username,nickname,avatar}` | `growth:manage` |
 
 - 成就定义新增 `reward_xp`（默认 0）：解锁时给作者奖励经验（每 user+achievement 只结算一次）。
 - **经验规则**（`ExperienceRule`）：固定事件（`reading.chapter`、`creation.chapter_published`、`community.comment`）的经验金额与**每人每日上限**由规则表配置，启用时种子默认规则；成就/管理员调整不走规则（金额分别为 reward_xp / 手工值）。

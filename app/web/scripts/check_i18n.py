@@ -46,6 +46,12 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     # rate-limits: t(`admin.settings.rateLimit.policy.${name}`)，allRateLimitPolicies 的 Name 取值域
     'admin.settings.rateLimit.policy.': ['auth_login', 'auth_register', 'password_forgot', 'password_reset',
                                          'comment_create', 'reaction_update', 'upload_create', 'report_create'],
+    # growth: t(`growth.rule.${rule_key}`)，经验规则键取值域（服务端 growth 插件 xpCatalog + 系统规则）
+    'growth.rule.': ['reading.chapter', 'creation.chapter_published', 'community.comment', 'reading.time',
+                     'reading.annotation', 'creation.book_created', 'creation.chapter_created',
+                     'community.comment_received', 'community.reaction', 'community.reaction_received',
+                     'account.registered', 'account.email_verified', 'account.two_factor_enabled',
+                     'account.oauth_bound', 'account.invited_user', 'achievement.unlocked', 'admin.adjust'],
 }
 
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）
@@ -61,6 +67,8 @@ KNOWN_NON_KEYS = {
     # pages/admin/audit-logs.tsx 审计 action 下拉的 value（数据值，文案键为 admin.audit.action.*）
     'user.role_updated', 'user.status_updated', 'user.deleted',
     'book.moderated', 'book.permanently_deleted', 'report.resolved',
+    # pages/admin/growth: 经验流水规则筛选的系统规则键（数据值，文案键为 growth.rule.*）
+    'admin.adjust',
 }
 
 KEY_RE = re.compile(r"'([a-zA-Z][\w.]*)'\s*:")
