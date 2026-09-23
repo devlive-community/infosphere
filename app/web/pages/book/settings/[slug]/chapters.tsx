@@ -297,7 +297,16 @@ export default function BookSettingsChapters({ book }: InferGetServerSidePropsTy
 
         {selected.size > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-primary-50/50 px-6 py-3">
-            <span className="text-sm text-slate-600">{t('bookSettings.chapters.copy.selectedCount', { count: selected.size })}</span>
+            <div className="flex items-center gap-3 text-sm text-slate-600">
+              {/* 全选：勾选后选中全部章节，再点取消全选 */}
+              <label className="flex cursor-pointer items-center gap-1.5">
+                <Checkbox ariaLabel={t('bookSettings.chapters.copy.selectAll')}
+                  checked={flat.length > 0 && flat.every((d) => selected.has(d.id))}
+                  onChange={(all) => setSelected(all ? new Set(flat.map((d) => d.id)) : new Set())} />
+                {t('bookSettings.chapters.copy.selectAll')}
+              </label>
+              <span>{t('bookSettings.chapters.copy.selectedCount', { count: selected.size })}</span>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" loading={bulkBusy} onClick={() => setCopyIds(Array.from(selected))}><i className="fa-solid fa-copy" aria-hidden="true" /> {t('bookSettings.chapters.copy.action')}</Button>
               <span className="mx-1 hidden h-5 w-px bg-slate-200 sm:block" />

@@ -1623,6 +1623,7 @@ export const zh: Record<string, string> = {
   'bookSettings.chapters.menu.history': '历史版本',
   'bookSettings.chapters.menu.copyTo': '复制到…',
   'bookSettings.chapters.copy.select': '选择章节 {title}',
+  'bookSettings.chapters.copy.selectAll': '全选',
   'bookSettings.chapters.copy.selectedCount': '已选 {count} 章（复制时含各自子章节）',
   'bookSettings.chapters.copy.action': '复制到…',
   'bookSettings.chapters.bulk.setStatus': '批量改状态：',

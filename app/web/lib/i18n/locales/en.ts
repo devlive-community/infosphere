@@ -1623,6 +1623,7 @@ export const en: Record<string, string> = {
   'bookSettings.chapters.menu.history': 'History',
   'bookSettings.chapters.menu.copyTo': 'Copy to…',
   'bookSettings.chapters.copy.select': 'Select chapter {title}',
+  'bookSettings.chapters.copy.selectAll': 'Select all',
   'bookSettings.chapters.copy.selectedCount': '{count} selected (subchapters included when copying)',
   'bookSettings.chapters.copy.action': 'Copy to…',
   'bookSettings.chapters.bulk.setStatus': 'Set status:',
