@@ -167,7 +167,7 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
         </div>
 
         {q && (
-          <SegmentedTabs className="sm:!w-auto" size="sm" fullWidth value={filters.type} items={typeItems} ariaLabel={t('search.seo.title')}
+          <SegmentedTabs size="sm" value={filters.type} items={typeItems} ariaLabel={t('search.seo.title')}
             onChange={(value) => navigate({ ...filters, type: value as SearchType }, 1, q)} />
         )}
 

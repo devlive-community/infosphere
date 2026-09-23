@@ -39,10 +39,7 @@ export default function SettingsLayout({ active, description, children }: Settin
       <SegmentedTabs className="mb-6" value={active} ariaLabel={t('admin.settings.ariaLabel')}
         items={TABS.map((tab) => ({ value: tab.key, label: t(tab.labelKey), href: tab.href }))} />
 
-      {/* 内容居中收进一列（配合各页 max-w-2xl 卡片），避免右侧大片空白的割裂感；Tab 仍保持全宽以容纳全部项 */}
-      <div className="mx-auto w-full max-w-3xl [&>*]:mx-auto">
-        {children}
-      </div>
+      {children}
     </AdminLayout>
   )
 }

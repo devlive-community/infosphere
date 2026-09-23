@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import AdminLayout from '@/components/AdminLayout'
 import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
@@ -38,7 +39,8 @@ function AdminGrowthInner() {
   const [adjusting, setAdjusting] = useState(false)
   const [rules, setRules] = useState<Rule[] | null>(null)
   const [savingRule, setSavingRule] = useState<number | null>(null)
-  const [tab, setTab] = useState<'levels' | 'rules'>('levels')
+  const router = useRouter()
+  const tab: 'levels' | 'rules' = router.query.tab === 'rules' ? 'rules' : 'levels' // tab 由 URL 驱动
 
   const load = useCallback(() => {
     api<{ items: Level[] }>('/admin/growth/levels').then((r) => setLevels(r.items || [])).catch((e) => showToast({ title: t('admin.growth.loadFailed'), message: (e as Error).message, tone: 'error' }))
@@ -108,8 +110,11 @@ function AdminGrowthInner() {
         )}
       </div>
 
-      <SegmentedTabs className="mt-6" value={tab} onChange={(v) => setTab(v as 'levels' | 'rules')} ariaLabel={t('admin.nav.growth')}
-        items={[{ value: 'levels', label: t('admin.growth.tab.levels') }, { value: 'rules', label: t('admin.growth.tab.rules') }]} />
+      <SegmentedTabs className="mt-6" value={tab} ariaLabel={t('admin.nav.growth')}
+        items={[
+          { value: 'levels', label: t('admin.growth.tab.levels'), href: '/admin/growth?tab=levels' },
+          { value: 'rules', label: t('admin.growth.tab.rules'), href: '/admin/growth?tab=rules' },
+        ]} />
 
       <div className={`mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr] ${tab === 'levels' ? '' : 'hidden'}`}>
         <div>
