@@ -28,8 +28,6 @@ type Core interface {
 	Notify(userID uint, ntype, title string, payload map[string]any)
 	PluginEnabled(key string) bool
 	RecordAudit(c *gin.Context, action, resourceType, resourceID, label string, summary map[string]any)
-	// RecordExperience 记一条经验流水（成长插件禁用时为空操作）；供成长插件人工调整等复用。
-	RecordExperience(userID uint, ruleKey, sourceType, sourceID, dedupeKey string, xp int, reason string)
 
 	// 书籍/用户领域共享工具（核心与多个插件复用）
 	IsAdmin(u *models.User) bool
@@ -115,8 +113,8 @@ func Behaviors() []Plugin { return behaviors }
 
 // —— 钩子：核心在关键点触发，插件订阅（解耦核心对具体插件的直接调用）——
 
-// ChapterPublishedHook 章节发布后的回调。
-type ChapterPublishedHook func(book *models.Book, doc *models.Document)
+// ChapterPublishedHook 章节发布后的回调（core 为发起调用的核心实例）。
+type ChapterPublishedHook func(core Core, book *models.Book, doc *models.Document)
 
 var chapterPublishedHooks []ChapterPublishedHook
 
@@ -124,9 +122,9 @@ var chapterPublishedHooks []ChapterPublishedHook
 func OnChapterPublished(h ChapterPublishedHook) { chapterPublishedHooks = append(chapterPublishedHooks, h) }
 
 // FireChapterPublished 由核心在章节发布成功后调用，依次通知订阅者。
-func FireChapterPublished(book *models.Book, doc *models.Document) {
+func FireChapterPublished(core Core, book *models.Book, doc *models.Document) {
 	for _, h := range chapterPublishedHooks {
-		h(book, doc)
+		h(core, book, doc)
 	}
 }
 
@@ -273,4 +271,21 @@ func RegisterLocalizedResource(kind string, fields map[string]int) { localizedRe
 func LocalizedResourceFields(kind string) (map[string]int, bool) {
 	f, ok := localizedResourceFields[kind]
 	return f, ok
+}
+
+// —— 经验记账服务：由成长插件提供，其他插件（如成就解锁奖励）通过 RecordExperience 调用；未提供时为空操作。——
+
+// ExperienceRecorder 幂等记一条经验流水（dedupeKey 唯一）并重算成长资料。
+type ExperienceRecorder func(core Core, userID uint, ruleKey, sourceType, sourceID, dedupeKey string, xp int, reason string)
+
+var experienceRecorder ExperienceRecorder
+
+// ProvideExperienceRecorder 由成长插件登记经验记账实现。
+func ProvideExperienceRecorder(f ExperienceRecorder) { experienceRecorder = f }
+
+// RecordExperience 记一条经验流水（成长插件未提供或禁用时为空操作）。
+func RecordExperience(core Core, userID uint, ruleKey, sourceType, sourceID, dedupeKey string, xp int, reason string) {
+	if experienceRecorder != nil {
+		experienceRecorder(core, userID, ruleKey, sourceType, sourceID, dedupeKey, xp, reason)
+	}
 }

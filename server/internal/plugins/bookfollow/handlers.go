@@ -35,7 +35,7 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	api.GET("/users/me/follows", core.RequireAuth(), guard, core.RequirePermission(authz.FollowRead), b.MyFollows)
 	// 章节发布 → 通知关注者（订阅核心钩子，替代核心直接调用插件方法）；只注册一次，避免重复通知。
 	b.hookOnce.Do(func() {
-		plugincore.OnChapterPublished(func(book *models.Book, doc *models.Document) { b.notifyChapterPublished(book, doc) })
+		plugincore.OnChapterPublished(func(_ plugincore.Core, book *models.Book, doc *models.Document) { b.notifyChapterPublished(book, doc) })
 	})
 }
 

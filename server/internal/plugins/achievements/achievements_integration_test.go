@@ -273,7 +273,7 @@ func TestAchievementMetricsAcrossPlugins(t *testing.T) {
 	user := e.user(t, "achievement-metrics")
 
 	// 成长：150 经验 → Lv.2
-	e.app.RecordExperience(user.ID, "test", "x", "1", "d1", 150, "")
+	plugincore.RecordExperience(e.app, user.ID, "test", "x", "1", "d1", 150, "")
 	metric := func(key string) int64 {
 		v, err := achievements.EvaluateMetric(e.app, user.ID, models.AchievementRule{MetricKey: key, WindowType: "lifetime"})
 		if err != nil {

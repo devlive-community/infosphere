@@ -39,7 +39,6 @@ const (
 	pluginGrowth           = plugins.KeyGrowth
 	pluginContentCollect   = plugins.KeyContentCollect
 	pluginWatermark        = plugins.KeyWatermark
-	cfgGrowthEnabled       = "growth_enabled"
 	// 内容采集插件的两个子开关（站点配置项，默认启用）：分别控制整站采集与单页网页采集。
 	cfgSiteCollectEnabled = "collect_site_enabled"
 	cfgPageCollectEnabled = "collect_page_enabled"
@@ -48,27 +47,20 @@ const (
 	pluginKindFeature = plugins.KindFeature
 )
 
-// pluginInfo = 声明式元数据（plugins.Meta，来自各插件子包 internal/plugins/<name>/）
-// + app 侧的启用行为钩子（OnEnable，依赖 *App 故留在 app 包）。
+// pluginInfo 声明式元数据（plugins.Meta，来自各插件子包 internal/plugins/<name>/）。
+// 启用后的初始化行为由子包经 plugincore.OnPluginEnabled 登记。
 type pluginInfo struct {
 	plugins.Meta
-	OnEnable func(a *App) error `json:"-"` // 启用后的初始化钩子（如成就重算、种子等级）
-}
-
-// pluginOnEnable 各插件启用后的 app 侧行为钩子，按键关联（元数据在子包，行为在 app）；
-// 已搬入子包的插件改用 plugincore.OnPluginEnabled 登记。
-var pluginOnEnable = map[string]func(a *App) error{
-	pluginGrowth: func(a *App) error { a.seedDefaultLevels(); a.seedExperienceRules(); return nil },
 }
 
 // pluginRegistry 由各插件子包自注册的元数据构建（禁止在此硬编码「有哪些插件」）。
 // 子包在 blank import（plugins_import.go）触发的 init() 中调用 plugins.Register，
-// 本包 init() 再据 plugins.All() 组装并挂上 app 侧行为钩子。
+// 本包 init() 再据 plugins.All() 组装。
 var pluginRegistry []pluginInfo
 
 func init() {
 	for _, m := range plugins.All() {
-		pluginRegistry = append(pluginRegistry, pluginInfo{Meta: m, OnEnable: pluginOnEnable[m.Key]})
+		pluginRegistry = append(pluginRegistry, pluginInfo{Meta: m})
 	}
 }
 
@@ -482,10 +474,7 @@ func (a *App) AdminInstallPlugin(c *gin.Context) {
 				fail(c, http.StatusInternalServerError, "建表失败: "+err.Error())
 				return
 			}
-			if info.OnEnable != nil {
-				_ = info.OnEnable(a)
-			}
-			for _, hook := range plugincore.PluginEnabledHooks(info.Key) { // 插件子包登记的启用钩子（如成就重算）
+			for _, hook := range plugincore.PluginEnabledHooks(info.Key) { // 插件子包登记的启用钩子（如成就重算、种子等级）
 				_ = hook(a)
 			}
 		}

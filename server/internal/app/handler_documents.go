@@ -537,10 +537,9 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		return
 	}
 	a.emitActivity(doc.UserID, "document.updated", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.updated:%d:%d", doc.ID, doc.UpdatedAt.UnixNano()))
-	// 章节首次发布（草稿→已发布）时通知关注者，并给作者发放成长经验
+	// 章节首次发布（草稿→已发布）：由插件订阅（书籍关注通知关注者、成长等级给作者发经验）
 	if publishedChapter && oldStatus != "published" {
-		plugincore.FireChapterPublished(book, doc) // 由「书籍关注」插件订阅并通知关注者
-		a.awardExperience(doc.UserID, "creation.chapter_published", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("creation.chapter_published:%d", doc.ID))
+		plugincore.FireChapterPublished(a, book, doc)
 	}
 	ok(c, doc)
 }

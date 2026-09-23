@@ -16,8 +16,7 @@ import (
 	"knowforge/server/internal/plugins"
 )
 
-// behavior 承载「成长等级」插件的对外端点。经验记账/等级重算等服务层（由核心阅读/评论/发布等事件触发）
-// 仍属核心集成，保留在 app；本子包只负责查看/管理端点。
+// behavior 「成长等级」插件：查看/管理端点（本文件）与经验服务层（experience.go，订阅核心事件发经验、重算等级）。
 type behavior struct{ core plugincore.Core }
 
 func init() { plugincore.RegisterBehavior(&behavior{}) }
@@ -322,7 +321,7 @@ func (b *behavior) AdminAdjustExperience(c *gin.Context) {
 		return
 	}
 	dedupe := fmt.Sprintf("admin.adjust:%d:%d:%d", target.ID, admin.ID, time.Now().UnixNano())
-	core.RecordExperience(target.ID, "admin.adjust", "user", strconv.FormatUint(uint64(admin.ID), 10), dedupe, req.XP, strings.TrimSpace(req.Reason))
+	b.recordExperience(target.ID, "admin.adjust", "user", strconv.FormatUint(uint64(admin.ID), 10), dedupe, req.XP, strings.TrimSpace(req.Reason))
 	core.RecordAudit(c, "growth.experience_adjusted", "user", auditID(target.ID), target.Username, map[string]any{"xp": req.XP, "reason": req.Reason})
 	core.OK(c, b.growthPayload(b.growthProfile(target.ID)))
 }

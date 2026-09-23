@@ -981,7 +981,7 @@ func (am *behavior) evaluateAchievementForUser(userID uint, definition models.Ac
 	}
 	// 成长联动：成就解锁奖励经验（每 user+achievement 只结算一次；成长插件启用时生效）
 	if createdGrant && definition.RewardXP > 0 {
-		am.core.RecordExperience(userID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
+		plugincore.RecordExperience(am.core, userID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
 			fmt.Sprintf("achievement.unlocked:%d:%d", userID, definition.ID), definition.RewardXP, "")
 	}
 	return nil
@@ -1331,7 +1331,7 @@ func (am *behavior) AdminGrantAchievement(c *gin.Context) {
 	}
 	// 成长联动：手工授予成就同样奖励经验（dedupe 保证与自动解锁不重复）
 	if (created || reactivated) && definition.RewardXP > 0 {
-		am.core.RecordExperience(user.ID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
+		plugincore.RecordExperience(am.core, user.ID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
 			fmt.Sprintf("achievement.unlocked:%d:%d", user.ID, definition.ID), definition.RewardXP, "")
 	}
 	am.core.OK(c, grant)
