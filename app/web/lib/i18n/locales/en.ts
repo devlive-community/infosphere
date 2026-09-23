@@ -39,6 +39,9 @@ export const en: Record<string, string> = {
   'i18n.saveDraft': "Save draft",
   'i18n.publish': "Publish messages",
   // Common actions
+  'common.book.searchPlaceholder': 'Search books…',
+  'common.book.searching': 'Searching…',
+  'common.book.noResult': 'No books found',
   'common.actions.save': 'Save',
   'common.settings': 'Settings',
   'common.actions.cancel': 'Cancel',

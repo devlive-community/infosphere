@@ -5,6 +5,7 @@ import { api } from '@/lib/api'
 import { Badge, Button, ButtonLink, Checkbox, DropdownMenu, Field, Loading, EmptyState, Modal, Select, Tooltip, useFeedback } from '@/components/ui'
 import { ChevronDownIcon, ChevronRightIcon, GripIcon, HistoryIcon, LinkIcon, PencilIcon, TrashIcon } from '@/components/icons'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
+import BookSearchSelect, { BookLite } from '@/components/BookSearchSelect'
 import DocTreeIcon from '@/components/DocTreeIcon'
 import { getBookSettingsProps } from '@/lib/book-settings'
 import { useTranslation } from '@/lib/i18n'
@@ -350,22 +351,15 @@ function CopyToBookDialog({ sourceBookId, sourceBookSlug, docIds, onClose, onDon
 }) {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
-  const [books, setBooks] = useState<Book[] | null>(null)
-  const [targetId, setTargetId] = useState('')
+  const [target, setTarget] = useState<BookLite | null>(null)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    api<PageResult<Book>>('/books', { params: { page_size: 100 } })
-      .then((r) => setBooks(r.items || []))
-      .catch(() => setBooks([]))
-  }, [])
-
   async function submit() {
-    if (!targetId) return
+    if (!target) return
     setSaving(true)
     try {
       const r = await api<{ copied_documents: number; target_slug: string }>(`/books/${sourceBookId}/documents/copy`, {
-        method: 'POST', body: { target_book_id: Number(targetId), doc_ids: docIds },
+        method: 'POST', body: { target_book_id: target.id, doc_ids: docIds },
       })
       showToast({ message: t('bookSettings.chapters.copy.done', { count: r.copied_documents }), tone: 'success' })
       onDone()
@@ -378,14 +372,13 @@ function CopyToBookDialog({ sourceBookId, sourceBookSlug, docIds, onClose, onDon
 
   return (
     <Modal open onClose={onClose} title={t('bookSettings.chapters.copy.title')}
-      footer={<><Button variant="outline" onClick={onClose}>{t('common.actions.cancel')}</Button><Button loading={saving} disabled={!targetId} onClick={submit}>{t('bookSettings.chapters.copy.confirm')}</Button></>}>
+      footer={<><Button variant="outline" onClick={onClose}>{t('common.actions.cancel')}</Button><Button loading={saving} disabled={!target} onClick={submit}>{t('bookSettings.chapters.copy.confirm')}</Button></>}>
       <div className="space-y-4">
         <p className="text-sm text-slate-500">{t('bookSettings.chapters.copy.desc', { count: docIds.length })}</p>
         <Field label={t('bookSettings.chapters.copy.target')}>
-          {books === null ? <Loading className="py-4" /> : (
-            <Select value={targetId} onChange={setTargetId} placeholder={t('bookSettings.chapters.copy.targetPlaceholder')}
-              options={(books).map((b) => ({ value: String(b.id), label: b.id === sourceBookId ? t('bookSettings.chapters.copy.sameBook', { title: b.title }) : b.title }))} />
-          )}
+          {/* 通用可搜索书籍选择器：查自己的书（含协作），排除源书自身 */}
+          <BookSearchSelect value={target} onChange={setTarget} endpoint="/books" searchParam="title"
+            baseParams={{ mine: true }} excludeId={sourceBookId} placeholder={t('bookSettings.chapters.copy.targetPlaceholder')} />
         </Field>
         <p className="text-xs text-slate-400">{t('bookSettings.chapters.copy.hint')}</p>
       </div>

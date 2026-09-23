@@ -39,6 +39,9 @@ export const zh: Record<string, string> = {
   'i18n.saveDraft': "保存草稿",
   'i18n.publish': "发布语言包",
   // 通用动作
+  'common.book.searchPlaceholder': '搜索书籍…',
+  'common.book.searching': '搜索中…',
+  'common.book.noResult': '未找到书籍',
   'common.actions.save': '保存',
   'common.settings': '设置',
   'common.actions.cancel': '取消',
