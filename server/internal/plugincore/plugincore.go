@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"knowforge/server/internal/authz"
+	"knowforge/server/internal/jobqueue"
 	"knowforge/server/internal/models"
 )
 
@@ -50,6 +51,22 @@ type Core interface {
 	Paginate(c *gin.Context) (page, pageSize int)
 	Slugify(s string) string
 	RandomSlug(prefix string) string
+
+	// 内容采集插件所需（引擎/worker/端点搬入子包后经此访问核心）
+	CanEditBookContent(u *models.User, b *models.Book) bool
+	GetSetting(key string) string
+	UniqueChildSlug(bookID uint, parentID *uint, base string, excludeID uint) string
+	InstalledChromePath() string
+	CreateContentImportBook(u *models.User, title, description string, chapters []ImportedChapter) (models.Book, error)
+	JobQueue() *jobqueue.Queue
+	RequirePageCollect() gin.HandlerFunc
+	RequireSiteCollect() gin.HandlerFunc
+}
+
+// ImportedChapter 导入/采集成书时的中性章节结构（避免暴露 app 内部类型）。
+type ImportedChapter struct {
+	Title   string
+	Content string
 }
 
 // PageResult 分页响应（核心与插件共用，保持 JSON 形状一致）。

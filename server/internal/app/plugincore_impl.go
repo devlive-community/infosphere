@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 
 	"knowforge/server/internal/authz"
+	"knowforge/server/internal/jobqueue"
 	"knowforge/server/internal/models"
 	"knowforge/server/internal/plugincore"
 )
@@ -38,3 +39,19 @@ func (a *App) RecordAudit(c *gin.Context, action, resourceType, resourceID, labe
 func (a *App) Paginate(c *gin.Context) (int, int) { return paginate(c) }
 func (a *App) Slugify(s string) string            { return slugify(s) }
 func (a *App) RandomSlug(prefix string) string    { return randomSlug(prefix) }
+
+// —— 内容采集插件所需 ——
+func (a *App) CanEditBookContent(u *models.User, b *models.Book) bool { return a.canEditBookContent(u, b) }
+func (a *App) GetSetting(key string) string                          { return a.getSetting(key) }
+func (a *App) InstalledChromePath() string                           { return a.installedChromePath() }
+func (a *App) JobQueue() *jobqueue.Queue                             { return a.jobQueue() }
+func (a *App) UniqueChildSlug(bookID uint, parentID *uint, base string, excludeID uint) string {
+	return a.uniqueChildSlug(bookID, parentID, base, excludeID)
+}
+func (a *App) CreateContentImportBook(u *models.User, title, description string, chapters []plugincore.ImportedChapter) (models.Book, error) {
+	local := make([]importedChapter, len(chapters))
+	for i, ch := range chapters {
+		local[i] = importedChapter{Title: ch.Title, Content: ch.Content}
+	}
+	return a.createContentImportBook(u, title, description, local)
+}
