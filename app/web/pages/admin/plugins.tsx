@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import { api, API_BASE, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
-import { Badge, Button, EmptyState, Loading, SegmentedTabs, Switch, useFeedback } from '@/components/ui'
+import { Badge, Button, EmptyState, Loading, SegmentedTabs, Switch, Modal, Select, Field, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
 interface Plugin {
@@ -39,6 +39,26 @@ export default function AdminPlugins() {
   const [logs, setLogs] = useState<Record<string, LogLine[]>>({})
   const [logOpen, setLogOpen] = useState<Record<string, boolean>>({})
   const sources = useRef<Record<string, EventSource>>({})
+  const { site } = useApp()
+  // 「书籍版本」插件配置弹框：阅读页版本排序（desc 最新在前 / asc 最旧在前）
+  const [versionCfgOpen, setVersionCfgOpen] = useState(false)
+  const [versionSort, setVersionSort] = useState('desc')
+  const [savingCfg, setSavingCfg] = useState(false)
+  function openVersionConfig() {
+    setVersionSort(site.book_versions_sort === 'asc' ? 'asc' : 'desc')
+    setVersionCfgOpen(true)
+  }
+  async function saveVersionConfig() {
+    setSavingCfg(true)
+    try {
+      await api('/site', { method: 'PUT', body: { book_versions_sort: versionSort } })
+      await refreshSite?.()
+      setVersionCfgOpen(false)
+      showToast({ message: t('admin.plugins.configSaved'), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('admin.plugins.saveFailed'), message: (e as Error).message, tone: 'error' })
+    } finally { setSavingCfg(false) }
+  }
 
   const load = useCallback(() => {
     api<{ items: Plugin[] }>('/admin/plugins').then((r) => setItems(r.items)).catch(() => {})
@@ -189,6 +209,10 @@ export default function AdminPlugins() {
                   <div className="flex shrink-0 items-center gap-3">
                     {isFeature ? (
                       <>
+                        {/* 弹框式插件配置：书籍版本 → 阅读页排序规则 */}
+                        {p.key === 'book-versions' && p.installed && (
+                          <Button variant="ghost" size="sm" onClick={openVersionConfig}>{t('admin.plugins.configure')}</Button>
+                        )}
                         {p.purgeable && <Button variant="ghost" size="sm" className="text-rose-600" disabled={busy === p.key} onClick={() => purgeFeature(p)}>{t('admin.plugins.purge')}</Button>}
                         <Switch ariaLabel={p.name} checked={p.installed} disabled={busy === p.key} onChange={(next) => toggleFeature(p, next)} />
                       </>
@@ -223,6 +247,18 @@ export default function AdminPlugins() {
           })}
         </div>
       )}
+
+      {/* 「书籍版本」插件配置弹框：阅读/详情页版本选择器的排序规则 */}
+      <Modal open={versionCfgOpen} onClose={() => setVersionCfgOpen(false)} title={t('admin.plugins.versionConfig.title')}
+        footer={<><Button variant="outline" onClick={() => setVersionCfgOpen(false)}>{t('common.actions.cancel')}</Button><Button loading={savingCfg} onClick={saveVersionConfig}>{t('common.actions.save')}</Button></>}>
+        <Field label={t('admin.plugins.versionConfig.sortLabel')} hint={t('admin.plugins.versionConfig.sortHint')}>
+          <Select value={versionSort} onChange={setVersionSort}
+            options={[
+              { value: 'desc', label: t('admin.plugins.versionConfig.desc') },
+              { value: 'asc', label: t('admin.plugins.versionConfig.asc') },
+            ]} />
+        </Field>
+      </Modal>
     </AdminLayout>
   )
 }

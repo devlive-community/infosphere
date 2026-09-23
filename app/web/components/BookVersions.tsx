@@ -20,7 +20,8 @@ export default function BookVersions({ bookId, linkTo = 'detail' }: { bookId: nu
     api<{ items: Variant[] }>(`/books/${bookId}/versions`).then((d) => setItems(d.items || [])).catch(() => { /* 忽略 */ })
   }, [bookId, enabled])
   if (!enabled || items.length < 2) return null
-  const ordered = [...items].reverse()
+  // 排序规则由「书籍版本」插件配置（默认 desc 最新在前）；items 按 id 升序（最旧在前）返回。
+  const ordered = (site.book_versions_sort || 'desc') === 'asc' ? items : [...items].reverse()
   const current = items.find((v) => v.current)
   const hrefFor = (v: Variant) =>
     linkTo === 'reader' && v.first_doc_slug

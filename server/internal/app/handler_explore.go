@@ -158,7 +158,7 @@ func (a *App) SiteStats(c *gin.Context) {
 // GetSiteConfig GET /site 公开站点配置
 func (a *App) GetSiteConfig(c *gin.Context) {
 	var rows []models.SiteConfig
-	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "site_logo", "site_favicon", "site_keywords", "site_footer_text", "site_footer_links", "site_beian", "help_doc_url", "terms_url", "privacy_url", "version", "installation_date", "comments_enabled", "announcement_enabled", "announcement_text", "announcement_tone", cfgAchievementsEnabled, cfgRegRequireActivation}).Find(&rows)
+	a.DB.Where("config_key IN ?", []string{"site_name", "site_description", "site_logo", "site_favicon", "site_keywords", "site_footer_text", "site_footer_links", "site_beian", "help_doc_url", "terms_url", "privacy_url", "version", "installation_date", "comments_enabled", "announcement_enabled", "announcement_text", "announcement_tone", "book_versions_sort", cfgAchievementsEnabled, cfgRegRequireActivation}).Find(&rows)
 	cfg := gin.H{}
 	for _, r := range rows {
 		cfg[r.ConfigKey] = r.ConfigValue
@@ -193,7 +193,8 @@ type siteConfigUpdate struct {
 	PrivacyURL          *string `json:"privacy_url"`
 	AnnouncementEnabled *bool   `json:"announcement_enabled"`
 	AnnouncementText    *string `json:"announcement_text"`
-	AnnouncementTone    *string `json:"announcement_tone"` // info | warning
+	AnnouncementTone    *string `json:"announcement_tone"`   // info | warning
+	BookVersionsSort    *string `json:"book_versions_sort"` // 多版本阅读页排序：desc(默认,最新在前) | asc
 }
 
 // UpdateSiteConfig PUT /site 管理员更新站点配置
@@ -258,6 +259,13 @@ func (a *App) UpdateSiteConfig(c *gin.Context) {
 			tone = "info"
 		}
 		updates["announcement_tone"] = tone
+	}
+	if req.BookVersionsSort != nil {
+		sort := "desc"
+		if strings.TrimSpace(*req.BookVersionsSort) == "asc" {
+			sort = "asc"
+		}
+		updates["book_versions_sort"] = sort
 	}
 	for key, value := range updates {
 		var cfg models.SiteConfig

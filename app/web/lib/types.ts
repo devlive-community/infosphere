@@ -154,6 +154,7 @@ export interface SiteConfig {
   feature_plugins?: string[]
   collect_page_enabled?: boolean
   collect_site_enabled?: boolean
+  book_versions_sort?: string
 }
 
 export type AchievementCategory = 'reading' | 'creation' | 'community' | 'account' | 'special'
