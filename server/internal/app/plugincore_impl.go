@@ -55,3 +55,10 @@ func (a *App) CreateContentImportBook(u *models.User, title, description string,
 	}
 	return a.createContentImportBook(u, title, description, local)
 }
+func (a *App) InitialChapterStatus(book *models.Book, parentID *uint) string {
+	return a.initialChapterStatus(book, parentID)
+}
+func (a *App) NewDocumentRevision(doc *models.Document, userID uint, reason string) models.DocumentRevision {
+	return newDocumentRevision(doc, userID, reason)
+}
+func (a *App) ExtractDocIcon(content string) string { return extractDocIcon(content) }

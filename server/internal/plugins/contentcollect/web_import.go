@@ -1,4 +1,4 @@
-package app
+package contentcollect
 
 import (
 	"bytes"
@@ -19,7 +19,10 @@ import (
 	"unicode/utf8"
 
 	"knowforge/server/internal/config"
+	"knowforge/server/internal/mdclean"
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
+	"knowforge/server/internal/plugins"
 
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
@@ -34,8 +37,19 @@ import (
 	"gorm.io/gorm"
 )
 
-// 本文件是内容采集（网页/整站）相关的 HTTP 处理与抓取逻辑，由 handler_content_import.go 拆分而来（纯移动，行为不变）。
-// PDF 导入仍在 handler_content_import.go；两者同属 app 包。
+// 本文件是单页网页采集：抓取（静态/无头浏览器）→ 正文识别 → Markdown 转换，及网页导入成书/章节、编辑器插入正文的接口。
+// 由 app 包整体搬入内容采集插件（行为不变）；PDF/ZIP 导入仍在核心。
+
+const (
+	webImportMaxHTMLBytes = 12 << 20 // 单个网页 HTML 上限
+	webResourceMaxBytes   = 16 << 20 // 单次 HTTP 响应上限
+)
+
+// webFetcher / webRenderer 抓取实现，测试可替换；为 nil 时使用默认的静态抓取 / 无头浏览器渲染。
+var (
+	webFetcher  func(context.Context, *url.URL) (webPage, error)
+	webRenderer func(context.Context, *url.URL) (webPage, error)
+)
 
 type webPage struct {
 	HTML     string
@@ -68,30 +82,30 @@ type webArticle struct {
 }
 
 // ImportWebBook POST /import/web 抓取静态或 JavaScript 渲染后的网页并建立草稿书籍。
-func (a *App) ImportWebBook(c *gin.Context) {
-	u := currentUser(c)
+func (cc *behavior) ImportWebBook(c *gin.Context) {
+	u := cc.core.CurrentUser(c)
 	var req webImportPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		cc.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
 	defer cancel()
-	article, page, usedMode, err := a.collectWebArticle(ctx, req)
+	article, page, usedMode, err := cc.collectWebArticle(ctx, req)
 	if err != nil {
-		failWebImport(c, err)
+		cc.failWebImport(c, err)
 		return
 	}
 	if customTitle := strings.TrimSpace(req.Title); customTitle != "" {
 		article.Title = truncateText(customTitle, 255)
 	}
-	chapter := importedChapter{Title: "正文", Content: withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource)}
-	book, err := a.createContentImportBook(u, article.Title, article.Description, []importedChapter{chapter})
+	chapter := plugincore.ImportedChapter{Title: "正文", Content: withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource)}
+	book, err := cc.core.CreateContentImportBook(u, article.Title, article.Description, []plugincore.ImportedChapter{chapter})
 	if err != nil {
-		fail(c, http.StatusInternalServerError, "创建网页书籍失败: "+err.Error())
+		cc.core.Fail(c, http.StatusInternalServerError, "创建网页书籍失败: "+err.Error())
 		return
 	}
-	ok(c, gin.H{
+	cc.core.OK(c, gin.H{
 		"book": book, "imported_doc": 1, "source": "web", "render_mode": usedMode,
 		"source_url": page.FinalURL.String(),
 		"message":    fmt.Sprintf("导入完成：《%s》已创建为草稿", book.Title),
@@ -101,8 +115,8 @@ func (a *App) ImportWebBook(c *gin.Context) {
 // ImportWebDocument POST /books/:id/documents/import-web 抓取网页并建立草稿章节。
 // recordPageCrawl 把一次「单页网页采集」写入采集历史（CrawlJob kind + 一条 CrawlPage）。
 // 采集插件禁用或无书籍上下文时为空操作；失败也记录，便于用户在采集历史里看到。
-func (a *App) recordPageCrawl(bookID, userID uint, kind, rawURL, title string, docID uint, success bool, errMsg string) {
-	if bookID == 0 || !a.pluginEnabled(pluginContentCollect) {
+func (cc *behavior) recordPageCrawl(bookID, userID uint, kind, rawURL, title string, docID uint, success bool, errMsg string) {
+	if bookID == 0 || !cc.core.PluginEnabled(plugins.KeyContentCollect) {
 		return
 	}
 	now := time.Now()
@@ -111,78 +125,78 @@ func (a *App) recordPageCrawl(bookID, userID uint, kind, rawURL, title string, d
 	if !success {
 		jobStatus, pageStatus, ok, failed = "failed", "failed", 0, 1
 	}
-	job := models.CrawlJob{
+	job := CrawlJob{
 		UserID: userID, BookID: bookID, Kind: kind, RootURL: truncateText(rawURL, 1024),
 		RenderMode: "auto", Status: jobStatus, PageLimit: 1, Total: 1, Success: ok, Failed: failed,
 		LastError: errMsg, StartedAt: &now, FinishedAt: &now,
 	}
-	if a.DB.Create(&job).Error != nil {
+	if cc.core.Gorm().Create(&job).Error != nil {
 		return
 	}
-	a.DB.Create(&models.CrawlPage{
+	cc.core.Gorm().Create(&CrawlPage{
 		JobID: job.ID, URL: truncateText(rawURL, 1024), Title: truncateText(title, 512),
 		Status: pageStatus, Error: errMsg, DocID: docID,
 	})
 }
 
-func (a *App) ImportWebDocument(c *gin.Context) {
-	book, status := a.findBook(c)
+func (cc *behavior) ImportWebDocument(c *gin.Context) {
+	book, status := cc.core.FindBook(c)
 	if book == nil {
-		fail(c, status, "书籍不存在")
+		cc.core.Fail(c, status, "书籍不存在")
 		return
 	}
-	u := currentUser(c)
-	if !a.canEditBookContent(u, book) {
-		fail(c, http.StatusNotFound, "书籍不存在")
+	u := cc.core.CurrentUser(c)
+	if !cc.core.CanEditBookContent(u, book) {
+		cc.core.Fail(c, http.StatusNotFound, "书籍不存在")
 		return
 	}
 	var req webImportPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		cc.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	if req.ParentID != nil {
 		var count int64
-		if err := a.DB.Model(&models.Document{}).Where("id = ? AND book_id = ?", *req.ParentID, book.ID).Count(&count).Error; err != nil {
-			fail(c, http.StatusInternalServerError, "校验父章节失败")
+		if err := cc.core.Gorm().Model(&models.Document{}).Where("id = ? AND book_id = ?", *req.ParentID, book.ID).Count(&count).Error; err != nil {
+			cc.core.Fail(c, http.StatusInternalServerError, "校验父章节失败")
 			return
 		}
 		if count == 0 {
-			fail(c, http.StatusBadRequest, "父章节不存在")
+			cc.core.Fail(c, http.StatusBadRequest, "父章节不存在")
 			return
 		}
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
 	defer cancel()
-	article, page, usedMode, err := a.collectWebArticle(ctx, req)
+	article, page, usedMode, err := cc.collectWebArticle(ctx, req)
 	if err != nil {
-		a.recordPageCrawl(book.ID, u.ID, "chapter", req.URL, "", 0, false, publicWebImportError(err))
-		failWebImport(c, err)
+		cc.recordPageCrawl(book.ID, u.ID, "chapter", req.URL, "", 0, false, publicWebImportError(err))
+		cc.failWebImport(c, err)
 		return
 	}
 	if customTitle := strings.TrimSpace(req.Title); customTitle != "" {
 		article.Title = truncateText(customTitle, 255)
 	}
 	content := withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource)
-	doc, err := a.createImportedWebDocument(book, u, article.Title, content, req.ParentID, req.SortOrder)
+	doc, err := cc.createImportedWebDocument(book, u, article.Title, content, req.ParentID, req.SortOrder)
 	if err != nil {
-		a.recordPageCrawl(book.ID, u.ID, "chapter", page.FinalURL.String(), article.Title, 0, false, err.Error())
-		fail(c, http.StatusInternalServerError, "创建网页章节失败: "+err.Error())
+		cc.recordPageCrawl(book.ID, u.ID, "chapter", page.FinalURL.String(), article.Title, 0, false, err.Error())
+		cc.core.Fail(c, http.StatusInternalServerError, "创建网页章节失败: "+err.Error())
 		return
 	}
-	a.recordPageCrawl(book.ID, u.ID, "chapter", page.FinalURL.String(), doc.Title, doc.ID, true, "")
-	ok(c, gin.H{
+	cc.recordPageCrawl(book.ID, u.ID, "chapter", page.FinalURL.String(), doc.Title, doc.ID, true, "")
+	cc.core.OK(c, gin.H{
 		"document": doc, "source_url": page.FinalURL.String(), "render_mode": usedMode,
 		"message": fmt.Sprintf("已采集为草稿章节《%s》", doc.Title),
 	})
 }
 
 // CollectWebContent POST /import/web-content 抓取网页正文并返回 Markdown（不建文档），供编辑器「采集内容」插入。
-func (a *App) CollectWebContent(c *gin.Context) {
+func (cc *behavior) CollectWebContent(c *gin.Context) {
 	var req webImportPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		cc.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
@@ -191,18 +205,18 @@ func (a *App) CollectWebContent(c *gin.Context) {
 	var crawlBookID uint
 	if req.BookID != nil {
 		var book models.Book
-		if a.DB.First(&book, *req.BookID).Error == nil && a.canEditBookContent(currentUser(c), &book) {
+		if cc.core.Gorm().First(&book, *req.BookID).Error == nil && cc.core.CanEditBookContent(cc.core.CurrentUser(c), &book) {
 			crawlBookID = book.ID
 		}
 	}
-	article, page, usedMode, err := a.collectWebArticle(ctx, req)
+	article, page, usedMode, err := cc.collectWebArticle(ctx, req)
 	if err != nil {
-		a.recordPageCrawl(crawlBookID, currentUser(c).ID, "page", req.URL, "", 0, false, publicWebImportError(err))
-		failWebImport(c, err)
+		cc.recordPageCrawl(crawlBookID, cc.core.CurrentUser(c).ID, "page", req.URL, "", 0, false, publicWebImportError(err))
+		cc.failWebImport(c, err)
 		return
 	}
-	a.recordPageCrawl(crawlBookID, currentUser(c).ID, "page", page.FinalURL.String(), article.Title, 0, true, "")
-	ok(c, gin.H{
+	cc.recordPageCrawl(crawlBookID, cc.core.CurrentUser(c).ID, "page", page.FinalURL.String(), article.Title, 0, true, "")
+	cc.core.OK(c, gin.H{
 		"title":       article.Title,
 		"markdown":    withSourceNote(article.Markdown, page.FinalURL.String(), req.IncludeSource),
 		"source_url":  page.FinalURL.String(),
@@ -211,11 +225,11 @@ func (a *App) CollectWebContent(c *gin.Context) {
 }
 
 // BrowserRenderAvailable GET /import/browser-available 无头浏览器插件是否已安装（决定「浏览器渲染」采集是否可用）
-func (a *App) BrowserRenderAvailable(c *gin.Context) {
-	ok(c, gin.H{"available": a.installedChromePath() != ""})
+func (cc *behavior) BrowserRenderAvailable(c *gin.Context) {
+	cc.core.OK(c, gin.H{"available": cc.core.InstalledChromePath() != ""})
 }
 
-func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webArticle, webPage, string, error) {
+func (cc *behavior) collectWebArticle(ctx context.Context, req webImportPayload) (webArticle, webPage, string, error) {
 	mode := strings.ToLower(strings.TrimSpace(req.RenderMode))
 	if mode == "" {
 		mode = "auto"
@@ -227,16 +241,16 @@ func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webA
 	if err != nil {
 		return webArticle{}, webPage{}, "", err
 	}
-	fetcher := a.WebFetcher
+	fetcher := webFetcher
 	if fetcher == nil {
 		fetcher = fetchStaticWebPage
 	}
 	// 浏览器渲染依赖无头浏览器插件（chrome-headless-shell）；未安装时 browser 模式不可用。
-	// 测试可注入 a.WebRenderer 绕过插件依赖。
-	renderer := a.WebRenderer
+	// 测试可注入 webRenderer 绕过插件依赖。
+	renderer := webRenderer
 	browserAvailable := renderer != nil
 	if renderer == nil {
-		chromePath := a.installedChromePath()
+		chromePath := cc.core.InstalledChromePath()
 		browserAvailable = chromePath != ""
 		renderer = func(ctx context.Context, target *url.URL) (webPage, error) {
 			return renderDynamicWebPage(ctx, target, chromePath)
@@ -295,11 +309,18 @@ func (a *App) collectWebArticle(ctx context.Context, req webImportPayload) (webA
 		return webArticle{}, webPage{}, "", fmt.Errorf("网页正文解析失败: %w", err)
 	}
 	// 去掉文档站常见的「永久链接」锚点（如标题后的 [🔗](… "Permanent link")），避免误跳外链。
-	article.Markdown = stripPermalinkAnchors(article.Markdown)
+	article.Markdown = mdclean.StripPermalinkAnchors(article.Markdown)
 	return article, page, usedMode, nil
 }
 
-func failWebImport(c *gin.Context, err error) {
+func (cc *behavior) failWebImport(c *gin.Context, err error) {
+	log.Printf("web content import failed: %v", err)
+	status, message := webImportFailure(err)
+	cc.core.Fail(c, status, message)
+}
+
+// webImportFailure 把采集错误映射为 HTTP 状态码与对外文案（隐藏浏览器内部诊断）。
+func webImportFailure(err error) (int, string) {
 	rawMessage := err.Error()
 	status := http.StatusUnprocessableEntity
 	if strings.Contains(rawMessage, "render_mode") || strings.Contains(rawMessage, "网页地址") || strings.Contains(rawMessage, "不允许访问") {
@@ -308,8 +329,7 @@ func failWebImport(c *gin.Context, err error) {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		status = http.StatusGatewayTimeout
 	}
-	log.Printf("web content import failed: %v", err)
-	fail(c, status, "网页获取失败: "+publicWebImportError(err))
+	return status, "网页获取失败: " + publicWebImportError(err)
 }
 
 func publicWebImportError(err error) string {
@@ -334,14 +354,14 @@ func publicWebImportError(err error) string {
 	return "无法获取或解析网页正文，请检查地址后重试"
 }
 
-func (a *App) createImportedWebDocument(book *models.Book, u *models.User, title, content string, parentID *uint, sortOrder *int) (models.Document, error) {
+func (cc *behavior) createImportedWebDocument(book *models.Book, u *models.User, title, content string, parentID *uint, sortOrder *int) (models.Document, error) {
 	title = truncateText(strings.TrimSpace(title), 255)
 	if title == "" {
 		title = "采集的网页"
 	}
 	allowComments := true
 	// 与新建章节一致：子章节可跟随父章节，第一级章节用书籍「章节默认状态」
-	status := a.initialChapterStatus(book, parentID)
+	status := cc.core.InitialChapterStatus(book, parentID)
 	doc := models.Document{
 		BookID: book.ID, UserID: u.ID, Title: title, Content: strings.TrimSpace(content),
 		ParentID: parentID, Status: status, AllowComments: &allowComments,
@@ -350,12 +370,12 @@ func (a *App) createImportedWebDocument(book *models.Book, u *models.User, title
 		doc.SortOrder = *sortOrder
 	}
 	// 与手动新建一致：冲突时递归用祖先 slug 作前缀（b-c），最终随机兜底，不再用 xxx-2 计数后缀。
-	doc.Slug = a.uniqueChildSlug(book.ID, parentID, slugify(title), 0)
-	err := a.DB.Transaction(func(tx *gorm.DB) error {
+	doc.Slug = cc.core.UniqueChildSlug(book.ID, parentID, cc.core.Slugify(title), 0)
+	err := cc.core.Gorm().Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&doc).Error; err != nil {
 			return err
 		}
-		revision := newDocumentRevision(&doc, u.ID, "create")
+		revision := cc.core.NewDocumentRevision(&doc, u.ID, "create")
 		return tx.Create(&revision).Error
 	})
 	return doc, err

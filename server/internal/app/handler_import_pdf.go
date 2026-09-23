@@ -21,8 +21,6 @@ import (
 
 const (
 	contentImportMaxBytes = 64 << 20
-	webImportMaxHTMLBytes = 12 << 20
-	webResourceMaxBytes   = 16 << 20
 	maxImportedChapters   = 200
 )
 

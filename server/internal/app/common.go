@@ -105,3 +105,12 @@ func uniqueSlug(db *gorm.DB, table, base string) string {
 		candidate = fmt.Sprintf("%s-%d", base, i)
 	}
 }
+
+// truncateText 按字符（rune）截断到 maxRunes，避免截断多字节字符。
+func truncateText(value string, maxRunes int) string {
+	runes := []rune(value)
+	if len(runes) <= maxRunes {
+		return value
+	}
+	return string(runes[:maxRunes])
+}

@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -33,10 +32,8 @@ type App struct {
 	jobsMu        sync.RWMutex
 	// MailSender 邮件发送器；为空时按站点配置解析（测试可注入替代实现）
 	MailSender mail.Sender
-	// 导入解析器允许测试注入；生产为空时使用内置 PDF/网页实现。
+	// 导入解析器允许测试注入；生产为空时使用内置 PDF 实现（网页抓取在内容采集插件内）。
 	PDFExtractor func(path string) (pdfExtractResult, error)
-	WebFetcher   func(context.Context, *url.URL) (webPage, error)
-	WebRenderer  func(context.Context, *url.URL) (webPage, error)
 	web          *webRuntime
 	search       searchBackend
 	plugins      *pluginManager

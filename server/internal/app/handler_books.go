@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -41,6 +42,15 @@ func bookOrder(sort string) string {
 		return clause
 	}
 	return "books.updated_at DESC"
+}
+
+// decorateBookList 让插件回填列表书籍的非持久化字段（如内容采集插件的「采集中」标记）。
+func (a *App) decorateBookList(books []models.Book) {
+	ptrs := make([]*models.Book, len(books))
+	for i := range books {
+		ptrs[i] = &books[i]
+	}
+	plugincore.DecorateBooks(a, ptrs)
 }
 
 // attachChapterCounts 一次分组查询回填各书籍的章节（文档）数量，避免 N+1
@@ -215,7 +225,7 @@ func (a *App) ListBooks(c *gin.Context) {
 	}
 	a.attachChapterCounts(books)
 	a.attachBookTags(books)
-	a.attachCrawlingFlags(books)
+	a.decorateBookList(books)
 	a.attachVersionInfo(books, versionCounts, u)
 	if scope == "collaborating" {
 		for i := range books {
@@ -438,7 +448,7 @@ func (a *App) GetBook(c *gin.Context) {
 		return
 	}
 	a.attachBookTagsOne(book)
-	book.Crawling = a.bookIsCrawling(book.ID)
+	plugincore.DecorateBooks(a, []*models.Book{book})
 	ok(c, book)
 }
 
@@ -454,7 +464,7 @@ func (a *App) GetBookBySlug(c *gin.Context) {
 		return
 	}
 	a.attachBookTagsOne(&book)
-	book.Crawling = a.bookIsCrawling(book.ID)
+	plugincore.DecorateBooks(a, []*models.Book{&book})
 	ok(c, book)
 }
 

@@ -13,6 +13,7 @@ import (
 	"knowforge/server/internal/config"
 	"knowforge/server/internal/jobqueue"
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"gorm.io/gorm"
 )
@@ -81,7 +82,10 @@ func (a *App) configureJobQueue() error {
 	queue.Register(sitemapJobType, a.runSitemapGenerate)
 	queue.Register(achievementRecalculateJobType, a.runAchievementRecalculateJob)
 	queue.Register(achievementEvaluateJobType, a.runAchievementEvaluateJob)
-	queue.Register(siteCrawlJobType, a.runSiteCrawlJob)
+	// 插件登记的后台任务（如内容采集插件的整站采集）
+	for _, job := range plugincore.Jobs() {
+		queue.Register(job.Type, job.Factory(a))
+	}
 	a.jobsMu.Lock()
 	a.Jobs = queue
 	a.jobsMu.Unlock()

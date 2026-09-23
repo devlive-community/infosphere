@@ -8,7 +8,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -59,8 +58,6 @@ func contentImportRouter(app *App, user *models.User) *gin.Engine {
 	})
 	router.POST("/import/pdf", app.ImportPDFBook)
 	router.POST("/books/:id/import/pdf", app.ReimportPDFBook)
-	router.POST("/import/web", app.ImportWebBook)
-	router.POST("/books/:id/documents/import-web", app.ImportWebDocument)
 	router.GET("/tasks/:id", app.GetBackgroundJob)
 	return router
 }
@@ -365,118 +362,6 @@ func TestReimportPDFBookKeepsOldContentWhenParsingFails(t *testing.T) {
 	}
 }
 
-func TestImportWebAutoFallsBackToBrowser(t *testing.T) {
-	app, owner, db := newContentImportTestApp(t)
-	fetchCalled := false
-	renderCalled := false
-	app.WebFetcher = func(_ context.Context, target *url.URL) (webPage, error) {
-		fetchCalled = true
-		return webPage{
-			HTML:     `<html><head><title>页面壳</title></head><body><div id="root"></div><script src="/app.js"></script></body></html>`,
-			FinalURL: target,
-		}, nil
-	}
-	app.WebRenderer = func(_ context.Context, target *url.URL) (webPage, error) {
-		renderCalled = true
-		return webPage{
-			HTML:     `<html><head><title>动态文章</title><meta name="description" content="动态网页导入测试"></head><body><nav>导航</nav><main><h1>动态文章</h1><p>这是由 JavaScript 渲染出来的文章正文，内容完整并且可以转换为 Markdown。</p><p><a href="/guide">继续阅读指南</a></p></main></body></html>`,
-			FinalURL: target,
-		}, nil
-	}
-	router := contentImportRouter(app, owner)
-
-	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/import/web", strings.NewReader(`{"url":"https://8.8.8.8/articles/one","render_mode":"auto"}`))
-	request.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(recorder, request)
-	payload := decodeImportResponse(t, recorder)
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("网页导入失败: %d %v", recorder.Code, payload)
-	}
-	if !fetchCalled || !renderCalled {
-		t.Fatalf("自动模式应先静态抓取再回退浏览器: fetch=%v render=%v", fetchCalled, renderCalled)
-	}
-	data := payload["data"].(map[string]any)
-	if data["render_mode"] != "browser" {
-		t.Fatalf("响应未标记浏览器渲染: %v", data)
-	}
-
-	var book models.Book
-	if err := db.Where("user_id = ?", owner.ID).First(&book).Error; err != nil {
-		t.Fatal(err)
-	}
-	var doc models.Document
-	if err := db.Where("book_id = ?", book.ID).First(&doc).Error; err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(doc.Content, "# 动态文章") || !strings.Contains(doc.Content, "[继续阅读指南](https://8.8.8.8/guide)") || strings.Contains(doc.Content, "导航") {
-		t.Fatalf("正文提取或相对链接转换错误: %s", doc.Content)
-	}
-}
-
-func TestExtractWebArticlePreservesMarkdownStructure(t *testing.T) {
-	pageURL, _ := url.Parse("https://8.8.8.8/articles/markdown")
-	article, err := extractWebArticle(webPage{
-		FinalURL: pageURL,
-		HTML: `<html><head><title>结构化文章</title></head><body><main><article>
-			<h1>结构化文章</h1><h2>安装步骤</h2><p>请先阅读 <strong>注意事项</strong>。</p>
-			<ul><li>准备环境</li><li>安装依赖</li></ul>
-			<pre><code class="language-go">fmt.Println("ok")</code></pre>
-			<table><tr><th>名称</th><th>状态</th></tr><tr><td>导入</td><td>正常</td></tr></table>
-		</article></main></body></html>`,
-	})
-	if err != nil {
-		t.Fatalf("网页 Markdown 转换失败: %v", err)
-	}
-	for _, expected := range []string{"# 结构化文章", "## 安装步骤", "**注意事项**", "- 准备环境", "```go", "| 名称", "|----"} {
-		if !strings.Contains(article.Markdown, expected) {
-			t.Fatalf("网页结构未转换为 Markdown，缺少 %q:\n%s", expected, article.Markdown)
-		}
-	}
-}
-
-// Docusaurus：<body class="navigation-with-keyboard"> 不能被当成导航整页丢弃；
-// Prism 逐行 <div class="token-line">…<br></div> 不应产生空行，<span class="token comment"> 不能被当成评论区删掉。
-func TestExtractWebArticleDocusaurusPrismCodeBlock(t *testing.T) {
-	pageURL, _ := url.Parse("https://8.8.8.8/docs/overview")
-	article, err := extractWebArticle(webPage{
-		FinalURL: pageURL,
-		HTML: `<html><head><title>Overview</title></head><body class="navigation-with-keyboard"><div id="__docusaurus"><main><article>
-			<h2 id="use-cli">Using CLI<a href="#use-cli" class="hash-link" title="Direct link to Using CLI">&#8203;</a></h2>
-			<p>The AWS CLI can be used from your local machine.</p>
-			<pre class="prism-code language-bash"><code class="codeBlockLines"><div class="token-line"><span class="token comment"># Create a bucket</span><span class="token plain"></span><br></div><div class="token-line"><span class="token plain">aws s3api create-bucket --bucket=s3bucket</span><br></div><div class="token-line"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line"><span class="token plain">aws s3api list-buckets</span><br></div></code><button class="copyButton">Copy</button></pre>
-		</article></main></div></body></html>`,
-	})
-	if err != nil {
-		t.Fatalf("Docusaurus 页面提取失败: %v", err)
-	}
-	want := "```bash\n# Create a bucket\naws s3api create-bucket --bucket=s3bucket\n\naws s3api list-buckets\n```"
-	if !strings.Contains(article.Markdown, want) {
-		t.Fatalf("代码块未按原样还原，期望包含:\n%s\n实际:\n%s", want, article.Markdown)
-	}
-	if cleaned := stripPermalinkAnchors(article.Markdown); strings.Contains(cleaned, "Direct link") || !strings.Contains(cleaned, "## Using CLI\n") {
-		t.Fatalf("标题永久链接锚点未清理:\n%s", cleaned)
-	}
-}
-
-func TestStripPermalinkAnchors(t *testing.T) {
-	cases := map[string]string{
-		"# Parquet Content-Defined Chunking[#](/book/reader/x/y#parquet-content-defined-chunking)": "# Parquet Content-Defined Chunking",
-		"## Use CLI[\u200b](https://a.io/docs#use-cli \"Direct link to Use CLI\")":                 "## Use CLI",
-		"## Title[¶](https://a.io/p#title \"Permanent link\")":                                     "## Title",
-		"## Title[](https://a.io/p#title)":                                                         "## Title",
-		"## Title [🔗](https://a.io/p#title)":                                                       "## Title",
-		"![](https://a.io/img.png#frag) 图片保留":                                                      "![](https://a.io/img.png#frag) 图片保留",
-		"见 [文档](https://a.io/p#sec) 说明":                                                            "见 [文档](https://a.io/p#sec) 说明",
-		"[#](https://a.io/p) 无锚点不动":                                                                "[#](https://a.io/p) 无锚点不动",
-	}
-	for in, want := range cases {
-		if got := strings.TrimRight(stripPermalinkAnchors(in+"\n"), "\n"); got != want {
-			t.Errorf("stripPermalinkAnchors(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func TestRenderPDFMarkdownPreservesDocumentStructure(t *testing.T) {
 	lines := []pdfLayoutLine{
 		{Text: "工程实践指南", FontSize: 24, Bold: true, Page: 1, X: 60, Y: 780, GapAfter: 30},
@@ -519,108 +404,6 @@ func TestSplitPDFChaptersUsesMarkdownHeadings(t *testing.T) {
 	}
 }
 
-func TestImportWebAutoUsesBrowserWhenStaticFetchFails(t *testing.T) {
-	app, owner, _ := newContentImportTestApp(t)
-	app.WebFetcher = func(_ context.Context, _ *url.URL) (webPage, error) {
-		return webPage{}, errors.New("static endpoint denied")
-	}
-	app.WebRenderer = func(_ context.Context, target *url.URL) (webPage, error) {
-		return webPage{
-			HTML:     `<html><head><title>浏览器文章</title></head><body><article><h1>浏览器文章</h1><p>静态请求失败后，浏览器仍然成功渲染出了足够长度的正文内容。</p></article></body></html>`,
-			FinalURL: target,
-		}, nil
-	}
-	router := contentImportRouter(app, owner)
-	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/import/web", strings.NewReader(`{"url":"https://8.8.8.8/articles/two","render_mode":"auto"}`))
-	request.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(recorder, request)
-	payload := decodeImportResponse(t, recorder)
-	if recorder.Code != http.StatusOK || payload["data"].(map[string]any)["render_mode"] != "browser" {
-		t.Fatalf("静态失败后应回退浏览器: status=%d payload=%v", recorder.Code, payload)
-	}
-}
-
-func TestImportWebRejectsPrivateAndUnsupportedURLs(t *testing.T) {
-	app, owner, _ := newContentImportTestApp(t)
-	router := contentImportRouter(app, owner)
-	for _, rawURL := range []string{"http://127.0.0.1/admin", "http://localhost/secret", "file:///etc/passwd"} {
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodPost, "/import/web", strings.NewReader(`{"url":"`+rawURL+`"}`))
-		request.Header.Set("Content-Type", "application/json")
-		router.ServeHTTP(recorder, request)
-		if recorder.Code != http.StatusBadRequest {
-			t.Fatalf("危险 URL 应被拒绝: url=%s status=%d body=%s", rawURL, recorder.Code, recorder.Body.String())
-		}
-	}
-}
-
-func TestImportWebDocumentRemovesPageChromeAndCreatesRevision(t *testing.T) {
-	app, owner, db := newContentImportTestApp(t)
-	book := models.Book{Title: "采集测试书", Slug: "collect-test", UserID: owner.ID, Status: "draft", IsPublic: false}
-	if err := db.Create(&book).Error; err != nil {
-		t.Fatal(err)
-	}
-	parent := models.Document{BookID: book.ID, UserID: owner.ID, Title: "资料", Slug: "sources", Status: "draft"}
-	if err := db.Create(&parent).Error; err != nil {
-		t.Fatal(err)
-	}
-	app.WebFetcher = func(_ context.Context, target *url.URL) (webPage, error) {
-		return webPage{
-			HTML: `<html><head><title>需要的正文</title></head><body>
-			<header>站点标题和登录注册</header><nav>全站导航</nav>
-			<main><article class="article-content"><h1>需要的正文</h1>
-			<p>这是需要采集到书籍章节里的主要文章内容，应当被完整保留下来。</p>
-			<aside>作者推荐</aside><div class="ad-container">广告内容</div>
-			<div id="comments">读者评论</div><div class="article-footer">分享与相关推荐</div>
-			</article></main><footer>备案信息与版权导航</footer></body></html>`,
-			FinalURL: target,
-		}, nil
-	}
-	router := contentImportRouter(app, owner)
-	body := `{"url":"https://8.8.8.8/posts/clean","render_mode":"static","include_source":true,"parent_id":` + strconv.FormatUint(uint64(parent.ID), 10) + `,"sort_order":3}`
-	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/documents/import-web", strings.NewReader(body))
-	request.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("采集网页章节失败: %d %v", recorder.Code, decodeImportResponse(t, recorder))
-	}
-
-	var doc models.Document
-	if err := db.Where("book_id = ? AND id <> ?", book.ID, parent.ID).First(&doc).Error; err != nil {
-		t.Fatal(err)
-	}
-	if doc.Status != "draft" || doc.ParentID == nil || *doc.ParentID != parent.ID || doc.SortOrder != 3 {
-		t.Fatalf("采集章节结构错误: %+v", doc)
-	}
-	for _, noise := range []string{"站点标题", "全站导航", "作者推荐", "广告内容", "读者评论", "分享与相关推荐", "备案信息"} {
-		if strings.Contains(doc.Content, noise) {
-			t.Fatalf("采集正文包含页面噪声 %q: %s", noise, doc.Content)
-		}
-	}
-	if !strings.Contains(doc.Content, "主要文章内容") || !strings.Contains(doc.Content, "[原始网页](https://8.8.8.8/posts/clean)") {
-		t.Fatalf("采集正文或来源链接缺失: %s", doc.Content)
-	}
-	var revision models.DocumentRevision
-	if err := db.Where("document_id = ? AND reason = ?", doc.ID, "create").First(&revision).Error; err != nil {
-		t.Fatalf("采集章节未生成初始版本: %v", err)
-	}
-
-	viewer := &models.User{Username: "import-viewer", Email: "import-viewer@test.local", IsActive: true}
-	if err := db.Create(viewer).Error; err != nil {
-		t.Fatal(err)
-	}
-	viewerRouter := contentImportRouter(app, viewer)
-	denied := httptest.NewRecorder()
-	deniedRequest := httptest.NewRequest(http.MethodPost, "/books/"+strconv.FormatUint(uint64(book.ID), 10)+"/documents/import-web", strings.NewReader(body))
-	deniedRequest.Header.Set("Content-Type", "application/json")
-	viewerRouter.ServeHTTP(denied, deniedRequest)
-	if denied.Code != http.StatusNotFound {
-		t.Fatalf("无权用户采集私有书籍时应统一返回 404: %d", denied.Code)
-	}
-}
-
 func TestSplitPDFChaptersChunksLongUnstructuredText(t *testing.T) {
 	chapters := splitPDFChapters(strings.Repeat("内容片段 ", 5000), "长文档")
 	if len(chapters) < 2 {
@@ -630,45 +413,5 @@ func TestSplitPDFChaptersChunksLongUnstructuredText(t *testing.T) {
 		if len([]rune(chapter.Content)) > 12000 {
 			t.Fatalf("单章超过导入上限: %d", len([]rune(chapter.Content)))
 		}
-	}
-}
-
-func TestWebImportErrorHidesBrowserDiagnostics(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	recorder := httptest.NewRecorder()
-	ctx, _ := gin.CreateTestContext(recorder)
-	failWebImport(ctx, errors.New("无法启动 Chromium: [launcher] Failed to get the debug url:\nchrome_crashpad_handler: --database is required\ninternal stack trace"))
-	payload := decodeImportResponse(t, recorder)
-	message, _ := payload["message"].(string)
-	if recorder.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("浏览器启动失败状态码错误: %d", recorder.Code)
-	}
-	if strings.Contains(message, "crashpad") || strings.Contains(message, "stack trace") || len([]rune(message)) > 160 {
-		t.Fatalf("浏览器内部诊断不应返回前端: %q", message)
-	}
-	if !strings.Contains(message, "浏览器启动失败") {
-		t.Fatalf("应返回可理解的浏览器错误提示: %q", message)
-	}
-}
-
-// 采集的第一级章节应采用书籍「章节默认状态」；子章节在开启跟随时沿用父章节状态。
-func TestImportedWebDocumentFollowsDefaultChapterStatus(t *testing.T) {
-	app, owner, db := newContentImportTestApp(t)
-	book := models.Book{Title: "默认状态书", Slug: "default-status", UserID: owner.ID, Status: "published", DefaultChapterStatus: "published"}
-	if err := db.Create(&book).Error; err != nil {
-		t.Fatal(err)
-	}
-	top, err := app.createImportedWebDocument(&book, owner, "第一级", "网页正文内容", nil, nil)
-	if err != nil || top.Status != "published" {
-		t.Fatalf("第一级采集章节应为书籍默认状态 published: status=%q err=%v", top.Status, err)
-	}
-	child, err := app.createImportedWebDocument(&book, owner, "子章节", "网页正文内容", &top.ID, nil)
-	if err != nil || child.Status != "draft" {
-		t.Fatalf("未开启跟随父章节时子章节应为草稿: status=%q err=%v", child.Status, err)
-	}
-	book.ChildStatusFollowParent = true
-	child2, err := app.createImportedWebDocument(&book, owner, "子章节二", "网页正文内容", &top.ID, nil)
-	if err != nil || child2.Status != "published" {
-		t.Fatalf("开启跟随父章节时子章节应沿用父章节状态: status=%q err=%v", child2.Status, err)
 	}
 }

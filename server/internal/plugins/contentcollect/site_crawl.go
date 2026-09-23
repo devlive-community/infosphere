@@ -1,4 +1,4 @@
-package app
+package contentcollect
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugins"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/net/html"
@@ -195,7 +196,7 @@ func rewriteInternalLinks(markdown string, urlToSlug map[string]string, bookSlug
 }
 
 // rewriteCrawledInternalLinks 采集结束后，对本次采集到的章节做一遍内链改写（urlToDoc: 归一化URL→docID）。
-func (a *App) rewriteCrawledInternalLinks(book *models.Book, urlToDoc map[string]uint) {
+func (cc *behavior) rewriteCrawledInternalLinks(book *models.Book, urlToDoc map[string]uint) {
 	if len(urlToDoc) == 0 {
 		return
 	}
@@ -204,7 +205,7 @@ func (a *App) rewriteCrawledInternalLinks(book *models.Book, urlToDoc map[string
 		ids = append(ids, id)
 	}
 	var docs []models.Document
-	a.DB.Where("id IN ?", ids).Find(&docs)
+	cc.core.Gorm().Where("id IN ?", ids).Find(&docs)
 	slugByID := make(map[uint]string, len(docs))
 	for i := range docs {
 		slugByID[docs[i].ID] = docs[i].Slug
@@ -218,7 +219,7 @@ func (a *App) rewriteCrawledInternalLinks(book *models.Book, urlToDoc map[string
 	for i := range docs {
 		d := &docs[i]
 		if nc := rewriteInternalLinks(d.Content, urlToSlug, book.Slug); nc != d.Content {
-			a.DB.Model(&models.Document{}).Where("id = ?", d.ID).Update("content", nc)
+			cc.core.Gorm().Model(&models.Document{}).Where("id = ?", d.ID).Update("content", nc)
 		}
 	}
 }
@@ -264,8 +265,8 @@ func lastURLSegment(raw string) string {
 
 // —— 采集页面数上限（防跑飞，可后台配置 collect_site_page_limit，默认 200） ——
 
-func (a *App) siteCrawlPageLimit() int {
-	if v := strings.TrimSpace(a.getSetting("collect_site_page_limit")); v != "" {
+func (cc *behavior) siteCrawlPageLimit() int {
+	if v := strings.TrimSpace(cc.core.GetSetting("collect_site_page_limit")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 5000 {
 			return n
 		}
@@ -277,27 +278,27 @@ func (a *App) siteCrawlPageLimit() int {
 
 // SiteCrawlPreview POST /collect/site/preview
 // 抓取根页面，推断目录树；并抽取「首个正文页」内容供用户确认采集内容区是否正确。
-func (a *App) SiteCrawlPreview(c *gin.Context) {
+func (cc *behavior) SiteCrawlPreview(c *gin.Context) {
 	var req struct {
 		URL        string `json:"url"`
 		RenderMode string `json:"render_mode"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		cc.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 40*time.Second)
 	defer cancel()
 
-	_, page, _, err := a.collectWebArticle(ctx, webImportPayload{URL: req.URL, RenderMode: req.RenderMode})
+	_, page, _, err := cc.collectWebArticle(ctx, webImportPayload{URL: req.URL, RenderMode: req.RenderMode})
 	if err != nil {
-		failWebImport(c, err)
+		cc.failWebImport(c, err)
 		return
 	}
-	limit := a.siteCrawlPageLimit()
+	limit := cc.siteCrawlPageLimit()
 	doc, perr := html.Parse(strings.NewReader(page.HTML))
 	if perr != nil {
-		fail(c, http.StatusUnprocessableEntity, "网页解析失败")
+		cc.core.Fail(c, http.StatusUnprocessableEntity, "网页解析失败")
 		return
 	}
 	tree := extractNavTree(doc, page.FinalURL, limit)
@@ -326,7 +327,7 @@ func (a *App) SiteCrawlPreview(c *gin.Context) {
 			break
 		}
 	}
-	sampleArticle, _, _, sErr := a.collectWebArticle(ctx, webImportPayload{URL: sampleURL, RenderMode: req.RenderMode})
+	sampleArticle, _, _, sErr := cc.collectWebArticle(ctx, webImportPayload{URL: sampleURL, RenderMode: req.RenderMode})
 	sample := gin.H{"url": sampleURL, "ok": sErr == nil}
 	if sErr == nil {
 		sample["title"] = sampleArticle.Title
@@ -338,7 +339,7 @@ func (a *App) SiteCrawlPreview(c *gin.Context) {
 	if len(tree) > limit {
 		tree = tree[:limit]
 	}
-	ok(c, gin.H{"root_url": rootURL, "tree": tree, "sample": sample, "limit": limit})
+	cc.core.OK(c, gin.H{"root_url": rootURL, "tree": tree, "sample": sample, "limit": limit})
 }
 
 // findFirstElementByTag 便捷封装：从解析后的 HTML 字符串里取第一个指定标签元素。
@@ -363,10 +364,10 @@ func findFirstElementByTag(root *html.Node, tag string) *html.Node {
 
 // StartSiteCrawl POST /collect/site
 // 用户确认目录/内容区后，创建草稿书 + 采集任务 + 页面清单，投递后台采集。
-func (a *App) StartSiteCrawl(c *gin.Context) {
-	u := currentUser(c)
+func (cc *behavior) StartSiteCrawl(c *gin.Context) {
+	u := cc.core.CurrentUser(c)
 	if u == nil {
-		fail(c, http.StatusUnauthorized, "请先登录")
+		cc.core.Fail(c, http.StatusUnauthorized, "请先登录")
 		return
 	}
 	var req struct {
@@ -378,14 +379,14 @@ func (a *App) StartSiteCrawl(c *gin.Context) {
 		Pages           []crawlNode `json:"pages"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, "参数错误")
+		cc.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
 	if strings.TrimSpace(req.RootURL) == "" || len(req.Pages) == 0 {
-		fail(c, http.StatusBadRequest, "请提供采集地址与页面")
+		cc.core.Fail(c, http.StatusBadRequest, "请提供采集地址与页面")
 		return
 	}
-	limit := a.siteCrawlPageLimit()
+	limit := cc.siteCrawlPageLimit()
 	if len(req.Pages) > limit {
 		req.Pages = req.Pages[:limit]
 	}
@@ -393,12 +394,12 @@ func (a *App) StartSiteCrawl(c *gin.Context) {
 	// 采集到已有书籍（追加）或新建草稿书。
 	var book models.Book
 	if req.BookID != 0 {
-		if err := a.DB.First(&book, req.BookID).Error; err != nil {
-			fail(c, http.StatusNotFound, "目标书籍不存在")
+		if err := cc.core.Gorm().First(&book, req.BookID).Error; err != nil {
+			cc.core.Fail(c, http.StatusNotFound, "目标书籍不存在")
 			return
 		}
-		if !a.canEditBookContent(u, &book) {
-			fail(c, http.StatusForbidden, "无权写入目标书籍")
+		if !cc.core.CanEditBookContent(u, &book) {
+			cc.core.Fail(c, http.StatusForbidden, "无权写入目标书籍")
 			return
 		}
 	} else {
@@ -410,17 +411,17 @@ func (a *App) StartSiteCrawl(c *gin.Context) {
 				title = "采集书籍"
 			}
 		}
-		book = models.Book{Title: truncateText(title, 255), UserID: u.ID, Status: "draft", IsPublic: false, Slug: randomSlug("book")}
+		book = models.Book{Title: truncateText(title, 255), UserID: u.ID, Status: "draft", IsPublic: false, Slug: cc.core.RandomSlug("book")}
 		for i := 0; i < 50; i++ {
 			var count int64
-			a.DB.Unscoped().Model(&models.Book{}).Where("slug = ?", book.Slug).Count(&count)
+			cc.core.Gorm().Unscoped().Model(&models.Book{}).Where("slug = ?", book.Slug).Count(&count)
 			if count == 0 {
 				break
 			}
-			book.Slug = randomSlug("book")
+			book.Slug = cc.core.RandomSlug("book")
 		}
-		if err := a.DB.Create(&book).Error; err != nil {
-			fail(c, http.StatusInternalServerError, "创建书籍失败")
+		if err := cc.core.Gorm().Create(&book).Error; err != nil {
+			cc.core.Fail(c, http.StatusInternalServerError, "创建书籍失败")
 			return
 		}
 	}
@@ -429,64 +430,64 @@ func (a *App) StartSiteCrawl(c *gin.Context) {
 	if mode == "" {
 		mode = "auto"
 	}
-	job := models.CrawlJob{
+	job := CrawlJob{
 		UserID: u.ID, BookID: book.ID, Kind: "site", RootURL: req.RootURL,
 		ContentSelector: truncateText(strings.TrimSpace(req.ContentSelector), 255),
 		RenderMode:      mode, Status: "pending", PageLimit: limit, Total: len(req.Pages),
 	}
-	if err := a.DB.Create(&job).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "创建采集任务失败")
+	if err := cc.core.Gorm().Create(&job).Error; err != nil {
+		cc.core.Fail(c, http.StatusInternalServerError, "创建采集任务失败")
 		return
 	}
-	pages := make([]models.CrawlPage, 0, len(req.Pages))
+	pages := make([]CrawlPage, 0, len(req.Pages))
 	for i, n := range req.Pages {
-		pages = append(pages, models.CrawlPage{
+		pages = append(pages, CrawlPage{
 			JobID: job.ID, URL: n.URL, ParentURL: n.ParentURL,
 			Title: truncateText(strings.TrimSpace(n.Title), 500), Depth: n.Depth, SortOrder: i, Status: "pending",
 		})
 	}
-	if err := a.DB.CreateInBatches(&pages, 100).Error; err != nil {
-		fail(c, http.StatusInternalServerError, "创建页面清单失败")
+	if err := cc.core.Gorm().CreateInBatches(&pages, 100).Error; err != nil {
+		cc.core.Fail(c, http.StatusInternalServerError, "创建页面清单失败")
 		return
 	}
 
-	if queue := a.jobQueue(); queue != nil {
+	if queue := cc.core.JobQueue(); queue != nil {
 		if _, err := queue.Enqueue(context.Background(), siteCrawlJobType, siteCrawlJobPayload{JobID: job.ID}, 3); err != nil {
-			fail(c, http.StatusInternalServerError, "任务入队失败")
+			cc.core.Fail(c, http.StatusInternalServerError, "任务入队失败")
 			return
 		}
 	}
-	ok(c, gin.H{"job": job, "book": book})
+	cc.core.OK(c, gin.H{"job": job, "book": book})
 }
 
 // —— 采集执行（后台任务） ——
 
-func (a *App) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) error {
+func (cc *behavior) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) error {
 	var p siteCrawlJobPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return fmt.Errorf("解析采集任务失败: %w", err)
 	}
-	var job models.CrawlJob
-	if err := a.DB.First(&job, p.JobID).Error; err != nil {
+	var job CrawlJob
+	if err := cc.core.Gorm().First(&job, p.JobID).Error; err != nil {
 		return nil // 任务已删除，视为完成
 	}
 	if job.Status == "succeeded" || job.Status == "partial" || job.Status == "failed" {
 		return nil // 已完成，幂等
 	}
 	var book models.Book
-	if err := a.DB.First(&book, job.BookID).Error; err != nil {
-		a.finishCrawlJob(&job, "failed", "目标书籍不存在")
+	if err := cc.core.Gorm().First(&book, job.BookID).Error; err != nil {
+		cc.finishCrawlJob(&job, "failed", "目标书籍不存在")
 		return nil
 	}
 	now := time.Now()
-	a.DB.Model(&job).Updates(map[string]any{"status": "running", "started_at": &now})
+	cc.core.Gorm().Model(&job).Updates(map[string]any{"status": "running", "started_at": &now})
 
-	var pages []models.CrawlPage
-	a.DB.Where("job_id = ?", job.ID).Order("sort_order ASC").Find(&pages)
+	var pages []CrawlPage
+	cc.core.Gorm().Where("job_id = ?", job.ID).Order("sort_order ASC").Find(&pages)
 
 	// 顶层排序基准：支持采集到「已有书籍」时，顶层章节追加到现有目录末尾（不覆盖已有顺序）。
 	var topBase int64
-	a.DB.Model(&models.Document{}).Where("book_id = ? AND parent_id IS NULL", book.ID).Count(&topBase)
+	cc.core.Gorm().Model(&models.Document{}).Where("book_id = ? AND parent_id IS NULL", book.ID).Count(&topBase)
 	topSort := int(topBase)
 
 	urlToDoc := map[string]uint{}
@@ -503,10 +504,10 @@ func (a *App) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) error {
 			return ctx.Err() // 取消：保留 pending，下次重试
 		default:
 		}
-		article, _, _, err := a.collectWebArticle(ctx, webImportPayload{URL: page.URL, RenderMode: job.RenderMode})
+		article, _, _, err := cc.collectWebArticle(ctx, webImportPayload{URL: page.URL, RenderMode: job.RenderMode})
 		if err != nil {
 			failed++
-			a.DB.Model(page).Updates(map[string]any{"status": "failed", "error": truncateText(err.Error(), 1000)})
+			cc.core.Gorm().Model(page).Updates(map[string]any{"status": "failed", "error": truncateText(err.Error(), 1000)})
 			continue
 		}
 		var parentID *uint
@@ -528,19 +529,19 @@ func (a *App) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) error {
 			sortOrder = topSort
 			topSort++
 		}
-		doc, derr := a.crawlCreateDocument(&book, job.UserID, title, article.Markdown, page.URL, parentID, sortOrder)
+		doc, derr := cc.crawlCreateDocument(&book, job.UserID, title, article.Markdown, page.URL, parentID, sortOrder)
 		if derr != nil {
 			failed++
-			a.DB.Model(page).Updates(map[string]any{"status": "failed", "error": truncateText(derr.Error(), 1000)})
+			cc.core.Gorm().Model(page).Updates(map[string]any{"status": "failed", "error": truncateText(derr.Error(), 1000)})
 			continue
 		}
 		success++
 		urlToDoc[page.URL] = doc.ID
-		a.DB.Model(page).Updates(map[string]any{"status": "success", "error": "", "doc_id": doc.ID, "title": truncateText(title, 500)})
+		cc.core.Gorm().Model(page).Updates(map[string]any{"status": "success", "error": "", "doc_id": doc.ID, "title": truncateText(title, 500)})
 	}
 
 	// 采集完成后改写内链：正文里指向本次采集页面的外链改为站内阅读链接。
-	a.rewriteCrawledInternalLinks(&book, urlToDoc)
+	cc.rewriteCrawledInternalLinks(&book, urlToDoc)
 
 	status := "succeeded"
 	if failed > 0 && success > 0 {
@@ -548,17 +549,17 @@ func (a *App) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) error {
 	} else if failed > 0 && success == 0 {
 		status = "failed"
 	}
-	a.DB.Model(&job).Updates(map[string]any{"success": success, "failed": failed})
-	a.finishCrawlJob(&job, status, "")
-	a.Notify(job.UserID, "collect.finished", fmt.Sprintf("《%s》采集完成", book.Title), map[string]any{
+	cc.core.Gorm().Model(&job).Updates(map[string]any{"success": success, "failed": failed})
+	cc.finishCrawlJob(&job, status, "")
+	cc.core.Notify(job.UserID, "collect.finished", fmt.Sprintf("《%s》采集完成", book.Title), map[string]any{
 		"job_id": job.ID, "book_id": book.ID, "book_slug": book.Slug, "success": success, "failed": failed, "status": status,
 	})
 	return nil
 }
 
-func (a *App) finishCrawlJob(job *models.CrawlJob, status, lastErr string) {
+func (cc *behavior) finishCrawlJob(job *CrawlJob, status, lastErr string) {
 	now := time.Now()
-	a.DB.Model(job).Updates(map[string]any{"status": status, "finished_at": &now, "last_error": truncateText(lastErr, 1000)})
+	cc.core.Gorm().Model(job).Updates(map[string]any{"status": status, "finished_at": &now, "last_error": truncateText(lastErr, 1000)})
 }
 
 // crawlSlugPattern 与 slugify 不同：保留大小写（不转小写），仅把非字母数字压成中划线。
@@ -585,16 +586,16 @@ func crawlSlugFromURL(raw string) string {
 
 // crawlCreateDocument 在书内创建一章（唯一 slug），采集内容作为草稿章节。
 // slug 优先取源 URL 末段（保留大小写），回退为标题的保留大小写 slug。
-func (a *App) crawlCreateDocument(book *models.Book, userID uint, title, content, sourceURL string, parentID *uint, sortOrder int) (*models.Document, error) {
-	doc := models.Document{BookID: book.ID, UserID: userID, Title: truncateText(strings.TrimSpace(title), 255), Content: content, Status: a.initialChapterStatus(book, parentID), SortOrder: sortOrder, ParentID: parentID}
-	doc.Icon = extractDocIcon(content)
+func (cc *behavior) crawlCreateDocument(book *models.Book, userID uint, title, content, sourceURL string, parentID *uint, sortOrder int) (*models.Document, error) {
+	doc := models.Document{BookID: book.ID, UserID: userID, Title: truncateText(strings.TrimSpace(title), 255), Content: content, Status: cc.core.InitialChapterStatus(book, parentID), SortOrder: sortOrder, ParentID: parentID}
+	doc.Icon = cc.core.ExtractDocIcon(content)
 	base := crawlSlugFromURL(sourceURL)
 	if base == "" {
 		base = strings.Trim(crawlSlugPattern.ReplaceAllString(doc.Title, "-"), "-")
 	}
 	// 冲突时递归用祖先 slug 作前缀（b-c），最终随机兜底，不再用 xxx-2 计数后缀。
-	doc.Slug = a.uniqueChildSlug(book.ID, parentID, base, 0)
-	if err := a.DB.Create(&doc).Error; err != nil {
+	doc.Slug = cc.core.UniqueChildSlug(book.ID, parentID, base, 0)
+	if err := cc.core.Gorm().Create(&doc).Error; err != nil {
 		return nil, err
 	}
 	return &doc, nil
@@ -603,135 +604,126 @@ func (a *App) crawlCreateDocument(book *models.Book, userID uint, title, content
 // —— 采集历史 / 详情 / 重试 ——
 
 // canManageCrawlJob 任务归属校验：本人或管理员。
-func (a *App) loadOwnedCrawlJob(c *gin.Context) (*models.CrawlJob, bool) {
-	u := currentUser(c)
+func (cc *behavior) loadOwnedCrawlJob(c *gin.Context) (*CrawlJob, bool) {
+	u := cc.core.CurrentUser(c)
 	if u == nil {
-		fail(c, http.StatusUnauthorized, "请先登录")
+		cc.core.Fail(c, http.StatusUnauthorized, "请先登录")
 		return nil, false
 	}
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	var job models.CrawlJob
-	if err := a.DB.First(&job, uint(id)).Error; err != nil {
-		fail(c, http.StatusNotFound, "采集任务不存在")
+	var job CrawlJob
+	if err := cc.core.Gorm().First(&job, uint(id)).Error; err != nil {
+		cc.core.Fail(c, http.StatusNotFound, "采集任务不存在")
 		return nil, false
 	}
 	if job.UserID != u.ID {
-		fail(c, http.StatusForbidden, "无权访问该采集任务")
+		cc.core.Fail(c, http.StatusForbidden, "无权访问该采集任务")
 		return nil, false
 	}
 	return &job, true
 }
 
 // ListBookCrawlJobs GET /books/:id/collect/jobs?kind=site|page|chapter 采集历史（本书）。
-func (a *App) ListBookCrawlJobs(c *gin.Context) {
-	book, status := a.findBook(c)
+func (cc *behavior) ListBookCrawlJobs(c *gin.Context) {
+	book, status := cc.core.FindBook(c)
 	if book == nil {
-		fail(c, status, "书籍不存在")
+		cc.core.Fail(c, status, "书籍不存在")
 		return
 	}
-	if !a.canEditBookContent(currentUser(c), book) {
-		fail(c, http.StatusForbidden, "无权查看采集历史")
+	if !cc.core.CanEditBookContent(cc.core.CurrentUser(c), book) {
+		cc.core.Fail(c, http.StatusForbidden, "无权查看采集历史")
 		return
 	}
-	q := a.DB.Where("book_id = ?", book.ID)
+	q := cc.core.Gorm().Where("book_id = ?", book.ID)
 	if kind := strings.TrimSpace(c.Query("kind")); kind != "" {
 		q = q.Where("kind = ?", kind)
 	}
-	jobs := []models.CrawlJob{}
+	jobs := []CrawlJob{}
 	q.Order("created_at DESC").Limit(200).Find(&jobs)
-	ok(c, gin.H{"items": jobs})
+	cc.core.OK(c, gin.H{"items": jobs})
 }
 
 // GetCrawlJob GET /collect/jobs/:id 任务详情 + 页面清单（按 sort_order，供前端按目录结构展示）。
-func (a *App) GetCrawlJob(c *gin.Context) {
-	job, ok2 := a.loadOwnedCrawlJob(c)
+func (cc *behavior) GetCrawlJob(c *gin.Context) {
+	job, ok2 := cc.loadOwnedCrawlJob(c)
 	if !ok2 {
 		return
 	}
-	pages := []models.CrawlPage{}
-	a.DB.Where("job_id = ?", job.ID).Order("sort_order ASC").Find(&pages)
-	ok(c, gin.H{"job": job, "pages": pages})
+	pages := []CrawlPage{}
+	cc.core.Gorm().Where("job_id = ?", job.ID).Order("sort_order ASC").Find(&pages)
+	cc.core.OK(c, gin.H{"job": job, "pages": pages})
 }
 
 // RetryCrawlJob POST /collect/jobs/:id/retry 重试该任务所有失败页。
-func (a *App) RetryCrawlJob(c *gin.Context) {
-	job, ok2 := a.loadOwnedCrawlJob(c)
+func (cc *behavior) RetryCrawlJob(c *gin.Context) {
+	job, ok2 := cc.loadOwnedCrawlJob(c)
 	if !ok2 {
 		return
 	}
-	res := a.DB.Model(&models.CrawlPage{}).Where("job_id = ? AND status = ?", job.ID, "failed").Update("status", "pending")
+	res := cc.core.Gorm().Model(&CrawlPage{}).Where("job_id = ? AND status = ?", job.ID, "failed").Update("status", "pending")
 	if res.RowsAffected == 0 {
-		fail(c, http.StatusBadRequest, "没有需要重试的失败页面")
+		cc.core.Fail(c, http.StatusBadRequest, "没有需要重试的失败页面")
 		return
 	}
-	a.DB.Model(job).Updates(map[string]any{"status": "pending", "finished_at": nil, "last_error": ""})
-	if queue := a.jobQueue(); queue != nil {
+	cc.core.Gorm().Model(job).Updates(map[string]any{"status": "pending", "finished_at": nil, "last_error": ""})
+	if queue := cc.core.JobQueue(); queue != nil {
 		_, _ = queue.Enqueue(context.Background(), siteCrawlJobType, siteCrawlJobPayload{JobID: job.ID}, 3)
 	}
-	ok(c, gin.H{"retried": res.RowsAffected})
+	cc.core.OK(c, gin.H{"retried": res.RowsAffected})
 }
 
 // RetryCrawlPage POST /collect/pages/:id/retry 重试单个失败页。
-func (a *App) RetryCrawlPage(c *gin.Context) {
-	u := currentUser(c)
+func (cc *behavior) RetryCrawlPage(c *gin.Context) {
+	u := cc.core.CurrentUser(c)
 	if u == nil {
-		fail(c, http.StatusUnauthorized, "请先登录")
+		cc.core.Fail(c, http.StatusUnauthorized, "请先登录")
 		return
 	}
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	var page models.CrawlPage
-	if err := a.DB.First(&page, uint(id)).Error; err != nil {
-		fail(c, http.StatusNotFound, "采集页面不存在")
+	var page CrawlPage
+	if err := cc.core.Gorm().First(&page, uint(id)).Error; err != nil {
+		cc.core.Fail(c, http.StatusNotFound, "采集页面不存在")
 		return
 	}
-	var job models.CrawlJob
-	if err := a.DB.First(&job, page.JobID).Error; err != nil {
-		fail(c, http.StatusNotFound, "采集任务不存在")
+	var job CrawlJob
+	if err := cc.core.Gorm().First(&job, page.JobID).Error; err != nil {
+		cc.core.Fail(c, http.StatusNotFound, "采集任务不存在")
 		return
 	}
 	if job.UserID != u.ID {
-		fail(c, http.StatusForbidden, "无权操作")
+		cc.core.Fail(c, http.StatusForbidden, "无权操作")
 		return
 	}
-	a.DB.Model(&page).Updates(map[string]any{"status": "pending", "error": ""})
-	a.DB.Model(&job).Updates(map[string]any{"status": "pending", "finished_at": nil})
-	if queue := a.jobQueue(); queue != nil {
+	cc.core.Gorm().Model(&page).Updates(map[string]any{"status": "pending", "error": ""})
+	cc.core.Gorm().Model(&job).Updates(map[string]any{"status": "pending", "finished_at": nil})
+	if queue := cc.core.JobQueue(); queue != nil {
 		_, _ = queue.Enqueue(context.Background(), siteCrawlJobType, siteCrawlJobPayload{JobID: job.ID}, 3)
 	}
-	ok(c, gin.H{"retried": 1})
+	cc.core.OK(c, gin.H{"retried": 1})
 }
 
-// attachCrawlingFlags 为一组书籍填充「采集中」标记：存在 pending/running 的整站采集任务即为采集中。
+// attachCrawlingFlags 书籍装饰：为列表/详情书籍填充「采集中」标记——存在 pending/running 的采集任务即为采集中。
 // 插件禁用或表不存在时静默跳过（不影响列表）。
-func (a *App) attachCrawlingFlags(books []models.Book) {
-	if len(books) == 0 || !a.pluginEnabled(pluginContentCollect) || !a.DB.Migrator().HasTable(&models.CrawlJob{}) {
+func (cc *behavior) attachCrawlingFlags(books []*models.Book) {
+	db := cc.core.Gorm()
+	if len(books) == 0 || !cc.core.PluginEnabled(plugins.KeyContentCollect) || !db.Migrator().HasTable(&CrawlJob{}) {
 		return
 	}
 	ids := make([]uint, 0, len(books))
-	for i := range books {
-		ids = append(ids, books[i].ID)
+	for _, b := range books {
+		ids = append(ids, b.ID)
 	}
 	var activeBookIDs []uint
-	a.DB.Model(&models.CrawlJob{}).
+	db.Model(&CrawlJob{}).
 		Where("book_id IN ? AND status IN ?", ids, []string{"pending", "running"}).
 		Distinct().Pluck("book_id", &activeBookIDs)
 	active := map[uint]bool{}
 	for _, id := range activeBookIDs {
 		active[id] = true
 	}
-	for i := range books {
-		if active[books[i].ID] {
-			books[i].Crawling = true
+	for _, b := range books {
+		if active[b.ID] {
+			b.Crawling = true
 		}
 	}
-}
-
-// bookIsCrawling 单本是否正在采集（详情页用）。
-func (a *App) bookIsCrawling(bookID uint) bool {
-	if !a.pluginEnabled(pluginContentCollect) || !a.DB.Migrator().HasTable(&models.CrawlJob{}) {
-		return false
-	}
-	var count int64
-	a.DB.Model(&models.CrawlJob{}).Where("book_id = ? AND status IN ?", bookID, []string{"pending", "running"}).Count(&count)
-	return count > 0
 }

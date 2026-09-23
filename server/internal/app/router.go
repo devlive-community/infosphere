@@ -177,7 +177,6 @@ func (a *App) Router() *gin.Engine {
 			books.GET("/:id/export", a.RequirePermission(authz.BookExport), a.ExportBook)
 			books.POST("/:id/import/pdf", a.RequirePermission(authz.BookImport), a.ReimportPDFBook)
 			books.POST("/:id/cleanup/permalink-anchors", a.RequirePermission(authz.BookUpdate), a.CleanupBookPermalinks)
-			books.POST("/:id/cleanup/internal-links", a.RequirePermission(authz.BookUpdate), a.CleanupBookInternalLinks)
 			books.GET("/:id/read-chapters", a.RequirePermission(authz.UserRead), a.ReadChapters)
 			books.GET("/:id/export-style", a.RequirePermission(authz.BookUpdate), a.GetBookExportStyle)
 			books.PUT("/:id/export-style", a.RequirePermission(authz.BookUpdate), a.UpdateBookExportStyle)
@@ -203,7 +202,6 @@ func (a *App) Router() *gin.Engine {
 		docs := api.Group("", a.RequireAuth())
 		{
 			docs.POST("/books/:id/documents", a.RequireEmailVerified(), a.RequirePermission(authz.DocumentCreate), a.CreateDocument)
-			docs.POST("/books/:id/documents/import-web", a.RequirePageCollect(), a.RequirePermission(authz.DocumentCreate), a.ImportWebDocument)
 			docs.POST("/books/:id/documents/copy", a.RequirePermission(authz.DocumentCreate), a.CopyDocuments)
 			docs.PUT("/documents/:id", a.RequirePermission(authz.DocumentUpdate), a.UpdateDocument)
 			docs.DELETE("/documents/:id", a.RequirePermission(authz.DocumentDelete), a.DeleteDocument)
@@ -215,26 +213,10 @@ func (a *App) Router() *gin.Engine {
 		// ── 全文搜索（search:read，匿名可搜公开内容） ──
 		api.GET("/search", a.OptionalAuth(), a.GlobalSearch)
 
-		// ── 导入书籍（book:import，ZIP / PDF / 网页成为本人的书籍） ──
+		// ── 导入书籍（book:import，ZIP / PDF 成为本人的书籍；网页导入/采集由 content-collect 插件子包注册） ──
 		api.POST("/import", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportBook)
 		api.POST("/import/pdf", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportPDFBook)
-		api.POST("/import/web", a.RequireAuth(), a.RequirePageCollect(), a.RequirePermission(authz.BookImport), a.ImportWebBook)
-		// 采集网页正文为 Markdown（不建文档），供写作编辑器插入
-		api.POST("/import/web-content", a.RequireAuth(), a.RequirePageCollect(), a.RequirePermission(authz.DocumentCreate), a.CollectWebContent)
-		// 浏览器渲染是否可用（依赖无头浏览器插件），供前端联动禁用「浏览器运行 JavaScript」采集模式
-		api.GET("/import/browser-available", a.RequireAuth(), a.RequireFeaturePlugin(pluginContentCollect), a.RequirePermission(authz.BookImport), a.BrowserRenderAvailable)
 		api.GET("/tasks/:id", a.RequireAuth(), a.GetBackgroundJob)
-
-		// 整站采集（content-collect 插件 + collect:* 权限）
-		collect := api.Group("/collect", a.RequireAuth(), a.RequireFeaturePlugin(pluginContentCollect))
-		{
-			collect.POST("/site/preview", a.RequireSiteCollect(), a.RequirePermission(authz.CollectCreate), a.SiteCrawlPreview)
-			collect.POST("/site", a.RequireSiteCollect(), a.RequirePermission(authz.CollectCreate), a.StartSiteCrawl)
-			collect.GET("/jobs/:id", a.RequirePermission(authz.CollectRead), a.GetCrawlJob)
-			collect.POST("/jobs/:id/retry", a.RequirePermission(authz.CollectManage), a.RetryCrawlJob)
-			collect.POST("/pages/:id/retry", a.RequirePermission(authz.CollectManage), a.RetryCrawlPage)
-		}
-		api.GET("/books/:id/collect/jobs", a.RequireAuth(), a.RequireFeaturePlugin(pluginContentCollect), a.RequirePermission(authz.CollectRead), a.ListBookCrawlJobs)
 
 		// ── 站内通知（notification:*；SSE 端点自行鉴权，EventSource 无法带请求头） ──
 		notif := api.Group("/notifications", a.RequireAuth())

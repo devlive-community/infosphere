@@ -3,6 +3,7 @@ import type { InferGetServerSidePropsType } from 'next'
 import BookSettingsLayout from '@/components/BookSettingsLayout'
 import { getBookSettingsProps } from '@/lib/book-settings'
 import { api } from '@/lib/api'
+import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Button, useFeedback } from '@/components/ui'
 
@@ -12,6 +13,9 @@ export const getServerSideProps = getBookSettingsProps
 export default function BookCleanup({ book }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
+  const { site } = useApp()
+  // 「改写为站内链接」依赖采集记录，由内容采集插件提供；插件禁用时隐藏
+  const collectEnabled = (site.feature_plugins || []).includes('content-collect')
   const [running, setRunning] = useState('')
 
   async function run(path: string, doneKey: string) {
@@ -40,13 +44,13 @@ export default function BookCleanup({ book }: InferGetServerSidePropsType<typeof
           </div>
           <Button loading={running === 'permalink-anchors'} disabled={!!running} onClick={() => run('permalink-anchors', 'bookSettings.cleanup.permalink.done')} className="shrink-0">{t('bookSettings.cleanup.run')}</Button>
         </div>
-        <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 p-4">
+        {collectEnabled && <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 p-4">
           <div className="min-w-0">
             <div className="text-sm font-medium text-slate-900">{t('bookSettings.cleanup.internalLinks.title')}</div>
             <p className="mt-1 text-xs leading-5 text-slate-500">{t('bookSettings.cleanup.internalLinks.desc')}</p>
           </div>
           <Button loading={running === 'internal-links'} disabled={!!running} onClick={() => run('internal-links', 'bookSettings.cleanup.internalLinks.done')} className="shrink-0">{t('bookSettings.cleanup.run')}</Button>
-        </div>
+        </div>}
       </div>
     </BookSettingsLayout>
   )
