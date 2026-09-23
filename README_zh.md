@@ -6,10 +6,12 @@
 
 **开源、自托管的知识管理与文档协作平台**
 
+[English](README.md) | 简体中文
+
 把零散的知识沉淀成一本本可检索、可协作、可分享的「书」——以书籍与章节组织内容，在线协作写作与阅读，数据完全掌握在自己手里。
 
-![version](https://img.shields.io/badge/version-2026.0.2-blue)
-![go](https://img.shields.io/badge/Go-1.25-00ADD8)
+[![version](https://img.shields.io/github/v/release/devlive-community/infosphere?label=version&color=blue)](https://github.com/devlive-community/infosphere/releases/latest)
+![go](https://img.shields.io/badge/Go-1.26-00ADD8)
 ![next](https://img.shields.io/badge/Next.js-14-black)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
@@ -125,12 +127,13 @@ knowforge/
 │       ├── auth/         # JWT 签发与校验
 │       ├── config/       # 安装配置持久化（data/config.json）
 │       ├── database/     # SQLite / MySQL / PostgreSQL 多数据库支持
-│       └── models/       # GORM 模型与自动迁移
+│       ├── models/       # GORM 模型与自动迁移
+│       └── plugins/      # 特性插件（标签、版本、多语言、内容采集等）
 ├── app/
 │   ├── web/              # Next.js 14 + TypeScript + Tailwind 前端（SSR）
 │   ├── desktop/          # Tauri 2 桌面客户端（macOS / Windows / Linux）
 │   └── android/          # Android 客户端（Kotlin + Jetpack Compose）
-├── deploy/               # systemd unit / nginx 配置 / sudoers
+├── deploy/               # systemd unit / nginx 配置 / sudoers / 发布脚本
 ├── Dockerfile · docker-compose.yml
 └── Makefile
 ```
@@ -150,7 +153,8 @@ nginx (:80/:443)
 ### 发布新版本
 
 ```bash
-git tag v2026.0.3 && git push origin v2026.0.3
+deploy/release.sh        # 为 handler_setup.go 中的当前版本打 v 标签并推送，发布后自动开启下一版本
+deploy/new-version.sh    # 手动开启新版本：统一 bump 各处版本号并生成 CHANGELOG 草稿
 ```
 
 [release.yml](.github/workflows/release.yml) 会构建包含完整 Web 运行时的多架构单文件二进制、发布 GitHub Release，并推送多架构 Docker 镜像到 GitHub Packages（GHCR）。线上管理员也可在「系统管理」页一键在线升级。
