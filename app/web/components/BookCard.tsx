@@ -1,15 +1,16 @@
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { resolveMediaUrl } from '@/lib/media'
 import { formatNumber } from '@/lib/api'
 import { Badge } from '@/components/ui'
 import TagChips from '@/components/TagChips'
 import UserAvatar from '@/components/UserAvatar'
-import { ArrowRightIcon, EyeIcon, CalendarIcon } from '@/components/icons'
+import { ArrowRightIcon, EyeIcon, CalendarIcon, ChevronRightIcon } from '@/components/icons'
 import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 import HighlightText from '@/components/HighlightText'
 import CoverImage from '@/components/CoverImage'
+import BookVersionsModal from '@/components/BookVersionsModal'
 
 // BookCard 全站统一书籍展示卡。
 // 收敛了首页/发现/搜索/收藏/我的书籍/用户主页/相关书籍等全部列表场景，
@@ -97,6 +98,18 @@ function CoverLink({ book, href, view, dark }: { book: Book; href: string; view:
   )
 }
 
+// VersionCountPill 「版本聚合」后卡片左上角的「N 个版本 >」胶囊：颜色取主题 primary 色阶，点击弹出全部版本。
+function VersionCountPill({ count, onClick, floating }: { count: number; onClick: () => void; floating?: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <button type="button" onClick={onClick}
+      className={`inline-flex items-center gap-0.5 rounded-full border border-primary-200 bg-primary-50/95 px-2.5 py-0.5 text-xs font-medium text-primary-700 shadow-sm transition-colors hover:bg-primary-100 ${floating ? 'absolute left-3 top-3 z-[1] backdrop-blur' : ''}`}>
+      {t('book.variant.count', { count })}
+      <ChevronRightIcon className="h-3.5 w-3.5" />
+    </button>
+  )
+}
+
 export default function BookCard({
   book,
   view = 'grid',
@@ -124,6 +137,19 @@ export default function BookCard({
   const showTags = resolvedTagsMax > 0 && (book.tags?.length ?? 0) > 0
   const date = buildDate(book, dateField)
   const hasBadges = showStatus || showVisibility || Boolean(badge)
+  const [versionsOpen, setVersionsOpen] = useState(false)
+  const versionCount = book.version_count || 0
+  const isGrouped = Boolean(book.version_group)
+  // 多版本书籍：本书为最新版时在标题旁显示「最新版」，标题下提示组内最新版本号
+  const latestBadge = isGrouped && book.version_is_latest && (
+    <Badge tone="emerald">{t('book.variant.latest')}</Badge>
+  )
+  const latestVersionLine = isGrouped && book.latest_version && (
+    <p className="truncate text-xs text-slate-400">{t('book.variant.latestVersion', { version: book.latest_version })}</p>
+  )
+  const versionsModal = versionCount > 1 && (
+    <BookVersionsModal book={book} open={versionsOpen} onClose={() => setVersionsOpen(false)} />
+  )
 
   const tagBlock = showTags && (
     <TagChips tags={book.tags} max={resolvedTagsMax} link={tagsLink} />
@@ -204,10 +230,13 @@ export default function BookCard({
         <CoverLink book={book} href={detailHref} view="list" />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {versionCount > 1 && <VersionCountPill count={versionCount} onClick={() => setVersionsOpen(true)} />}
             {titleBlock}
+            {latestBadge}
             {tagBlock}
             {showStatus && <StatusBadge status={book.status} />}
           </div>
+          {latestVersionLine}
           {showVisibility && (
             <div className="flex items-center gap-2"><Badge tone={book.is_public ? 'sky' : 'slate'}>{book.is_public ? t('book.visibility.public') : t('book.visibility.private')}</Badge>{badge}</div>
           )}
@@ -220,6 +249,7 @@ export default function BookCard({
           {topActions && <div className="shrink-0">{topActions}</div>}
           {actions && <div className="min-w-0 flex-1 sm:flex-none">{actions}</div>}
         </div>
+        {versionsModal}
       </div>
     )
   }
@@ -227,18 +257,23 @@ export default function BookCard({
   // ── grid 横幅卡 ──
   return (
     <div className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md ${className || ''}`}>
-      <CoverLink book={book} href={detailHref} view="grid" />
+      <div className="relative">
+        <CoverLink book={book} href={detailHref} view="grid" />
+        {versionCount > 1 && <VersionCountPill floating count={versionCount} onClick={() => setVersionsOpen(true)} />}
+      </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4">
         <div className="flex items-center justify-between gap-2">
           {tagBlock}
           {(topActions || authorBlock) && <div className="ml-auto flex shrink-0 items-center gap-2">{authorBlock}{topActions}</div>}
         </div>
-        {titleBlock}
+        {latestBadge ? <div className="flex min-w-0 items-center gap-2">{titleBlock}{latestBadge}</div> : titleBlock}
+        {latestVersionLine}
         {badgeBlock}
         {descBlock}
         {metaBlock && <div className="mt-auto pt-2">{metaBlock}</div>}
         {actions && <div className="mt-3 border-t border-slate-100 pt-3">{actions}</div>}
       </div>
+      {versionsModal}
     </div>
   )
 }

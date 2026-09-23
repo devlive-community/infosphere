@@ -277,6 +277,13 @@ export const zh: Record<string, string> = {
   'book.variant.language': '语言',
   'book.variant.version': '版本',
   'book.variant.latest': '最新版',
+  'book.variant.groupToggle': '版本聚合',
+  'book.variant.groupTooltip': '同一本书的多个版本只显示一张卡片（优先显示最新版）；点击卡片上的「N 个版本」可查看全部版本。',
+  'book.variant.count': '{count} 个版本',
+  'book.variant.listTitle': '「{title}」的全部版本',
+  'book.variant.listEmpty': '暂无其他版本',
+  'book.variant.listFailed': '加载版本列表失败',
+  'book.variant.latestVersion': '最新版本 {version}',
 
   // 书籍状态 / 可见性（多页共用）
   'book.status.draft': '草稿',
@@ -2967,7 +2974,6 @@ export const zh: Record<string, string> = {
   'user.home.shareLabel': '主页链接',
   'user.home.shareClose': '关闭',
   'user.home.publicBooksSection': '公开书籍',
-  'user.home.mergeVersions': '合并相同书籍',
   'user.home.publicBooksCount': '{username}发布的 {count} 本知识作品',
   'user.home.noPublicBooks': '暂无公开书籍',
   'user.home.gridView': '网格视图',

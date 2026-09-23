@@ -313,6 +313,10 @@ func (a *App) GetUserBooks(c *gin.Context) {
 		return
 	}
 	query := a.DB.Model(&models.Book{}).Where("user_id = ? AND is_public = ? AND status IN ?", u.ID, true, publiclyReadableBookStatuses)
+	var versionCounts map[string]int
+	if c.Query("group_versions") == "true" && a.pluginEnabled(pluginBookVersions) {
+		query, versionCounts = a.groupBookVersions(query)
+	}
 	var total int64
 	query.Count(&total)
 	books := []models.Book{}
@@ -323,5 +327,6 @@ func (a *App) GetUserBooks(c *gin.Context) {
 	}
 	a.attachChapterCounts(books)
 	a.attachBookTags(books)
+	a.attachVersionInfo(books, versionCounts, currentUser(c))
 	ok(c, PageResult{Items: books, Total: total, Page: page, PageSize: pageSize})
 }

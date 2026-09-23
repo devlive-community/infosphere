@@ -56,6 +56,10 @@ export interface Book {
   version?: string
   version_group?: string
   version_is_latest?: boolean
+  /** 版本聚合列表：该版本组在当前筛选下可见的版本数（>1 才返回） */
+  version_count?: number
+  /** 版本组内被标记为最新版的版本号 */
+  latest_version?: string
   chapter_count?: number
   collaborator_role?: 'editor' | 'viewer'
   watermark_enabled: boolean

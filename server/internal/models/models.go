@@ -409,6 +409,10 @@ type Book struct {
 	ChapterCount int `gorm:"-" json:"chapter_count"`
 	// CollaboratorRole 非持久化：协作书籍列表按需回填当前用户的角色。
 	CollaboratorRole string `gorm:"-" json:"collaborator_role,omitempty"`
+	// VersionCount 非持久化：「版本聚合」列表中本书所在版本组、在当前筛选下可见的版本数（>1 才返回）。
+	VersionCount int `gorm:"-" json:"version_count,omitempty"`
+	// LatestVersion 非持久化：本书所在版本组中被标记为「最新版」的书籍的版本号（列表卡片展示「最新版本 xxx」）。
+	LatestVersion string `gorm:"-" json:"latest_version,omitempty"`
 }
 
 // Tag 标签

@@ -1,15 +1,16 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { authHeaderFrom, getSSRUser, getSiteConfig, isInstalled, serverApi, siteUrlFrom } from '@/lib/server-api'
 import { formatNumber } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Container from '@/components/Container'
-import { Button, Input, Loading, Pagination, SegmentedTabs, Select, Checkbox } from '@/components/ui'
+import { Button, Input, Loading, Pagination, SegmentedTabs, Select } from '@/components/ui'
 import Seo from '@/components/Seo'
 import TagChips from '@/components/TagChips'
 import BookCard from '@/components/BookCard'
+import VersionGroupToggle from '@/components/VersionGroupToggle'
 import { ArrowRightIcon, BookIcon, ClockIcon, EyeIcon, GlobeIcon, GridIcon, ListIcon, SearchIcon } from '@/components/icons'
 import { useTranslation } from '@/lib/i18n'
 import type { Book, PageResult, Tag, User } from '@/lib/types'
@@ -24,6 +25,8 @@ interface ExploreProps {
   tagName: string
   sort: 'latest' | 'hot'
   visibility: string
+  /** 版本聚合（URL: versions=grouped，服务端聚合） */
+  grouped: boolean
   page: number
   data: PageResult<Book>
   hotTags: Tag[]
@@ -41,13 +44,15 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
   const sort = (query.sort === 'hot' ? 'hot' : 'latest') as 'latest' | 'hot'
   const visibility = query.visibility === 'login' && user ? 'login' : ''
   const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1)
+  const grouped = query.versions === 'grouped'
 
   const [site, data, tags] = await Promise.all([
     getSiteConfig(),
-    tag
+    // 版本聚合走 /books（支持 tag 过滤 + group_versions 服务端聚合）
+    tag && !grouped
       ? serverApi<PageResult<Book>>(`/tags/${encodeURIComponent(tag)}/books`, { params: { page, page_size: 12 } })
           .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>)
-      : serverApi<PageResult<Book>>('/books', { headers: auth, params: { page, page_size: 12, title: keyword || undefined, visibility: visibility || undefined } })
+      : serverApi<PageResult<Book>>('/books', { headers: auth, params: { page, page_size: 12, title: keyword || undefined, visibility: visibility || undefined, tag: tag || undefined, group_versions: grouped ? 'true' : undefined } })
           .catch(() => ({ items: [], total: 0, page: 1, page_size: 12 }) as PageResult<Book>),
     serverApi<Tag[]>('/tags', { params: { limit: 200 } }).catch(() => [] as Tag[]),
   ])
@@ -55,20 +60,21 @@ export const getServerSideProps: GetServerSideProps<ExploreProps> = async ({ req
     .flatMap((book) => book.tags || [])
     .find((item) => item.slug === tag)
   const tagName = tag ? selectedBookTag?.name || tags.find((item) => item.slug === tag)?.name || tag : ''
-  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), keyword, tag, tagName, sort, visibility, page, data, hotTags: tags.slice(0, 6) } }
+  return { props: { installed: true, user, site, siteUrl: siteUrlFrom(req), keyword, tag, tagName, sort, visibility, grouped, page, data, hotTags: tags.slice(0, 6) } }
 }
 
-export default function Explore({ user, site, siteUrl, keyword, tag, tagName, sort, visibility, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Explore({ user, site, siteUrl, keyword, tag, tagName, sort, visibility, grouped, page, data, hotTags }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
   const siteName = site.site_name || 'KnowForge'
   // 标签插件禁用时，隐藏所有标签入口（热门搜索、标签侧栏、全部标签链接）
   const featurePlugins = (site as Record<string, unknown>).feature_plugins
   const tagsEnabled = Array.isArray(featurePlugins) && (featurePlugins as string[]).includes('tags')
+  const versionsEnabled = Array.isArray(featurePlugins) && (featurePlugins as string[]).includes('book-versions')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   // 数据/筛选变化即视为加载完成，复位 loading（含 SSR 软导航返回新 props）
-  useEffect(() => { setLoading(false) }, [data, tag, page, sort, keyword])
+  useEffect(() => { setLoading(false) }, [data, tag, page, sort, keyword, grouped])
 
   // 目标地址与当前不同才进入加载态，避免点击当前项后 loading 卡住
   function navLoad(href: string) {
@@ -93,21 +99,6 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
     if (!tag && sort === 'latest') return a.updated_at < b.updated_at ? 1 : -1
     return 0
   })
-  const [mergeVersions, setMergeVersions] = useState(false)
-  // 合并相同书籍：同一 version_group 只保留一本（优先最新版）
-  const displayItems = useMemo(() => {
-    if (!mergeVersions) return items
-    const pickedIdx = new Map<string, number>()
-    const out: typeof items = []
-    for (const b of items) {
-      const g = (b.version_group || '').trim()
-      if (!g) { out.push(b); continue }
-      const idx = pickedIdx.get(g)
-      if (idx === undefined) { pickedIdx.set(g, out.length); out.push(b) }
-      else if (b.version_is_latest && !out[idx].version_is_latest) { out[idx] = b }
-    }
-    return out
-  }, [items, mergeVersions])
 
   const sectionTitle = tag ? t('explore.section.byTag', { tag: tagName }) : keyword ? t('explore.section.searchResult', { keyword }) : loginOnly ? t('explore.browse.loginOnly') : t('explore.section.allPublic')
 
@@ -122,14 +113,23 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
     })),
   } : undefined
 
-  function pageUrl(p: number): string {
+  // 列表地址：筛选/排序/版本聚合都放在 URL 查询参数里（可分享、刷新保持、SSR 按参数取数）
+  function listUrl({ p = page, sortValue = sort, isGrouped = grouped }: { p?: number; sortValue?: 'latest' | 'hot'; isGrouped?: boolean } = {}): string {
     const params = new URLSearchParams()
     if (keyword) params.set('title', keyword)
     if (tag) params.set('tag', tag)
-    if (sort !== 'latest') params.set('sort', sort)
+    if (visibility) params.set('visibility', visibility)
+    if (sortValue !== 'latest') params.set('sort', sortValue)
+    if (isGrouped) params.set('versions', 'grouped')
     if (p > 1) params.set('page', String(p))
     const qs = params.toString()
     return `/explore${qs ? `?${qs}` : ''}`
+  }
+
+  function toggleGrouped(next: boolean) {
+    const href = listUrl({ p: 1, isGrouped: next })
+    navLoad(href)
+    void router.push(href)
   }
 
   return (
@@ -238,14 +238,11 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
               <span className="text-sm text-slate-400">{t('explore.section.count', { total: data.total })}</span>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
+              {versionsEnabled && <VersionGroupToggle checked={grouped} onChange={toggleGrouped} disabled={loading} />}
               {!tag && !loginOnly && (
-                <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setLoading(true); window.location.href = v === 'hot' ? '/explore?sort=hot' : '/explore' }}
+                <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sort} onChange={(v) => { setLoading(true); window.location.href = listUrl({ p: 1, sortValue: v === 'hot' ? 'hot' : 'latest' }) }}
                   options={[{ value: 'latest', label: t('explore.browse.latest') }, { value: 'hot', label: t('explore.browse.hot') }]} />
               )}
-              <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-sm text-slate-600">
-                <Checkbox checked={mergeVersions} onChange={setMergeVersions} ariaLabel={t('user.home.mergeVersions')} />
-                {t('user.home.mergeVersions')}
-              </label>
               <SegmentedTabs iconOnly value={view} ariaLabel={t('explore.view.aria')}
                 onChange={(value) => setView(value as 'grid' | 'list')} items={[
                   { value: 'grid', label: t('explore.view.grid'), icon: <GridIcon className="h-4 w-4" /> },
@@ -262,13 +259,13 @@ export default function Explore({ user, site, siteUrl, keyword, tag, tagName, so
             </div>
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]' : 'space-y-4'}>
-              {displayItems.map((b) => <BookCard key={b.id} book={b} view={view} />)}
+              {items.map((b) => <BookCard key={b.id} book={b} view={view} />)}
             </div>
           )}
 
           {!loading && items.length > 0 && (
             <Pagination page={data.page} pageSize={data.page_size} total={data.total}
-              onChange={(p) => { setLoading(true); window.location.href = pageUrl(p) }} />
+              onChange={(p) => { setLoading(true); window.location.href = listUrl({ p }) }} />
           )}
         </section>
       </Container>

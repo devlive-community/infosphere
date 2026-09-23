@@ -277,6 +277,13 @@ export const en: Record<string, string> = {
   'book.variant.language': 'Language',
   'book.variant.version': 'Version',
   'book.variant.latest': 'Latest',
+  'book.variant.groupToggle': 'Group versions',
+  'book.variant.groupTooltip': 'Show one card per book when it has several versions (the latest version first); click "N versions" on a card to see them all.',
+  'book.variant.count': '{count} versions',
+  'book.variant.listTitle': 'All versions of "{title}"',
+  'book.variant.listEmpty': 'No other versions',
+  'book.variant.listFailed': 'Failed to load versions',
+  'book.variant.latestVersion': 'Latest version {version}',
 
   // Book status / visibility (shared)
   'book.status.draft': 'Draft',
@@ -2967,7 +2974,6 @@ export const en: Record<string, string> = {
   'user.home.shareLabel': 'Profile link',
   'user.home.shareClose': 'Close',
   'user.home.publicBooksSection': 'Public Books',
-  'user.home.mergeVersions': 'Merge editions',
   'user.home.publicBooksCount': '{count} public works by {username}',
   'user.home.noPublicBooks': 'No public books yet',
   'user.home.gridView': 'Grid view',

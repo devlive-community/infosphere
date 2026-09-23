@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next'
+import { useRouter } from 'next/router'
 import Container from '@/components/Container'
 import { authHeaderFrom, getSSRUser, serverApi, getSiteConfig, siteUrlFrom, isInstalled } from '@/lib/server-api'
 import { api, formatNumber } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { resolveMediaUrl } from '@/lib/media'
-import { Pagination, SegmentedTabs, Select, Loading, Tooltip, Checkbox, useFeedback } from '@/components/ui'
+import { Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
 import BookCard from '@/components/BookCard'
+import VersionGroupToggle from '@/components/VersionGroupToggle'
 import { useGridPageSize } from '@/lib/useGridPageSize'
 import AchievementIcon from '@/components/AchievementIcon'
 import { ArrowRightIcon, BookIcon, CalendarIcon, EyeIcon, GitHubIcon, GridIcon, ListIcon, ShareIcon } from '@/components/icons'
@@ -53,6 +55,7 @@ export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ re
   if (!username) return { notFound: true }
   const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1)
   const sort = typeof query.sort === 'string' ? query.sort : 'updated'
+  const grouped = query.versions === 'grouped'
 
   const [site, profile] = await Promise.all([
     getSiteConfig(),
@@ -61,7 +64,7 @@ export const getServerSideProps: GetServerSideProps<UserHomeProps> = async ({ re
   if (!profile) return { notFound: true }
 
   const [books, achievements] = await Promise.all([
-    serverApi<PageResult<Book>>(`/users/${encodeURIComponent(username)}/books`, { params: { page, page_size: 9, sort } })
+    serverApi<PageResult<Book>>(`/users/${encodeURIComponent(username)}/books`, { params: { page, page_size: 9, sort, group_versions: grouped ? 'true' : undefined } })
       .catch(() => ({ items: [], total: 0, page: 1, page_size: 9 }) as PageResult<Book>),
     serverApi<{ enabled: boolean; items: AchievementGrant[] }>(`/users/${encodeURIComponent(username)}/achievements`, { headers: auth })
       .catch(() => ({ enabled: false, items: [] as AchievementGrant[] })),
@@ -191,22 +194,35 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
   const [sortState, setSortState] = useState(sort)
   const [loading, setLoading] = useState(false)
   const didMount = useRef(false)
+  const router = useRouter()
+  const { site: appSite } = useApp()
+  const versionsEnabled = (appSite.feature_plugins || []).includes('book-versions')
+  // 版本聚合：参数放在 URL（versions=grouped），服务端聚合后重新加载分页数据
+  const grouped = router.query.versions === 'grouped'
 
   useEffect(() => {
     // 首次渲染沿用 SSR 数据，不重复请求；此后（翻页/排序/列数变化）客户端拉取
     if (!didMount.current) { didMount.current = true; return }
     let cancelled = false
     setLoading(true)
-    api<PageResult<Book>>(`/users/${encodeURIComponent(profile.username)}/books`, { params: { page, page_size: pageSize, sort: sortState } })
+    api<PageResult<Book>>(`/users/${encodeURIComponent(profile.username)}/books`, { params: { page, page_size: pageSize, sort: sortState, group_versions: grouped ? 'true' : undefined } })
       .then((r) => { if (!cancelled) setData(r) })
       .catch(() => { /* 保持原数据 */ })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [page, pageSize, sortState, profile.username])
+  }, [page, pageSize, sortState, grouped, profile.username])
 
   function changeSort(v: string) {
     setSortState(v)
     setPage(1)
+  }
+  function toggleGrouped(next: boolean) {
+    const q = { ...router.query }
+    delete q.page
+    if (next) q.versions = 'grouped'
+    else delete q.versions
+    setPage(1)
+    void router.replace({ pathname: router.pathname, query: q }, undefined, { shallow: true, scroll: false })
   }
   const profileUrl = `${siteUrl}/user/${encodeURIComponent(profile.username)}`
 
@@ -232,21 +248,6 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
   }
 
   const items = data.items || [] // 由服务端按 sort 排序 + 分页
-  const [mergeVersions, setMergeVersions] = useState(false)
-  // 合并相同书籍：同一 version_group 只保留一本（优先最新版），非多版本书原样展示。
-  const displayItems = useMemo(() => {
-    if (!mergeVersions) return items
-    const pickedIdx = new Map<string, number>()
-    const out: Book[] = []
-    for (const b of items) {
-      const g = (b.version_group || '').trim()
-      if (!g) { out.push(b); continue }
-      const idx = pickedIdx.get(g)
-      if (idx === undefined) { pickedIdx.set(g, out.length); out.push(b) }
-      else if (b.version_is_latest && !out[idx].version_is_latest) { out[idx] = b }
-    }
-    return out
-  }, [items, mergeVersions])
 
   return (
     <Container>
@@ -286,11 +287,7 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
               <span className="text-sm text-slate-400">{t('user.home.publicBooksCount', { username: profile.username, count: String(data.total) })}</span>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              {/* 合并相同书籍：多版本书折叠为最新版一本 */}
-              <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-sm text-slate-600">
-                <Checkbox checked={mergeVersions} onChange={setMergeVersions} ariaLabel={t('user.home.mergeVersions')} />
-                {t('user.home.mergeVersions')}
-              </label>
+              {versionsEnabled && <VersionGroupToggle checked={grouped} onChange={toggleGrouped} disabled={loading} />}
               <Select className="min-w-0 flex-1 sm:w-36 sm:flex-none" value={sortState} onChange={changeSort} options={sortOptions} />
               <SegmentedTabs iconOnly value={view} ariaLabel={t('user.home.bookViewLabel')}
                 onChange={(value) => setView(value as 'grid' | 'list')} items={[
@@ -307,7 +304,7 @@ export default function UserHome({ site, siteUrl, profile, books, sort, achievem
             <Loading />
           ) : (
             <div className={view === 'grid' ? 'grid gap-5 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]' : 'space-y-4'}>
-              {displayItems.map((b) => <BookCard key={b.id} book={b} view={view} showAuthor={false} />)}
+              {items.map((b) => <BookCard key={b.id} book={b} view={view} showAuthor={false} />)}
             </div>
           )}
           </div>

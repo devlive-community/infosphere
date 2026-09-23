@@ -194,6 +194,11 @@ func (a *App) ListBooks(c *gin.Context) {
 		query = query.Joins("JOIN book_tags bt ON bt.book_id = books.id").
 			Joins("JOIN tags t ON t.id = bt.tag_id AND t.slug = ?", tagSlug)
 	}
+	// 版本聚合：同一版本组只保留一本（服务端聚合，分页准确）
+	var versionCounts map[string]int
+	if c.Query("group_versions") == "true" && a.pluginEnabled(pluginBookVersions) {
+		query, versionCounts = a.groupBookVersions(query)
+	}
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -211,6 +216,7 @@ func (a *App) ListBooks(c *gin.Context) {
 	a.attachChapterCounts(books)
 	a.attachBookTags(books)
 	a.attachCrawlingFlags(books)
+	a.attachVersionInfo(books, versionCounts, u)
 	if scope == "collaborating" {
 		for i := range books {
 			books[i].CollaboratorRole, _ = a.collaboratorRole(u, books[i].ID)
