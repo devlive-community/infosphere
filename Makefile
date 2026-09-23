@@ -5,7 +5,8 @@ SHELL := /bin/bash
 SERVER_DIR := server
 WEB_DIR := app/web
 BIN_DIR := bin
-VERSION := 2026.0.0
+# 版本号唯一来源：server/internal/app/handler_setup.go（由 deploy/new-version.sh / release.sh 维护），避免此处写死过期
+VERSION := $(shell sed -n 's/^var Version = "\(.*\)"/\1/p' $(SERVER_DIR)/internal/app/handler_setup.go)
 NODE_VERSION := 24.20.0
 TARGET_GOOS ?= $(shell go env GOOS)
 TARGET_GOARCH ?= $(shell go env GOARCH)
