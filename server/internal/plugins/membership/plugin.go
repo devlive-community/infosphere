@@ -1,0 +1,62 @@
+// Package membership 会员插件：会员方案（权益 + 多时长定价）、用户会员（同一时间一个方案，续期顺延）、
+// 管理员开通/调整/取消与到期提醒。会员有效期内作为独占的权益来源（优先于成长等级，未配置的项回退基础值）。
+//
+// 与支付解耦：本插件不依赖任何支付实现；在线购买由支付插件经 plugincore 的中性扩展点完成。
+package membership
+
+import (
+	"knowforge/server/internal/authz"
+	"knowforge/server/internal/i18ntext"
+	"knowforge/server/internal/plugincore"
+	"knowforge/server/internal/plugins"
+)
+
+// 插件权限（启用时动态注册，禁用即移除）。
+const (
+	PermRead   authz.Permission = "membership:read"   // 查看自己的会员
+	PermManage authz.Permission = "membership:manage" // 后台方案/会员管理（仅管理员）
+)
+
+const (
+	resourceKind       = "membership_plan" // 可翻译资源：方案名称/说明
+	sourceKey          = "membership"      // 权益来源键
+	sourcePriority     = 100               // 高于成长等级（50）
+	cfgEnabled         = "membership_enabled"
+	cfgCurrency        = "membership_currency"
+	cfgReminderDays    = "membership_reminder_days"
+	defaultCurrency    = "CNY"
+	defaultReminder    = 3
+	maxReminderDays    = 30
+	maxDurationDays    = 3650
+	maxPriceCents      = 100_000_000
+	notificationType   = "membership"
+	notificationLink   = "/user/membership"
+	expiredNoticeRange = 7 // 到期后多少天内仍补发「已到期」通知（避免启用插件时给很久以前到期的会员发通知）
+)
+
+func init() {
+	plugins.Register(plugins.Meta{
+		Order:       90,
+		Key:         plugins.KeyMembership,
+		Name:        "会员",
+		Description: "会员体系：多个会员方案（每个方案可配置权益与多档时长价格），用户同一时间持有一个方案、续期顺延；管理员可开通/调整/取消，到期前提醒。会员有效期内按方案权益生效（优先于成长等级）。在线购买需配合支付插件。默认关闭，禁用后页面/接口停用，数据保留。",
+		Kind:        plugins.KindFeature,
+		Builtin:     true,
+		EnabledKey:  cfgEnabled,
+		Models:      []any{&Plan{}, &Price{}, &UserMembership{}, &Record{}},
+		Tables:      []string{"membership_records", "user_memberships", "membership_prices", "membership_plans"},
+		AdminPerms:  []authz.Permission{PermManage},
+		UserPerms:   []authz.Permission{PermRead},
+	})
+	plugincore.RegisterBehavior(&behavior{})
+	plugincore.RegisterUserDataModels(&UserMembership{}, &Record{})
+	plugincore.RegisterLocalizedResource(resourceKind, map[string]int{"name": 120, "description": 500})
+	plugincore.RegisterEntitlementSource(plugincore.EntitlementSource{Key: sourceKey, Priority: sourcePriority, Resolve: resolveEntitlements})
+	plugincore.OnJobQueueSweep(sweep)
+
+	i18ntext.Register("notify.membership.granted", map[string]string{"zh-CN": "你已开通「{plan}」会员，有效期至 {date}", "en": "Your {plan} membership is active until {date}"})
+	i18ntext.Register("notify.membership.updated", map[string]string{"zh-CN": "你的「{plan}」会员有效期已更新至 {date}", "en": "Your {plan} membership now runs until {date}"})
+	i18ntext.Register("notify.membership.expiring", map[string]string{"zh-CN": "你的「{plan}」会员将于 {date} 到期", "en": "Your {plan} membership expires on {date}"})
+	i18ntext.Register("notify.membership.expired", map[string]string{"zh-CN": "你的「{plan}」会员已到期", "en": "Your {plan} membership has expired"})
+	i18ntext.Register("notify.membership.revoked", map[string]string{"zh-CN": "你的「{plan}」会员已被取消", "en": "Your {plan} membership has been cancelled"})
+}

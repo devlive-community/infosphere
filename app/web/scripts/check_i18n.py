@@ -70,9 +70,14 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     'entitlement.': ['books.max', 'collaborators.max', 'upload.max_mb', 'collect.page', 'collect.site', 'collect.site_max_pages'],
     'entitlement.unit.': ['books', 'people', 'mb', 'pages'],
     'entitlement.unitShort.': ['books', 'people', 'mb', 'pages'],
-    'entitlement.source.': ['base', 'level', 'admin', 'unavailable'],
+    'entitlement.source.': ['base', 'level', 'membership', 'admin', 'unavailable'],
+    # 会员：tab / 状态 / 流水动作（Record.Action 取值域）/ 时长单位
+    'admin.membership.tab.': ['plans', 'members', 'records', 'settings'],
+    'admin.membership.status.': ['active', 'archived'],
+    'admin.membership.action.': ['grant', 'extend', 'switch', 'adjust', 'revoke'],
+    'membership.action.': ['grant', 'extend', 'switch', 'adjust', 'revoke'],
     # 通知 payload.i18n.key（服务端 i18ntext 登记、下发，lib/notification.ts 渲染）；须与服务端模板保持同键
-    'notify.': ['book.reviewed', 'comment.chapter', 'comment.reply', 'reaction.like', 'reaction.favorite', 'collab.invited', 'collab.accepted', 'collab.rejected', 'report.resolved', 'system.upgraded', 'collect.finished', 'achievement.unlocked', 'achievement.granted', 'growth.levelUp', 'follow.chapterPublished'],
+    'notify.': ['book.reviewed', 'comment.chapter', 'comment.reply', 'reaction.like', 'reaction.favorite', 'collab.invited', 'collab.accepted', 'collab.rejected', 'report.resolved', 'system.upgraded', 'collect.finished', 'achievement.unlocked', 'achievement.granted', 'growth.levelUp', 'follow.chapterPublished', 'membership.granted', 'membership.updated', 'membership.expiring', 'membership.expired', 'membership.revoked'],
 }
 
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）

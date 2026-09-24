@@ -45,6 +45,7 @@ function UserMenu() {
     { label: t('nav.menu.notes'), href: '/user/notes', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-note-sticky ${className || ''}`} aria-hidden="true" /> },
     ...(site.achievements_enabled === 'true' ? [{ label: t('nav.menu.achievements'), href: '/user/achievements', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-trophy ${className || ''}`} aria-hidden="true" /> }] : []),
     ...((site.feature_plugins || []).includes('growth') ? [{ label: t('nav.menu.growth'), href: '/user/growth', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-ranking-star ${className || ''}`} aria-hidden="true" /> }] : []),
+    ...((site.feature_plugins || []).includes('membership') ? [{ label: t('nav.menu.membership'), href: '/user/membership', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-crown ${className || ''}`} aria-hidden="true" /> }] : []),
     { label: t('nav.menu.profile'), href: '/user/profile', icon: UserCircleIcon },
     // 控制台仅对管理员开放
     ...(user.role === 'admin' ? [{ label: t('nav.menu.console'), href: '/admin/system', icon: GridIcon }] : []),

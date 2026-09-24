@@ -280,7 +280,7 @@ Authorization: Bearer <token>
 按用户生效的能力上限与开关。核心登记 `books.max`（书籍数量，含导入/复制/采集新建，不含回收站）、`collaborators.max`（单本书协作者人数，含待接受邀请，按书籍所有者计）、`upload.max_mb`（单文件上传大小）；内容采集插件登记 `collect.page`、`collect.site`（开关）与 `collect.site_max_pages`。数值 `-1` 表示不限，开关 1 开 / 0 关。
 
 - **基础值**：全站默认，未配置时与升级前一致（书籍/协作者不限，上传与采集沿用原设置），管理员主动收紧才生效。
-- **来源**：插件登记（成长等级：当前等级及以下启用等级的累计配置；会员：有效期内独占，未配置的键回退基础值），高优先级来源先取值。
+- **来源**：插件登记（成长等级：当前等级及以下启用等级的累计配置；会员：有效期内独占，未配置的键回退基础值，见「会员」），高优先级来源先取值。
 - **管理员**不受限制；所属插件禁用时对应权益恒为不可用（`source=unavailable`）。超限时接口返回 403。
 
 | 方法 | 路径 | 说明 | 权限 |
@@ -450,6 +450,24 @@ Authorization: Bearer <token>
 - **经验规则**（`ExperienceRule`）：固定事件（`reading.chapter`、`creation.chapter_published`、`community.comment`）的经验金额与**每人每日上限**由规则表配置，启用时种子默认规则；成就/管理员调整不走规则（金额分别为 reward_xp / 手工值）。
 - 已接经验来源：首次读章节、章节发布（作者）、发表评论、成就解锁、管理员调整。公开主页头部显示等级徽标（用户可隐藏）。
 - 后续（Phase 3+）：更多来源与创作/社区权威事件、`growth.*` 成就指标双向联动、赛季、排行榜、追溯补算。见 `user-level-system.md`。
+
+## 会员（「会员」插件，默认关闭）
+
+多个会员方案，每个方案可配置权益（见「权益」）与多档时长价格；用户同一时间持有一个方案：有效期内同方案续期顺延，有效期内更换方案从当前时间起按新方案计算（原方案剩余时长不保留）。会员有效期内作为**独占**权益来源（优先于成长等级，方案未配置的项回退基础值）。金额以最小货币单位（分）存储，货币由会员设置指定。方案名称/说明为可翻译资源（`membership_plan`），按请求语言回退。到期前 N 天（默认 3，0 不提醒）与到期后各通知一次。插件禁用后接口 404、会员权益不再生效，数据保留。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/membership/plans` | 启用中的方案 `items:[{id,name,description,icon_*,color,entitlements,prices:[{id,duration_days,price_cents,original_price_cents}]}]` + `currency` | 公开 |
+| GET | `/users/me/membership` | 我的会员 `membership{plan,started_at,expires_at,active,days_left}`（无则 null，含最近一次已到期）+ 最近 20 条 `records` + `currency` | `membership:read` |
+| GET | `/admin/membership/plans` | 全部方案（含归档）`items:[{plan{...,translations},active_members}]` | `membership:manage` |
+| POST/PUT | `/admin/membership/plans[/:id]` | `{translations 或 name/description, icon_type, icon_value, color, status: active\|archived, sort_order, entitlements, prices:[{id?,duration_days,price_cents,original_price_cents}]}`；价格按请求整体替换（带 id 更新、新增、缺失删除），时长不可重复，售价 > 0，划线价为 0 或不低于售价；启用需有已发布的默认语言名称 | `membership:manage` |
+| DELETE | `/admin/membership/plans/:id` | 仅可删除无人持有的方案（否则 409，请归档）；归档方案不能再开通，已有会员不受影响 | `membership:manage` |
+| GET | `/admin/membership/members?q=&status=active\|expired&plan_id=&page=&page_size=` | 会员列表 `items:[{user,plan,started_at,expires_at,active}]` | `membership:manage` |
+| POST | `/admin/membership/grant` | `{user_id, plan_id, days(1–3650), reason?}` 开通/续期/更换，返回 `{action: grant\|extend\|switch, expires_at,...}`，通知用户 | `membership:manage` |
+| PUT | `/admin/membership/members/:user_id` | `{plan_id, expires_at(RFC3339，晚于当前且不超过 10 年), reason?}` 直接设置方案与到期时间 | `membership:manage` |
+| POST | `/admin/membership/members/:user_id/revoke` | `{reason?}` 取消会员（立即失效，流水保留） | `membership:manage` |
+| GET | `/admin/membership/records?user_id=&page=&page_size=` | 会员流水 `items:[{record{action,plan_name,days,prev_expires_at,expires_at,source,source_ref,reason,created_at},user,operator?}]` | `membership:manage` |
+| GET/PUT | `/admin/membership/settings` | `{currency(ISO 4217), reminder_days(0–30)}`，PUT 可只传部分字段 | `membership:manage` |
 
 ## 站内通知（登录用户）
 
