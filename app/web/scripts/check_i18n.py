@@ -67,9 +67,10 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     'growth.leaderboard.period.': ['all', 'month', 'week'],
     # 权益：t(`entitlement.${key}.label|.hint`)（服务端 plugincore.RegisterEntitlement 登记的键）、
     # t(`entitlement.unit.${unit}`) / unitShort、t(`entitlement.source.${source}`)（权益来源键）
-    'entitlement.': ['books.max', 'collaborators.max', 'upload.max_mb', 'collect.page', 'collect.site', 'collect.site_max_pages'],
-    'entitlement.unit.': ['books', 'people', 'mb', 'pages'],
-    'entitlement.unitShort.': ['books', 'people', 'mb', 'pages'],
+    'entitlement.': ['books.max', 'collaborators.max', 'upload.max_mb', 'collect.page', 'collect.site', 'collect.site_max_pages',
+                     'content.access_tier', 'content.discount_percent', 'content.free_all'],
+    'entitlement.unit.': ['books', 'people', 'mb', 'pages', 'tier', 'percent'],
+    'entitlement.unitShort.': ['books', 'people', 'mb', 'pages', 'tier', 'percent'],
     'entitlement.source.': ['base', 'level', 'membership', 'admin', 'unavailable'],
     # 会员：tab / 状态 / 流水动作（Record.Action 取值域）/ 时长单位
     'admin.membership.tab.': ['plans', 'members', 'records', 'settings'],
@@ -87,6 +88,11 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     'admin.moderation.empty.': ['pending', 'auto_passed', 'handled'],
     'admin.moderation.settings.': ['scope_documents', 'scope_books', 'skip_noise', 'admin_exempt', 'notify_pass',
                                    'scope_documentsHint', 'scope_booksHint', 'skip_noiseHint', 'admin_exemptHint', 'notify_passHint'],
+    # 付费内容：提现状态 / 收益流水类型 / 统计项 / 管理端 tab
+    'paid.withdrawal.status.': ['pending', 'paid', 'rejected'],
+    'paid.earnings.kind.': ['withdrawal', 'withdrawal_revert'],
+    'paid.earnings.': ['balance', 'totalNet', 'totalCommission'],
+    'admin.paid.tab.': ['sales', 'withdrawals', 'settings'],
     # 支付：支付方式 / 订单状态 / 管理端 tab、订单操作（op.${op}Title|Message|Done）、支付方式说明与配置字段
     'payment.channel.': ['offline', 'alipay', 'wechat', 'stripe'],
     'payment.channelHint.': ['offline', 'alipay', 'wechat', 'stripe'],
@@ -98,7 +104,7 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
                              'wechat_mch_id', 'wechat_app_id', 'wechat_serial_no', 'wechat_private_key', 'wechat_api_v3_key', 'wechat_public_key_id',
                              'wechat_public_key', 'stripe_secret_key', 'stripe_webhook_secret'],
     # 通知 payload.i18n.key（服务端 i18ntext 登记、下发，lib/notification.ts 渲染）；须与服务端模板保持同键
-    'notify.': ['book.reviewed', 'comment.chapter', 'comment.reply', 'reaction.like', 'reaction.favorite', 'collab.invited', 'collab.accepted', 'collab.rejected', 'report.resolved', 'system.upgraded', 'collect.finished', 'achievement.unlocked', 'achievement.granted', 'growth.levelUp', 'follow.chapterPublished', 'membership.granted', 'membership.updated', 'membership.expiring', 'membership.expired', 'membership.revoked', 'payment.paid', 'moderation.held', 'moderation.pending', 'moderation.approved', 'moderation.rejected', 'moderation.passed'],
+    'notify.': ['book.reviewed', 'comment.chapter', 'comment.reply', 'reaction.like', 'reaction.favorite', 'collab.invited', 'collab.accepted', 'collab.rejected', 'report.resolved', 'system.upgraded', 'collect.finished', 'achievement.unlocked', 'achievement.granted', 'growth.levelUp', 'follow.chapterPublished', 'membership.granted', 'membership.updated', 'membership.expiring', 'membership.expired', 'membership.revoked', 'payment.paid', 'moderation.held', 'moderation.pending', 'moderation.approved', 'moderation.rejected', 'moderation.passed', 'paid.sold', 'paid.withdrawalPaid', 'paid.withdrawalRejected'],
 }
 
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）

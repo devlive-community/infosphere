@@ -1,3 +1,5 @@
+import type { Paywall } from './paid'
+
 // 与 Go 服务端对应的 API 数据类型
 export type BookStatus = 'draft' | 'in_progress' | 'published' | 'completed' | 'archived'
 export type DocumentStatus = 'draft' | 'published' | 'archived'
@@ -113,6 +115,7 @@ export interface Document {
   sort_order: number
   view_count?: number
   publish_held?: string // 本次保存「发布」被内容审核拦截时的说明（章节保持未发布）
+  paywall?: Paywall // 读者无权阅读全文时的付费墙信息（此时 content 为试读内容）
   status: DocumentStatus
   icon?: string
   external_url?: string

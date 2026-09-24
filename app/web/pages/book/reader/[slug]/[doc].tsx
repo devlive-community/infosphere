@@ -15,6 +15,8 @@ import { saveReadingProgress, getReadingProgress } from '@/lib/reading-progress'
 import { useTranslation } from '@/lib/i18n'
 import Comments from '@/components/Comments'
 import ReaderAnnotations from '@/components/ReaderAnnotations'
+import type { PaidBookInfo } from '@/lib/paid'
+import PaywallCard from '@/components/PaywallCard'
 import ReportButton from '@/components/ReportButton'
 import BookTranslations from '@/components/BookTranslations'
 import BookVersions from '@/components/BookVersions'
@@ -122,6 +124,13 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const [activeHeading, setActiveHeading] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [readSet, setReadSet] = useState<Set<number>>(new Set(readDocIds))
+  // 付费内容：当前读者未解锁的章节（目录中显示锁标记；插件未启用时不请求）
+  const [lockedSet, setLockedSet] = useState<Set<number>>(new Set())
+  const paidEnabled = ((site as { feature_plugins?: string[] }).feature_plugins || []).includes('paid-content')
+  useEffect(() => {
+    if (!paidEnabled) return
+    api<PaidBookInfo>(`/paid/books/${book.id}`).then((r) => setLockedSet(new Set(r.enabled ? r.locked_doc_ids : []))).catch(() => {})
+  }, [paidEnabled, book.id, user?.id])
   const contentRef = useRef<HTMLDivElement>(null)
   // M17 扩展交互：tabs 切换 / mermaid 渲染 / lucide 图标（html 变化后重挂）
   useEffect(() => {
@@ -442,7 +451,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                   <p className="py-6 pr-4 text-center text-xs text-slate-400">{t('reader.tocNoMatch')}</p>
                 ) : (
                   <ReaderTree items={filteredTree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id}
-                    expanded={searchExpanded ?? expanded} setExpanded={setExpanded} readSet={readSet} />
+                    expanded={searchExpanded ?? expanded} setExpanded={setExpanded} readSet={readSet} lockedSet={lockedSet} />
                 )}
               </div>
             </div>
@@ -472,7 +481,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                   <p className="py-6 text-center text-xs text-slate-400">{t('reader.tocNoMatch')}</p>
                 ) : (
                   <ReaderTree items={filteredTree} bookSlug={book.slug} chapterPrefix={chapterPrefix} activeId={doc?.id}
-                    expanded={searchExpanded ?? expanded} setExpanded={setExpanded} readSet={readSet} />
+                    expanded={searchExpanded ?? expanded} setExpanded={setExpanded} readSet={readSet} lockedSet={lockedSet} />
                 )}
               </div>
             </div>
@@ -505,6 +514,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                   <hr className="my-6 border-slate-100" />
                   <ReaderAnnotations user={user} book={book} doc={doc} contentRef={contentRef} />
                   <div ref={contentRef} className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
+                  {doc.paywall && <PaywallCard paywall={doc.paywall} />}
 
                   {/* 章节关闭评论时整个评论模块都不出现（不渲染标题/评论框/列表） */}
                   {doc.allow_comments !== false && <Comments docId={doc.id} allowComments />}
@@ -656,10 +666,11 @@ interface ReaderTreeProps {
   expanded: Set<number>
   setExpanded: (s: Set<number>) => void
   readSet: Set<number>
+  lockedSet?: Set<number>
   depth?: number
 }
 
-function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExpanded, readSet, depth = 0 }: ReaderTreeProps) {
+function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExpanded, readSet, lockedSet, depth = 0 }: ReaderTreeProps) {
   const { t } = useTranslation()
   return (
     <ul className={depth === 0 ? 'min-w-max space-y-0.5' : 'ml-4 min-w-max space-y-0.5 border-l border-slate-100 pl-1'}>
@@ -692,6 +703,7 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
                 className="flex flex-1 items-center gap-1.5 py-1.5 pl-1 pr-2 text-left">
                 <DocTreeIcon icon={item.icon} hasChildren={hasChildren} colorClass={active ? 'text-primary-500' : 'text-slate-400'} />
                 <span className={`whitespace-nowrap ${active ? 'font-medium text-primary-700' : 'text-slate-700'}`}>{chapterPrefix}{item.title}</span>
+                {lockedSet?.has(item.id) && <i className="fa-solid fa-lock ml-1 shrink-0 text-[10px] text-amber-500" aria-label={t('paid.locked')} />}
                 {hasRead && (
                   <span className="ml-auto flex shrink-0 items-center gap-1 pl-2 text-[11px] font-medium text-emerald-600">
                     <CheckCircleSmallIcon className="h-3.5 w-3.5" /> {t('reader.readBadge')}
@@ -702,7 +714,7 @@ function ReaderTree({ items, bookSlug, chapterPrefix, activeId, expanded, setExp
             </div>
             {hasChildren && isExpanded && (
               <ReaderTree items={item.children!} bookSlug={bookSlug} chapterPrefix={chapterPrefix} activeId={activeId}
-                expanded={expanded} setExpanded={setExpanded} readSet={readSet} depth={depth + 1} />
+                expanded={expanded} setExpanded={setExpanded} readSet={readSet} lockedSet={lockedSet} depth={depth + 1} />
             )}
           </li>
         )

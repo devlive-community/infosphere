@@ -75,10 +75,11 @@ func (a *App) canExportBook(u *models.User, book *models.Book) bool {
 		return false
 	}
 	// 未登录游客还需作者额外开启游客导出
-	if u == nil {
-		return book.GuestExportEnabled
+	if u == nil && !book.GuestExportEnabled {
+		return false
 	}
-	return true
+	// 内容门禁（如付费内容）：整本全文可获取时才允许导出
+	return a.bookFullyAccessible(u, book)
 }
 
 // PDFExportAvailable GET /export/pdf-available 是否已安装 PDF 导出插件（供前端联动禁用相关设置）

@@ -20,6 +20,7 @@ import BookTranslations from '@/components/BookTranslations'
 import BookVersions from '@/components/BookVersions'
 import BookCopyDialog from '@/components/BookCopyDialog'
 import BookReviews from '@/components/BookReviews'
+import PaidBookCard from '@/components/PaidBookCard'
 import BookExtraInfo from '@/components/BookExtraInfo'
 import ReportButton from '@/components/ReportButton'
 import CoverImage from '@/components/CoverImage'
@@ -546,6 +547,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               </dl>
             </div>
 
+            <PaidBookCard bookId={book.id} />
             <BookExtraInfo items={book.extra_info} />
 
             <ReportButton targetType="book" targetId={book.id} size="md"

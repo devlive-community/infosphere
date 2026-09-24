@@ -11,6 +11,7 @@ import (
 	_ "knowforge/server/internal/plugins/growth"
 	_ "knowforge/server/internal/plugins/membership"
 	_ "knowforge/server/internal/plugins/moderation"
+	_ "knowforge/server/internal/plugins/paidcontent"
 	_ "knowforge/server/internal/plugins/payment"
 	_ "knowforge/server/internal/plugins/pdfexport"
 	_ "knowforge/server/internal/plugins/tags"

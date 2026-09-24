@@ -232,10 +232,28 @@ func (a *App) searchDocuments(c *gin.Context, options searchOptions) ([]searchDo
 		return nil, 0, err
 	}
 	results := make([]searchDocResult, 0, len(rows))
+	u := currentUser(c)
+	books := map[uint]*models.Book{}
 	for _, row := range rows {
+		// 摘要只取读者可读的内容（如付费章节未解锁时取试读内容）
+		content := row.Content
+		book, cached := books[row.BookID]
+		if !cached {
+			var b models.Book
+			if a.DB.First(&b, row.BookID).Error == nil {
+				book = &b
+			}
+			books[row.BookID] = book
+		}
+		if book != nil {
+			doc := row.Document
+			if access := a.contentAccess(u, book, &doc); !access.Allowed {
+				content = access.Preview
+			}
+		}
 		results = append(results, searchDocResult{
 			ID: row.ID, BookID: row.BookID, BookSlug: row.BookSlug, BookTitle: row.BookTitle,
-			DocSlug: row.Slug, Title: row.Title, Excerpt: searchExcerpt(row.Content, options.Query, 160), UpdatedAt: row.UpdatedAt,
+			DocSlug: row.Slug, Title: row.Title, Excerpt: searchExcerpt(content, options.Query, 160), UpdatedAt: row.UpdatedAt,
 		})
 	}
 	return results, total, nil

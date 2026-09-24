@@ -9,7 +9,7 @@ import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import type { Book } from '@/lib/types'
 
-export type BookSettingsTab = 'basic' | 'info' | 'localization' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'cleanup' | 'danger' | 'crawl-history' | 'watermark'
+export type BookSettingsTab = 'basic' | 'info' | 'paid' | 'localization' | 'chapters' | 'analytics' | 'collaborators' | 'export' | 'data' | 'cleanup' | 'danger' | 'crawl-history' | 'watermark'
 
 interface BookSettingsLayoutProps {
   book: Book
@@ -35,6 +35,7 @@ export default function BookSettingsLayout({ book, active, children }: BookSetti
   const NAV: { key: BookSettingsTab; labelKey: string; label?: string; icon: (p: { className?: string }) => JSX.Element; sub: string; danger?: boolean }[] = [
     { key: 'basic', labelKey: 'bookSettings.nav.basic', icon: GearIcon, sub: '' },
     { key: 'info', labelKey: 'bookSettings.nav.info', icon: ({ className }) => <i className={`fa-solid fa-circle-info ${className || ''}`} aria-hidden="true" />, sub: 'info' },
+    ...(features.includes('paid-content') ? [{ key: 'paid' as BookSettingsTab, labelKey: 'bookSettings.nav.paid', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-coins ${className || ''}`} aria-hidden="true" />, sub: 'paid' }] : []),
     ...(localizationEnabled ? [{ key: 'localization' as BookSettingsTab, labelKey: 'bookSettings.nav.localization', label: localizationLabel, icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-language ${className || ''}`} aria-hidden="true" />, sub: 'localization' }] : []),
     { key: 'chapters', labelKey: 'bookSettings.nav.chapters', icon: ListIcon, sub: 'chapters' },
     { key: 'analytics', labelKey: 'bookSettings.nav.analytics', icon: ({ className }) => <i className={`fa-solid fa-chart-line ${className || ''}`} aria-hidden="true" />, sub: 'analytics' },

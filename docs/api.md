@@ -507,6 +507,26 @@ Authorization: Bearer <token>
 | POST | `/admin/moderation/test` | `{text}` 用当前词典与设置试审，返回 `hits` | `moderation:manage` |
 | GET/PUT | `/admin/moderation/settings` | `{scope_documents, scope_books, skip_noise, admin_exempt, notify_pass}`，PUT 可只传部分字段 | `moderation:manage` |
 
+## 付费内容（「付费内容」插件，默认关闭）
+
+作者为自己的书籍/章节定价（站点可关闭作者定价，仅管理员可设），读者购买后解锁全文；平台按比例抽成（下单时锁定），作者收益入账后申请提现，管理员线下打款确认。
+- **内容门禁**：经 `plugincore.RegisterContentGate` 接入核心所有内容出口：章节接口未解锁时 `content` 为试读内容（按段落截取约 `preview_percent`%），并返回 `paywall{locked, book_id, doc_id, currency, discount_percent, book_price_cents, book_final_cents, chapter_price_cents, chapter_final_cents, free_tier, logged_in, upgrade_link}`；整本导出（PDF/EPUB/DOCX/Markdown）要求全部解锁；搜索摘要只取试读内容。作者、协作者与管理员不受限。
+- **免费规则**：章节单独设为免费、按目录顺序前 `free_chapters` 章、未设置任何价格；读者权益 `content.free_all` 为开，或 `content.access_tier` ≥ 书籍 `free_tier`（>0）时全书免费；已购整本或该章节。
+- **与会员/等级结合（权益，插件间无依赖）**：`content.access_tier`（内容访问等级）、`content.discount_percent`（购买折扣，最多 90%）、`content.free_all`（全部免费），可在会员方案/成长等级的权益编辑器中授予。
+- **购买**：商品 `paid-book`（sku=书籍 ID，需设整本价）与 `paid-doc`（sku=章节 ID，需有效章节价）经支付插件下单；已可阅读、作者本人、免费章节不能购买；履约按订单号幂等，写入购买记录与作者收益流水（售价、抽成、净收益）并通知作者。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/paid/books/:id` | 书籍付费信息与当前读者状态 `{enabled, currency, book_price_cents, book_final_cents, chapter_price_cents, free_chapters, preview_percent, free_tier, discount_percent, purchased_book, can_read_all, locked_doc_ids[], upgrade_link, is_author}` | 可读该书 |
+| GET/PUT | `/books/:id/paid-settings` | 付费设置 `{enabled, book_price_cents, chapter_price_cents, free_chapters, preview_percent(0–50), free_tier(0–100), docs:[{doc_id, free, price_cents}]}`（章节设置整体替换）；GET 另含各已发布章节的生效结果、货币、单价上限与抽成比例。仅作者或管理员 | `paid:use` |
+| GET | `/users/me/purchases?page=` | 我购买的书籍与章节 | `paid:use` |
+| GET | `/users/me/earnings?page=` | 收益：`balance_cents`（可提现）、累计售价/抽成/净收益、收益流水（sale / withdrawal / withdrawal_revert）、最近提现记录 | `paid:use` |
+| POST | `/users/me/withdrawals` | `{amount_cents, account}` 申请提现（不低于最低金额、不超过余额、同时仅一笔处理中），申请即冻结 | `paid:use` |
+| GET | `/admin/paid/sales?page=` | 销售流水（含作者、买家）与累计售价/抽成 | `paid:manage` |
+| GET | `/admin/paid/withdrawals?status=&page=` | 提现申请（含收款信息、作者当前余额） | `paid:manage` |
+| POST | `/admin/paid/withdrawals/:id/pay` / `reject` | 确认已线下打款 / 驳回（需原因，金额退回余额），通知作者 | `paid:manage` |
+| GET/PUT | `/admin/paid/settings` | `{currency, commission_percent(0–90), min_withdrawal_cents, max_price_cents, allow_authors, upgrade_link(站内路径)}` | `paid:manage` |
+
 ## 站内通知（登录用户）
 
 | 方法 | 路径 | 说明 | 权限 |

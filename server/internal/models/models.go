@@ -762,6 +762,8 @@ type Document struct {
 	Children      []*Document    `gorm:"-" json:"children,omitempty"`
 	// PublishHeld 非持久化：本次保存中「发布」被发布守卫（如内容审核）拦截时的说明，章节保持未发布
 	PublishHeld string `gorm:"-" json:"publish_held,omitempty"`
+	// Paywall 非持久化：读者无权阅读全文（如付费内容未解锁）时由内容门禁给出的付费墙信息，此时 Content 为试读内容
+	Paywall map[string]any `gorm:"-" json:"paywall,omitempty"`
 }
 
 // DocumentRevision 章节不可变历史版本。只允许新增与读取，不提供更新接口。
