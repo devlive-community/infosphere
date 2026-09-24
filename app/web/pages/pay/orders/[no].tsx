@@ -7,8 +7,8 @@ import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Badge, Button, ButtonLink, Card, EmptyState, Field, Loading, Textarea, useFeedback } from '@/components/ui'
-import { durationLabel, formatPrice } from '@/lib/membership'
-import { checkoutHref, isMobileDevice, STATUS_TONE, type PaymentAction, type PaymentOrder } from '@/lib/payment'
+import { checkoutHref, durationLabel, formatPrice } from '@/lib/commerce'
+import { isMobileDevice, STATUS_TONE, type PaymentAction, type PaymentOrder } from '@/lib/payment'
 
 const POLL_MS = 3000
 const POLL_LIMIT_MS = 15 * 60 * 1000

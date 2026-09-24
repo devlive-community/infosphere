@@ -471,7 +471,7 @@ Authorization: Bearer <token>
 
 ## 支付（「支付」插件，默认关闭）
 
-售卖其他插件经 `plugincore.RegisterProductProvider` 登记的商品（如会员：`kind=membership`，`sku`=价格 ID）。下单时快照商品标题、金额与履约数据；支付成功后回调提供者 `Fulfill`（按订单号幂等），之后的改价/归档不影响已下单订单。支付方式：线下转账（用户提交付款说明，管理员确认到账）、支付宝（电脑/手机网站支付，RSA2，仅 CNY）、微信支付（APIv3 Native 扫码，微信支付公钥模式，仅 CNY）、Stripe Checkout。回调与返回地址基于「站点访问地址」`site_url`。在线订单 2 小时有效，线下转账默认 72 小时；已取消/过期的订单若收到渠道支付成功回调仍按已支付入账。回调校验签名、金额、货币与支付方式，不符拒绝入账。`/site` 下发 `payment_channels`（当前可用的支付方式）。
+售卖其他插件经 `plugincore.RegisterProductProvider` 登记的商品（如会员：`kind=membership`，`sku`=价格 ID）。下单时快照商品标题、金额与履约数据；支付成功后回调提供者 `Fulfill`（按订单号幂等），之后的改价/归档不影响已下单订单。支付方式：线下转账（用户提交付款说明，管理员确认到账）、支付宝（电脑/手机网站支付，RSA2，仅 CNY）、微信支付（APIv3 Native 扫码，微信支付公钥模式，仅 CNY）、Stripe Checkout。回调与返回地址基于「站点访问地址」`site_url`。在线订单 2 小时有效，线下转账默认 72 小时；已取消/过期的订单若收到渠道支付成功回调仍按已支付入账。回调校验签名、金额、货币与支付方式，不符拒绝入账。`/site` 下发 `payment_channels`（当前可用的支付方式，仅支付插件自身使用）与中性开关 `checkout_enabled`（`plugincore.CheckoutEnabledKey`：是否可在线购买，商品所属插件的前端只看此键，结算入口为 `/pay/checkout?kind=&sku=`，前端约定见 `lib/commerce.ts`）。
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |

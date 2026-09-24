@@ -12,7 +12,8 @@ import { api, formatDate } from '@/lib/api'
 import { Badge, Button, Card, DateTimePicker, EmptyState, Field, Input, Loading, Modal, Pagination, Select, SegmentedTabs, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 import type { EntitlementDef } from '@/lib/entitlements'
-import { centsFromInput, durationLabel, formatPrice, inputFromCents, type MembershipPlan, type MembershipRecord } from '@/lib/membership'
+import { centsFromInput, inputFromCents, type MembershipPlan, type MembershipRecord } from '@/lib/membership'
+import { durationLabel, formatPrice } from '@/lib/commerce'
 
 type Tab = 'plans' | 'members' | 'records' | 'settings'
 const TABS: Tab[] = ['plans', 'members', 'records', 'settings']

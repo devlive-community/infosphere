@@ -12,6 +12,10 @@ import (
 //   - 下单时支付插件调用 Resolve 取得商品（价格、标题）并把 Payload 快照进订单；
 //   - 支付成功后支付插件以订单号调用 Fulfill（须按订单号幂等），提供者据快照发放（如开通会员）。
 
+// CheckoutEnabledKey 公开站点配置（GET /site）中「可在线购买」的中性开关：由提供结算能力的插件（如支付）
+// 经 RegisterPublicSiteConfig 下发；商品所属插件的前端只看此键，不感知具体由哪个插件提供结算。
+const CheckoutEnabledKey = "checkout_enabled"
+
 // Product 一件可售商品（由商品提供者按 SKU 解析）。
 type Product struct {
 	Kind        string `json:"kind"`

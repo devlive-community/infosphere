@@ -7,7 +7,7 @@ import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Badge, Card, EmptyState, Loading, Pagination } from '@/components/ui'
-import { durationLabel, formatPrice } from '@/lib/membership'
+import { durationLabel, formatPrice } from '@/lib/commerce'
 import { CHANNEL_ICONS, STATUS_TONE, type PaymentOrder } from '@/lib/payment'
 
 export default function MyOrdersPage() {

@@ -155,7 +155,7 @@ func TestOfflinePaymentFlow(t *testing.T) {
 
 	// 未配置任何支付方式：公开配置为空、下单失败
 	_, site := e.request(t, "", http.MethodGet, "/api/v1/site", "")
-	if chs := data(site)["payment_channels"].([]any); len(chs) != 0 {
+	if chs := data(site)["payment_channels"].([]any); len(chs) != 0 || data(site)["checkout_enabled"] != false {
 		t.Fatalf("未配置时不应有可用支付方式: %v", chs)
 	}
 	if status, _ := e.as(t, u, http.MethodPost, "/api/v1/payment/orders", `{"kind":"test-item","sku":"a","channel":"offline"}`); status != http.StatusBadRequest {
@@ -177,7 +177,7 @@ func TestOfflinePaymentFlow(t *testing.T) {
 		t.Fatalf("密钥不应回显，只返回是否已配置: %v", data(s))
 	}
 	_, site = e.request(t, "", http.MethodGet, "/api/v1/site", "")
-	if chs := data(site)["payment_channels"].([]any); len(chs) != 1 || chs[0] != "offline" {
+	if chs := data(site)["payment_channels"].([]any); len(chs) != 1 || chs[0] != "offline" || data(site)["checkout_enabled"] != true {
 		t.Fatalf("公开配置应只有线下转账（Stripe 缺 Webhook 密钥不可用）: %v", chs)
 	}
 

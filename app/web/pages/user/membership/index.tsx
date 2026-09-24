@@ -10,8 +10,8 @@ import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Badge, Button, Card, EmptyState, Loading, useFeedback } from '@/components/ui'
 import { entitlementLabel, formatEntitlement, type EntitlementDef } from '@/lib/entitlements'
-import { durationLabel, formatPrice, type MembershipPlan, type MembershipRecord, type MyMembership } from '@/lib/membership'
-import { checkoutHref } from '@/lib/payment'
+import type { MembershipPlan, MembershipRecord, MyMembership } from '@/lib/membership'
+import { checkoutAvailable, checkoutHref, durationLabel, formatPrice } from '@/lib/commerce'
 
 export default function MyMembershipPage() {
   return <FeatureGate feature="membership"><MyMembershipInner /></FeatureGate>
@@ -41,7 +41,7 @@ function MyMembershipInner() {
   const router = useRouter()
   const { confirmAction } = useFeedback()
   const siteName = site.site_name || 'KnowForge'
-  const canBuy = (site.feature_plugins || []).includes('payment') && (site.payment_channels || []).length > 0
+  const canBuy = checkoutAvailable(site)
   const [mine, setMine] = useState<{ membership: MyMembership | null; records: MembershipRecord[]; currency: string } | null>(null)
   const [plans, setPlans] = useState<MembershipPlan[]>([])
   const [defs, setDefs] = useState<EntitlementDef[]>([])

@@ -60,8 +60,3 @@ export const STATUS_TONE: Record<PaymentOrder['status'], 'amber' | 'emerald' | '
 export function isMobileDevice(): boolean {
   return typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
 }
-
-// checkoutHref 商品的结算页地址（由商品所属插件的页面链接过来）。
-export function checkoutHref(kind: string, sku: string | number): string {
-  return `/pay/checkout?kind=${encodeURIComponent(kind)}&sku=${encodeURIComponent(String(sku))}`
-}

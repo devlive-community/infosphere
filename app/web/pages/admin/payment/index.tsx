@@ -7,7 +7,7 @@ import type { UserLite } from '@/components/UserSearchSelect'
 import { api, formatDate } from '@/lib/api'
 import { Badge, Button, Card, EmptyState, Field, Input, Loading, Pagination, SegmentedTabs, Select, Switch, Textarea, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
-import { durationLabel, formatPrice } from '@/lib/membership'
+import { durationLabel, formatPrice } from '@/lib/commerce'
 import { CHANNEL_ICONS, STATUS_TONE, type PaymentChannel, type PaymentOrder } from '@/lib/payment'
 
 type Tab = 'orders' | 'settings'

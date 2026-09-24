@@ -51,7 +51,7 @@ func init() {
 				}
 			}
 		}
-		return map[string]any{"payment_channels": channels}
+		return map[string]any{"payment_channels": channels, plugincore.CheckoutEnabledKey: len(channels) > 0}
 	})
 
 	i18ntext.Register("notify.payment.paid", map[string]string{"zh-CN": "支付成功：{title}", "en": "Payment received: {title}"})

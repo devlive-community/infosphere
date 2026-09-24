@@ -7,7 +7,7 @@ import { api } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Button, Card, EmptyState, Loading, useFeedback } from '@/components/ui'
-import { durationLabel, formatPrice } from '@/lib/membership'
+import { durationLabel, formatPrice } from '@/lib/commerce'
 import { CHANNEL_ICONS, isMobileDevice, type PaymentAction, type PaymentChannel, type PaymentOrder, type PaymentProduct } from '@/lib/payment'
 
 export default function CheckoutPage() {
