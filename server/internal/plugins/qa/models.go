@@ -44,19 +44,23 @@ type Citation struct {
 
 // Ask 一次 AI 问答（读者私有的问答记录）。
 type Ask struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	BookID    uint      `gorm:"index" json:"book_id"`
-	UserID    uint      `gorm:"index" json:"user_id"`
-	DocID     uint      `json:"doc_id"`
-	Mode      string    `gorm:"size:10" json:"mode"` // rag | agent
-	Question  string    `gorm:"type:text" json:"question"`
-	Selection string    `gorm:"type:text" json:"selection"`
-	Answer    string    `gorm:"type:text" json:"answer"`
-	Citations string    `gorm:"type:text" json:"-"` // JSON []Citation
-	Steps     int       `json:"steps"`              // Agent 工具调用次数
-	Status    string    `gorm:"size:10" json:"status"`
-	Error     string    `gorm:"size:500" json:"error"`
-	CreatedAt time.Time `gorm:"index" json:"created_at"`
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	BookID       uint      `gorm:"index" json:"book_id"`
+	UserID       uint      `gorm:"index" json:"user_id"`
+	DocID        uint      `json:"doc_id"`
+	Mode         string    `gorm:"size:10" json:"mode"` // rag | agent
+	Question     string    `gorm:"type:text" json:"question"`
+	Selection    string    `gorm:"type:text" json:"selection"`
+	Answer       string    `gorm:"type:text" json:"answer"`
+	Citations    string    `gorm:"type:text" json:"-"` // JSON []Citation
+	Steps        int       `json:"steps"`              // Agent 工具调用次数
+	Calls        int       `json:"calls"`              // 模型调用次数
+	InputTokens  int64     `json:"input_tokens"`       // 本次问答消耗（对话部分）
+	OutputTokens int64     `json:"output_tokens"`
+	Estimated    bool      `json:"estimated"` // 用量为估算值
+	Status       string    `gorm:"size:10" json:"status"`
+	Error        string    `gorm:"size:500" json:"error"`
+	CreatedAt    time.Time `gorm:"index" json:"created_at"`
 }
 
 func (Ask) TableName() string { return "qa_asks" }

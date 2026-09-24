@@ -3,6 +3,7 @@ package qa
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"knowforge/server/internal/ai"
 	"knowforge/server/internal/models"
 	"knowforge/server/internal/plugincore"
 	"knowforge/server/internal/plugins"
@@ -34,6 +36,10 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	with := func(h gin.HandlerFunc) []gin.HandlerFunc { return append(append([]gin.HandlerFunc{}, auth...), h) }
 	api.POST("/qa/books/:id/ask", with(b.AskAI)...)
 	api.GET("/qa/books/:id/asks", with(b.MyAsks)...)
+	api.GET("/qa/me/asks", with(b.MyAllAsks)...)
+	api.DELETE("/qa/asks/:id", with(b.DeleteAsk)...)
+	api.GET("/qa/me/questions", with(b.MyQuestions)...)
+	api.GET("/qa/me/quota", with(b.MyQuota)...)
 	api.POST("/qa/books/:id/reindex", with(b.Reindex)...)
 	api.POST("/qa/books/:id/questions", with(b.CreateQuestion)...)
 	api.DELETE("/qa/questions/:id", with(b.DeleteQuestion)...)
@@ -121,12 +127,32 @@ func (b *behavior) isEditor(u *models.User, book *models.Book) bool {
 	return u != nil && (b.core.IsAdmin(u) || b.core.CanEditBookContent(u, book))
 }
 
-// quota 今日已用 AI 提问次数与上限（-1 不限）。
-func (b *behavior) quota(u *models.User) (used, limit int64) {
-	start := time.Now()
-	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
-	b.core.Gorm().Model(&Ask{}).Where("user_id = ? AND created_at >= ?", u.ID, start).Count(&used)
-	return used, plugincore.EntitlementValue(b.core, u, entAIDaily)
+// dailyQuota 今日已用与上限（-1 不限）：全部 AI 提问与其中的深度模式提问。
+// 只计成功且实际调用了模型的提问（失败、书中无相关内容不计）。
+type dailyQuota struct {
+	Used       int64 `json:"used"`
+	Limit      int64 `json:"limit"`
+	AgentUsed  int64 `json:"agent_used"`
+	AgentLimit int64 `json:"agent_limit"`
+}
+
+func (b *behavior) quota(u *models.User) dailyQuota {
+	now := time.Now()
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	q := dailyQuota{Limit: plugincore.EntitlementValue(b.core, u, entAIDaily), AgentLimit: plugincore.EntitlementValue(b.core, u, entAgentDaily)}
+	var rows []struct {
+		Mode string
+		N    int64
+	}
+	b.core.Gorm().Model(&Ask{}).Select("mode, COUNT(*) AS n").
+		Where("user_id = ? AND created_at >= ? AND status = ? AND calls > 0", u.ID, start, "done").Group("mode").Scan(&rows)
+	for _, r := range rows {
+		q.Used += r.N
+		if r.Mode == "agent" {
+			q.AgentUsed = r.N
+		}
+	}
+	return q
 }
 
 // Status GET /qa/books/:id/status AI 是否可用、索引状态与今日额度。
@@ -137,14 +163,17 @@ func (b *behavior) Status(c *gin.Context) {
 	}
 	chat, embed := b.core.AIStatus()
 	s := b.settings()
-	out := gin.H{"ai_available": chat && s.AIEnabled, "agent_available": chat && s.AIEnabled && s.AgentEnabled, "vector_search": embed}
+	u := b.core.CurrentUser(c)
+	agentOK := chat && s.AIEnabled && s.AgentEnabled
+	out := gin.H{"ai_available": chat && s.AIEnabled, "agent_available": agentOK, "vector_search": embed}
 	var state IndexState
 	if b.core.Gorm().First(&state, book.ID).Error == nil {
 		out["index"] = state
 	}
-	if u := b.core.CurrentUser(c); u != nil {
-		used, limit := b.quota(u)
-		out["quota"] = gin.H{"used": used, "limit": limit}
+	if u != nil {
+		q := b.quota(u)
+		out["quota"] = q
+		out["agent_available"] = agentOK && q.AgentLimit != 0 // 权益为 0 表示当前等级/会员不含深度模式
 		out["can_reindex"] = b.isEditor(u, book)
 	}
 	b.core.OK(c, out)
@@ -201,37 +230,57 @@ func (b *behavior) AskAI(c *gin.Context) {
 		mode = "agent"
 	}
 	u := b.core.CurrentUser(c)
-	if used, limit := b.quota(u); limit != plugincore.Unlimited && used >= limit {
+	q := b.quota(u)
+	if !plugincore.WithinLimit(q.Limit, q.Used) {
 		b.core.Fail(c, http.StatusTooManyRequests, "今日 AI 提问次数已用完，明天再来，或提升等级/开通会员获得更多次数")
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 150*time.Second)
+	if mode == "agent" && !plugincore.WithinLimit(q.AgentLimit, q.AgentUsed) {
+		msg := "今日深度模式次数已用完，可以改用标准模式，或提升等级/开通会员获得更多次数"
+		if q.AgentLimit == 0 {
+			msg = "当前等级/会员不含深度模式，提升等级或开通会员后可用"
+		}
+		b.core.Fail(c, http.StatusTooManyRequests, msg)
+		return
+	}
+	feature := "qa.ask"
+	if mode == "agent" {
+		feature = "qa.agent"
+	}
+	ctx, cancel := context.WithTimeout(ai.WithCaller(c.Request.Context(), ai.Caller{UserID: u.ID, Feature: feature, RefType: "book", RefID: book.ID}), 150*time.Second)
 	defer cancel()
+	if err := b.core.AICheckQuota(ctx); err != nil {
+		b.core.Fail(c, http.StatusTooManyRequests, err.Error())
+		return
+	}
 	if _, err := b.ensureIndex(ctx, book.ID); err != nil {
 		b.core.Fail(c, http.StatusInternalServerError, "建立索引失败: "+err.Error())
 		return
 	}
 	chunks := b.loadChunks(u, book)
 	var (
-		answer string
-		cites  []Citation
-		steps  int
-		err    error
+		res answerResult
+		err error
 	)
 	if mode == "agent" {
-		answer, cites, steps, err = b.answerAgent(ctx, book, chunks, question, selection, req.DocID)
+		res, err = b.answerAgent(ctx, book, chunks, question, selection, req.DocID)
 	} else {
-		answer, cites, err = b.answerRAG(ctx, book, chunks, question, selection, req.DocID, s.TopK)
+		res, err = b.answerRAG(ctx, book, chunks, question, selection, req.DocID, s.TopK)
 	}
-	rec := Ask{BookID: book.ID, UserID: u.ID, DocID: req.DocID, Mode: mode, Question: question, Selection: selection, Steps: steps, Status: "done"}
+	rec := Ask{BookID: book.ID, UserID: u.ID, DocID: req.DocID, Mode: mode, Question: question, Selection: selection, Status: "done",
+		Steps: res.Steps, Calls: res.Calls, InputTokens: res.Usage.InputTokens, OutputTokens: res.Usage.OutputTokens, Estimated: res.Usage.Estimated}
 	if err != nil {
 		rec.Status, rec.Error = "failed", truncate(err.Error(), 500)
 		b.core.Gorm().Create(&rec)
+		if errors.Is(err, ai.ErrQuotaExceeded) {
+			b.core.Fail(c, http.StatusTooManyRequests, err.Error())
+			return
+		}
 		b.core.Fail(c, http.StatusBadGateway, "AI 回答失败："+err.Error())
 		return
 	}
-	raw, _ := json.Marshal(cites)
-	rec.Answer, rec.Citations = answer, string(raw)
+	raw, _ := json.Marshal(res.Citations)
+	rec.Answer, rec.Citations = res.Answer, string(raw)
 	b.core.Gorm().Create(&rec)
 	b.core.OK(c, toAskView(rec))
 }
@@ -251,6 +300,91 @@ func (b *behavior) MyAsks(c *gin.Context) {
 	items := make([]askView, 0, len(rows))
 	for _, r := range rows {
 		items = append(items, toAskView(r))
+	}
+	b.core.OK(c, plugincore.PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
+}
+
+// MyQuota GET /qa/me/quota 今日 AI 提问额度（全部 / 深度模式）。
+func (b *behavior) MyQuota(c *gin.Context) {
+	b.core.OK(c, b.quota(b.core.CurrentUser(c)))
+}
+
+type bookBrief struct {
+	ID    uint   `json:"id"`
+	Slug  string `json:"slug"`
+	Title string `json:"title"`
+}
+
+// books 按 ID 批量取书籍摘要（只返回当前用户仍可阅读的书）。
+func (b *behavior) books(u *models.User, ids []uint) map[uint]bookBrief {
+	out := map[uint]bookBrief{}
+	if len(ids) == 0 {
+		return out
+	}
+	var list []models.Book
+	b.core.Gorm().Where("id IN ?", ids).Find(&list)
+	for i := range list {
+		if b.core.CanReadBook(u, &list[i]) {
+			out[list[i].ID] = bookBrief{ID: list[i].ID, Slug: list[i].Slug, Title: list[i].Title}
+		}
+	}
+	return out
+}
+
+// MyAllAsks GET /qa/me/asks?page=&book_id= 我在全部书籍中的 AI 问答记录（含消耗），新→旧。
+func (b *behavior) MyAllAsks(c *gin.Context) {
+	u := b.core.CurrentUser(c)
+	page, pageSize := b.core.Paginate(c)
+	q := b.core.Gorm().Model(&Ask{}).Where("user_id = ? AND status = ?", u.ID, "done")
+	if id := b.core.AtoiDefault(c.Query("book_id"), 0); id > 0 {
+		q = q.Where("book_id = ?", id)
+	}
+	var total int64
+	q.Count(&total)
+	var rows []Ask
+	q.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows)
+	ids := make([]uint, 0, len(rows))
+	for _, r := range rows {
+		ids = append(ids, r.BookID)
+	}
+	books := b.books(u, ids)
+	items := make([]gin.H, 0, len(rows))
+	for _, r := range rows {
+		book, visible := books[r.BookID]
+		items = append(items, gin.H{"ask": toAskView(r), "book": book, "book_available": visible})
+	}
+	b.core.OK(c, plugincore.PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
+}
+
+// DeleteAsk DELETE /qa/asks/:id 删除自己的一条 AI 问答记录（不退还当日次数）。
+func (b *behavior) DeleteAsk(c *gin.Context) {
+	res := b.core.Gorm().Where("id = ? AND user_id = ?", c.Param("id"), b.core.CurrentUser(c).ID).Delete(&Ask{})
+	if res.RowsAffected == 0 {
+		b.core.Fail(c, http.StatusNotFound, "记录不存在")
+		return
+	}
+	b.core.OK(c, gin.H{"message": "已删除"})
+}
+
+// MyQuestions GET /qa/me/questions?page= 我在社区问答中的提问。
+func (b *behavior) MyQuestions(c *gin.Context) {
+	u := b.core.CurrentUser(c)
+	page, pageSize := b.core.Paginate(c)
+	q := b.core.Gorm().Model(&Question{}).Where("user_id = ?", u.ID)
+	var total int64
+	q.Count(&total)
+	var rows []Question
+	q.Order("updated_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows)
+	ids := make([]uint, 0, len(rows))
+	for _, r := range rows {
+		ids = append(ids, r.BookID)
+	}
+	books := b.books(u, ids)
+	views := b.questionViews(rows)
+	items := make([]gin.H, 0, len(rows))
+	for i, r := range rows {
+		book, visible := books[r.BookID]
+		items = append(items, gin.H{"question": views[i], "book": book, "book_available": visible})
 	}
 	b.core.OK(c, plugincore.PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
 }

@@ -18,6 +18,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"knowforge/server/internal/ai"
 	"knowforge/server/internal/models"
 )
 
@@ -313,7 +314,7 @@ func (b *behavior) runEmbedJob(ctx context.Context, raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &job); err != nil || job.BookID == 0 {
 		return fmt.Errorf("问答索引任务参数无效")
 	}
-	return b.embedPending(ctx, job.BookID)
+	return b.embedPending(ai.WithCaller(ctx, ai.Caller{Feature: "qa.index", RefType: "book", RefID: job.BookID}), job.BookID)
 }
 
 func (b *behavior) embedPending(ctx context.Context, bookID uint) error {

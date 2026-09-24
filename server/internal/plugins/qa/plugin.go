@@ -29,6 +29,8 @@ const (
 	cfgEnabled      = "qa_enabled"
 	entAIDaily      = "qa.ai_daily"
 	defaultAIDaily  = 20
+	entAgentDaily   = "qa.agent_daily"
+	defaultAgentDay = 5
 	indexJobType    = "qa.index"
 	maxQuestionLen  = 1000
 	maxSelectionLen = 2000
@@ -64,6 +66,21 @@ func init() {
 		},
 		SetBase: func(core plugincore.Core, v int64) error {
 			return core.SetSetting("qa_ai_daily", strconv.FormatInt(v, 10), "问答：每日 AI 提问次数（基础）")
+		},
+	})
+
+	// 深度模式（Agent，一次提问多次调用模型）单独计次：0 表示不可用，可作为会员专享
+	plugincore.RegisterEntitlement(plugincore.EntitlementDef{
+		Key: entAgentDaily, Kind: plugincore.EntitlementLimit, Unit: "questions", Min: 0, Max: 10000, AllowUnlimited: true, Order: 81,
+		Available: func(core plugincore.Core) bool { return core.PluginEnabled(plugins.KeyQA) },
+		Base: func(core plugincore.Core) int64 {
+			if v, err := strconv.ParseInt(core.GetSetting("qa_agent_daily"), 10, 64); err == nil && (v == plugincore.Unlimited || (v >= 0 && v <= 10000)) {
+				return v
+			}
+			return defaultAgentDay
+		},
+		SetBase: func(core plugincore.Core, v int64) error {
+			return core.SetSetting("qa_agent_daily", strconv.FormatInt(v, 10), "问答：每日深度模式提问次数（基础）")
 		},
 	})
 

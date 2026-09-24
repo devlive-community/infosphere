@@ -21,6 +21,8 @@ const (
 	selectionHints = 2 // 划词提问时优先加入包含选中文字的小节数
 )
 
+const noContentAnswer = "书中没有找到与这个问题相关的内容，可以换个说法再问，或在社区问答中向作者和其他读者提问。"
+
 var citationRef = regexp.MustCompile(`\[(\d{1,3})\]`)
 
 // sources 回答可引用的片段（编号从 1 开始）。
@@ -130,8 +132,17 @@ func selectionChunks(chunks []Chunk, docID uint, selection string) []Chunk {
 	return hits
 }
 
+// answerResult 一次作答的结果与消耗（Calls 为模型调用次数，Steps 为 Agent 工具调用次数）。
+type answerResult struct {
+	Answer    string
+	Citations []Citation
+	Steps     int
+	Calls     int
+	Usage     ai.Usage
+}
+
 // answerRAG 标准模式：检索相关片段后一次作答。
-func (b *behavior) answerRAG(ctx context.Context, book *models.Book, chunks []Chunk, question, selection string, docID uint, topK int) (string, []Citation, error) {
+func (b *behavior) answerRAG(ctx context.Context, book *models.Book, chunks []Chunk, question, selection string, docID uint, topK int) (answerResult, error) {
 	src := newSources()
 	for _, c := range selectionChunks(chunks, docID, selection) {
 		src.add(c)
@@ -140,7 +151,7 @@ func (b *behavior) answerRAG(ctx context.Context, book *models.Book, chunks []Ch
 		src.add(c)
 	}
 	if len(src.list) == 0 {
-		return "书中没有找到与这个问题相关的内容，可以换个说法再问，或在社区问答中向作者和其他读者提问。", []Citation{}, nil
+		return answerResult{Answer: noContentAnswer, Citations: []Citation{}}, nil
 	}
 	var sb strings.Builder
 	sb.WriteString(questionText(question, selection))
@@ -150,9 +161,9 @@ func (b *behavior) answerRAG(ctx context.Context, book *models.Book, chunks []Ch
 	}
 	res, err := b.core.AIChat(ctx, ai.ChatRequest{System: systemPrompt(book, false), Messages: []ai.Message{{Role: "user", Content: sb.String()}}, MaxTokens: 1500, Temperature: 0.2})
 	if err != nil {
-		return "", nil, err
+		return answerResult{}, err
 	}
-	return res.Content, src.citations(res.Content), nil
+	return answerResult{Answer: res.Content, Citations: src.citations(res.Content), Calls: 1, Usage: res.Usage}, nil
 }
 
 var agentTools = []ai.Tool{
@@ -169,7 +180,7 @@ var agentTools = []ai.Tool{
 }
 
 // answerAgent Agent 模式：模型调用工具多步检索与阅读后作答。
-func (b *behavior) answerAgent(ctx context.Context, book *models.Book, chunks []Chunk, question, selection string, docID uint) (string, []Citation, int, error) {
+func (b *behavior) answerAgent(ctx context.Context, book *models.Book, chunks []Chunk, question, selection string, docID uint) (answerResult, error) {
 	src := newSources()
 	byID := map[uint]Chunk{}
 	for _, c := range chunks {
@@ -184,20 +195,22 @@ func (b *behavior) answerAgent(ctx context.Context, book *models.Book, chunks []
 		}
 		messages[0].Content += "\n\n" + sb.String()
 	}
-	steps := 0
+	out := answerResult{}
 	final := ""
 	for round := 0; round < maxAgentSteps; round++ {
 		res, err := b.core.AIChat(ctx, ai.ChatRequest{System: systemPrompt(book, true), Messages: messages, Tools: agentTools, MaxTokens: 1500, Temperature: 0.2})
 		if err != nil {
-			return "", nil, steps, err
+			return out, err
 		}
+		out.Calls++
+		out.Usage = out.Usage.Add(res.Usage)
 		if len(res.ToolCalls) == 0 {
 			final = res.Content
 			break
 		}
 		messages = append(messages, ai.Message{Role: "assistant", Content: res.Content, ToolCalls: res.ToolCalls})
 		for _, call := range res.ToolCalls {
-			steps++
+			out.Steps++
 			messages = append(messages, ai.Message{Role: "tool", ToolCallID: call.ID, Content: b.runTool(ctx, call, chunks, byID, src)})
 		}
 	}
@@ -205,11 +218,14 @@ func (b *behavior) answerAgent(ctx context.Context, book *models.Book, chunks []
 		messages = append(messages, ai.Message{Role: "user", Content: "请根据以上检索到的内容直接给出最终回答，并用 [编号] 标注出处。"})
 		res, err := b.core.AIChat(ctx, ai.ChatRequest{System: systemPrompt(book, false), Messages: messages, MaxTokens: 1500, Temperature: 0.2})
 		if err != nil {
-			return "", nil, steps, err
+			return out, err
 		}
+		out.Calls++
+		out.Usage = out.Usage.Add(res.Usage)
 		final = res.Content
 	}
-	return final, src.citations(final), steps, nil
+	out.Answer, out.Citations = final, src.citations(final)
+	return out, nil
 }
 
 func (b *behavior) runTool(ctx context.Context, call ai.ToolCall, chunks []Chunk, byID map[uint]Chunk, src *sources) string {

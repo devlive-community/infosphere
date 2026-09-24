@@ -2,6 +2,7 @@ import { MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'r
 import { api, formatDate } from '@/lib/api'
 import type { PageResult, User } from '@/lib/types'
 import { renderAnswer, citationHref, type QAAsk, type QACitation, type QAStatus } from '@/lib/qa'
+import { formatTokens } from '@/lib/ai-usage'
 import { Badge, Button, ButtonLink, Loading, Switch, Textarea, Tooltip, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
@@ -53,7 +54,10 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
   useEffect(() => { bottomRef.current?.scrollIntoView({ block: 'end' }) }, [asks.length, pending])
   useEffect(() => { if (selection) inputRef.current?.focus() }, [selection])
 
-  const quotaLeft = status?.quota ? (status.quota.limit < 0 ? Infinity : Math.max(0, status.quota.limit - status.quota.used)) : 0
+  const left = (used: number, limit: number) => (limit < 0 ? Infinity : Math.max(0, limit - used))
+  const quotaLeft = status?.quota ? left(status.quota.used, status.quota.limit) : 0
+  const agentLeft = status?.quota ? left(status.quota.agent_used, status.quota.agent_limit) : 0
+  const useAgent = agent && Boolean(status?.agent_available) && agentLeft > 0
 
   async function ask() {
     const q = question.trim()
@@ -61,12 +65,14 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
     setPending({ question: q || t('qa.ask.explainSelection'), selection })
     try {
       const created = await api<QAAsk>(`/qa/books/${book.id}/ask`, { method: 'POST', body: {
-        question: q, selection, doc_id: docId || 0, mode: agent && status?.agent_available ? 'agent' : 'rag',
+        question: q, selection, doc_id: docId || 0, mode: useAgent ? 'agent' : 'rag',
       } })
       setAsks((list) => [...list, created])
       setQuestion('')
       onClearSelection()
-      setStatus((s) => s && s.quota ? { ...s, quota: { ...s.quota, used: s.quota.used + 1 } } : s)
+      if (created.calls > 0) {
+        setStatus((s) => s && s.quota ? { ...s, quota: { ...s.quota, used: s.quota.used + 1, agent_used: s.quota.agent_used + (created.mode === 'agent' ? 1 : 0) } } : s)
+      }
     } catch (e) {
       showToast({ title: t('qa.ask.failed'), message: (e as Error).message, tone: 'error' })
     } finally {
@@ -131,6 +137,9 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
         {status.quota && (
           <span>{status.quota.limit < 0 ? t('qa.ask.quotaUnlimited') : t('qa.ask.quota', { used: status.quota.used, limit: status.quota.limit })}</span>
         )}
+        {status.quota && status.agent_available && status.quota.agent_limit >= 0 && (
+          <span>· {t('qa.ask.agentQuota', { used: status.quota.agent_used, limit: status.quota.agent_limit })}</span>
+        )}
         {status.can_reindex && (
           <Tooltip content={t('qa.ask.reindexHint')}>
             <Button size="sm" variant="ghost" className="ml-auto" loading={reindexing} onClick={() => void reindex()}>
@@ -154,7 +163,7 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
         {pending && (
           <div className="space-y-2">
             <QuestionBubble question={pending.question} selection={pending.selection} />
-            <Loading className="rounded-xl bg-slate-50 py-6" label={t(agent && status.agent_available ? 'qa.ask.thinkingAgent' : 'qa.ask.thinking')} />
+            <Loading className="rounded-xl bg-slate-50 py-6" label={t(useAgent ? 'qa.ask.thinkingAgent' : 'qa.ask.thinking')} />
           </div>
         )}
         <div ref={bottomRef} />
@@ -175,13 +184,15 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void ask() } }} />
         <div className="flex items-center gap-3">
-          {status.agent_available && (
-            <Tooltip content={t('qa.ask.agentHint')}>
+          {status.agent_available ? (
+            <Tooltip content={agentLeft > 0 ? t('qa.ask.agentHint') : t('qa.ask.agentUsedUp')}>
               <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
-                <Switch checked={agent} onChange={setAgent} ariaLabel={t('qa.ask.agent')} disabled={Boolean(pending)} />
+                <Switch checked={useAgent} onChange={setAgent} ariaLabel={t('qa.ask.agent')} disabled={Boolean(pending) || agentLeft <= 0} />
                 {t('qa.ask.agent')}
               </label>
             </Tooltip>
+          ) : status.quota?.agent_limit === 0 && (
+            <span className="text-xs text-slate-400">{t('qa.ask.agentLocked')}</span>
           )}
           <Button className="ml-auto" size="sm" loading={Boolean(pending)} disabled={(!question.trim() && !selection) || quotaLeft <= 0} onClick={() => void ask()}>
             <i className="fa-solid fa-paper-plane" aria-hidden="true" />{t('qa.ask.submit')}
@@ -221,6 +232,11 @@ function AskItem({ item, bookSlug, sharing, shareDisabled, onShare, onClick, onC
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
           {item.mode === 'agent' && <Badge tone="violet">{t('qa.ask.agentSteps', { n: item.steps })}</Badge>}
           <span>{formatDate(item.created_at)}</span>
+          {item.calls > 0 && (
+            <Tooltip content={t('qa.ask.usageHint', { calls: item.calls, input: item.input_tokens, output: item.output_tokens })}>
+              <span>· {t(item.estimated ? 'qa.ask.usageEstimated' : 'qa.ask.usage', { tokens: formatTokens(item.input_tokens + item.output_tokens) })}</span>
+            </Tooltip>
+          )}
           <Tooltip content={t('qa.ask.shareHint')}>
             <Button size="sm" variant="ghost" className="ml-auto" loading={sharing} disabled={shareDisabled} onClick={onShare}>
               <i className="fa-solid fa-people-group" aria-hidden="true" />{t('qa.ask.share')}

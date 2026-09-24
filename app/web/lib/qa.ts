@@ -21,8 +21,20 @@ export interface QAAsk {
   selection: string
   answer: string
   steps: number
+  calls: number // 模型调用次数
+  input_tokens: number
+  output_tokens: number
+  estimated: boolean
   created_at: string
   citations: QACitation[]
+}
+
+// QAQuota 今日额度（limit / agent_limit 为 -1 表示不限；agent_limit 为 0 表示当前等级/会员不含深度模式）
+export interface QAQuota {
+  used: number
+  limit: number
+  agent_used: number
+  agent_limit: number
 }
 
 export interface QAStatus {
@@ -30,7 +42,7 @@ export interface QAStatus {
   agent_available: boolean
   vector_search: boolean
   index?: { chunks: number; embedded: number; indexed_at: string; embed_error: string }
-  quota?: { used: number; limit: number } // limit = -1 表示不限
+  quota?: QAQuota
   can_reindex?: boolean
 }
 

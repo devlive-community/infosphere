@@ -79,7 +79,7 @@ func (f *fakeAI) handler() http.Handler {
 		} else if hasTool {
 			msg["content"] = "索引帮助检索 [1]。"
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []map[string]any{{"message": msg}}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"model": "fake-1", "usage": map[string]any{"prompt_tokens": 100, "completion_tokens": 20}, "choices": []map[string]any{{"message": msg}}})
 	})
 	return mux
 }
@@ -344,5 +344,117 @@ func TestQAPrivateBookHidden(t *testing.T) {
 	}
 	if status, _ := e.req(t, "", http.MethodGet, fmt.Sprintf("/api/v1/qa/books/%d/questions", bookID), ""); status != http.StatusNotFound {
 		t.Fatalf("私密书籍问题列表不应可见: %d", status)
+	}
+}
+
+func TestQAUsageAndEntitlements(t *testing.T) {
+	fake := &fakeAI{}
+	aiServer := httptest.NewServer(fake.handler())
+	t.Cleanup(aiServer.Close)
+	e := newTestEnv(t, aiServer.URL)
+	author, reader, other := e.user(t, "author"), e.user(t, "reader"), e.user(t, "other")
+	// 单价：输入 2、输出 10（每百万 tokens）
+	if status, p := e.req(t, e.token, http.MethodPut, "/api/v1/admin/ai", `{"price_currency":"cny","price_input":"2","price_output":"10"}`); status != http.StatusOK {
+		t.Fatalf("保存单价失败: %d %v", status, p)
+	}
+	if status, _ := e.req(t, e.token, http.MethodPut, "/api/v1/admin/ai", `{"price_input":"abc"}`); status != http.StatusBadRequest {
+		t.Fatalf("非法单价应拒绝: %d", status)
+	}
+
+	_, created := e.as(t, author, http.MethodPost, "/api/v1/books", `{"title":"用量之书","status":"published","is_public":true}`)
+	bookID := uint(data(created)["id"].(float64))
+	base := fmt.Sprintf("/api/v1/qa/books/%d", bookID)
+	e.as(t, author, http.MethodPost, fmt.Sprintf("/api/v1/books/%d/documents", bookID), `{"title":"第一章","content":"## 缓存\n\n缓存可以加速读取。\n\n## 索引\n\n索引帮助检索。","status":"published"}`)
+
+	// 标准问答：1 次模型调用，按服务返回的用量记账
+	status, ask := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"缓存有什么用？"}`)
+	if status != http.StatusOK || data(ask)["calls"].(float64) != 1 || data(ask)["input_tokens"].(float64) != 100 || data(ask)["output_tokens"].(float64) != 20 {
+		t.Fatalf("问答用量异常: %d %v", status, ask)
+	}
+	// 深度模式：2 次模型调用（检索 + 作答）
+	status, ag := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"索引怎么实现？","mode":"agent"}`)
+	if status != http.StatusOK || data(ag)["calls"].(float64) != 2 || data(ag)["input_tokens"].(float64) != 200 {
+		t.Fatalf("深度模式用量异常: %d %v", status, ag)
+	}
+	e.runJobs(t)
+
+	var logs []models.AIUsageLog
+	e.db.Order("id").Find(&logs)
+	byFeature := map[string]int{}
+	for _, l := range logs {
+		byFeature[l.Feature]++
+		if l.Kind == "chat" && (l.UserID != reader.ID || l.CostMicros != 100*2+20*10 || l.Currency != "CNY" || l.Model != "fake-1" || l.RefID != bookID) {
+			t.Fatalf("对话用量记录异常: %+v", l)
+		}
+		if l.Feature == "qa.index" && (l.UserID != 0 || l.Kind != "embed" || !l.Estimated) {
+			t.Fatalf("索引用量应记为系统调用: %+v", l)
+		}
+	}
+	if byFeature["qa.ask"] != 1 || byFeature["qa.agent"] != 2 || byFeature["qa.index"] != 1 { // 首次提问时向量尚未计算，不产生查询向量调用
+		t.Fatalf("按功能记录异常: %v", byFeature)
+	}
+
+	// 我的用量与管理端统计
+	_, mine := e.as(t, reader, http.MethodGet, "/api/v1/users/me/ai-usage", "")
+	if data(mine)["used_tokens"].(float64) < 360 || data(mine)["limit"].(float64) != -1 {
+		t.Fatalf("我的用量异常: %v", mine)
+	}
+	_, sum := e.req(t, e.token, http.MethodGet, "/api/v1/admin/ai/usage?days=7", "")
+	total := data(sum)["total"].(map[string]any)
+	if total["cost_micros"].(float64) < 3*400 || len(data(sum)["daily"].([]any)) != 7 || data(sum)["currency"] != "CNY" {
+		t.Fatalf("管理端统计异常: %v", sum)
+	}
+	if top := data(sum)["top_users"].([]any); len(top) == 0 || top[0].(map[string]any)["username"] != "reader" {
+		t.Fatalf("用量最高用户异常: %v", top)
+	}
+	_, logPage := e.req(t, e.token, http.MethodGet, "/api/v1/admin/ai/usage/logs?feature=qa.agent&user=reader", "")
+	if data(logPage)["total"].(float64) != 2 {
+		t.Fatalf("明细筛选异常: %v", logPage)
+	}
+
+	// 深度模式权益为 0：不可用
+	if err := e.app.SetSetting("qa_agent_daily", "0", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, st := e.as(t, reader, http.MethodGet, base+"/status", ""); data(st)["agent_available"] != false {
+		t.Fatalf("深度模式权益为 0 时不可用: %v", st)
+	}
+	if status, _ := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"x","mode":"agent"}`); status != http.StatusTooManyRequests {
+		t.Fatalf("深度模式应被拒绝: %d", status)
+	}
+
+	// 每月 tokens 权益：已用超过额度后拒绝，且不计入当日次数
+	if err := e.app.SetSetting("ai_monthly_tokens", "300", ""); err != nil {
+		t.Fatal(err)
+	}
+	status, p := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"还能问吗？"}`)
+	if status != http.StatusTooManyRequests || !strings.Contains(p["message"].(string)+fmt.Sprint(p["error"]), "本月") {
+		t.Fatalf("超出每月额度应 429: %d %v", status, p)
+	}
+	_, quota := e.as(t, reader, http.MethodGet, "/api/v1/qa/me/quota", "")
+	if data(quota)["used"].(float64) != 2 || data(quota)["agent_used"].(float64) != 1 {
+		t.Fatalf("当日次数异常: %v", quota)
+	}
+	// 其他用户未超额度，不受影响
+	if status, p := e.as(t, other, http.MethodPost, base+"/ask", `{"question":"缓存？"}`); status != http.StatusOK {
+		t.Fatalf("其他用户应可提问: %d %v", status, p)
+	}
+
+	// 我的问答历史：跨书、可删除（只能删自己的）
+	_, hist := e.as(t, reader, http.MethodGet, "/api/v1/qa/me/asks", "")
+	items := data(hist)["items"].([]any)
+	if data(hist)["total"].(float64) != 2 || items[0].(map[string]any)["book"].(map[string]any)["title"] != "用量之书" {
+		t.Fatalf("我的问答历史异常: %v", hist)
+	}
+	first := uint(items[0].(map[string]any)["ask"].(map[string]any)["id"].(float64))
+	if status, _ := e.as(t, other, http.MethodDelete, fmt.Sprintf("/api/v1/qa/asks/%d", first), ""); status != http.StatusNotFound {
+		t.Fatalf("不能删除他人记录: %d", status)
+	}
+	if status, _ := e.as(t, reader, http.MethodDelete, fmt.Sprintf("/api/v1/qa/asks/%d", first), ""); status != http.StatusOK {
+		t.Fatalf("删除记录失败: %d", status)
+	}
+	e.as(t, reader, http.MethodPost, base+"/questions", `{"title":"社区提问"}`)
+	if _, mq := e.as(t, reader, http.MethodGet, "/api/v1/qa/me/questions", ""); data(mq)["total"].(float64) != 1 {
+		t.Fatalf("我的提问异常: %v", mq)
 	}
 }

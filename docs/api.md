@@ -533,13 +533,18 @@ Authorization: Bearer <token>
 读者就某本书的内容提问：AI 只依据本书（读者有权阅读全文的已发布章节）作答并标注出处；也可在社区问答中向作者和其他读者提问。模型经核心「AI 服务」（`/admin/ai`）调用，插件不接触密钥。
 - **索引**：已发布章节按 H2/H3 小节切分（锚点 `h-N` 与阅读页一致，过长小节按段落再切，约 900 字），关键词检索用中日韩单字+二元组与拉丁词的 BM25；配置了嵌入模型时后台任务 `qa.index` 为分块计算向量，检索改为「向量 + 关键词」各半的混合打分。内容变化（章节 ID/更新时间摘要）时提问前自动重建，未变化的分块复用已算好的向量。
 - **作答**：标准模式检索 `top_k` 个片段后一次作答；Agent 模式（`mode=agent`）由模型调用 `search_book` / `read_section` / `get_toc` 工具最多 6 轮后作答。回答中的 `[n]` 映射为出处 `citations[]{n, doc_id, doc_slug, doc_title, heading, anchor, snippet}`，前端链接到 `/book/reader/<书>/<章节>#<anchor>`。划词提问（`selection` + `doc_id`）优先加入所在章节中包含选中文字的小节。
-- **额度**：每日 AI 提问次数为权益 `qa.ai_daily`（基础值 20，可在成长等级/会员方案中提升或设为不限），超出返回 429。内容门禁同样生效：未解锁的付费章节不参与检索。
+- **额度（均为权益，可在成长等级/会员方案中提升或设为不限）**：每日 AI 提问次数 `qa.ai_daily`（基础 20）；其中深度模式另计 `qa.agent_daily`（基础 5，0 表示当前等级/会员不含深度模式）；另受核心每月 AI 用量 `ai.monthly_tokens` 约束。只计成功且实际调用了模型的提问（失败、书中无相关内容不计），超出返回 429。
+- **消耗**：每条问答记录 `calls`（模型调用次数）、`input_tokens`、`output_tokens`、`estimated`；每次模型调用另写入核心 AI 用量记录（功能 `qa.ask` / `qa.agent`，后台向量化为系统调用 `qa.index`）。内容门禁同样生效：未解锁的付费章节不参与检索。
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| GET | `/qa/books/:id/status` | `{ai_available, agent_available, vector_search, index?{chunks, embedded, indexed_at, embed_error}, quota?{used, limit(-1 不限)}, can_reindex?}` | 书籍可读 |
+| GET | `/qa/books/:id/status` | `{ai_available, agent_available, vector_search, index?{chunks, embedded, indexed_at, embed_error}, quota?{used, limit, agent_used, agent_limit}（-1 不限）, can_reindex?}`；深度模式权益为 0 时 `agent_available=false` | 书籍可读 |
 | POST | `/qa/books/:id/ask` | `{question(≤1000), selection?(≤2000), doc_id?, mode: rag\|agent}` → 问答记录（`answer`、`citations`、`steps`）；只填 `selection` 时视为「请解释这段内容」 | 登录 + `qa:use` |
 | GET | `/qa/books/:id/asks?page=` | 我在本书的 AI 问答记录（新→旧） | 登录 + `qa:use` |
+| GET | `/qa/me/asks?page=&book_id=` | 我在全部书籍的 AI 问答记录 `items[]{ask, book{id,slug,title}, book_available}`（含消耗） | 登录 + `qa:use` |
+| DELETE | `/qa/asks/:id` | 删除自己的一条 AI 问答记录（不退还当日次数） | 登录 + `qa:use` |
+| GET | `/qa/me/questions?page=` | 我在社区的提问 `items[]{question, book, book_available}` | 登录 + `qa:use` |
+| GET | `/qa/me/quota` | 今日额度 `{used, limit, agent_used, agent_limit}` | 登录 + `qa:use` |
 | POST | `/qa/books/:id/reindex` | 作者/协作者/管理员立即重建索引（向量在后台计算） | 登录 + `qa:use` |
 | GET | `/qa/books/:id/questions?filter=all\|open\|resolved&q=&page=` | 社区问题列表（已解决在前，按更新时间排序），含提问者 `user` | 书籍可读 |
 | POST | `/qa/books/:id/questions` | `{title(≤200), body?, doc_id?, selection?, ask_id?}` 提问；`ask_id` 附上自己的 AI 回答作参考；通知作者 | 登录 + `qa:use` |
