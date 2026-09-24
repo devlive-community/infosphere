@@ -6,6 +6,7 @@ import FeatureGate from '@/components/FeatureGate'
 import Seo from '@/components/Seo'
 import { CitationList } from '@/components/qa/QAAskPanel'
 import QATrace from '@/components/qa/QATrace'
+import { useAskStreams } from '@/lib/qa-stream'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
@@ -98,6 +99,10 @@ function AskHistory() {
       .catch((e) => showToast({ title: t('qa.mine.loadFailed'), message: (e as Error).message, tone: 'error' }))
   }, [page, showToast, t])
   useEffect(() => { load() }, [load])
+  // 生成中的记录经 SSE 实时更新状态与调用链
+  useAskStreams(data?.items.map((i) => i.ask) || [], (id, next) => setData((d) => d && {
+    ...d, items: d.items.map((i) => i.ask.id === id ? { ...i, ask: next(i.ask) } : i),
+  }))
 
   async function remove(id: number) {
     if (!await confirmAction({ title: t('qa.mine.deleteTitle'), message: t('qa.mine.deleteConfirm'), confirmLabel: t('common.actions.delete'), danger: true })) return

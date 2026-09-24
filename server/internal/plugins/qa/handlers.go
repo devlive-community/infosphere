@@ -37,6 +37,7 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	api.GET("/qa/me/asks", with(b.MyAllAsks)...)
 	api.DELETE("/qa/asks/:id", with(b.DeleteAsk)...)
 	api.GET("/qa/asks/:id", with(b.GetAsk)...)
+	api.GET("/qa/asks/:id/stream", core.RequireAuthStream(), feat, use, b.StreamAsk)
 	api.POST("/qa/asks/:id/cancel", with(b.CancelAsk)...)
 	api.GET("/qa/me/questions", with(b.MyQuestions)...)
 	api.GET("/qa/me/quota", with(b.MyQuota)...)
@@ -194,7 +195,7 @@ func toAskView(a Ask) askView {
 
 // AskAI POST /qa/books/:id/ask {question, doc_id?, selection?, mode: rag|agent}
 // 校验与额度判定后立即返回 status=running 的问答记录，回答在后台生成（不限时长与轮数）；
-// 客户端轮询 GET /qa/asks/:id 获取实时调用链与结果，可 POST /qa/asks/:id/cancel 取消。
+// 客户端订阅 GET /qa/asks/:id/stream（SSE）获取实时调用链与结果，可 POST /qa/asks/:id/cancel 取消。
 func (b *behavior) AskAI(c *gin.Context) {
 	book, found := b.readableBook(c)
 	if !found {

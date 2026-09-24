@@ -4,6 +4,7 @@ import type { PageResult, User } from '@/lib/types'
 import { renderAnswer, citationHref, type QAAsk, type QACitation, type QAStatus } from '@/lib/qa'
 import { formatTokens } from '@/lib/ai-usage'
 import QATrace from '@/components/qa/QATrace'
+import { useAskStreams } from '@/lib/qa-stream'
 import { Badge, Button, ButtonLink, Loading, Switch, Textarea, Tooltip, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
@@ -55,29 +56,11 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
   useEffect(() => { void load() }, [load])
   useEffect(() => { bottomRef.current?.scrollIntoView({ block: 'end' }) }, [asks.length])
 
-  // 进行中的问答在后台生成：轮询获取实时调用链与结果；结束后刷新今日额度
+  // 进行中的问答在后台生成：经 SSE 实时接收调用链与结果；结束后刷新今日额度
+  useAskStreams(asks, (id, next) => setAsks((list) => list.map((a) => a.id === id ? next(a) : a)),
+    () => { api<QAStatus>(`/qa/books/${book.id}/status`).then(setStatus).catch(() => {}) })
   const runningKey = asks.filter((a) => a.status === 'running').map((a) => a.id).join(',')
-  useEffect(() => {
-    if (!runningKey) return
-    const ids = runningKey.split(',').map(Number)
-    let busy = false
-    const timer = setInterval(async () => {
-      if (busy) return
-      busy = true
-      try {
-        const latest = await Promise.all(ids.map((id) => api<QAAsk>(`/qa/asks/${id}`).catch(() => null)))
-        const byId = new Map(latest.filter((a): a is QAAsk => Boolean(a)).map((a) => [a.id, a]))
-        setAsks((list) => list.map((a) => byId.get(a.id) || a))
-        if (latest.some((a) => a && a.status !== 'running')) {
-          api<QAStatus>(`/qa/books/${book.id}/status`).then(setStatus).catch(() => {})
-        }
-      } finally {
-        busy = false
-      }
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [runningKey, book.id])
-  const anyRunning = runningKey !== '' 
+  const anyRunning = runningKey !== ''
   useEffect(() => { if (selection) inputRef.current?.focus() }, [selection])
 
   const left = (used: number, limit: number) => (limit < 0 ? Infinity : Math.max(0, limit - used))

@@ -46,6 +46,8 @@ type Core interface {
 
 	// 路由中间件（返回 gin.HandlerFunc，供插件注册受保护路由）
 	RequireAuth() gin.HandlerFunc
+	// RequireAuthStream 同 RequireAuth，另接受 ?token= 查询参数（供 EventSource 事件流接口使用）。
+	RequireAuthStream() gin.HandlerFunc
 	OptionalAuth() gin.HandlerFunc
 	RequirePermission(perm authz.Permission) gin.HandlerFunc
 	RequireFeaturePlugin(key string) gin.HandlerFunc

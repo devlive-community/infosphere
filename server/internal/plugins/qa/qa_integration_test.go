@@ -1,6 +1,7 @@
 package qa_test
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -612,3 +613,102 @@ func TestQAAgentUnboundedTraceAndCancel(t *testing.T) {
 		t.Fatalf("遗留记录应标记中断: %+v", orphan)
 	}
 }
+
+// readSSE 读取事件流直到 done（或连接结束），返回按顺序的 (事件名, 数据)。
+func readSSE(t *testing.T, e *testEnv, u *models.User, path string) (int, [][2]string) {
+	t.Helper()
+	token, _ := auth.GenerateToken(e.app.Config.Secret, u.ID, u.Username, u.Role)
+	resp, err := e.client.Get(e.server.URL + path + "?token=" + token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return resp.StatusCode, nil
+	}
+	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {
+		t.Fatalf("应为事件流: %s", ct)
+	}
+	var events [][2]string
+	name := ""
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1<<20), 1<<20)
+	for scanner.Scan() {
+		line := scanner.Text()
+		switch {
+		case strings.HasPrefix(line, "event: "):
+			name = strings.TrimPrefix(line, "event: ")
+		case strings.HasPrefix(line, "data: "):
+			events = append(events, [2]string{name, strings.TrimPrefix(line, "data: ")})
+			if name == "done" {
+				return resp.StatusCode, events
+			}
+		}
+	}
+	return resp.StatusCode, events
+}
+
+func TestQAStreamProgress(t *testing.T) {
+	fake := &fakeAI{toolRounds: 3, delay: 150 * time.Millisecond}
+	aiServer := httptest.NewServer(fake.handler())
+	t.Cleanup(aiServer.Close)
+	e := newTestEnv(t, aiServer.URL)
+	author, reader, other := e.user(t, "author"), e.user(t, "reader"), e.user(t, "other")
+	_, created := e.as(t, author, http.MethodPost, "/api/v1/books", `{"title":"推送之书","status":"published","is_public":true}`)
+	bookID := uint(data(created)["id"].(float64))
+	base := fmt.Sprintf("/api/v1/qa/books/%d", bookID)
+	e.as(t, author, http.MethodPost, fmt.Sprintf("/api/v1/books/%d/documents", bookID), `{"title":"第一章","content":"## 缓存\n\n缓存可以加速读取。\n\n## 索引\n\n索引帮助检索。","status":"published"}`)
+
+	_, p := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"索引怎么实现？","mode":"agent"}`)
+	id := uint(data(p)["id"].(float64))
+	stream := fmt.Sprintf("/api/v1/qa/asks/%d/stream", id)
+	if status, _ := readSSE(t, e, other, stream); status != http.StatusNotFound {
+		t.Fatalf("不能订阅他人的问答: %d", status)
+	}
+	if resp, err := e.client.Get(e.server.URL + stream); err != nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("未登录应 401: %v %v", err, resp)
+	}
+	status, events := readSSE(t, e, reader, stream)
+	if status != http.StatusOK || len(events) < 3 || events[0][0] != "snapshot" || events[len(events)-1][0] != "done" {
+		t.Fatalf("事件序列异常: %d %v", status, events)
+	}
+	var snap struct {
+		Trace []TraceStepJSON `json:"trace"`
+	}
+	_ = json.Unmarshal([]byte(events[0][1]), &snap)
+	next := len(snap.Trace)
+	steps := 0
+	for _, ev := range events[1 : len(events)-1] {
+		if ev[0] != "step" {
+			t.Fatalf("中间事件应为 step: %v", ev)
+		}
+		var st struct {
+			Index int `json:"index"`
+		}
+		_ = json.Unmarshal([]byte(ev[1]), &st)
+		if st.Index < next { // 快照已包含的步骤，客户端去重
+			continue
+		}
+		if st.Index != next {
+			t.Fatalf("步骤应连续推送: 期望 %d 实际 %d", next, st.Index)
+		}
+		next++
+		steps++
+	}
+	var done struct {
+		Status string          `json:"status"`
+		Trace  []TraceStepJSON `json:"trace"`
+		Answer string          `json:"answer"`
+	}
+	_ = json.Unmarshal([]byte(events[len(events)-1][1]), &done)
+	if steps == 0 || done.Status != "done" || done.Answer == "" || len(done.Trace) != next {
+		t.Fatalf("推送与最终结果不一致: steps=%d next=%d done=%+v", steps, next, done)
+	}
+	// 已结束的问答：立即推送快照与 done
+	if _, again := readSSE(t, e, reader, stream); len(again) != 2 || again[0][0] != "snapshot" || again[1][0] != "done" {
+		t.Fatalf("已结束问答的事件流异常: %v", again)
+	}
+}
+
+// TraceStepJSON 仅用于测试中解析调用链长度。
+type TraceStepJSON = map[string]any

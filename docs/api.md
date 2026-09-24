@@ -534,7 +534,7 @@ Authorization: Bearer <token>
 读者就某本书的内容提问：AI 只依据本书（读者有权阅读全文的已发布章节）作答并标注出处；也可在社区问答中向作者和其他读者提问。模型经核心「AI 服务」（`/admin/ai`）调用，插件不接触密钥。
 - **索引**：已发布章节按 H2/H3 小节切分（锚点 `h-N` 与阅读页一致，过长小节按段落再切，约 900 字），关键词检索用中日韩单字+二元组与拉丁词的 BM25；配置了嵌入模型时后台任务 `qa.index` 为分块计算向量，检索改为「向量 + 关键词」各半的混合打分。内容变化（章节 ID/更新时间摘要）时提问前自动重建，未变化的分块复用已算好的向量。
 - **作答**：标准模式检索 `top_k` 个片段后一次作答；Agent 模式（`mode=agent`）由模型调用 `search_book` / `read_section` / `get_toc` 工具，直到模型不再调用工具为止（不限轮数，不设整体超时；与之前完全相同的工具调用不重复执行，直接提示模型基于已有结果作答）。回答中的 `[n]` 映射为出处 `citations[]{n, doc_id, doc_slug, doc_title, heading, anchor, snippet}`，前端链接到 `/book/reader/<书>/<章节>#<anchor>`。划词提问（`selection` + `doc_id`）优先加入所在章节中包含选中文字的小节。
-- **后台生成与调用链**：提问后立即返回 `status=running` 的记录，回答在后台生成（不受反向代理超时影响），读者轮询 `GET /qa/asks/:id` 获取实时进度，可取消；状态 running\|done\|failed\|canceled。每条记录含调用链 `trace[]`（按顺序：`context` 划词/当前章节上下文、`embed` 查询向量化、`retrieve` 检索命中、`model` 模型调用（模型、输入/输出 tokens、耗时、请求的工具及参数）、`tool` 工具执行（参数、检索方式、返回的小节））、合计 `calls`/`input_tokens`/`output_tokens`/`duration_ms`，以及与核心 AI 用量一致的 `trace_id`（可在「我的 AI 用量」查看同一链条的全部调用）。服务重启时遗留的进行中记录由巡检标记为中断。错误只返回面向读者的说明，不透出 AI 服务原始报错。
+- **后台生成与调用链**：提问后立即返回 `status=running` 的记录，回答在后台生成（不受反向代理超时影响），读者订阅 `GET /qa/asks/:id/stream`（SSE）实时接收每一步，可取消；状态 running\|done\|failed\|canceled。每条记录含调用链 `trace[]`（按顺序：`context` 划词/当前章节上下文、`embed` 查询向量化、`retrieve` 检索命中、`model` 模型调用（模型、输入/输出 tokens、耗时、请求的工具及参数）、`tool` 工具执行（参数、检索方式、返回的小节））、合计 `calls`/`input_tokens`/`output_tokens`/`duration_ms`，以及与核心 AI 用量一致的 `trace_id`（可在「我的 AI 用量」查看同一链条的全部调用）。服务重启时遗留的进行中记录由巡检标记为中断。错误只返回面向读者的说明，不透出 AI 服务原始报错。
 - **额度（均为权益，可在成长等级/会员方案中提升或设为不限）**：每日 AI 提问次数 `qa.ai_daily`（基础 20）；其中深度模式另计 `qa.agent_daily`（基础 5，0 表示当前等级/会员不含深度模式）；另受核心每月 AI 用量 `ai.monthly_tokens` 约束。计入进行中与成功且实际调用了模型的提问（失败、取消、书中无相关内容不计），超出返回 429。
 - **消耗**：每条问答记录 `calls`（模型调用次数）、`input_tokens`、`output_tokens`、`estimated`；每次模型调用另写入核心 AI 用量记录（功能 `qa.ask` / `qa.agent`，后台向量化为系统调用 `qa.index`）。内容门禁同样生效：未解锁的付费章节不参与检索。
 
@@ -543,6 +543,7 @@ Authorization: Bearer <token>
 | GET | `/qa/books/:id/status` | `{ai_available, agent_available, vector_search, index?{chunks, embedded, indexed_at, embed_error}, quota?{used, limit, agent_used, agent_limit}（-1 不限）, can_reindex?}`；深度模式权益为 0 时 `agent_available=false` | 书籍可读 |
 | POST | `/qa/books/:id/ask` | `{question(≤1000), selection?(≤2000), doc_id?, mode: rag\|agent}` → 立即返回 `status=running` 的问答记录，回答在后台生成；只填 `selection` 时视为「请解释这段内容」 | 登录 + `qa:use` |
 | GET | `/qa/asks/:id` | 我的一条问答：状态、回答、出处、实时调用链 `trace[]` 与消耗 | 登录 + `qa:use` |
+| GET | `/qa/asks/:id/stream?token=` | 实时进度（SSE，`?token=` 鉴权，EventSource 无法带请求头）：先推 `snapshot`（完整记录），之后每新增一步推 `step` `{index, step, calls, input_tokens, output_tokens, estimated, duration_ms}`（客户端按 `index` 去重），结束推 `done`（最终记录）后关闭；25 秒心跳。消费过慢时服务端断开，EventSource 自动重连并重新获得快照 | 登录 + `qa:use` |
 | POST | `/qa/asks/:id/cancel` | 取消进行中的问答（已产生的调用照常记入 AI 用量）；已结束返回 409 | 登录 + `qa:use` |
 | GET | `/qa/books/:id/asks?page=` | 我在本书的 AI 问答记录（新→旧，含进行中/失败/已取消，含调用链） | 登录 + `qa:use` |
 | GET | `/qa/me/asks?page=&book_id=` | 我在全部书籍的 AI 问答记录 `items[]{ask, book{id,slug,title}, book_available}`（含消耗） | 登录 + `qa:use` |

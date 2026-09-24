@@ -13,7 +13,7 @@ import (
 )
 
 // 问答在后台生成：不受单个 HTTP 请求（及反向代理）超时约束，也不限制时长与轮数；
-// 每一步写入调用链供读者实时查看；读者可取消。进程内登记进行中的问答，服务重启后遗留的进行中记录由巡检标记为中断。
+// 每一步写入调用链并经 SSE 推送给正在查看的读者（见 stream.go）；读者可取消。进程内登记进行中的问答，服务重启后遗留的进行中记录由巡检标记为中断。
 
 var runningAsks sync.Map // 问答 ID → context.CancelFunc
 
@@ -46,10 +46,14 @@ func (b *behavior) runAsk(ctx context.Context, rec Ask, u *models.User, book *mo
 	started := time.Now()
 	db := b.core.Gorm()
 	tr := newTracer(func(steps []TraceStep, t traceTotals) {
+		elapsed := time.Since(started).Milliseconds()
 		db.Model(&Ask{}).Where("id = ?", rec.ID).Updates(map[string]any{
 			"trace": encodeTrace(steps), "calls": t.Calls, "input_tokens": t.InputTokens, "output_tokens": t.OutputTokens,
-			"estimated": t.Estimated, "duration_ms": time.Since(started).Milliseconds(),
+			"estimated": t.Estimated, "duration_ms": elapsed,
 		})
+		// 写库后再推送，保证订阅者读到的快照不会缺少已推送的步骤
+		asksHub.publish(rec.ID, "step", stepEvent{Index: len(steps) - 1, Step: steps[len(steps)-1], Calls: t.Calls,
+			InputTokens: t.InputTokens, OutputTokens: t.OutputTokens, Estimated: t.Estimated, DurationMs: elapsed})
 	})
 	if _, err := b.ensureIndex(ctx, book.ID); err != nil {
 		status := askFailed
@@ -86,10 +90,15 @@ func (b *behavior) finishAsk(id uint, started time.Time, status string, res answ
 		cites = []Citation{}
 	}
 	raw, _ := json.Marshal(cites)
-	b.core.Gorm().Model(&Ask{}).Where("id = ?", id).Updates(map[string]any{
+	db := b.core.Gorm()
+	db.Model(&Ask{}).Where("id = ?", id).Updates(map[string]any{
 		"status": status, "answer": res.Answer, "citations": string(raw), "steps": res.Steps, "error": errMsg,
 		"duration_ms": time.Since(started).Milliseconds(),
 	})
+	var final Ask
+	if db.First(&final, id).Error == nil {
+		asksHub.publish(id, "done", toAskView(final))
+	}
 }
 
 // sweepInterruptedAsks 把不在本进程中运行的「进行中」问答标记为中断（服务重启等）。
