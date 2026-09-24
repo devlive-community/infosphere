@@ -21,6 +21,8 @@ import BookVersions from '@/components/BookVersions'
 import BookCopyDialog from '@/components/BookCopyDialog'
 import BookReviews from '@/components/BookReviews'
 import PaidBookCard from '@/components/PaidBookCard'
+import QACommunity from '@/components/qa/QACommunity'
+import { qaEnabled } from '@/lib/qa'
 import BookExtraInfo from '@/components/BookExtraInfo'
 import ReportButton from '@/components/ReportButton'
 import CoverImage from '@/components/CoverImage'
@@ -116,9 +118,13 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
   const tagsEnabled = Array.isArray((site as Record<string, unknown>).feature_plugins) && ((site as Record<string, unknown>).feature_plugins as string[]).includes('tags')
   const followEnabled = Array.isArray((site as Record<string, unknown>).feature_plugins) && ((site as Record<string, unknown>).feature_plugins as string[]).includes('book-follow')
   const slug = typeof router.query.slug === 'string' ? router.query.slug : ''
-  // 目录 / 评价 横向 Tab：由 URL 承载（?tab=reviews），浅路由切换，可分享可回退
-  const activeTab = router.query.tab === 'reviews' ? 'reviews' : 'toc'
-  const goTab = (value: string) => router.push({ pathname: '/book/detail/[slug]', query: { slug, ...(value === 'reviews' ? { tab: 'reviews' } : {}) } }, undefined, { shallow: true, scroll: false })
+  // 目录 / 评价 / 问答 横向 Tab：由 URL 承载（?tab=reviews|qa，问答详情 &question=ID），浅路由切换，可分享可回退
+  const qaOn = qaEnabled(site)
+  const activeTab = router.query.tab === 'reviews' ? 'reviews' : router.query.tab === 'qa' && qaOn ? 'qa' : 'toc'
+  const qaQuestion = Number(router.query.question) || null
+  const goTab = (value: string, question?: number | null) => router.push({ pathname: '/book/detail/[slug]', query: {
+    slug, ...(value !== 'toc' ? { tab: value } : {}), ...(value === 'qa' && question ? { question: String(question) } : {}),
+  } }, undefined, { shallow: true, scroll: false })
   // 私有/草稿书 SSR 无令牌取不到，挂载后携带本地令牌客户端重试（避免默认空白）
   const [book, setBook] = useState<Book | null>(ssrBook ?? null)
   const [copyOpen, setCopyOpen] = useState(false)
@@ -570,8 +576,9 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
             </div>
           </div>
 
-          <SegmentedTabs className="mb-6 mt-8 max-w-sm" value={activeTab} ariaLabel={t('detail.toc')} onChange={goTab}
-            items={[{ value: 'toc', label: t('detail.toc') }, { value: 'reviews', label: t('review.title') }]} />
+          <SegmentedTabs className="mb-6 mt-8 max-w-md" value={activeTab} ariaLabel={t('detail.toc')} onChange={(v) => goTab(v)}
+            items={[{ value: 'toc', label: t('detail.toc') }, { value: 'reviews', label: t('review.title') },
+              ...(qaOn ? [{ value: 'qa', label: t('qa.detail.tab') }] : [])]} />
           {activeTab === 'toc' ? (
           <div className="max-w-3xl">
             <div className="mb-4 flex items-baseline gap-3">
@@ -659,6 +666,22 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               )}
             </div>
           </div>
+          ) : activeTab === 'qa' ? (
+            <div className="max-w-3xl space-y-4">
+              {readDocSlug && !qaQuestion && (
+                <div className="flex flex-col gap-3 rounded-xl border border-primary-100 bg-primary-50/60 p-4 sm:flex-row sm:items-center">
+                  <i className="fa-solid fa-wand-magic-sparkles text-xl text-primary-500" aria-hidden="true" />
+                  <div className="min-w-0 flex-1 text-sm">
+                    <div className="font-medium text-slate-900">{t('qa.detail.aiTitle')}</div>
+                    <div className="mt-0.5 text-slate-500">{t('qa.detail.aiHint')}</div>
+                  </div>
+                  <ButtonLink size="sm" href={`/book/reader/${encodeURIComponent(book.slug)}/${encodeURIComponent(readDocSlug)}?qa=ai`}>{t('qa.detail.aiOpen')}</ButtonLink>
+                </div>
+              )}
+              <QACommunity user={user} book={{ id: book.id, slug: book.slug }} questionId={qaQuestion}
+                onOpenQuestion={(id) => goTab('qa', id)}
+                loginHref={`/login?next=${encodeURIComponent(`/book/detail/${book.slug}?tab=qa`)}`} />
+            </div>
           ) : (
             <BookReviews bookId={book.id} authorId={book.user_id} />
           )}

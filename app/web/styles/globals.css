@@ -271,3 +271,10 @@ body {
 .markdown-body .md-alert-warning .md-alert-title { @apply text-amber-600; }
 .markdown-body .md-alert-caution { @apply border-rose-400 bg-rose-50; }
 .markdown-body .md-alert-caution .md-alert-title { @apply text-rose-600; }
+
+/* 书籍问答：回答中的出处角标与紧凑排版 */
+.qa-cite { @apply mx-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded bg-primary-100 px-1 align-text-top text-[10px] font-semibold leading-none text-primary-700 no-underline; }
+a.qa-cite:hover { @apply bg-primary-500 text-white; }
+.qa-answer > :first-child { @apply mt-0; }
+.qa-answer > :last-child { @apply mb-0; }
+.qa-answer p { @apply my-2; }

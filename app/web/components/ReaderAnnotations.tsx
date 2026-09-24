@@ -77,11 +77,20 @@ function wrapRange(root: HTMLElement, start: number, end: number, annotation: Re
   }
 }
 
-export default function ReaderAnnotations({ user, book, doc, contentRef }: {
+// SelectionAction 划词工具栏的扩展按钮（由阅读页按已启用的功能传入，组件本身不感知具体功能）
+export interface SelectionAction {
+  key: string
+  icon: string
+  label: string
+  onSelect: (quote: string) => void
+}
+
+export default function ReaderAnnotations({ user, book, doc, contentRef, selectionActions = [] }: {
   user: User | null
   book: Book
   doc: Document
   contentRef: RefObject<HTMLDivElement>
+  selectionActions?: SelectionAction[]
 }) {
   const { showToast, confirmAction } = useFeedback()
   const { t } = useTranslation()
@@ -127,6 +136,7 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
     }
   }, [contentRef, items, t])
 
+  const toolbarWidth = 170 + selectionActions.length * 90
   useEffect(() => {
     const root = contentRef.current
     if (!root || !user) return
@@ -148,14 +158,14 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
       const text = rootText(annotationRoot)
       const rect = range.getBoundingClientRect()
       setSelection({
-        top: Math.max(12, rect.top - 48), left: Math.min(window.innerWidth - 170, Math.max(12, rect.left + rect.width / 2 - 80)),
+        top: Math.max(12, rect.top - 48), left: Math.min(window.innerWidth - toolbarWidth, Math.max(12, rect.left + rect.width / 2 - toolbarWidth / 2)),
         quote, prefix: text.slice(Math.max(0, start - 80), start), suffix: text.slice(end, end + 80),
         startOffset: start, endOffset: end,
       })
     }
     annotationRoot.addEventListener('mouseup', handleMouseUp)
     return () => annotationRoot.removeEventListener('mouseup', handleMouseUp)
-  }, [contentRef, user])
+  }, [contentRef, user, toolbarWidth])
 
   const bookmarked = useMemo(() => items.find((item) => item.kind === 'bookmark'), [items])
 
@@ -236,6 +246,11 @@ export default function ReaderAnnotations({ user, book, doc, contentRef }: {
     <Card className="fixed z-[170] flex items-center gap-1 p-1 shadow-xl" style={{ top: selection.top, left: selection.left }}>
       <Button size="sm" variant="ghost" disabled={saving} onClick={() => void createFromSelection('highlight', selection)}><i className="fa-solid fa-highlighter" aria-hidden="true" />{t('annot.badgeHighlight')}</Button>
       <Button size="sm" variant="ghost" disabled={saving} onClick={() => { setNote(''); setEditing({ annotation: null, selection }) }}><i className="fa-solid fa-note-sticky" aria-hidden="true" />{t('annot.badgeNote')}</Button>
+      {selectionActions.map((action) => (
+        <Button key={action.key} size="sm" variant="ghost" onClick={() => { action.onSelect(selection.quote); setSelection(null); window.getSelection()?.removeAllRanges() }}>
+          <i className={`fa-solid ${action.icon}`} aria-hidden="true" />{action.label}
+        </Button>
+      ))}
     </Card>, document.body,
   )
 

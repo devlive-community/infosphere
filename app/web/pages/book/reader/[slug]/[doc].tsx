@@ -8,7 +8,7 @@ import { API_BASE, formatDate, formatNumber, api } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import Seo from '@/components/Seo'
 import UserAvatar from '@/components/UserAvatar'
-import { ButtonLink, Input, Tooltip } from '@/components/ui'
+import { Button, ButtonLink, Input, Tooltip } from '@/components/ui'
 import DocTreeIcon from '@/components/DocTreeIcon'
 import { CheckCircleSmallIcon, ChevronDownIcon, ChevronRightIcon, PencilIcon } from '@/components/icons'
 import { saveReadingProgress, getReadingProgress } from '@/lib/reading-progress'
@@ -17,6 +17,8 @@ import Comments from '@/components/Comments'
 import ReaderAnnotations from '@/components/ReaderAnnotations'
 import type { PaidBookInfo } from '@/lib/paid'
 import PaywallCard from '@/components/PaywallCard'
+import QADrawer, { type QATab } from '@/components/qa/QADrawer'
+import { qaEnabled, citationHref, type QACitation } from '@/lib/qa'
 import ReportButton from '@/components/ReportButton'
 import BookTranslations from '@/components/BookTranslations'
 import BookVersions from '@/components/BookVersions'
@@ -131,6 +133,28 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
     if (!paidEnabled) return
     api<PaidBookInfo>(`/paid/books/${book.id}`).then((r) => setLockedSet(new Set(r.enabled ? r.locked_doc_ids : []))).catch(() => {})
   }, [paidEnabled, book.id, user?.id])
+  // 书籍问答：抽屉状态由 URL 承载（?qa=ai|community&qaq=问题ID），可分享可回退；划词内容带入 AI 问答
+  const qaOn = qaEnabled(site)
+  const qaTab: QATab | null = !qaOn ? null : router.query.qa === 'community' ? 'community' : router.query.qa === 'ai' ? 'ai' : null
+  const qaQuestion = Number(router.query.qaq) || null
+  const [qaSelection, setQaSelection] = useState('')
+  const navigateQa = (tab: QATab | null, questionId?: number | null) => {
+    const { qa: _qa, qaq: _qaq, ...rest } = router.query
+    const query = { ...rest, ...(tab ? { qa: tab } : {}), ...(tab === 'community' && questionId ? { qaq: String(questionId) } : {}) }
+    router.push({ pathname: router.pathname, query }, undefined, { shallow: true, scroll: false })
+  }
+  const citeQa = (c: QACitation) => {
+    if (c.doc_id === doc?.id) {
+      const el = c.anchor ? document.getElementById(c.anchor) : null
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      else contentScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      if (window.innerWidth < 1024) navigateQa(null)
+      return
+    }
+    // 跳到其他章节：保留抽屉（桌面端），落地后按锚点定位
+    const keep = window.innerWidth >= 1024 && qaTab ? `?qa=${qaTab}` : ''
+    router.push(citationHref(book.slug, c).replace('#', `${keep}#`))
+  }
   const contentRef = useRef<HTMLDivElement>(null)
   // M17 扩展交互：tabs 切换 / mermaid 渲染 / lucide 图标（html 变化后重挂）
   useEffect(() => {
@@ -211,12 +235,20 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
 
   // 正文滚动容器（阅读区是 h-screen 内部滚动，window 不滚动，续读/上报/回顶都以此容器为准）
   const contentScrollRef = useRef<HTMLDivElement>(null)
+  // URL 带锚点（如问答出处 #h-3）时滚到对应标题；返回是否已定位
+  const scrollToHash = () => {
+    const id = typeof window === 'undefined' ? '' : decodeURIComponent(window.location.hash.slice(1))
+    const el = id ? document.getElementById(id) : null
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ block: 'start' }))
+    return Boolean(el)
+  }
 
   // 精确续读：首次进入时，若上次进度停留在当前章节则恢复滚动位置
   const restoredRef = useRef(false)
   useEffect(() => {
     if (restoredRef.current || !book || !doc) return
     restoredRef.current = true
+    if (scrollToHash()) return
     getReadingProgress(user?.username || '', book.id).then((p) => {
       if (p && p.docId === doc.id && (p.scrollPercent ?? 0) > 0) {
         requestAnimationFrame(() => {
@@ -232,7 +264,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
   const firstDocRef = useRef(true)
   useEffect(() => {
     if (firstDocRef.current) { firstDocRef.current = false; return }
-    contentScrollRef.current?.scrollTo({ top: 0 })
+    if (!scrollToHash()) contentScrollRef.current?.scrollTo({ top: 0 })
   }, [doc?.id])
 
   // 阅读时长与滚动位置上报（登录用户）：活跃计时（隐藏暂停），节流上报滚动百分比，
@@ -400,6 +432,11 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
         <div className="hidden min-w-0 truncate text-sm font-medium text-slate-900 md:block">
           {doc ? `${chapterPrefix}${doc.title}` : book.title}
         </div>
+        {qaOn && doc && (
+          <Button size="sm" variant={qaTab ? 'primary' : 'outline'} className="shrink-0" onClick={() => navigateQa(qaTab ? null : 'ai')}>
+            <i className="fa-solid fa-comments" aria-hidden="true" />{t('qa.reader.open')}
+          </Button>
+        )}
       </header>
       <div className="flex min-h-0 flex-1 items-stretch">
         {/* 左：书籍信息 + 目录 */}
@@ -512,7 +549,10 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                     <ReportButton targetType="document" targetId={doc.id} />
                   </div>
                   <hr className="my-6 border-slate-100" />
-                  <ReaderAnnotations user={user} book={book} doc={doc} contentRef={contentRef} />
+                  <ReaderAnnotations user={user} book={book} doc={doc} contentRef={contentRef} selectionActions={qaOn ? [{
+                    key: 'qa', icon: 'fa-wand-magic-sparkles', label: t('qa.reader.askSelection'),
+                    onSelect: (quote) => { setQaSelection(quote.slice(0, 2000)); navigateQa('ai') },
+                  }] : []} />
                   <div ref={contentRef} className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
                   {doc.paywall && <PaywallCard paywall={doc.paywall} />}
 
@@ -640,6 +680,12 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
           </button>
         )}
       </div>
+      {qaTab && doc && (
+        <QADrawer user={user} book={book} docId={doc.id} tab={qaTab} questionId={qaQuestion}
+          selection={qaSelection} onClearSelection={() => setQaSelection('')}
+          onNavigate={navigateQa} onCite={citeQa}
+          loginHref={`/login?next=${encodeURIComponent(`/book/reader/${book.slug}/${doc.slug}?qa=${qaTab}`)}`} />
+      )}
     </div>
   )
 }

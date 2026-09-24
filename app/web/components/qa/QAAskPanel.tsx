@@ -1,0 +1,257 @@
+import { MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { api, formatDate } from '@/lib/api'
+import type { PageResult, User } from '@/lib/types'
+import { renderAnswer, citationHref, type QAAsk, type QACitation, type QAStatus } from '@/lib/qa'
+import { Badge, Button, ButtonLink, Loading, Switch, Textarea, Tooltip, useFeedback } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
+
+interface Props {
+  user: User | null
+  book: { id: number; slug: string }
+  docId?: number
+  selection: string
+  onClearSelection: () => void
+  // onCite 点击出处：阅读页内同章节可直接滚动定位；未提供时按链接跳转
+  onCite?: (c: QACitation) => void
+  // onShared 发到社区问答后（阅读页据此切到社区 Tab 打开该问题）
+  onShared?: (questionId: number) => void
+  loginHref: string
+}
+
+// QAAskPanel AI 问答：基于本书内容作答并标注出处（标准检索 / Agent 多步检索），支持划词提问与发到社区。
+export default function QAAskPanel({ user, book, docId, selection, onClearSelection, onCite, onShared, loginHref }: Props) {
+  const { t } = useTranslation()
+  const { showToast } = useFeedback()
+  const [status, setStatus] = useState<QAStatus | null>(null)
+  const [asks, setAsks] = useState<QAAsk[]>([])
+  const [loading, setLoading] = useState(true)
+  const [question, setQuestion] = useState('')
+  const [agent, setAgent] = useState(false)
+  const [pending, setPending] = useState<{ question: string; selection: string } | null>(null)
+  const [sharing, setSharing] = useState<number | null>(null)
+  const [reindexing, setReindexing] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const st = await api<QAStatus>(`/qa/books/${book.id}/status`)
+      setStatus(st)
+      if (user) {
+        const page = await api<PageResult<QAAsk>>(`/qa/books/${book.id}/asks`, { params: { page_size: 20 } })
+        setAsks([...page.items].reverse())
+      }
+    } catch (e) {
+      showToast({ title: t('qa.ask.loadFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }, [book.id, user, showToast, t])
+
+  useEffect(() => { void load() }, [load])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ block: 'end' }) }, [asks.length, pending])
+  useEffect(() => { if (selection) inputRef.current?.focus() }, [selection])
+
+  const quotaLeft = status?.quota ? (status.quota.limit < 0 ? Infinity : Math.max(0, status.quota.limit - status.quota.used)) : 0
+
+  async function ask() {
+    const q = question.trim()
+    if ((!q && !selection) || pending) return
+    setPending({ question: q || t('qa.ask.explainSelection'), selection })
+    try {
+      const created = await api<QAAsk>(`/qa/books/${book.id}/ask`, { method: 'POST', body: {
+        question: q, selection, doc_id: docId || 0, mode: agent && status?.agent_available ? 'agent' : 'rag',
+      } })
+      setAsks((list) => [...list, created])
+      setQuestion('')
+      onClearSelection()
+      setStatus((s) => s && s.quota ? { ...s, quota: { ...s.quota, used: s.quota.used + 1 } } : s)
+    } catch (e) {
+      showToast({ title: t('qa.ask.failed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setPending(null)
+    }
+  }
+
+  async function share(item: QAAsk) {
+    setSharing(item.id)
+    try {
+      const q = await api<{ id: number }>(`/qa/books/${book.id}/questions`, { method: 'POST', body: {
+        title: item.question.slice(0, 200), ask_id: item.id,
+      } })
+      showToast({ message: t('qa.ask.shared'), tone: 'success' })
+      onShared?.(q.id)
+    } catch (e) {
+      showToast({ title: t('qa.ask.shareFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setSharing(null)
+    }
+  }
+
+  async function reindex() {
+    setReindexing(true)
+    try {
+      const index = await api<QAStatus['index']>(`/qa/books/${book.id}/reindex`, { method: 'POST' })
+      setStatus((s) => s && { ...s, index })
+      showToast({ message: t('qa.ask.reindexed'), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('qa.ask.reindexFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setReindexing(false)
+    }
+  }
+
+  function citeClick(event: MouseEvent<HTMLElement>, item: QAAsk) {
+    const link = (event.target as HTMLElement).closest('a[data-qa-cite]')
+    if (!link || !onCite) return
+    const c = item.citations.find((x) => String(x.n) === link.getAttribute('data-qa-cite'))
+    if (!c) return
+    event.preventDefault()
+    onCite(c)
+  }
+
+  if (loading) return <Loading className="py-16" label={t('qa.ask.loading')} />
+  if (!status?.ai_available) {
+    return <div className="m-4 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">{t('qa.ask.unavailable')}</div>
+  }
+  if (!user) {
+    return (
+      <div className="m-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+        <p>{t('qa.ask.loginHint')}</p>
+        <ButtonLink href={loginHref} size="sm" className="mt-3">{t('qa.ask.login')}</ButtonLink>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
+        <Badge tone={status.vector_search ? 'emerald' : 'slate'}>{t(status.vector_search ? 'qa.ask.hybridSearch' : 'qa.ask.keywordSearch')}</Badge>
+        {status.quota && (
+          <span>{status.quota.limit < 0 ? t('qa.ask.quotaUnlimited') : t('qa.ask.quota', { used: status.quota.used, limit: status.quota.limit })}</span>
+        )}
+        {status.can_reindex && (
+          <Tooltip content={t('qa.ask.reindexHint')}>
+            <Button size="sm" variant="ghost" className="ml-auto" loading={reindexing} onClick={() => void reindex()}>
+              <i className="fa-solid fa-rotate" aria-hidden="true" />{t('qa.ask.reindex')}
+            </Button>
+          </Tooltip>
+        )}
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4">
+        {asks.length === 0 && !pending && (
+          <div className="rounded-xl bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-500">
+            <p className="font-medium text-slate-700">{t('qa.ask.introTitle')}</p>
+            <p className="mt-1">{t('qa.ask.intro')}</p>
+          </div>
+        )}
+        {asks.map((item) => (
+          <AskItem key={item.id} item={item} bookSlug={book.slug} sharing={sharing === item.id} shareDisabled={sharing !== null}
+            onShare={() => void share(item)} onClick={(e) => citeClick(e, item)} onCite={onCite} />
+        ))}
+        {pending && (
+          <div className="space-y-2">
+            <QuestionBubble question={pending.question} selection={pending.selection} />
+            <Loading className="rounded-xl bg-slate-50 py-6" label={t(agent && status.agent_available ? 'qa.ask.thinkingAgent' : 'qa.ask.thinking')} />
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="shrink-0 space-y-2 border-t border-slate-200 bg-white px-4 py-3">
+        {selection && (
+          <div className="flex items-start gap-2 rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-800">
+            <i className="fa-solid fa-quote-left mt-0.5" aria-hidden="true" />
+            <span className="line-clamp-3 min-w-0 flex-1 break-words">{selection}</span>
+            <button type="button" aria-label={t('qa.ask.clearSelection')} onClick={onClearSelection} className="shrink-0 text-primary-500 hover:text-primary-700">
+              <i className="fa-solid fa-xmark" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+        <Textarea ref={inputRef} rows={3} value={question} maxLength={1000} disabled={Boolean(pending)}
+          placeholder={selection ? t('qa.ask.placeholderSelection') : t('qa.ask.placeholder')}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void ask() } }} />
+        <div className="flex items-center gap-3">
+          {status.agent_available && (
+            <Tooltip content={t('qa.ask.agentHint')}>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+                <Switch checked={agent} onChange={setAgent} ariaLabel={t('qa.ask.agent')} disabled={Boolean(pending)} />
+                {t('qa.ask.agent')}
+              </label>
+            </Tooltip>
+          )}
+          <Button className="ml-auto" size="sm" loading={Boolean(pending)} disabled={(!question.trim() && !selection) || quotaLeft <= 0} onClick={() => void ask()}>
+            <i className="fa-solid fa-paper-plane" aria-hidden="true" />{t('qa.ask.submit')}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function QuestionBubble({ question, selection }: { question: string; selection: string }) {
+  return (
+    <div className="ml-8 rounded-2xl rounded-tr-sm bg-primary-500 px-4 py-2.5 text-sm leading-6 text-white">
+      {selection && <blockquote className="mb-1.5 line-clamp-3 border-l-2 border-white/60 pl-2 text-xs text-white/85">{selection}</blockquote>}
+      <p className="whitespace-pre-wrap break-words">{question}</p>
+    </div>
+  )
+}
+
+function AskItem({ item, bookSlug, sharing, shareDisabled, onShare, onClick, onCite }: {
+  item: QAAsk
+  bookSlug: string
+  sharing: boolean
+  shareDisabled: boolean
+  onShare: () => void
+  onClick: (e: MouseEvent<HTMLElement>) => void
+  onCite?: (c: QACitation) => void
+}) {
+  const { t } = useTranslation()
+  const html = useMemo(() => renderAnswer(item.answer, bookSlug, item.citations), [item.answer, bookSlug, item.citations])
+  return (
+    <div className="space-y-2">
+      <QuestionBubble question={item.question} selection={item.selection} />
+      <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3">
+        <div className="markdown-body qa-answer text-sm" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />
+        {item.citations.length > 0 && <CitationList citations={item.citations} bookSlug={bookSlug} onCite={onCite} />}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          {item.mode === 'agent' && <Badge tone="violet">{t('qa.ask.agentSteps', { n: item.steps })}</Badge>}
+          <span>{formatDate(item.created_at)}</span>
+          <Tooltip content={t('qa.ask.shareHint')}>
+            <Button size="sm" variant="ghost" className="ml-auto" loading={sharing} disabled={shareDisabled} onClick={onShare}>
+              <i className="fa-solid fa-people-group" aria-hidden="true" />{t('qa.ask.share')}
+            </Button>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// CitationList 出处列表：章节 › 小节 + 片段摘要，点击定位到阅读位置
+export function CitationList({ citations, bookSlug, onCite }: { citations: QACitation[]; bookSlug: string; onCite?: (c: QACitation) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-2">
+      <div className="mb-1.5 text-xs font-medium text-slate-500">{t('qa.citations')}</div>
+      <ol className="space-y-1.5">
+        {citations.map((c) => (
+          <li key={c.n}>
+            <a href={citationHref(bookSlug, c)} onClick={(e) => { if (onCite) { e.preventDefault(); onCite(c) } }}
+              className="group flex gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-slate-50">
+              <span className="qa-cite shrink-0">{c.n}</span>
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-slate-700 group-hover:text-primary-600">{c.doc_title}{c.heading ? ` › ${c.heading}` : ''}</span>
+                <span className="line-clamp-2 text-slate-400">{c.snippet}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}

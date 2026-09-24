@@ -527,6 +527,28 @@ Authorization: Bearer <token>
 | POST | `/admin/paid/withdrawals/:id/pay` / `reject` | 确认已线下打款 / 驳回（需原因，金额退回余额），通知作者 | `paid:manage` |
 | GET/PUT | `/admin/paid/settings` | `{currency, commission_percent(0–90), min_withdrawal_cents, max_price_cents, allow_authors, upgrade_link(站内路径)}` | `paid:manage` |
 
+## 书籍问答（「书籍问答」插件，默认关闭）
+
+读者就某本书的内容提问：AI 只依据本书（读者有权阅读全文的已发布章节）作答并标注出处；也可在社区问答中向作者和其他读者提问。模型经核心「AI 服务」（`/admin/ai`）调用，插件不接触密钥。
+- **索引**：已发布章节按 H2/H3 小节切分（锚点 `h-N` 与阅读页一致，过长小节按段落再切，约 900 字），关键词检索用中日韩单字+二元组与拉丁词的 BM25；配置了嵌入模型时后台任务 `qa.index` 为分块计算向量，检索改为「向量 + 关键词」各半的混合打分。内容变化（章节 ID/更新时间摘要）时提问前自动重建，未变化的分块复用已算好的向量。
+- **作答**：标准模式检索 `top_k` 个片段后一次作答；Agent 模式（`mode=agent`）由模型调用 `search_book` / `read_section` / `get_toc` 工具最多 6 轮后作答。回答中的 `[n]` 映射为出处 `citations[]{n, doc_id, doc_slug, doc_title, heading, anchor, snippet}`，前端链接到 `/book/reader/<书>/<章节>#<anchor>`。划词提问（`selection` + `doc_id`）优先加入所在章节中包含选中文字的小节。
+- **额度**：每日 AI 提问次数为权益 `qa.ai_daily`（基础值 20，可在成长等级/会员方案中提升或设为不限），超出返回 429。内容门禁同样生效：未解锁的付费章节不参与检索。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/qa/books/:id/status` | `{ai_available, agent_available, vector_search, index?{chunks, embedded, indexed_at, embed_error}, quota?{used, limit(-1 不限)}, can_reindex?}` | 书籍可读 |
+| POST | `/qa/books/:id/ask` | `{question(≤1000), selection?(≤2000), doc_id?, mode: rag\|agent}` → 问答记录（`answer`、`citations`、`steps`）；只填 `selection` 时视为「请解释这段内容」 | 登录 + `qa:use` |
+| GET | `/qa/books/:id/asks?page=` | 我在本书的 AI 问答记录（新→旧） | 登录 + `qa:use` |
+| POST | `/qa/books/:id/reindex` | 作者/协作者/管理员立即重建索引（向量在后台计算） | 登录 + `qa:use` |
+| GET | `/qa/books/:id/questions?filter=all\|open\|resolved&q=&page=` | 社区问题列表（已解决在前，按更新时间排序），含提问者 `user` | 书籍可读 |
+| POST | `/qa/books/:id/questions` | `{title(≤200), body?, doc_id?, selection?, ask_id?}` 提问；`ask_id` 附上自己的 AI 回答作参考；通知作者 | 登录 + `qa:use` |
+| GET | `/qa/questions/:id` | 问题详情 + `answers[]{answer, user, accepted, is_author, can_delete}`（采纳的在最前）+ `can_accept`、`can_manage` | 书籍可读 |
+| DELETE | `/qa/questions/:id` | 提问者、作者/协作者或管理员删除问题（连同回答） | 登录 + `qa:use` |
+| POST | `/qa/questions/:id/answers` | `{body(≤10000)}` 回答；通知提问者 | 登录 + `qa:use` |
+| POST | `/qa/answers/:id/accept` | 提问者或作者采纳（再次调用取消），问题变为已解决；通知回答者 | 登录 + `qa:use` |
+| DELETE | `/qa/answers/:id` | 回答者、作者/协作者或管理员删除回答（删除被采纳的回答时问题回到待解决） | 登录 + `qa:use` |
+| GET/PUT | `/admin/qa/settings` | `{ai_enabled, agent_enabled, top_k(3–12)}`，PUT 可只传部分字段；另返回 `ai_chat_available`、`ai_embed_available` | 管理员 + `qa:manage` |
+
 ## 站内通知（登录用户）
 
 | 方法 | 路径 | 说明 | 权限 |

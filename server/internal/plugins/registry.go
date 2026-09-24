@@ -34,6 +34,7 @@ const (
 	KeyPayment          = "payment"
 	KeyModeration       = "moderation"
 	KeyPaidContent      = "paid-content"
+	KeyQA               = "qa"
 )
 
 // Meta 一个插件的声明式元数据（不含依赖 app 的行为）。
