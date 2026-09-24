@@ -1,0 +1,309 @@
+package payment_test
+
+import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
+	"gorm.io/gorm"
+
+	"knowforge/server/internal/app"
+	"knowforge/server/internal/auth"
+	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
+	"knowforge/server/internal/plugins/payment"
+)
+
+// 集成测试：启动完整应用、启用支付插件，以测试内登记的商品验证下单 → 支付确认 → 履约（幂等）全流程。
+
+var (
+	fulfilledMu sync.Mutex
+	fulfilled   = map[string]int{} // 订单号 → 履约次数
+	failNext    bool
+)
+
+func init() {
+	plugincore.RegisterProductProvider(plugincore.ProductProvider{
+		Kind: "test-item",
+		Resolve: func(_ plugincore.Core, _ *models.User, sku string) (plugincore.Product, error) {
+			if sku == "gone" {
+				return plugincore.Product{}, errors.New("商品已下架")
+			}
+			return plugincore.Product{Kind: "test-item", SKU: sku, Title: "测试商品 " + sku, AmountCents: 990, Currency: "CNY", ReturnLink: "/somewhere",
+				Payload: map[string]any{"sku": sku}}, nil
+		},
+		Fulfill: func(_ plugincore.Core, _ uint, orderNo string, payload map[string]any) error {
+			fulfilledMu.Lock()
+			defer fulfilledMu.Unlock()
+			if failNext {
+				failNext = false
+				return errors.New("临时故障")
+			}
+			if payload["sku"] == nil {
+				return errors.New("快照丢失")
+			}
+			fulfilled[orderNo]++
+			return nil
+		},
+	})
+}
+
+type testEnv struct {
+	app    *app.App
+	db     *gorm.DB
+	token  string
+	server *httptest.Server
+	client *http.Client
+}
+
+func newTestEnv(t *testing.T) *testEnv {
+	t.Helper()
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := app.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := &testEnv{app: a, server: httptest.NewServer(a.Router()), client: &http.Client{Timeout: 10 * time.Second}}
+	t.Cleanup(e.server.Close)
+	status, installed := e.request(t, "", http.MethodPost, "/api/v1/setup/install", `{"database":{"type":"sqlite"},"site":{"name":"支付测试"},"admin":{"username":"pay-admin","email":"pay-admin@test.local","password":"secret123"}}`)
+	if status != http.StatusOK {
+		t.Fatalf("安装失败: %d %v", status, installed)
+	}
+	e.token = installed["data"].(map[string]any)["token"].(string)
+	e.db = a.DB
+	if status, payload := e.do(t, http.MethodPost, "/api/v1/admin/plugins/payment/install", ""); status != http.StatusOK {
+		t.Fatalf("启用支付插件失败: %d %v", status, payload)
+	}
+	return e
+}
+
+func (e *testEnv) request(t *testing.T, token, method, path, body string, headers ...string) (int, map[string]any) {
+	t.Helper()
+	req, _ := http.NewRequest(method, e.server.URL+path, bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	for i := 0; i+1 < len(headers); i += 2 {
+		req.Header.Set(headers[i], headers[i+1])
+	}
+	resp, err := e.client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	payload := map[string]any{}
+	_ = json.NewDecoder(resp.Body).Decode(&payload)
+	return resp.StatusCode, payload
+}
+
+func (e *testEnv) do(t *testing.T, method, path, body string) (int, map[string]any) {
+	t.Helper()
+	return e.request(t, e.token, method, path, body)
+}
+
+func (e *testEnv) as(t *testing.T, u *models.User, method, path, body string) (int, map[string]any) {
+	t.Helper()
+	token, _ := auth.GenerateToken(e.app.Config.Secret, u.ID, u.Username, u.Role)
+	return e.request(t, token, method, path, body)
+}
+
+func (e *testEnv) user(t *testing.T, name string) *models.User {
+	t.Helper()
+	u := &models.User{Username: name, Email: name + "@test.local", Role: "user", IsActive: true, EmailVerified: true}
+	if err := e.db.Create(u).Error; err != nil {
+		t.Fatal(err)
+	}
+	return u
+}
+
+func data(p map[string]any) map[string]any { d, _ := p["data"].(map[string]any); return d }
+
+func fulfilledCount(no string) int {
+	fulfilledMu.Lock()
+	defer fulfilledMu.Unlock()
+	return fulfilled[no]
+}
+
+func (e *testEnv) order(t *testing.T, no string) payment.Order {
+	t.Helper()
+	var o payment.Order
+	e.db.Where("order_no = ?", no).First(&o)
+	return o
+}
+
+// 线下转账：下单 → 提交付款说明 → 管理员确认 → 履约一次；重复确认 409；取消与过期。
+func TestOfflinePaymentFlow(t *testing.T) {
+	e := newTestEnv(t)
+	u := e.user(t, "buyer")
+	other := e.user(t, "other")
+
+	// 未配置任何支付方式：公开配置为空、下单失败
+	_, site := e.request(t, "", http.MethodGet, "/api/v1/site", "")
+	if chs := data(site)["payment_channels"].([]any); len(chs) != 0 {
+		t.Fatalf("未配置时不应有可用支付方式: %v", chs)
+	}
+	if status, _ := e.as(t, u, http.MethodPost, "/api/v1/payment/orders", `{"kind":"test-item","sku":"a","channel":"offline"}`); status != http.StatusBadRequest {
+		t.Fatalf("支付方式不可用时应 400，实际 %d", status)
+	}
+
+	// 配置线下转账（密钥不回显、非法配置 400）
+	if status, _ := e.do(t, http.MethodPut, "/api/v1/admin/payment/settings", `{"offline_enabled":true,"offline_instructions":"请转账至 6222 0000 0000","offline_expire_hours":48}`); status != http.StatusOK {
+		t.Fatalf("保存设置失败: %d", status)
+	}
+	if status, _ := e.do(t, http.MethodPut, "/api/v1/admin/payment/settings", `{"alipay_private_key":"not-a-key"}`); status != http.StatusBadRequest {
+		t.Fatalf("非法私钥应 400，实际 %d", status)
+	}
+	if status, _ := e.do(t, http.MethodPut, "/api/v1/admin/payment/settings", `{"stripe_secret_key":"sk_live_secret"}`); status != http.StatusOK {
+		t.Fatal("保存密钥失败")
+	}
+	_, s := e.do(t, http.MethodGet, "/api/v1/admin/payment/settings", "")
+	if _, leaked := data(s)["stripe_secret_key"]; leaked || data(s)["stripe_secret_key_set"] != true {
+		t.Fatalf("密钥不应回显，只返回是否已配置: %v", data(s))
+	}
+	_, site = e.request(t, "", http.MethodGet, "/api/v1/site", "")
+	if chs := data(site)["payment_channels"].([]any); len(chs) != 1 || chs[0] != "offline" {
+		t.Fatalf("公开配置应只有线下转账（Stripe 缺 Webhook 密钥不可用）: %v", chs)
+	}
+
+	// 结算页与下单
+	if status, _ := e.as(t, u, http.MethodGet, "/api/v1/payment/products/test-item/gone", ""); status != http.StatusBadRequest {
+		t.Fatalf("不可购买的商品应 400，实际 %d", status)
+	}
+	_, prod := e.as(t, u, http.MethodGet, "/api/v1/payment/products/test-item/a", "")
+	if data(prod)["product"].(map[string]any)["amount_cents"].(float64) != 990 {
+		t.Fatalf("结算页商品错误: %v", prod)
+	}
+	status, created := e.as(t, u, http.MethodPost, "/api/v1/payment/orders", `{"kind":"test-item","sku":"a","channel":"offline"}`)
+	if status != http.StatusOK || data(created)["action"].(map[string]any)["type"] != "offline" {
+		t.Fatalf("下单失败: %d %v", status, created)
+	}
+	no := data(created)["order"].(map[string]any)["order_no"].(string)
+	if o := e.order(t, no); o.Status != payment.StatusPending || o.AmountCents != 990 || time.Until(o.ExpiresAt) < 47*time.Hour {
+		t.Fatalf("订单快照错误: %+v", o)
+	}
+	if status, _ := e.as(t, other, http.MethodGet, "/api/v1/payment/orders/"+no, ""); status != http.StatusNotFound {
+		t.Fatalf("他人订单应 404，实际 %d", status)
+	}
+	if status, _ := e.as(t, u, http.MethodPost, "/api/v1/payment/orders/"+no+"/proof", `{"note":"已转账，尾号 1234"}`); status != http.StatusOK {
+		t.Fatal("提交付款说明失败")
+	}
+
+	// 管理员确认 → 已支付、履约一次、通知
+	if status, payload := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/confirm", ""); status != http.StatusOK {
+		t.Fatalf("确认失败: %d %v", status, payload)
+	}
+	o := e.order(t, no)
+	if o.Status != payment.StatusPaid || o.FulfilledAt == nil || o.PayerNote != "已转账，尾号 1234" || fulfilledCount(no) != 1 {
+		t.Fatalf("确认后应已支付且履约一次: %+v %d", o, fulfilledCount(no))
+	}
+	if status, _ := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/confirm", ""); status != http.StatusConflict || fulfilledCount(no) != 1 {
+		t.Fatal("重复确认应 409 且不重复履约")
+	}
+	var notices int64
+	e.db.Model(&models.Notification{}).Where("user_id = ? AND type = ?", u.ID, "payment").Count(&notices)
+	if notices != 1 {
+		t.Fatalf("支付成功应通知一次，实际 %d", notices)
+	}
+
+	// 履约失败 → 记录错误 → 管理员重试成功
+	status, created = e.as(t, u, http.MethodPost, "/api/v1/payment/orders", `{"kind":"test-item","sku":"b","channel":"offline"}`)
+	no2 := data(created)["order"].(map[string]any)["order_no"].(string)
+	fulfilledMu.Lock()
+	failNext = true
+	fulfilledMu.Unlock()
+	e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no2+"/confirm", "")
+	if o := e.order(t, no2); o.Status != payment.StatusPaid || o.FulfilledAt != nil || o.FulfillError == "" {
+		t.Fatalf("履约失败应保留已支付并记录错误: %+v", o)
+	}
+	if status, _ := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no2+"/fulfill", ""); status != http.StatusOK || fulfilledCount(no2) != 1 {
+		t.Fatalf("重试履约失败: %d", status)
+	}
+
+	// 取消与过期
+	_, created = e.as(t, u, http.MethodPost, "/api/v1/payment/orders", `{"kind":"test-item","sku":"c","channel":"offline"}`)
+	no3 := data(created)["order"].(map[string]any)["order_no"].(string)
+	if status, _ := e.as(t, u, http.MethodPost, "/api/v1/payment/orders/"+no3+"/cancel", ""); status != http.StatusOK || e.order(t, no3).Status != payment.StatusCancelled {
+		t.Fatal("取消失败")
+	}
+	if status, _ := e.as(t, u, http.MethodPost, "/api/v1/payment/orders/"+no3+"/cancel", ""); status != http.StatusConflict {
+		t.Fatal("已取消的订单不能再取消")
+	}
+	_, list := e.as(t, u, http.MethodGet, "/api/v1/users/me/orders", "")
+	if data(list)["total"].(float64) != 3 {
+		t.Fatalf("我的订单应有 3 条: %v", data(list)["total"])
+	}
+	_, admin := e.do(t, http.MethodGet, "/api/v1/admin/payment/orders?status=paid", "")
+	if data(admin)["total"].(float64) != 2 {
+		t.Fatalf("已支付订单应有 2 条: %v", data(admin)["total"])
+	}
+}
+
+// Stripe Webhook：验签后入账；金额不匹配拒绝；重复事件不重复履约；已过期订单收到支付仍入账。
+func TestStripeWebhookSettlesOrder(t *testing.T) {
+	e := newTestEnv(t)
+	u := e.user(t, "stripe-buyer")
+	stripe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"cs_1","url":"https://checkout.stripe.com/c/pay/cs_1","payment_status":"unpaid"}`))
+	}))
+	defer stripe.Close()
+	payment.SetStripeAPIBase(t, stripe.URL)
+	e.do(t, http.MethodPut, "/api/v1/admin/payment/settings", `{"stripe_enabled":true,"stripe_secret_key":"sk_test","stripe_webhook_secret":"whsec_1"}`)
+
+	status, created := e.as(t, u, http.MethodPost, "/api/v1/payment/orders", `{"kind":"test-item","sku":"s","channel":"stripe"}`)
+	if status != http.StatusOK || data(created)["action"].(map[string]any)["url"] != "https://checkout.stripe.com/c/pay/cs_1" {
+		t.Fatalf("Stripe 下单失败: %d %v", status, created)
+	}
+	no := data(created)["order"].(map[string]any)["order_no"].(string)
+	e.db.Model(&payment.Order{}).Where("order_no = ?", no).Update("status", payment.StatusExpired) // 用户在过期后才付款
+
+	send := func(amount int) int {
+		event := []byte(fmt.Sprintf(`{"type":"checkout.session.completed","data":{"object":{"id":"cs_1","payment_status":"paid","amount_total":%d,"currency":"cny","client_reference_id":"%s","payment_intent":"pi_1"}}}`, amount, no))
+		mac := hmac.New(sha256.New, []byte("whsec_1"))
+		ts := strconv.FormatInt(time.Now().Unix(), 10)
+		mac.Write([]byte(ts + "." + string(event)))
+		req, _ := http.NewRequest(http.MethodPost, e.server.URL+"/api/v1/payment/notify/stripe", bytes.NewReader(event))
+		req.Header.Set("Stripe-Signature", "t="+ts+",v1="+hex.EncodeToString(mac.Sum(nil)))
+		resp, err := e.client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+	if status := send(1); status != http.StatusBadRequest || e.order(t, no).Status == payment.StatusPaid {
+		t.Fatalf("金额不匹配应拒绝入账，实际 %d", status)
+	}
+	if status := send(990); status != http.StatusOK {
+		t.Fatalf("合法 Webhook 应 200，实际 %d", status)
+	}
+	if o := e.order(t, no); o.Status != payment.StatusPaid || o.ChannelTradeNo != "pi_1" || fulfilledCount(no) != 1 {
+		t.Fatalf("Webhook 后应已支付并履约: %+v", o)
+	}
+	if status := send(990); status != http.StatusOK || fulfilledCount(no) != 1 {
+		t.Fatal("重复事件应正常应答且不重复履约")
+	}
+	// 伪造签名
+	req, _ := http.NewRequest(http.MethodPost, e.server.URL+"/api/v1/payment/notify/stripe", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Stripe-Signature", "t=1,v1=00")
+	resp, _ := e.client.Do(req)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("伪造签名应 400，实际 %d", resp.StatusCode)
+	}
+}

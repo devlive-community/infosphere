@@ -31,6 +31,7 @@ const (
 	KeyContentCollect   = "content-collect"
 	KeyTags             = "tags"
 	KeyMembership       = "membership"
+	KeyPayment          = "payment"
 )
 
 // Meta 一个插件的声明式元数据（不含依赖 app 的行为）。

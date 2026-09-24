@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import Container from '@/components/Container'
 import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
@@ -7,9 +8,10 @@ import Seo from '@/components/Seo'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
-import { Badge, Card, EmptyState, Loading } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Loading, useFeedback } from '@/components/ui'
 import { entitlementLabel, formatEntitlement, type EntitlementDef } from '@/lib/entitlements'
 import { durationLabel, formatPrice, type MembershipPlan, type MembershipRecord, type MyMembership } from '@/lib/membership'
+import { checkoutHref } from '@/lib/payment'
 
 export default function MyMembershipPage() {
   return <FeatureGate feature="membership"><MyMembershipInner /></FeatureGate>
@@ -36,7 +38,10 @@ function MyMembershipInner() {
   const user = useRequireAuth()
   const { site } = useApp()
   const { t, locale } = useTranslation()
+  const router = useRouter()
+  const { confirmAction } = useFeedback()
   const siteName = site.site_name || 'KnowForge'
+  const canBuy = (site.feature_plugins || []).includes('payment') && (site.payment_channels || []).length > 0
   const [mine, setMine] = useState<{ membership: MyMembership | null; records: MembershipRecord[]; currency: string } | null>(null)
   const [plans, setPlans] = useState<MembershipPlan[]>([])
   const [defs, setDefs] = useState<EntitlementDef[]>([])
@@ -51,6 +56,15 @@ function MyMembershipInner() {
   if (!user || !mine) return <Loading className="min-h-[60vh]" />
   const m = mine.membership
   const currentPlanID = m?.active ? m.plan?.id : undefined
+
+  // buy 前往结算页；有效期内购买其他方案会从现在起按新方案计算，先确认
+  async function buy(plan: MembershipPlan, priceID: number) {
+    if (currentPlanID && currentPlanID !== plan.id && m?.plan) {
+      const ok = await confirmAction({ title: t('membership.switchTitle'), message: t('membership.switchMessage', { current: m.plan.name, next: plan.name, date: formatDate(m.expires_at) }), confirmLabel: t('membership.switchConfirm') })
+      if (!ok) return
+    }
+    router.push(checkoutHref('membership', priceID))
+  }
 
   return (
     <>
@@ -86,7 +100,7 @@ function MyMembershipInner() {
 
           {/* 可开通的方案 */}
           <h2 className="mt-8 font-bold text-slate-900">{t('membership.plans')}</h2>
-          <p className="mt-1 text-xs text-slate-400">{t('membership.plansHint')}</p>
+          <p className="mt-1 text-xs text-slate-400">{canBuy ? t('membership.plansHintBuy') : t('membership.plansHint')}</p>
           {plans.length === 0 ? <div className="mt-3"><EmptyState>{t('membership.noPlans')}</EmptyState></div> : (
             <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {plans.map((p) => (
@@ -102,11 +116,12 @@ function MyMembershipInner() {
                   {p.prices.length > 0 && (
                     <div className="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
                       {p.prices.map((pr) => (
-                        <div key={pr.id} className="flex items-baseline justify-between gap-3 text-sm">
+                        <div key={pr.id} className="flex items-center justify-between gap-3 text-sm">
                           <span className="text-slate-600">{durationLabel(t, pr.duration_days)}</span>
-                          <span className="flex items-baseline gap-2">
+                          <span className="flex items-center gap-2">
                             {pr.original_price_cents > pr.price_cents && <span className="text-xs text-slate-400 line-through">{formatPrice(pr.original_price_cents, mine.currency, locale)}</span>}
                             <span className="font-bold tabular-nums text-slate-900">{formatPrice(pr.price_cents, mine.currency, locale)}</span>
+                            {canBuy && <Button size="sm" variant={currentPlanID === p.id ? 'outline' : 'primary'} onClick={() => buy(p, pr.id)}>{currentPlanID === p.id ? t('membership.renew') : t('membership.buy')}</Button>}
                           </span>
                         </div>
                       ))}

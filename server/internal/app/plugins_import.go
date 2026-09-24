@@ -10,6 +10,7 @@ import (
 	_ "knowforge/server/internal/plugins/contentcollect"
 	_ "knowforge/server/internal/plugins/growth"
 	_ "knowforge/server/internal/plugins/membership"
+	_ "knowforge/server/internal/plugins/payment"
 	_ "knowforge/server/internal/plugins/pdfexport"
 	_ "knowforge/server/internal/plugins/tags"
 	_ "knowforge/server/internal/plugins/watermark"

@@ -1,0 +1,59 @@
+package plugincore
+
+import (
+	"sort"
+
+	"knowforge/server/internal/models"
+)
+
+// —— 商品与履约：支付类插件售卖由其他插件登记的「商品」，支付成功后回调商品提供者履约。——
+//
+// 支付插件与商品提供者（如会员）互不依赖，只经此中性扩展点协作：
+//   - 下单时支付插件调用 Resolve 取得商品（价格、标题）并把 Payload 快照进订单；
+//   - 支付成功后支付插件以订单号调用 Fulfill（须按订单号幂等），提供者据快照发放（如开通会员）。
+
+// Product 一件可售商品（由商品提供者按 SKU 解析）。
+type Product struct {
+	Kind        string `json:"kind"`
+	SKU         string `json:"sku"`
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	// DurationDays 限时商品的时长（如会员 30 天），0 表示不适用；前端据此展示「1 个月」等
+	DurationDays int    `json:"duration_days,omitempty"`
+	AmountCents  int64  `json:"amount_cents"` // 金额（最小货币单位，如分）
+	Currency     string `json:"currency"`     // ISO 4217
+	// ReturnLink 支付完成后引导用户前往的站内链接（如 /user/membership）
+	ReturnLink string `json:"return_link,omitempty"`
+	// Payload 下单时的履约快照（如方案、天数），支付成功后原样交给 Fulfill，避免之后的改价/改方案影响已下单订单
+	Payload map[string]any `json:"-"`
+}
+
+// ProductProvider 商品提供者。
+type ProductProvider struct {
+	Kind string
+	// Resolve 返回用户当前可购买的商品；不可购买时返回可展示的错误。
+	Resolve func(core Core, u *models.User, sku string) (Product, error)
+	// Fulfill 订单支付成功后履约；须按 orderNo 幂等（重复调用不重复发放）。
+	Fulfill func(core Core, userID uint, orderNo string, payload map[string]any) error
+}
+
+var productProviders = map[string]ProductProvider{}
+
+// RegisterProductProvider 登记商品提供者（Kind 唯一）。
+func RegisterProductProvider(p ProductProvider) { productProviders[p.Kind] = p }
+
+// ProductProviderFor 按商品类型查提供者。
+func ProductProviderFor(kind string) (ProductProvider, bool) {
+	p, ok := productProviders[kind]
+	return p, ok
+}
+
+// ProductKinds 已登记的商品类型（排序）。
+func ProductKinds() []string {
+	out := make([]string, 0, len(productProviders))
+	for k := range productProviders {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}

@@ -350,3 +350,51 @@ func TestMembershipExpiryReminders(t *testing.T) {
 		t.Fatalf("非法货币应 400，实际 %d", status)
 	}
 }
+
+// 在线购买（经支付插件，仅通过 HTTP 协作）：下单快照价格；方案随后归档仍按已付订单开通；重复确认不重复开通。
+func TestMembershipPurchaseViaPayment(t *testing.T) {
+	e := newTestEnv(t)
+	u := e.user(t, "buyer")
+	e.setPlugin(t, "payment", true)
+	e.do(t, http.MethodPut, "/api/v1/admin/payment/settings", `{"offline_enabled":true,"offline_instructions":"转账至 6222"}`)
+	plan := e.createPlan(t, `{"name":"年卡","entitlements":{"books.max":20},"prices":[{"duration_days":365,"price_cents":9900}]}`)
+	var price membership.Price
+	e.db.Where("plan_id = ?", plan).First(&price)
+
+	_, prod := e.doAs(t, u, http.MethodGet, fmt.Sprintf("/api/v1/payment/products/membership/%d", price.ID), "")
+	p := data(prod)["product"].(map[string]any)
+	if p["title"] != "年卡" || p["amount_cents"].(float64) != 9900 || p["duration_days"].(float64) != 365 || p["return_link"] != "/user/membership" {
+		t.Fatalf("会员商品解析错误: %v", p)
+	}
+	status, created := e.doAs(t, u, http.MethodPost, "/api/v1/payment/orders", fmt.Sprintf(`{"kind":"membership","sku":"%d","channel":"offline"}`, price.ID))
+	if status != http.StatusOK {
+		t.Fatalf("下单失败: %d %v", status, created)
+	}
+	no := data(created)["order"].(map[string]any)["order_no"].(string)
+
+	// 下单后改价并归档方案：已下单订单按快照履约
+	e.do(t, http.MethodPut, "/api/v1/admin/membership/plans/"+strconv.Itoa(int(plan)), fmt.Sprintf(`{"name":"年卡","status":"archived","entitlements":{"books.max":20},"prices":[{"id":%d,"duration_days":30,"price_cents":100}]}`, price.ID))
+	if status, _ := e.doAs(t, u, http.MethodGet, fmt.Sprintf("/api/v1/payment/products/membership/%d", price.ID), ""); status != http.StatusBadRequest {
+		t.Fatalf("归档方案不可再购买，实际 %d", status)
+	}
+	if status, payload := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/confirm", ""); status != http.StatusOK {
+		t.Fatalf("确认收款失败: %d %v", status, payload)
+	}
+	m := e.membership(t, u.ID)
+	near(t, m.ExpiresAt, time.Now().Add(365*24*time.Hour), "购买后到期时间")
+	var rec membership.Record
+	e.db.Where("user_id = ?", u.ID).First(&rec)
+	if rec.Source != "order" || rec.SourceRef != no || rec.Days != 365 {
+		t.Fatalf("会员流水应记录订单来源: %+v", rec)
+	}
+	if v, s := e.entitlements(t, u); v["books.max"] != 20 || s["books.max"] != "membership" {
+		t.Fatalf("购买后会员权益应生效: %v %v", v, s)
+	}
+	// 重复确认 → 409，且不重复开通
+	e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/confirm", "")
+	var n int64
+	e.db.Model(&membership.Record{}).Where("user_id = ?", u.ID).Count(&n)
+	if n != 1 {
+		t.Fatalf("同一订单只能开通一次，实际流水 %d 条", n)
+	}
+}

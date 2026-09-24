@@ -76,8 +76,18 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     'admin.membership.status.': ['active', 'archived'],
     'admin.membership.action.': ['grant', 'extend', 'switch', 'adjust', 'revoke'],
     'membership.action.': ['grant', 'extend', 'switch', 'adjust', 'revoke'],
+    # 支付：支付方式 / 订单状态 / 管理端 tab、订单操作（op.${op}Title|Message|Done）、支付方式说明与配置字段
+    'payment.channel.': ['offline', 'alipay', 'wechat', 'stripe'],
+    'payment.channelHint.': ['offline', 'alipay', 'wechat', 'stripe'],
+    'payment.status.': ['pending', 'paid', 'cancelled', 'expired'],
+    'admin.payment.tab.': ['orders', 'settings'],
+    'admin.payment.op.': ['confirmTitle', 'confirmMessage', 'confirmDone', 'cancelTitle', 'cancelMessage', 'cancelDone', 'fulfillDone'],
+    'admin.payment.settings.': ['offlineHint', 'alipayHint', 'wechatHint', 'stripeHint'],
+    'admin.payment.field.': ['offline_instructions', 'offline_qr', 'offline_expire_hours', 'alipay_app_id', 'alipay_private_key', 'alipay_public_key',
+                             'wechat_mch_id', 'wechat_app_id', 'wechat_serial_no', 'wechat_private_key', 'wechat_api_v3_key', 'wechat_public_key_id',
+                             'wechat_public_key', 'stripe_secret_key', 'stripe_webhook_secret'],
     # 通知 payload.i18n.key（服务端 i18ntext 登记、下发，lib/notification.ts 渲染）；须与服务端模板保持同键
-    'notify.': ['book.reviewed', 'comment.chapter', 'comment.reply', 'reaction.like', 'reaction.favorite', 'collab.invited', 'collab.accepted', 'collab.rejected', 'report.resolved', 'system.upgraded', 'collect.finished', 'achievement.unlocked', 'achievement.granted', 'growth.levelUp', 'follow.chapterPublished', 'membership.granted', 'membership.updated', 'membership.expiring', 'membership.expired', 'membership.revoked'],
+    'notify.': ['book.reviewed', 'comment.chapter', 'comment.reply', 'reaction.like', 'reaction.favorite', 'collab.invited', 'collab.accepted', 'collab.rejected', 'report.resolved', 'system.upgraded', 'collect.finished', 'achievement.unlocked', 'achievement.granted', 'growth.levelUp', 'follow.chapterPublished', 'membership.granted', 'membership.updated', 'membership.expiring', 'membership.expired', 'membership.revoked', 'payment.paid'],
 }
 
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）

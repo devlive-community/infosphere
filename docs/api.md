@@ -453,7 +453,7 @@ Authorization: Bearer <token>
 
 ## 会员（「会员」插件，默认关闭）
 
-多个会员方案，每个方案可配置权益（见「权益」）与多档时长价格；用户同一时间持有一个方案：有效期内同方案续期顺延，有效期内更换方案从当前时间起按新方案计算（原方案剩余时长不保留）。会员有效期内作为**独占**权益来源（优先于成长等级，方案未配置的项回退基础值）。金额以最小货币单位（分）存储，货币由会员设置指定。方案名称/说明为可翻译资源（`membership_plan`），按请求语言回退。到期前 N 天（默认 3，0 不提醒）与到期后各通知一次。插件禁用后接口 404、会员权益不再生效，数据保留。
+多个会员方案，每个方案可配置权益（见「权益」）与多档时长价格；用户同一时间持有一个方案：有效期内同方案续期顺延，有效期内更换方案从当前时间起按新方案计算（原方案剩余时长不保留）。会员有效期内作为**独占**权益来源（优先于成长等级，方案未配置的项回退基础值）。金额以最小货币单位（分）存储，货币由会员设置指定；启用「支付」插件后每档价格可在线购买（商品 `kind=membership`、`sku`=价格 ID，下单时方案须启用中，已付款订单即使方案随后归档也会开通）。方案名称/说明为可翻译资源（`membership_plan`），按请求语言回退。到期前 N 天（默认 3，0 不提醒）与到期后各通知一次。插件禁用后接口 404、会员权益不再生效，数据保留。
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
@@ -468,6 +468,25 @@ Authorization: Bearer <token>
 | POST | `/admin/membership/members/:user_id/revoke` | `{reason?}` 取消会员（立即失效，流水保留） | `membership:manage` |
 | GET | `/admin/membership/records?user_id=&page=&page_size=` | 会员流水 `items:[{record{action,plan_name,days,prev_expires_at,expires_at,source,source_ref,reason,created_at},user,operator?}]` | `membership:manage` |
 | GET/PUT | `/admin/membership/settings` | `{currency(ISO 4217), reminder_days(0–30)}`，PUT 可只传部分字段 | `membership:manage` |
+
+## 支付（「支付」插件，默认关闭）
+
+售卖其他插件经 `plugincore.RegisterProductProvider` 登记的商品（如会员：`kind=membership`，`sku`=价格 ID）。下单时快照商品标题、金额与履约数据；支付成功后回调提供者 `Fulfill`（按订单号幂等），之后的改价/归档不影响已下单订单。支付方式：线下转账（用户提交付款说明，管理员确认到账）、支付宝（电脑/手机网站支付，RSA2，仅 CNY）、微信支付（APIv3 Native 扫码，微信支付公钥模式，仅 CNY）、Stripe Checkout。回调与返回地址基于「站点访问地址」`site_url`。在线订单 2 小时有效，线下转账默认 72 小时；已取消/过期的订单若收到渠道支付成功回调仍按已支付入账。回调校验签名、金额、货币与支付方式，不符拒绝入账。`/site` 下发 `payment_channels`（当前可用的支付方式）。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/payment/products/:kind/:sku` | 结算页：`product{kind,sku,title,description,duration_days,amount_cents,currency,return_link}` + 该货币可用的 `channels` | `payment:order` |
+| POST | `/payment/orders` | `{kind, sku, channel: offline\|alipay\|wechat\|stripe, mobile?}` 下单并发起支付，返回 `{order, action}`；`action.type`：`redirect`（`url` 跳转收银台）/ `qrcode`（`qr` 二维码 data URI）/ `offline`（`instructions`、`qr_image`）。同时待支付订单最多 10 个 | `payment:order` |
+| GET | `/payment/orders/:no` | 订单详情（本人或管理员）；待支付的在线订单会先向渠道主动查询一次（限频 5 秒，回调不可达时的兜底），待支付时附带继续支付的 `action` | `payment:order` |
+| POST | `/payment/orders/:no/cancel` | 取消待支付订单 | `payment:order` |
+| POST | `/payment/orders/:no/proof` | `{note}` 线下转账：提交付款说明 | `payment:order` |
+| GET | `/users/me/orders?page=&page_size=` | 我的订单 | `payment:order` |
+| POST | `/payment/notify/:channel` | 渠道异步通知（`alipay` / `wechat` / `stripe`），公开、以签名校验；不受插件开关限制 | 签名 |
+| GET | `/admin/payment/orders?status=&channel=&q=&awaiting=1&unfulfilled=1&page=` | 全部订单（`awaiting` 待确认的线下转账，`unfulfilled` 已支付未履约）`items:[{order,user}]` | `payment:manage` |
+| POST | `/admin/payment/orders/:no/confirm` | 确认线下转账到账（置为已支付并履约，写审计） | `payment:manage` |
+| POST | `/admin/payment/orders/:no/cancel` | 取消待支付/已过期订单 | `payment:manage` |
+| POST | `/admin/payment/orders/:no/fulfill` | 重试履约（已支付但履约失败；巡检也会自动重试） | `payment:manage` |
+| GET/PUT | `/admin/payment/settings` | 各支付方式配置；密钥类字段（私钥、公钥、APIv3 密钥、Stripe 密钥）只写不读，GET 仅返回 `<字段>_set`，PUT 传空串表示不修改；保存前校验密钥格式。GET 另含 `notify_urls`、`available`、`site_url_set` | `payment:manage` |
 
 ## 站内通知（登录用户）
 

@@ -61,6 +61,8 @@ type grant struct {
 	SourceRef  string
 	OperatorID uint
 	Reason     string
+	// AllowArchived 已付款订单履约时允许归档方案（下单时方案仍在售）
+	AllowArchived bool
 }
 
 // applyGrant 开通/续期/更换方案（在事务内调用）：
@@ -72,7 +74,7 @@ func applyGrant(tx *gorm.DB, g grant, now time.Time) (UserMembership, Plan, stri
 	if err := tx.First(&plan, g.PlanID).Error; err != nil {
 		return UserMembership{}, plan, "", errPlanNotFound
 	}
-	if plan.Status != "active" {
+	if plan.Status != "active" && !g.AllowArchived {
 		return UserMembership{}, plan, "", errPlanArchived
 	}
 	if g.Days < 1 || g.Days > maxDurationDays {

@@ -163,6 +163,7 @@ export interface SiteConfig {
   book_versions_sort?: string
   /** 经验排行榜是否开放（成长插件启用且管理员未关闭，由插件下发） */
   growth_leaderboard_enabled?: boolean
+  payment_channels?: string[] // 支付插件：当前可用的支付方式（为空则不显示购买入口）
 }
 
 export type AchievementCategory = 'reading' | 'creation' | 'community' | 'account' | 'special'
