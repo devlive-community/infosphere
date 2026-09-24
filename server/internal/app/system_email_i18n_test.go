@@ -75,6 +75,25 @@ func TestSystemEmailsFollowRecipientLanguage(t *testing.T) {
 		t.Fatalf("激活邮件应为英文: %q\n%s", subject, body)
 	}
 
+	// 注册时的界面语言记为偏好语言 → 之后后台触发的通知邮件也是英文
+	var enUser models.User
+	a.DB.Where("username = ?", "enuser").First(&enUser)
+	if enUser.PreferredLocale != "en" {
+		t.Fatalf("注册时的界面语言应记为偏好语言 en，实际 %q", enUser.PreferredLocale)
+	}
+	_ = a.setSetting("mail_notifications_enabled", "true", "test")
+	a.NotifyI18n(enUser.ID, "comment", "notify.comment.reply", map[string]string{"user": "amy"}, nil)
+	if subject, _ := lastMail(); subject != "[KF] amy replied to your comment" {
+		t.Fatalf("偏好英文的新用户，通知邮件应为英文: %q", subject)
+	}
+	// 请求没有任何语言信号时不写入偏好（保持跟随站点默认语言）
+	post("/api/v1/auth/register", "", map[string]any{"username": "nolang", "email": "nolang@test.local", "password": "secret123"})
+	var noLang models.User
+	a.DB.Where("username = ?", "nolang").First(&noLang)
+	if noLang.PreferredLocale != "" {
+		t.Fatalf("无语言信号时不应写入偏好语言，实际 %q", noLang.PreferredLocale)
+	}
+
 	// 中文界面找回密码（无偏好语言）→ 中文
 	post("/api/v1/auth/password/forgot", "zh-CN,zh;q=0.9", map[string]any{"email": "admin@test.local"})
 	if subject, body := lastMail(); subject != "重置你的 KF 密码" || !strings.Contains(body, "你好，") || !strings.Contains(body, "60 分钟内有效") {

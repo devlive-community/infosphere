@@ -110,6 +110,8 @@ func (a *App) Register(c *gin.Context) {
 		IsActive: true,
 		// 需要激活邮箱时，注册后未激活（只读）；否则视为已激活
 		EmailVerified: !a.regRequireActivation(),
+		// 注册时的界面语言记为偏好语言（之后的通知邮件等与注册时语言一致）
+		PreferredLocale: a.signupLocale(c, a.DB),
 	}
 	if inviter != nil {
 		u.InvitedBy = inviter.ID

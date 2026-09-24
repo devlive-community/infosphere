@@ -329,6 +329,8 @@ func (a *App) OAuthCallback(c *gin.Context) {
 		// 第三方登录视为可信身份，直接标记邮箱已激活（不再要求二次激活）
 		EmailVerified: true,
 		Avatar:        info.AvatarURL,
+		// 首次第三方登录注册时的界面语言记为偏好语言
+		PreferredLocale: a.signupLocale(c, a.DB),
 	}
 	if provider == "github" {
 		u.GithubURL = info.ProfileURL
@@ -475,8 +477,8 @@ type oauthConfigUpdate struct {
 	ClientID     *string `json:"client_id"`
 	ClientSecret *string `json:"client_secret"`
 	Enabled      *bool   `json:"enabled"`
-	IconType     *string `json:"icon_type"`  // '' | fa | image | svg，自定义登录图标
-	IconValue    *string `json:"icon_value"` // fa 类名或已上传图片地址
+	IconType     *string `json:"icon_type"`    // '' | fa | image | svg，自定义登录图标
+	IconValue    *string `json:"icon_value"`   // fa 类名或已上传图片地址
 	DisplayMode  *string `json:"display_mode"` // 全局：button（按钮，默认）| icon（图标）
 }
 

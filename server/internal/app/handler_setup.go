@@ -142,6 +142,8 @@ func (a *App) SetupInstall(c *gin.Context) {
 		Password: string(hash),
 		Role:     "admin",
 		IsActive: true,
+		// 安装向导所用的界面语言记为管理员的偏好语言（站点语言刚由迁移种子写入 db）
+		PreferredLocale: a.signupLocale(c, db),
 	}
 	if err := db.Create(&admin).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "创建管理员失败: "+err.Error())

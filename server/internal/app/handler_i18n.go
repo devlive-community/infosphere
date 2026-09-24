@@ -78,6 +78,15 @@ func localeChain(code string, rows []models.SiteLocale) []string {
 }
 
 func (a *App) requestLocale(c *gin.Context, rows []models.SiteLocale) string {
+	if code, ok := a.matchRequestLocale(c, rows); ok {
+		return code
+	}
+	return defaultLocale(rows)
+}
+
+// matchRequestLocale 从请求（?locale、X-KnowForge-Locale、登录用户偏好、Cookie、Accept-Language，依次）匹配一个已启用的站点语言；
+// 支持按语言主标签回退（en-US → en）。没有任何可匹配的信号时返回 false。
+func (a *App) matchRequestLocale(c *gin.Context, rows []models.SiteLocale) (string, bool) {
 	candidates := []string{c.Query("locale"), c.GetHeader("X-KnowForge-Locale")}
 	if u := currentUser(c); u != nil {
 		candidates = append(candidates, u.PreferredLocale)
@@ -96,7 +105,7 @@ func (a *App) requestLocale(c *gin.Context, rows []models.SiteLocale) string {
 		for code != "" {
 			for _, r := range rows {
 				if r.Code == code && r.Enabled {
-					return code
+					return code, true
 				}
 			}
 			i := strings.LastIndex(code, "-")
@@ -106,7 +115,18 @@ func (a *App) requestLocale(c *gin.Context, rows []models.SiteLocale) string {
 			code = code[:i]
 		}
 	}
-	return defaultLocale(rows)
+	return "", false
+}
+
+// signupLocale 注册时记为用户偏好语言的界面语言：取当前请求匹配到的已启用站点语言；
+// 请求没有任何语言信号时返回空（不把站点默认语言写死为个人偏好，站点默认语言变更后仍跟随）。
+func (a *App) signupLocale(c *gin.Context, db *gorm.DB) string {
+	rows := []models.SiteLocale{}
+	if db.Order("sort_order ASC, code ASC").Find(&rows).Error != nil {
+		return ""
+	}
+	code, _ := a.matchRequestLocale(c, rows)
+	return code
 }
 
 func (a *App) I18nLocales(c *gin.Context) {
