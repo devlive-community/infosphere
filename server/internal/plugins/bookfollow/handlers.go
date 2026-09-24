@@ -143,7 +143,7 @@ func (b *behavior) MyFollows(c *gin.Context) {
 }
 
 // notifyBookFollowers 向关注该书的用户（作者本人除外）发送更新通知，尊重每人的 book_update 偏好。
-func (b *behavior) notifyBookFollowers(book *models.Book, title, link string) {
+func (b *behavior) notifyBookFollowers(book *models.Book, key string, params map[string]string, link string) {
 	core := b.core
 	if book == nil || !core.PluginEnabled(plugins.KeyBookFollow) {
 		return
@@ -172,7 +172,7 @@ func (b *behavior) notifyBookFollowers(book *models.Book, title, link string) {
 		if off[uid] {
 			continue
 		}
-		core.Notify(uid, "book_update", title, map[string]any{"link": link})
+		core.NotifyI18n(uid, "book_update", key, params, map[string]any{"link": link})
 	}
 }
 
@@ -181,7 +181,6 @@ func (b *behavior) notifyChapterPublished(book *models.Book, doc *models.Documen
 	if book == nil || doc == nil {
 		return
 	}
-	title := fmt.Sprintf("《%s》更新了新章节：%s", book.Title, doc.Title)
 	link := fmt.Sprintf("/book/reader/%s/%s", book.Slug, doc.Slug)
-	b.notifyBookFollowers(book, title, link)
+	b.notifyBookFollowers(book, "notify.follow.chapterPublished", map[string]string{"book": book.Title, "chapter": doc.Title}, link)
 }

@@ -65,8 +65,8 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     # growth: 经验流水系统原因码 t(`growth.reason.${reason}`)；排行榜周期 t(`growth.leaderboard.period.${p}`)
     'growth.reason.': ['revoked', 'achievement_revoked'],
     'growth.leaderboard.period.': ['all', 'month', 'week'],
-    # 通知 payload.i18n.key（服务端下发，lib/notification.ts 渲染）
-    'growth.notify.': ['levelUp'],
+    # 通知 payload.i18n.key（服务端 i18ntext 登记、下发，lib/notification.ts 渲染）；须与服务端模板保持同键
+    'notify.': ['book.reviewed', 'comment.chapter', 'comment.reply', 'reaction.like', 'reaction.favorite', 'collab.invited', 'collab.accepted', 'collab.rejected', 'report.resolved', 'system.upgraded', 'collect.finished', 'achievement.unlocked', 'achievement.granted', 'growth.levelUp', 'follow.chapterPublished'],
 }
 
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）

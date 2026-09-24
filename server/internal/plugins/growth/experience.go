@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"knowforge/server/internal/i18ntext"
 	"knowforge/server/internal/models"
 	"knowforge/server/internal/plugincore"
 	"knowforge/server/internal/plugins"
@@ -18,6 +19,7 @@ import (
 // 插件禁用时全部为安全空操作。
 
 func init() {
+	i18ntext.Register("notify.growth.levelUp", map[string]string{"zh-CN": "成长升级：{name}", "en": "Level up: {name}"})
 	plugincore.ProvideExperienceRecorder(func(core plugincore.Core, userID uint, ruleKey, sourceType, sourceID, dedupeKey string, xp int, reason string) {
 		(&behavior{core: core}).recordExperience(userID, ruleKey, sourceType, sourceID, dedupeKey, xp, reason)
 	})
@@ -294,11 +296,8 @@ func (b *behavior) recalcGrowthProfile(userID uint) {
 			if db.Where("level = ?", newLevel).First(&def).Error == nil && def.Name != "" {
 				name = def.Name
 			}
-			// title 为兜底文案；i18n 供前端按界面语言渲染（growth.notify.levelUp）
-			b.core.Notify(userID, "growth", "成长升级："+name, map[string]any{
-				"link": "/user/growth",
-				"i18n": map[string]any{"key": "growth.notify.levelUp", "params": map[string]any{"name": name, "level": newLevel}},
-			})
+			b.core.NotifyI18n(userID, "growth", "notify.growth.levelUp",
+				map[string]string{"name": name, "level": strconv.Itoa(newLevel)}, map[string]any{"link": "/user/growth"})
 		}
 		// 成长→成就 双向联动：等级变化发出活动，触发 growth.* 指标成就重新评估（每级去重）
 		plugincore.FireActivity(b.core, plugincore.ActivityEvent{

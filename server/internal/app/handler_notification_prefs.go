@@ -71,8 +71,18 @@ func (a *App) maybeSendNotificationEmail(userID uint, ntype, title string, paylo
 	if siteName == "" {
 		siteName = "KnowForge"
 	}
+	// 按收件人偏好语言渲染：可翻译通知用其 i18n 键重新渲染标题；邮件固定文案同样本地化
+	chain := a.userLocaleChain(&u)
+	if key, params, ok := notificationI18n(payload); ok {
+		title = a.renderText(key, params, chain)
+	}
+	text := mail.NotificationText{
+		Greeting:    a.renderText("notify.email.greeting", nil, chain),
+		ViewDetails: a.renderText("notify.email.viewDetails", nil, chain),
+		Footer:      a.renderText("notify.email.footer", map[string]string{"site": siteName}, chain),
+	}
 	subject := strings.NewReplacer("\r", " ", "\n", " ").Replace("[" + siteName + "] " + title)
-	_ = a.enqueueEmail(context.Background(), u.Email, subject, mail.NotificationHTML(title, link, siteName))
+	_ = a.enqueueEmail(context.Background(), u.Email, subject, mail.NotificationHTMLWithText(title, link, text))
 }
 
 // ---- 用户：通知偏好 ----

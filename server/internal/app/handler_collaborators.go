@@ -142,8 +142,8 @@ func (a *App) AddCollaborator(c *gin.Context) {
 }
 
 func (a *App) notifyCollaborationInvitation(inviter, target *models.User, book *models.Book, collab *models.BookCollaborator) {
-	a.Notify(target.ID, "collaboration",
-		"「"+inviter.Username+"」邀请你协作《"+book.Title+"》",
+	a.NotifyI18n(target.ID, "collaboration", "notify.collab.invited",
+		map[string]string{"user": inviter.Username, "book": book.Title},
 		map[string]any{
 			"link":          "/notifications",
 			"book_slug":     book.Slug,
@@ -209,12 +209,12 @@ func (a *App) respondCollaborationInvitation(c *gin.Context, nextStatus string) 
 		return
 	}
 	if collab.InvitedBy != 0 && collab.InvitedBy != u.ID {
-		responseText := "已拒绝"
+		key := "notify.collab.rejected"
 		if nextStatus == "accepted" {
-			responseText = "已接受"
+			key = "notify.collab.accepted"
 		}
-		a.Notify(collab.InvitedBy, "collaboration",
-			"「"+u.Username+"」"+responseText+"《"+book.Title+"》的协作邀请",
+		a.NotifyI18n(collab.InvitedBy, "collaboration", key,
+			map[string]string{"user": u.Username, "book": book.Title},
 			map[string]any{"link": "/book/settings/" + book.Slug, "book_slug": book.Slug})
 	}
 	ok(c, gin.H{"id": collab.ID, "status": nextStatus, "book_slug": book.Slug})

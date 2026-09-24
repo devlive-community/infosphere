@@ -135,23 +135,36 @@ func buildMessage(from, to, subject, htmlBody string) []byte {
 }
 
 // NotificationHTML 生成站内通知的邮件正文
+// NotificationText 通知邮件的固定文案（按收件人语言渲染后传入）。
+type NotificationText struct {
+	Greeting    string // 如「你好，」
+	ViewDetails string // 链接文字，如「查看详情」
+	Footer      string // 页脚说明（已含站点名）
+}
+
+// NotificationHTML 生成通知邮件正文（中文固定文案，兼容旧调用）。
 func NotificationHTML(title, link, siteName string) string {
 	if strings.TrimSpace(siteName) == "" {
 		siteName = "KnowForge"
 	}
-	safeTitle := html.EscapeString(title)
-	safeSite := html.EscapeString(siteName)
+	return NotificationHTMLWithText(title, link, NotificationText{
+		Greeting: "你好，", ViewDetails: "查看详情",
+		Footer: "这是来自 " + siteName + " 的通知邮件。如需关闭，可在账户设置的通知设置中调整。",
+	})
+}
+
+// NotificationHTMLWithText 以给定文案生成通知邮件正文（多语言）。
+func NotificationHTMLWithText(title, link string, text NotificationText) string {
 	action := ""
 	if strings.TrimSpace(link) != "" {
-		safeLink := html.EscapeString(link)
-		action = fmt.Sprintf(`<p><a href="%s">查看详情</a></p>`, safeLink)
+		action = fmt.Sprintf(`<p><a href="%s">%s</a></p>`, html.EscapeString(link), html.EscapeString(text.ViewDetails))
 	}
 	return fmt.Sprintf(`<div style="max-width:480px;margin:0 auto;font-family:sans-serif">
-<p>你好，</p>
+<p>%s</p>
 <p>%s</p>
 %s
-<p style="color:#888;font-size:12px">这是来自 %s 的通知邮件。如需关闭，可在账户设置的通知设置中调整。</p>
-</div>`, safeTitle, action, safeSite)
+<p style="color:#888;font-size:12px">%s</p>
+</div>`, html.EscapeString(text.Greeting), html.EscapeString(title), action, html.EscapeString(text.Footer))
 }
 
 // VerifyEmailHTML 生成邮箱激活邮件正文

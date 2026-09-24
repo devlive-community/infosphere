@@ -47,12 +47,12 @@ func (a *App) PutReaction(c *gin.Context) {
 	}
 	// M13 通知触发：仅新建的点赞/收藏才通知书籍作者
 	if tx.RowsAffected > 0 && book.UserID != u.ID {
-		action := "点赞"
+		key := "notify.reaction.like"
 		if req.Type == "favorite" {
-			action = "收藏"
+			key = "notify.reaction.favorite"
 		}
-		a.Notify(book.UserID, "reaction",
-			fmt.Sprintf("「%s」%s了你的书籍《%s》", u.Username, action, book.Title),
+		a.NotifyI18n(book.UserID, "reaction", key,
+			map[string]string{"user": u.Username, "book": book.Title},
 			map[string]any{"link": fmt.Sprintf("/book/detail/%s", book.Slug)})
 	}
 	if tx.RowsAffected > 0 {

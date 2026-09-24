@@ -2,10 +2,13 @@ package bookfollow
 
 import (
 	"knowforge/server/internal/authz"
+	"knowforge/server/internal/i18ntext"
 	"knowforge/server/internal/plugins"
 )
 
 func init() {
+	// 章节更新通知的多语言模板（与前端字典同键）
+	i18ntext.Register("notify.follow.chapterPublished", map[string]string{"zh-CN": "《{book}》更新了新章节：{chapter}", "en": `"{book}" has a new chapter: {chapter}`})
 	plugins.Register(plugins.Meta{
 		Order:       50,
 		Key:         plugins.KeyBookFollow,

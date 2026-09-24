@@ -999,7 +999,7 @@ func (am *behavior) evaluateAchievementForUser(userID uint, definition models.Ac
 		return err
 	}
 	if createdGrant && am.achievementSettings().NotificationsEnabled {
-		am.core.Notify(userID, "achievement", fmt.Sprintf("已解锁成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
+		am.core.NotifyI18n(userID, "achievement", "notify.achievement.unlocked", map[string]string{"name": definition.Name}, map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
 		am.core.Gorm().Model(&models.UserAchievement{}).Where("user_id = ? AND achievement_id = ?", userID, definition.ID).Update("notified_at", now)
 	}
 	// 成长联动：成就解锁奖励经验（每个用户每个成就只持有一份；成长插件启用时生效）
@@ -1349,7 +1349,7 @@ func (am *behavior) AdminGrantAchievement(c *gin.Context) {
 	}
 	am.core.RecordAudit(c, "achievement.granted", "achievement_grant", auditID(grant.ID), definition.Name, map[string]any{"user_id": user.ID, "achievement_id": definition.ID, "created": created, "reactivated": reactivated})
 	if (created || reactivated) && am.achievementSettings().NotificationsEnabled {
-		am.core.Notify(user.ID, "achievement", fmt.Sprintf("已获得成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
+		am.core.NotifyI18n(user.ID, "achievement", "notify.achievement.granted", map[string]string{"name": definition.Name}, map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
 	}
 	// 成长联动：手工授予同样奖励经验；每个用户每个成就只持有一份（撤销后重新授予可再得，不会重复）
 	if (created || reactivated) && definition.RewardXP > 0 {

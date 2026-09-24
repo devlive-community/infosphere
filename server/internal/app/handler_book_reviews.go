@@ -131,8 +131,8 @@ func (a *App) UpsertBookReview(c *gin.Context) {
 
 	// 首次评价时通知书籍作者（更新已有评价不重复通知）
 	if created && book.UserID != u.ID {
-		a.Notify(book.UserID, "comment",
-			fmt.Sprintf("「%s」评价了你的书籍《%s》", u.Username, book.Title),
+		a.NotifyI18n(book.UserID, "comment", "notify.book.reviewed",
+			map[string]string{"user": u.Username, "book": book.Title},
 			map[string]any{"link": fmt.Sprintf("/book/detail/%s", book.Slug)})
 	}
 

@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -226,7 +225,7 @@ func (a *App) AdminResolveContentReport(c *gin.Context) {
 	if req.Resolution == "takedown" {
 		resultText = "举报已核实，相关内容已下架"
 	}
-	a.Notify(report.ReporterID, "moderation", fmt.Sprintf("你对“%s”的举报已处理", report.TargetLabel), map[string]any{
+	a.NotifyI18n(report.ReporterID, "moderation", "notify.report.resolved", map[string]string{"target": report.TargetLabel}, map[string]any{
 		"link": "/notifications", "report_id": report.ID, "result": req.Resolution,
 	})
 	a.recordAudit(c, "report.resolved", "report", auditID(report.ID), report.TargetLabel, map[string]any{

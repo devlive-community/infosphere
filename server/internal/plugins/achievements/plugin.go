@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"knowforge/server/internal/authz"
+	"knowforge/server/internal/i18ntext"
 	"knowforge/server/internal/jobqueue"
 	"knowforge/server/internal/models"
 	"knowforge/server/internal/plugincore"
@@ -23,6 +24,8 @@ type behavior struct{ core plugincore.Core }
 
 func init() {
 	plugincore.RegisterBehavior(&behavior{})
+	i18ntext.Register("notify.achievement.unlocked", map[string]string{"zh-CN": "已解锁成就「{name}」", "en": "Achievement unlocked: {name}"})
+	i18ntext.Register("notify.achievement.granted", map[string]string{"zh-CN": "已获得成就「{name}」", "en": "You have been awarded the achievement: {name}"})
 	// 业务活动 → 幂等的成就评估事件
 	plugincore.OnActivity(func(core plugincore.Core, ev plugincore.ActivityEvent) {
 		(&behavior{core: core}).recordAchievementEvent(ev.UserID, ev.Type, ev.SourceType, ev.SourceID, ev.DedupeKey)

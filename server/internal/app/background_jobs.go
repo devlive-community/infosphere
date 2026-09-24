@@ -68,6 +68,7 @@ func (a *App) configureJobQueue() error {
 	queue.RegisterResult(zipImportJobType, a.runZIPImportJob)
 	queue.Register(maintenanceJobType, a.runMaintenanceCleanup)
 	queue.Register(sitemapJobType, a.runSitemapGenerate)
+	queue.Register(notificationBackfillJobType, a.runNotificationBackfill)
 	// 插件登记的后台任务（如内容采集插件的整站采集）
 	for _, job := range plugincore.Jobs() {
 		queue.Register(job.Type, job.Factory(a))
@@ -271,11 +272,13 @@ func (a *App) startJobSupervisor(ctx context.Context) {
 			go queue.Start(workerCtx)
 			a.enqueueMaintenanceIfDue(ctx, queue)
 			a.enqueueSitemapIfDue(ctx, queue)
+			a.enqueueNotificationBackfillIfNeeded(ctx, queue)
 			plugincore.FireJobQueueSweep(a, queue)
 			nextMaintenanceCheck = currentTime().Add(maintenanceCheckEvery)
 		} else if queue != nil && !currentTime().Before(nextMaintenanceCheck) {
 			a.enqueueMaintenanceIfDue(ctx, queue)
 			a.enqueueSitemapIfDue(ctx, queue)
+			a.enqueueNotificationBackfillIfNeeded(ctx, queue)
 			plugincore.FireJobQueueSweep(a, queue)
 			nextMaintenanceCheck = currentTime().Add(maintenanceCheckEvery)
 		}

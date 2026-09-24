@@ -241,7 +241,7 @@ func (a *App) NotifyAdminsOnUpgrade() {
 		return
 	}
 	for _, admin := range admins {
-		a.Notify(admin.ID, "system", fmt.Sprintf("系统已升级到 v%s", Version),
+		a.NotifyI18n(admin.ID, "system", "notify.system.upgraded", map[string]string{"version": Version},
 			map[string]any{"link": "/admin/system", "from_version": previous})
 	}
 }

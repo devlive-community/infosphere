@@ -166,16 +166,16 @@ func (a *App) CreateComment(c *gin.Context) {
 	// M13 通知触发：书籍作者 + 被回复人（不通知操作者本人，作者与被回复人重复时只发一条）
 	readerLink := fmt.Sprintf("/book/reader/%s/%s", book.Slug, doc.Slug)
 	if book.UserID != u.ID {
-		a.Notify(book.UserID, "comment",
-			fmt.Sprintf("「%s」评论了你的章节《%s》", u.Username, doc.Title),
+		a.NotifyI18n(book.UserID, "comment", "notify.comment.chapter",
+			map[string]string{"user": u.Username, "chapter": doc.Title},
 			map[string]any{"link": readerLink})
 	}
 	if comment.ParentID != nil {
 		var parent models.Comment
 		if err := a.DB.First(&parent, *comment.ParentID).Error; err == nil &&
 			parent.UserID != u.ID && parent.UserID != book.UserID {
-			a.Notify(parent.UserID, "comment",
-				fmt.Sprintf("「%s」回复了你的评论", u.Username),
+			a.NotifyI18n(parent.UserID, "comment", "notify.comment.reply",
+				map[string]string{"user": u.Username},
 				map[string]any{"link": readerLink})
 		}
 	}

@@ -347,7 +347,7 @@ func TestLeaderboardAndPrivacy(t *testing.T) {
 	if err := e.db.Where("user_id = ? AND type = ?", alice.ID, "growth").Order("id DESC").First(&n).Error; err != nil {
 		t.Fatalf("应有升级通知: %v", err)
 	}
-	if !strings.Contains(n.Payload, `"key":"growth.notify.levelUp"`) || !strings.Contains(n.Title, "Lv.2") {
+	if !strings.Contains(n.Payload, `"key":"notify.growth.levelUp"`) || !strings.Contains(n.Title, "Lv.2") {
 		t.Fatalf("升级通知应带 i18n 键且兜底标题含等级名: %s / %s", n.Title, n.Payload)
 	}
 }

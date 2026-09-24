@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"knowforge/server/internal/authz"
+	"knowforge/server/internal/i18ntext"
 	"knowforge/server/internal/models"
 	"knowforge/server/internal/plugincore"
 	"knowforge/server/internal/plugins"
@@ -21,6 +22,7 @@ type behavior struct{ core plugincore.Core }
 var instance = &behavior{}
 
 func init() {
+	i18ntext.Register("notify.collect.finished", map[string]string{"zh-CN": "《{book}》采集完成", "en": `Finished collecting "{book}"`})
 	plugincore.RegisterBehavior(instance)
 	// 整站采集 worker：任务队列由核心在每次创建时注册（队列可能在安装向导完成后才创建）
 	plugincore.RegisterJob(siteCrawlJobType, func(core plugincore.Core) func(context.Context, json.RawMessage) error {

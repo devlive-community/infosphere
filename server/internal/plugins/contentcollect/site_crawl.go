@@ -551,7 +551,7 @@ func (cc *behavior) runSiteCrawlJob(ctx context.Context, raw json.RawMessage) er
 	}
 	cc.core.Gorm().Model(&job).Updates(map[string]any{"success": success, "failed": failed})
 	cc.finishCrawlJob(&job, status, "")
-	cc.core.Notify(job.UserID, "collect.finished", fmt.Sprintf("《%s》采集完成", book.Title), map[string]any{
+	cc.core.NotifyI18n(job.UserID, "collect.finished", "notify.collect.finished", map[string]string{"book": book.Title}, map[string]any{
 		"job_id": job.ID, "book_id": book.ID, "book_slug": book.Slug, "success": success, "failed": failed, "status": status,
 	})
 	return nil

@@ -27,6 +27,8 @@ type Core interface {
 	Fail(c *gin.Context, status int, message string)
 	AtoiDefault(s string, def int) int
 	Notify(userID uint, ntype, title string, payload map[string]any)
+	// NotifyI18n 以可翻译文本发送通知：key 为 i18n 键（模板经 i18ntext.Register 登记），params 为插值参数。
+	NotifyI18n(userID uint, ntype, key string, params map[string]string, payload map[string]any)
 	PluginEnabled(key string) bool
 	RecordAudit(c *gin.Context, action, resourceType, resourceID, label string, summary map[string]any)
 
