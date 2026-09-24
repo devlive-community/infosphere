@@ -33,6 +33,7 @@ var aiSettingKeys = []struct {
 	{"price_input", "ai_price_input", "AI 服务：对话输入单价（每百万 tokens）", false},
 	{"price_output", "ai_price_output", "AI 服务：对话输出单价（每百万 tokens）", false},
 	{"price_embed", "ai_price_embed", "AI 服务：向量嵌入单价（每百万 tokens）", false},
+	{"price_translate", "ai_price_translate", "AI 服务：机器翻译单价（每百万字符，Google 翻译）", false},
 }
 
 // aiConfig 当前生效的 AI 配置与来源（ai | translation | none）。
@@ -70,6 +71,12 @@ func (a *App) aiConfig() (ai.Config, string) {
 
 func (a *App) AIChat(ctx context.Context, req ai.ChatRequest) (ai.ChatResponse, error) {
 	cfg, _ := a.aiConfig()
+	return a.meteredChat(ctx, cfg, req, 0)
+}
+
+// meteredChat 用指定配置调用对话模型：调用前判定调用方每月额度，调用后记录用量。
+// 站点内所有对话模型调用（AI 服务、翻译等）都必须经过这里，保证用量记录完整。chars 为翻译类调用的原文字符数。
+func (a *App) meteredChat(ctx context.Context, cfg ai.Config, req ai.ChatRequest, chars int64) (ai.ChatResponse, error) {
 	caller := ai.CallerFrom(ctx)
 	if err := a.checkAIQuota(caller); err != nil {
 		return ai.ChatResponse{}, err
@@ -80,7 +87,7 @@ func (a *App) AIChat(ctx context.Context, req ai.ChatRequest) (ai.ChatResponse, 
 	if model == "" {
 		model = cfg.Model
 	}
-	a.recordAIUsage(caller, "chat", cfg.Provider, model, res.Usage, time.Since(started), err)
+	a.recordAIUsage(caller, "chat", cfg.Provider, model, res.Usage, chars, time.Since(started), err)
 	return res, err
 }
 
@@ -92,7 +99,7 @@ func (a *App) AIEmbed(ctx context.Context, texts []string) ([][]float32, error) 
 	}
 	started := time.Now()
 	vecs, usage, err := ai.Embed(ctx, cfg, texts)
-	a.recordAIUsage(caller, "embed", ai.ProviderOpenAI, cfg.EmbedModel, usage, time.Since(started), err)
+	a.recordAIUsage(caller, "embed", ai.ProviderOpenAI, cfg.EmbedModel, usage, 0, time.Since(started), err)
 	return vecs, err
 }
 

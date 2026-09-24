@@ -43,7 +43,7 @@ export default function LocalizedFields({ value, onChange, fields, onBusyChange 
       for (const field of fields) {
         if (translated[field.key] || !source[field.key]) continue
         const result = await api<{ text: string }>('/translate', { method: 'POST', body: {
-          text: source[field.key], source_lang: defaultLocale, target_lang: active.code, target_label: active.native_name,
+          text: source[field.key], source_lang: defaultLocale, target_lang: active.code, target_label: active.native_name, ref_type: 'resource',
         } })
         if (Array.from(result.text).length > field.maxLength) throw new Error(t('i18n.translationTooLong'))
         translated[field.key] = result.text

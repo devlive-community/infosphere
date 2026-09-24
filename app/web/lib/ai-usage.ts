@@ -18,6 +18,7 @@ export interface UsageAgg {
   errors: number
   input_tokens: number
   output_tokens: number
+  characters: number // 机器翻译按字符计量
   cost_micros: number
 }
 
@@ -27,6 +28,8 @@ export interface MyAIUsage {
   calls: number
   limit: number // -1 不限
   by_feature: { feature: string; calls: number; tokens: number }[]
+  translate_chars: number // 本月已翻译字数
+  translate_limit: number // -1 不限
 }
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string

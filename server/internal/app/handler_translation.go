@@ -5,16 +5,56 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
+
+	"knowforge/server/internal/ai"
+	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 )
 
 // 翻译：后台配置翻译方式（Google / OpenAI 协议 / Claude 协议），写作台调用翻译当前内容。
 // 凭据存站点配置表，仅管理员可读写，不出现在公开 /site（公开仅暴露是否启用）。
+// 每次翻译都写入 AI 用量记录（功能 translate）：OpenAI/Claude 经 meteredChat 记 tokens 并受每月 AI 用量约束，
+// Google 按字符记录；所有方式统一受「每月翻译字数」权益约束。
+
+const (
+	entTranslateMonthlyChars = "translate.monthly_chars"
+	cfgTranslateMonthlyChars = "translate_monthly_chars"
+	featureTranslate         = "translate"
+)
+
+func init() {
+	plugincore.RegisterEntitlement(plugincore.EntitlementDef{
+		Key: entTranslateMonthlyChars, Kind: plugincore.EntitlementLimit, Unit: "chars", Min: 0, Max: 1_000_000_000, AllowUnlimited: true, Order: 45,
+		Available: func(core plugincore.Core) bool {
+			return core.GetSetting("translation_provider") != "" && core.GetSetting("translation_provider") != "none"
+		},
+		Base: func(core plugincore.Core) int64 {
+			return settingLimit(core, cfgTranslateMonthlyChars, plugincore.Unlimited)
+		},
+		SetBase: func(core plugincore.Core, v int64) error {
+			return core.SetSetting(cfgTranslateMonthlyChars, strconv.FormatInt(v, 10), "权益：每月翻译字数（基础）")
+		},
+	})
+}
+
+// translateMonthUsed 用户本月已翻译的原文字符数（仅成功的调用）。
+func (a *App) translateMonthUsed(userID uint) int64 {
+	var total struct{ N int64 }
+	a.DB.Model(&models.AIUsageLog{}).Select("COALESCE(SUM(characters), 0) AS n").
+		Where("user_id = ? AND feature = ? AND status = ? AND created_at >= ?", userID, featureTranslate, "ok", monthStart(time.Now())).Scan(&total)
+	return total.N
+}
+
+var translateRefTypes = map[string]bool{"document": true, "book": true, "resource": true}
 
 var translationProviders = map[string]bool{"": true, "none": true, "google": true, "openai": true, "claude": true}
 
@@ -113,6 +153,8 @@ func (a *App) Translate(c *gin.Context) {
 		TargetLang  string `json:"target_lang"`  // 语言代码，如 en / zh-CN（Google 使用）
 		TargetLabel string `json:"target_label"` // 语言名称，如 English / 简体中文（AI 使用）
 		SourceLang  string `json:"source_lang"`
+		RefType     string `json:"ref_type"` // 可选：document | book | resource（用量记录的关联对象）
+		RefID       uint   `json:"ref_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误")
@@ -138,12 +180,26 @@ func (a *App) Translate(c *gin.Context) {
 	if googleTarget == "" {
 		googleTarget = req.TargetLabel
 	}
-	if len([]rune(req.Text)) > 20000 {
+	chars := int64(utf8.RuneCountInString(req.Text))
+	if chars > 20000 {
 		fail(c, http.StatusBadRequest, "单次翻译文本过长（上限 20000 字）")
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	u := currentUser(c)
+	if limit := a.entitlement(u, entTranslateMonthlyChars); limit != plugincore.Unlimited {
+		if left := limit - a.translateMonthUsed(u.ID); chars > left {
+			if left < 0 {
+				left = 0
+			}
+			fail(c, http.StatusTooManyRequests, fmt.Sprintf("本月翻译字数不足（剩余 %d 字），下月恢复，或提升等级/开通会员获得更多额度", left))
+			return
+		}
+	}
+	caller := ai.Caller{UserID: u.ID, Feature: featureTranslate}
+	if translateRefTypes[req.RefType] {
+		caller.RefType, caller.RefID = req.RefType, req.RefID
+	}
+	ctx, cancel := context.WithTimeout(ai.WithCaller(c.Request.Context(), caller), 60*time.Second)
 	defer cancel()
 
 	var (
@@ -154,19 +210,47 @@ func (a *App) Translate(c *gin.Context) {
 	model := a.getSetting("translation_model")
 	switch provider {
 	case "google":
-		translated, err = translateGoogle(ctx, apiKey, base, req.Text, googleTarget)
-	case "openai":
-		translated, err = translateOpenAI(ctx, apiKey, base, model, req.Text, aiTarget)
-	case "claude":
-		translated, err = translateClaude(ctx, apiKey, base, model, req.Text, aiTarget)
+		translated, err = a.translateGoogleMetered(ctx, caller, apiKey, base, req.Text, googleTarget, chars)
+	case "openai", "claude":
+		translated, err = a.translateAI(ctx, provider, apiKey, base, model, req.Text, aiTarget, chars)
 	default:
 		err = errors.New("不支持的翻译方式")
+	}
+	if errors.Is(err, ai.ErrQuotaExceeded) {
+		fail(c, http.StatusTooManyRequests, err.Error())
+		return
 	}
 	if err != nil {
 		fail(c, http.StatusBadGateway, "翻译失败: "+err.Error())
 		return
 	}
 	ok(c, gin.H{"text": translated})
+}
+
+// translateAI 用翻译设置中的 OpenAI / Claude 配置翻译（经 meteredChat 记录用量）。
+func (a *App) translateAI(ctx context.Context, provider, apiKey, base, model, text, target string, chars int64) (string, error) {
+	cfg := ai.Config{Provider: ai.ProviderOpenAI, BaseURL: base, APIKey: apiKey, Model: model}
+	if provider == "claude" {
+		cfg.Provider = ai.ProviderAnthropic
+		if cfg.Model == "" {
+			cfg.Model = "claude-3-5-sonnet-latest" // 与翻译设置页的默认值一致
+		}
+	}
+	res, err := a.meteredChat(ctx, cfg, ai.ChatRequest{
+		System: translationPrompt(target), Messages: []ai.Message{{Role: "user", Content: text}}, MaxTokens: 8192, Temperature: 0.2,
+	}, chars)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(res.Content), nil
+}
+
+// translateGoogleMetered 调用 Google 翻译并按字符记录用量。
+func (a *App) translateGoogleMetered(ctx context.Context, caller ai.Caller, apiKey, base, text, target string, chars int64) (string, error) {
+	started := time.Now()
+	out, err := translateGoogle(ctx, apiKey, base, text, target)
+	a.recordAIUsage(caller, "translate", "google", "google-translate", ai.Usage{}, chars, time.Since(started), err)
+	return out, err
 }
 
 func httpPostJSON(ctx context.Context, url string, headers map[string]string, payload any) ([]byte, int, error) {
@@ -216,75 +300,4 @@ func translateGoogle(ctx context.Context, apiKey, base, text, target string) (st
 func translationPrompt(target string) string {
 	return "You are a professional translator. Translate the user's text into " + target +
 		". Preserve Markdown formatting, code blocks and inline code verbatim. Output only the translation without any explanation."
-}
-
-func translateOpenAI(ctx context.Context, apiKey, base, model, text, target string) (string, error) {
-	if base == "" {
-		base = "https://api.openai.com/v1"
-	}
-	if model == "" {
-		model = "gpt-4o-mini"
-	}
-	url := strings.TrimRight(base, "/") + "/chat/completions"
-	payload := map[string]any{
-		"model": model,
-		"messages": []map[string]string{
-			{"role": "system", "content": translationPrompt(target)},
-			{"role": "user", "content": text},
-		},
-		"temperature": 0.2,
-	}
-	data, status, err := httpPostJSON(ctx, url, map[string]string{"Authorization": "Bearer " + apiKey}, payload)
-	if err != nil {
-		return "", err
-	}
-	if status != http.StatusOK {
-		return "", errors.New("OpenAI 接口返回状态 " + http.StatusText(status))
-	}
-	var out struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-	}
-	if err := json.Unmarshal(data, &out); err != nil || len(out.Choices) == 0 {
-		return "", errors.New("OpenAI 响应解析失败")
-	}
-	return strings.TrimSpace(out.Choices[0].Message.Content), nil
-}
-
-func translateClaude(ctx context.Context, apiKey, base, model, text, target string) (string, error) {
-	if base == "" {
-		base = "https://api.anthropic.com"
-	}
-	if model == "" {
-		model = "claude-3-5-sonnet-latest"
-	}
-	url := strings.TrimRight(base, "/") + "/v1/messages"
-	payload := map[string]any{
-		"model":      model,
-		"max_tokens": 8192,
-		"system":     translationPrompt(target),
-		"messages": []map[string]string{
-			{"role": "user", "content": text},
-		},
-	}
-	headers := map[string]string{"x-api-key": apiKey, "anthropic-version": "2023-06-01"}
-	data, status, err := httpPostJSON(ctx, url, headers, payload)
-	if err != nil {
-		return "", err
-	}
-	if status != http.StatusOK {
-		return "", errors.New("Claude 接口返回状态 " + http.StatusText(status))
-	}
-	var out struct {
-		Content []struct {
-			Text string `json:"text"`
-		} `json:"content"`
-	}
-	if err := json.Unmarshal(data, &out); err != nil || len(out.Content) == 0 {
-		return "", errors.New("Claude 响应解析失败")
-	}
-	return strings.TrimSpace(out.Content[0].Text), nil
 }

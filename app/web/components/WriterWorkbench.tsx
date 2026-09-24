@@ -941,7 +941,7 @@ export default function Writer({ user }: WriterProps) {
     const selEnd = el.selectionEnd
     setTranslating(true)
     try {
-      const d = await api<{ text: string }>('/translate', { method: 'POST', body: { text: source, target_lang: target, target_label: label } })
+      const d = await api<{ text: string }>('/translate', { method: 'POST', body: { text: source, target_lang: target, target_label: label, ...(current ? { ref_type: 'document', ref_id: current.id } : {}) } })
       if (hasSelection) {
         const next = el.value.slice(0, selStart) + d.text + el.value.slice(selEnd)
         setContent(next)

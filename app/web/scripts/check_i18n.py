@@ -120,6 +120,8 @@ SKIP_DIRS = {'node_modules', '.next', '.next-build', 'lib/i18n/locales', 'covera
 KNOWN_NON_KEYS = {
     # 权益键（lib/entitlements.ts entitlementAllowed 的参数，数据值，文案键为 entitlement.<key>.label）
     'collect.page', 'collect.site',
+    # components/MyEntitlementsCard.tsx 按月计量权益的键（数据值）
+    'ai.monthly_tokens', 'translate.monthly_chars',
     # pages/admin/audit-logs.tsx 审计 action 下拉的 value（数据值，文案键为 admin.audit.action.*）
     'user.role_updated', 'user.status_updated', 'user.deleted',
     'book.moderated', 'book.permanently_deleted', 'report.resolved',

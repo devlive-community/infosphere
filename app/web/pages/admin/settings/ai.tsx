@@ -16,6 +16,7 @@ interface AIConfig {
   price_input: string
   price_output: string
   price_embed: string
+  price_translate: string
   api_key_set: boolean
   embed_api_key_set: boolean
   source: 'ai' | 'translation' | 'none'
@@ -56,7 +57,7 @@ export default function SettingsAI() {
       const body: Record<string, string> = {
         provider: cfg.provider, base_url: cfg.base_url, model: cfg.model,
         embed_base_url: cfg.embed_base_url, embed_model: cfg.embed_model,
-        price_currency: cfg.price_currency, price_input: cfg.price_input, price_output: cfg.price_output, price_embed: cfg.price_embed,
+        price_currency: cfg.price_currency, price_input: cfg.price_input, price_output: cfg.price_output, price_embed: cfg.price_embed, price_translate: cfg.price_translate,
         api_key: clear === 'api_key' ? '-' : apiKey, embed_api_key: clear === 'embed_api_key' ? '-' : embedKey,
       }
       setCfg(await api<AIConfig>('/admin/ai', { method: 'PUT', body }))
@@ -163,6 +164,9 @@ export default function SettingsAI() {
               </Field>
               <Field label={t('admin.settings.ai.priceEmbed')}>
                 <Input type="number" min={0} step="0.01" value={cfg.price_embed} onChange={(e) => set({ price_embed: e.target.value })} placeholder="0" />
+              </Field>
+              <Field label={t('admin.settings.ai.priceTranslate')} hint={t('admin.settings.ai.priceTranslateHint')}>
+                <Input type="number" min={0} step="0.01" value={cfg.price_translate} onChange={(e) => set({ price_translate: e.target.value })} placeholder="0" />
               </Field>
             </div>
             <p className="mt-3 text-xs text-slate-400">{t('admin.settings.ai.quotaNote')}</p>

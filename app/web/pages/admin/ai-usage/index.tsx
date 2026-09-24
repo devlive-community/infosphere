@@ -20,14 +20,15 @@ interface Summary {
 
 interface LogItem {
   log: {
-    id: number; user_id: number; feature: string; ref_type: string; ref_id: number; kind: 'chat' | 'embed'; model: string
-    input_tokens: number; output_tokens: number; estimated: boolean; cost_micros: number; currency: string
+    id: number; user_id: number; feature: string; ref_type: string; ref_id: number; kind: 'chat' | 'embed' | 'translate'; model: string
+    input_tokens: number; output_tokens: number; characters: number; estimated: boolean; cost_micros: number; currency: string
     duration_ms: number; status: 'ok' | 'error'; error: string; created_at: string
   }
   username: string
 }
 
 const PERIODS = ['7', '30', '90']
+const KIND_LABEL: Record<LogItem['log']['kind'], string> = { chat: 'admin.aiUsage.kindChat', embed: 'admin.aiUsage.kindEmbed', translate: 'admin.aiUsage.kindTranslate' }
 
 // 管理后台 · AI 用量：站点 AI 服务的调用次数、tokens 与估算费用（按功能/模型/用户），以及调用明细
 export default function AdminAIUsage() {
@@ -66,7 +67,8 @@ export default function AdminAIUsage() {
               hint={summary.total.errors ? t('admin.aiUsage.errors', { n: summary.total.errors }) : undefined} />
             <Metric label={t('admin.aiUsage.inputTokens')} value={formatTokens(summary.total.input_tokens)} />
             <Metric label={t('admin.aiUsage.outputTokens')} value={formatTokens(summary.total.output_tokens)} />
-            <Metric label={t('admin.aiUsage.cost')} value={formatCost(summary.total.cost_micros, summary.currency)} hint={t('admin.aiUsage.costHint')} />
+            <Metric label={t('admin.aiUsage.cost')} value={formatCost(summary.total.cost_micros, summary.currency)}
+              hint={summary.total.characters ? t('admin.aiUsage.translatedChars', { n: summary.total.characters.toLocaleString() }) : t('admin.aiUsage.costHint')} />
           </div>
 
           <Card className="p-5">
@@ -114,7 +116,8 @@ function Metric({ label, value, hint }: { label: string; value: string; hint?: s
 
 function Breakdown({ title, rows, currency }: { title: string; rows: { key: string; label: string; usage: UsageAgg }[]; currency: string }) {
   const { t } = useTranslation()
-  const max = Math.max(1, ...rows.map((r) => r.usage.input_tokens + r.usage.output_tokens))
+  const weight = (u: UsageAgg) => u.input_tokens + u.output_tokens || u.characters
+  const max = Math.max(1, ...rows.map((r) => weight(r.usage)))
   return (
     <Card className="p-5">
       <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
@@ -122,14 +125,18 @@ function Breakdown({ title, rows, currency }: { title: string; rows: { key: stri
         <ul className="mt-3 space-y-3">
           {rows.map((r) => {
             const tk = r.usage.input_tokens + r.usage.output_tokens
+            const value = tk > 0 ? formatTokens(tk) : r.usage.characters > 0 ? t('admin.aiUsage.chars', { n: formatTokens(r.usage.characters) }) : '0'
             return (
               <li key={r.key}>
                 <div className="flex items-baseline gap-2 text-sm">
                   <span className="min-w-0 flex-1 truncate text-slate-700">{r.label}</span>
-                  <span className="shrink-0 tabular-nums text-slate-900">{formatTokens(tk)}</span>
+                  <span className="shrink-0 tabular-nums text-slate-900">{value}</span>
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-primary-400" style={{ width: `${(tk / max) * 100}%` }} /></div>
-                <div className="mt-1 text-xs text-slate-400">{t('admin.aiUsage.rowMeta', { calls: r.usage.calls, cost: formatCost(r.usage.cost_micros, currency) })}</div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-primary-400" style={{ width: `${(weight(r.usage) / max) * 100}%` }} /></div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {t('admin.aiUsage.rowMeta', { calls: r.usage.calls, cost: formatCost(r.usage.cost_micros, currency) })}
+                  {tk > 0 && r.usage.characters > 0 && <> · {t('admin.aiUsage.chars', { n: formatTokens(r.usage.characters) })}</>}
+                </div>
               </li>
             )
           })}
@@ -201,10 +208,11 @@ function UsageLogs({ features }: { features: string[] }) {
                   <td className="whitespace-nowrap py-2 pr-3 text-slate-500">{formatDate(l.created_at)}</td>
                   <td className="py-2 pr-3 text-slate-700">{l.user_id ? (username || `#${l.user_id}`) : t('admin.aiUsage.system')}</td>
                   <td className="py-2 pr-3 text-slate-700">{aiFeatureLabel(t, l.feature)}</td>
-                  <td className="py-2 pr-3 text-slate-500">{l.model || '-'}<span className="ml-1 text-xs text-slate-400">· {t(l.kind === 'embed' ? 'admin.aiUsage.kindEmbed' : 'admin.aiUsage.kindChat')}</span></td>
+                  <td className="py-2 pr-3 text-slate-500">{l.model || '-'}<span className="ml-1 text-xs text-slate-400">· {t(KIND_LABEL[l.kind])}</span></td>
                   <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums text-slate-700">
-                    {formatTokens(l.input_tokens)} / {formatTokens(l.output_tokens)}
+                    {l.kind === 'translate' ? t('admin.aiUsage.chars', { n: formatTokens(l.characters) }) : <>{formatTokens(l.input_tokens)} / {formatTokens(l.output_tokens)}</>}
                     {l.estimated && <Tooltip content={t('admin.aiUsage.estimatedHint')}><span className="ml-1 text-xs text-amber-600">≈</span></Tooltip>}
+                    {l.kind === 'chat' && l.characters > 0 && <div className="text-xs text-slate-400">{t('admin.aiUsage.chars', { n: formatTokens(l.characters) })}</div>}
                   </td>
                   <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums text-slate-500">{formatCost(l.cost_micros, l.currency || 'USD')}</td>
                   <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums text-slate-500">{(l.duration_ms / 1000).toFixed(1)}s</td>

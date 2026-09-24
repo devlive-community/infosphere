@@ -41,8 +41,8 @@ func init() {
 
 // aiPricing 每百万 tokens 的单价（货币单位），未配置为 0（不估算费用）。
 type aiPricing struct {
-	Currency             string
-	Input, Output, Embed float64
+	Currency                        string
+	Input, Output, Embed, Translate float64 // Translate 为每百万字符
 }
 
 func (a *App) aiPricing() aiPricing {
@@ -57,11 +57,14 @@ func (a *App) aiPricing() aiPricing {
 	if cur == "" {
 		cur = "USD"
 	}
-	return aiPricing{Currency: cur, Input: num("ai_price_input"), Output: num("ai_price_output"), Embed: num("ai_price_embed")}
+	return aiPricing{Currency: cur, Input: num("ai_price_input"), Output: num("ai_price_output"), Embed: num("ai_price_embed"), Translate: num("ai_price_translate")}
 }
 
 // costMicros 估算费用（货币单位的百万分之一）：tokens × 每百万单价 / 1e6 × 1e6。
-func (p aiPricing) costMicros(kind string, u ai.Usage) int64 {
+func (p aiPricing) costMicros(kind string, u ai.Usage, chars int64) int64 {
+	if kind == "translate" {
+		return int64(math.Round(float64(chars) * p.Translate))
+	}
 	if kind == "embed" {
 		return int64(math.Round(float64(u.InputTokens) * p.Embed))
 	}
@@ -100,7 +103,7 @@ func (a *App) checkAIQuota(caller ai.Caller) error {
 }
 
 // recordAIUsage 写入一条用量记录（失败的调用也记录，便于排查；tokens 为 0）。
-func (a *App) recordAIUsage(caller ai.Caller, kind, provider, model string, usage ai.Usage, elapsed time.Duration, callErr error) {
+func (a *App) recordAIUsage(caller ai.Caller, kind, provider, model string, usage ai.Usage, chars int64, elapsed time.Duration, callErr error) {
 	pricing := a.aiPricing()
 	row := models.AIUsageLog{
 		UserID: caller.UserID, Feature: caller.Feature, RefType: caller.RefType, RefID: caller.RefID,
@@ -113,8 +116,8 @@ func (a *App) recordAIUsage(caller ai.Caller, kind, provider, model string, usag
 	if callErr != nil {
 		row.Status, row.Error = "error", truncateRunes(callErr.Error(), 300)
 	} else {
-		row.InputTokens, row.OutputTokens, row.Estimated = usage.InputTokens, usage.OutputTokens, usage.Estimated
-		row.CostMicros = pricing.costMicros(kind, usage)
+		row.InputTokens, row.OutputTokens, row.Estimated, row.Characters = usage.InputTokens, usage.OutputTokens, usage.Estimated, chars
+		row.CostMicros = pricing.costMicros(kind, usage, chars)
 	}
 	_ = a.DB.Create(&row).Error
 }
@@ -128,7 +131,7 @@ func truncateRunes(s string, n int) string {
 
 // —— 用户 ——
 
-// MyAIUsage GET /users/me/ai-usage 本月 AI 用量、额度（-1 不限）与按功能分布。
+// MyAIUsage GET /users/me/ai-usage 本月 AI 用量（tokens）、额度（-1 不限）、按功能分布，以及本月翻译字数与额度。
 func (a *App) MyAIUsage(c *gin.Context) {
 	u := currentUser(c)
 	var rows []struct {
@@ -146,7 +149,8 @@ func (a *App) MyAIUsage(c *gin.Context) {
 		items = append(items, gin.H{"feature": r.Feature, "calls": r.Calls, "tokens": r.Tokens})
 	}
 	ok(c, gin.H{"month_start": monthStart(time.Now()), "used_tokens": used, "calls": calls,
-		"limit": a.entitlement(u, entAIMonthlyTokens), "by_feature": items})
+		"limit": a.entitlement(u, entAIMonthlyTokens), "by_feature": items,
+		"translate_chars": a.translateMonthUsed(u.ID), "translate_limit": a.entitlement(u, entTranslateMonthlyChars)})
 }
 
 // —— 管理端 ——
@@ -156,6 +160,7 @@ type usageAgg struct {
 	Errors       int64 `json:"errors"`
 	InputTokens  int64 `json:"input_tokens"`
 	OutputTokens int64 `json:"output_tokens"`
+	Characters   int64 `json:"characters"`
 	CostMicros   int64 `json:"cost_micros"`
 }
 
@@ -167,6 +172,7 @@ func (g *usageAgg) add(r *models.AIUsageLog) {
 	}
 	g.InputTokens += r.InputTokens
 	g.OutputTokens += r.OutputTokens
+	g.Characters += r.Characters
 	g.CostMicros += r.CostMicros
 }
 
@@ -181,7 +187,7 @@ func sortedAggs(m map[string]*usageAgg, limit int) []keyedAgg {
 		out = append(out, keyedAgg{Key: k, usageAgg: *v})
 	}
 	sort.Slice(out, func(i, j int) bool {
-		ti, tj := out[i].InputTokens+out[i].OutputTokens, out[j].InputTokens+out[j].OutputTokens
+		ti, tj := out[i].InputTokens+out[i].OutputTokens+out[i].Characters, out[j].InputTokens+out[j].OutputTokens+out[j].Characters
 		if ti != tj {
 			return ti > tj
 		}
@@ -214,7 +220,7 @@ func (a *App) AdminAIUsage(c *gin.Context) {
 	}
 	// 逐行聚合（与数据库方言无关，按服务器本地日期分桶）
 	rows, err := a.DB.Model(&models.AIUsageLog{}).
-		Select("user_id, feature, model, input_tokens, output_tokens, cost_micros, status, created_at").
+		Select("user_id, feature, model, input_tokens, output_tokens, characters, cost_micros, status, created_at").
 		Where("created_at >= ?", from).Rows()
 	if err != nil {
 		fail(c, http.StatusInternalServerError, "统计失败")
@@ -242,7 +248,7 @@ func (a *App) AdminAIUsage(c *gin.Context) {
 		if daily[key] != nil {
 			agg = *daily[key]
 		}
-		series = append(series, gin.H{"date": key, "calls": agg.Calls, "tokens": agg.InputTokens + agg.OutputTokens, "cost_micros": agg.CostMicros})
+		series = append(series, gin.H{"date": key, "calls": agg.Calls, "tokens": agg.InputTokens + agg.OutputTokens, "characters": agg.Characters, "cost_micros": agg.CostMicros})
 	}
 
 	top := sortedAggs(byUser, defaultAIUsageTopUser)

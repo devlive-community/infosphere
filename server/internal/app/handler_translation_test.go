@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"knowforge/server/internal/auth"
 	"knowforge/server/internal/config"
+	"knowforge/server/internal/models"
 )
 
 func TestTranslationConfig(t *testing.T) {
@@ -81,5 +84,112 @@ func TestTranslationConfig(t *testing.T) {
 	// 公开配置不应泄露 API Key
 	if _, leaked := site2["data"].(map[string]any)["translation_api_key"]; leaked {
 		t.Fatalf("公开 /site 不应包含 translation_api_key")
+	}
+}
+
+func TestTranslationUsageRecorded(t *testing.T) {
+	t.Setenv("KNOWFORGE_DATA", t.TempDir())
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(a.Router())
+	defer server.Close()
+	// 假模型服务：OpenAI 兼容对话（返回用量）与 Google 翻译
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/chat/completions":
+			_, _ = w.Write([]byte(`{"model":"gpt-x","usage":{"prompt_tokens":50,"completion_tokens":12},"choices":[{"message":{"content":"Hello world"}}]}`))
+		case "/language/translate/v2":
+			_, _ = w.Write([]byte(`{"data":{"translations":[{"translatedText":"Bonjour"}]}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer fake.Close()
+	client := &http.Client{Timeout: 10 * time.Second}
+	req := func(method, path string, body any, token string) (int, map[string]any) {
+		t.Helper()
+		raw, _ := json.Marshal(body)
+		r, _ := http.NewRequest(method, server.URL+path, bytes.NewReader(raw))
+		r.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			r.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := client.Do(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		p := map[string]any{}
+		_ = json.NewDecoder(resp.Body).Decode(&p)
+		return resp.StatusCode, p
+	}
+	_, installed := req(http.MethodPost, "/api/v1/setup/install", map[string]any{
+		"database": map[string]any{"type": "sqlite"}, "site": map[string]any{"name": "翻译用量"},
+		"admin": map[string]any{"username": "admin", "email": "admin@test.local", "password": "secret123"},
+	}, "")
+	admin := installed["data"].(map[string]any)["token"].(string)
+	writer := &models.User{Username: "writer", Email: "writer@test.local", Role: "user", IsActive: true, EmailVerified: true}
+	if err := a.DB.Create(writer).Error; err != nil {
+		t.Fatal(err)
+	}
+	token, _ := auth.GenerateToken(a.Config.Secret, writer.ID, writer.Username, writer.Role)
+	req(http.MethodPut, "/api/v1/admin/ai", map[string]any{"price_input": "1", "price_output": "2", "price_translate": "20"}, admin)
+
+	// OpenAI 方式：经统一的 AI 客户端调用并记录 tokens 与字数
+	req(http.MethodPut, "/api/v1/translation", map[string]any{"provider": "openai", "api_key": "sk", "api_base": fake.URL + "/v1", "model": "gpt-x"}, admin)
+	status, p := req(http.MethodPost, "/api/v1/translate", map[string]any{"text": "你好世界", "target_label": "English", "ref_type": "document", "ref_id": 9}, token)
+	if status != http.StatusOK || p["data"].(map[string]any)["text"] != "Hello world" {
+		t.Fatalf("OpenAI 翻译失败: %d %v", status, p)
+	}
+	var row models.AIUsageLog
+	a.DB.Last(&row)
+	if row.Feature != "translate" || row.Kind != "chat" || row.UserID != writer.ID || row.InputTokens != 50 || row.OutputTokens != 12 ||
+		row.Characters != 4 || row.RefType != "document" || row.RefID != 9 || row.CostMicros != 50*1+12*2 || row.Model != "gpt-x" {
+		t.Fatalf("OpenAI 翻译用量记录异常: %+v", row)
+	}
+
+	// Google 方式：按字符记录与计价
+	req(http.MethodPut, "/api/v1/translation", map[string]any{"provider": "google", "api_base": fake.URL}, admin)
+	if status, p := req(http.MethodPost, "/api/v1/translate", map[string]any{"text": "Hello", "target_lang": "fr", "ref_type": "bogus"}, token); status != http.StatusOK {
+		t.Fatalf("Google 翻译失败: %d %v", status, p)
+	}
+	row = models.AIUsageLog{} // Last 会以已有主键为条件，需重置
+	a.DB.Last(&row)
+	if row.Kind != "translate" || row.Provider != "google" || row.Characters != 5 || row.InputTokens != 0 || row.CostMicros != 5*20 || row.RefType != "" {
+		t.Fatalf("Google 翻译用量记录异常: %+v", row)
+	}
+
+	// 每月翻译字数权益：剩余不足时拒绝，不产生调用
+	if err := a.SetSetting(cfgTranslateMonthlyChars, "12", ""); err != nil {
+		t.Fatal(err)
+	}
+	var before int64
+	a.DB.Model(&models.AIUsageLog{}).Count(&before)
+	status, p = req(http.MethodPost, "/api/v1/translate", map[string]any{"text": "abcdef", "target_lang": "fr"}, token)
+	if status != http.StatusTooManyRequests || !strings.Contains(p["message"].(string), "剩余 3 字") {
+		t.Fatalf("超出翻译字数应 429: %d %v", status, p)
+	}
+	var after int64
+	a.DB.Model(&models.AIUsageLog{}).Count(&after)
+	if after != before {
+		t.Fatal("被额度拒绝的翻译不应调用模型")
+	}
+	_, mine := req(http.MethodGet, "/api/v1/users/me/ai-usage", nil, token)
+	if d := mine["data"].(map[string]any); d["translate_chars"].(float64) != 9 || d["translate_limit"].(float64) != 12 || d["used_tokens"].(float64) != 62 {
+		t.Fatalf("我的用量异常: %v", d)
+	}
+
+	// AI 翻译同样受每月 AI 用量约束
+	a.SetSetting(cfgTranslateMonthlyChars, "-1", "")
+	a.SetSetting(cfgAIMonthlyTokens, "60", "")
+	req(http.MethodPut, "/api/v1/translation", map[string]any{"provider": "openai"}, admin)
+	if status, p := req(http.MethodPost, "/api/v1/translate", map[string]any{"text": "再来", "target_label": "English"}, token); status != http.StatusTooManyRequests {
+		t.Fatalf("超出每月 AI 用量应 429: %d %v", status, p)
 	}
 }
