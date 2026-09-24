@@ -655,6 +655,8 @@ Authorization: Bearer <token>
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |
+| GET/PUT | `/admin/ai` | AI 服务（大模型）配置：`provider` openai\|anthropic、`base_url`、`api_key`、`model`，向量嵌入 `embed_base_url`、`embed_api_key`、`embed_model`（OpenAI 兼容）。GET 密钥只返回 `api_key_set`/`embed_api_key_set`，另返回 `source`（ai\|translation\|none，未单独配置时沿用翻译服务的 OpenAI/Claude 配置）、`chat_available`、`embed_available`；PUT 只保存传入字段，密钥传空串不修改、传 `-` 清除。供插件经 `Core.AIChat/AIEmbed` 使用 | `site:update` |
+| POST | `/admin/ai/test` | `{kind: chat\|embed}` 用当前配置发一次最小请求：返回 `{reply, elapsed_ms}` 或 `{dimensions, elapsed_ms}`，失败 502 | `site:update` |
 | GET/PUT | `/admin/achievement-settings` | 读取/保存模块总开关、公开主页展示、解锁通知、允许用户隐藏和陈列数量 | `achievement:manage` |
 | GET | `/admin/achievement-metrics` | 返回白名单指标目录、单位、聚合方式、支持的时间窗口和过滤条件 | `achievement:manage` |
 | GET/POST | `/admin/achievements` | 分页查询或创建成就定义；列表支持 `q/status/category` | `achievement:manage` |

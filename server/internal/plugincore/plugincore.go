@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"knowforge/server/internal/ai"
 	"knowforge/server/internal/authz"
 	"knowforge/server/internal/jobqueue"
 	"knowforge/server/internal/models"
@@ -81,6 +82,10 @@ type Core interface {
 	DefaultContentLocale() (string, error)
 	// LocalizeResources 按请求语言回退链解析资源的已发布翻译（并设置 Content-Language 等响应头），返回请求语言代码。
 	LocalizeResources(c *gin.Context, kind string, ids []uint) (map[uint]LocalizedResource, string, error)
+	// AIChat / AIEmbed 调用站点「AI 服务」（对话支持工具调用；嵌入为 OpenAI 兼容）；AIStatus 两者是否已配置。
+	AIChat(ctx context.Context, req ai.ChatRequest) (ai.ChatResponse, error)
+	AIEmbed(ctx context.Context, texts []string) ([][]float32, error)
+	AIStatus() (chat, embed bool)
 	// GuardDocumentPublish 已写入且为已发布状态的新章节交发布守卫审查，被拦截时改回草稿；返回拦截说明（放行为空）。
 	GuardDocumentPublish(book *models.Book, doc *models.Document, actorID uint) string
 	// ApplyModeration 审核结论落地（绕过发布守卫）：approve 应用 requested（发布章节/公开书籍），否则撤回发布。

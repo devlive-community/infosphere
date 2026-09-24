@@ -1,0 +1,158 @@
+import { useEffect, useState } from 'react'
+import { api } from '@/lib/api'
+import { useApp } from '@/lib/auth'
+import SettingsLayout from '@/components/SettingsLayout'
+import { Badge, Button, Input, Field, Select, Loading } from '@/components/ui'
+import { useTranslation } from '@/lib/i18n'
+
+interface AIConfig {
+  provider: string
+  base_url: string
+  model: string
+  embed_base_url: string
+  embed_model: string
+  api_key_set: boolean
+  embed_api_key_set: boolean
+  source: 'ai' | 'translation' | 'none'
+  chat_available: boolean
+  embed_available: boolean
+}
+
+type TestKind = 'chat' | 'embed'
+
+const DEFAULTS: Record<string, { base: string; model: string }> = {
+  openai: { base: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  anthropic: { base: 'https://api.anthropic.com', model: 'claude-sonnet-5' },
+}
+
+// 系统设置 · AI 服务：站点级的大模型（对话 + 向量嵌入）配置，供问答等插件使用；密钥只写不读
+export default function SettingsAI() {
+  const { user } = useApp()
+  const isAdmin = user?.role === 'admin'
+  const { t } = useTranslation()
+  const [cfg, setCfg] = useState<AIConfig | null>(null)
+  const [apiKey, setApiKey] = useState('')
+  const [embedKey, setEmbedKey] = useState('')
+  const [message, setMessage] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState<TestKind | null>(null)
+  const [testResult, setTestResult] = useState<Partial<Record<TestKind, { ok: boolean; text: string }>>>({})
+
+  useEffect(() => {
+    if (!isAdmin) return
+    api<AIConfig>('/admin/ai').then(setCfg).catch((e) => setMessage((e as Error).message))
+  }, [isAdmin])
+
+  async function save(clear?: 'api_key' | 'embed_api_key') {
+    if (!cfg) return
+    setSaving(true)
+    setMessage('')
+    try {
+      const body: Record<string, string> = {
+        provider: cfg.provider, base_url: cfg.base_url, model: cfg.model,
+        embed_base_url: cfg.embed_base_url, embed_model: cfg.embed_model,
+        api_key: clear === 'api_key' ? '-' : apiKey, embed_api_key: clear === 'embed_api_key' ? '-' : embedKey,
+      }
+      setCfg(await api<AIConfig>('/admin/ai', { method: 'PUT', body }))
+      setApiKey('')
+      setEmbedKey('')
+      setMessage(t('admin.settings.ai.saved'))
+    } catch (e) {
+      setMessage((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function test(kind: TestKind) {
+    setTesting(kind)
+    try {
+      const d = await api<{ reply?: string; dimensions?: number; elapsed_ms: number }>('/admin/ai/test', { method: 'POST', body: { kind } })
+      const text = kind === 'chat'
+        ? t('admin.settings.ai.testChatOk', { reply: d.reply || '-', ms: d.elapsed_ms })
+        : t('admin.settings.ai.testEmbedOk', { dimensions: d.dimensions ?? 0, ms: d.elapsed_ms })
+      setTestResult((r) => ({ ...r, [kind]: { ok: true, text } }))
+    } catch (e) {
+      setTestResult((r) => ({ ...r, [kind]: { ok: false, text: (e as Error).message } }))
+    } finally {
+      setTesting(null)
+    }
+  }
+
+  const hint = cfg ? DEFAULTS[cfg.provider] : undefined
+  const set = (patch: Partial<AIConfig>) => cfg && setCfg({ ...cfg, ...patch })
+
+  return (
+    <SettingsLayout active="ai" description={t('admin.settings.ai.description')}>
+      {!cfg ? <Loading className="max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm" label={t('admin.settings.ai.loading')} /> : (
+        <div className="max-w-2xl space-y-5">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm shadow-sm">
+            <span className="text-slate-500">{t('admin.settings.ai.status')}</span>
+            <Badge tone={cfg.chat_available ? 'emerald' : 'slate'}>{t(cfg.chat_available ? 'admin.settings.ai.chatOn' : 'admin.settings.ai.chatOff')}</Badge>
+            <Badge tone={cfg.embed_available ? 'emerald' : 'slate'}>{t(cfg.embed_available ? 'admin.settings.ai.embedOn' : 'admin.settings.ai.embedOff')}</Badge>
+            {cfg.source === 'translation' && <Badge tone="amber">{t('admin.settings.ai.sourceTranslation')}</Badge>}
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">{t('admin.settings.ai.chatTitle')}</h2>
+            <p className="mt-1 text-sm text-slate-500">{t('admin.settings.ai.chatDescription')}</p>
+            <div className="mt-4 space-y-4">
+              <Field label={t('admin.settings.ai.provider')}>
+                <Select value={cfg.provider} onChange={(v) => set({ provider: v })} options={[
+                  { value: 'openai', label: t('admin.settings.ai.providerOpenai') },
+                  { value: 'anthropic', label: t('admin.settings.ai.providerAnthropic') },
+                ]} />
+              </Field>
+              <Field label={t('admin.settings.ai.baseUrl')} hint={t('admin.settings.ai.baseUrlHint', { default: hint?.base || '' })}>
+                <Input value={cfg.base_url} onChange={(e) => set({ base_url: e.target.value })} placeholder={hint?.base} />
+              </Field>
+              <Field label="API Key" hint={t('admin.settings.ai.apiKeyHint')}>
+                <div className="flex gap-2">
+                  <Input type="password" autoComplete="new-password" value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+                    placeholder={cfg.api_key_set ? t('admin.settings.ai.secretSet') : t('admin.settings.ai.secretEmpty')} />
+                  {cfg.api_key_set && <Button variant="outline" disabled={saving} onClick={() => save('api_key')}>{t('admin.settings.ai.clearSecret')}</Button>}
+                </div>
+              </Field>
+              <Field label={t('admin.settings.ai.model')} hint={t('admin.settings.ai.modelHint', { default: hint?.model || '' })}>
+                <Input value={cfg.model} onChange={(e) => set({ model: e.target.value })} placeholder={hint?.model} />
+              </Field>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">{t('admin.settings.ai.embedTitle')}</h2>
+            <p className="mt-1 text-sm text-slate-500">{t('admin.settings.ai.embedDescription')}</p>
+            <div className="mt-4 space-y-4">
+              <Field label={t('admin.settings.ai.embedModel')} hint={t('admin.settings.ai.embedModelHint')}>
+                <Input value={cfg.embed_model} onChange={(e) => set({ embed_model: e.target.value })} placeholder="text-embedding-3-small" />
+              </Field>
+              <Field label={t('admin.settings.ai.embedBaseUrl')} hint={t('admin.settings.ai.embedBaseUrlHint')}>
+                <Input value={cfg.embed_base_url} onChange={(e) => set({ embed_base_url: e.target.value })} placeholder="https://api.openai.com/v1" />
+              </Field>
+              <Field label={t('admin.settings.ai.embedApiKey')} hint={t('admin.settings.ai.embedApiKeyHint')}>
+                <div className="flex gap-2">
+                  <Input type="password" autoComplete="new-password" value={embedKey} onChange={(e) => setEmbedKey(e.target.value)}
+                    placeholder={cfg.embed_api_key_set ? t('admin.settings.ai.secretSet') : t('admin.settings.ai.secretEmpty')} />
+                  {cfg.embed_api_key_set && <Button variant="outline" disabled={saving} onClick={() => save('embed_api_key')}>{t('admin.settings.ai.clearSecret')}</Button>}
+                </div>
+              </Field>
+            </div>
+          </div>
+
+          {message && <div className="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button variant="outline" loading={testing === 'chat'} disabled={testing !== null || !cfg.chat_available} onClick={() => test('chat')}>{t('admin.settings.ai.testChat')}</Button>
+            <Button variant="outline" loading={testing === 'embed'} disabled={testing !== null || !cfg.embed_available} onClick={() => test('embed')}>{t('admin.settings.ai.testEmbed')}</Button>
+            <Button loading={saving} onClick={() => save()}>{t('admin.settings.ai.save')}</Button>
+          </div>
+          {(['chat', 'embed'] as TestKind[]).map((kind) => testResult[kind] && (
+            <div key={kind} className={`rounded-lg px-4 py-3 text-sm ${testResult[kind]!.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+              {testResult[kind]!.text}
+            </div>
+          ))}
+        </div>
+      )}
+    </SettingsLayout>
+  )
+}

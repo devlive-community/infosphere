@@ -262,7 +262,7 @@ func (a *App) Router() *gin.Engine {
 
 		// ── 书籍关注等插件路由：由各插件子包（internal/plugins/<name>/）自行注册（迁移中） ──
 
-			// 用户成长等级 /users/me/growth 等由 growth 插件子包自注册
+		// 用户成长等级 /users/me/growth 等由 growth 插件子包自注册
 
 		// ── 阅读进度（user 语义，读自己写自己） ──
 		api.GET("/users/me/reading", a.RequireAuth(), a.RequirePermission(authz.ReadingProgressRead), a.MyReading)
@@ -349,6 +349,10 @@ func (a *App) Router() *gin.Engine {
 
 			// 后台标签管理 /admin/tags* 由 tags 插件子包自注册（自带 RequireAdmin + 特性插件守卫 + tag 权限）
 
+			// AI 服务（大模型）：站点级配置，插件经 Core.AIChat/AIEmbed 调用
+			admin.GET("/admin/ai", a.RequirePermission(authz.SiteUpdate), a.AdminGetAI)
+			admin.PUT("/admin/ai", a.RequirePermission(authz.SiteUpdate), a.AdminUpdateAI)
+			admin.POST("/admin/ai/test", a.RequirePermission(authz.SiteUpdate), a.AdminTestAI)
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
 			// 权益：基础值（全站默认）；等级/会员等来源由插件提供
 			admin.GET("/admin/entitlements", a.RequirePermission(authz.SiteUpdate), a.AdminEntitlements)
@@ -361,7 +365,6 @@ func (a *App) Router() *gin.Engine {
 			admin.GET("/admin/plugins", a.RequirePermission(authz.PluginManage), a.AdminListPlugins)
 			admin.POST("/admin/plugins/:key/install", a.RequirePermission(authz.PluginManage), a.AdminInstallPlugin)
 			admin.POST("/admin/plugins/:key/uninstall", a.RequirePermission(authz.PluginManage), a.AdminUninstallPlugin)
-
 
 			// 成长等级管理 /admin/growth/* 由 growth 插件子包自注册（自带 RequireAdmin + 特性插件守卫 + 权限）
 		}

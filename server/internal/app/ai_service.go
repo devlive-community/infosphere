@@ -1,0 +1,163 @@
+package app
+
+import (
+	"context"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"knowforge/server/internal/ai"
+)
+
+// AI 服务（系统设置 · AI 服务）：站点级的大模型配置，供插件（如问答）经 Core.AIChat / AIEmbed 调用。
+// 未单独配置时沿用「翻译」设置中的 OpenAI / Claude 配置。密钥只写不读。
+
+var aiSettingKeys = []struct {
+	field, key, desc string
+	secret           bool
+}{
+	{"provider", "ai_provider", "AI 服务：对话接口类型 openai|anthropic", false},
+	{"base_url", "ai_base_url", "AI 服务：对话接口地址", false},
+	{"api_key", "ai_api_key", "AI 服务：对话接口密钥", true},
+	{"model", "ai_model", "AI 服务：对话模型", false},
+	{"embed_base_url", "ai_embed_base_url", "AI 服务：向量嵌入接口地址（OpenAI 兼容）", false},
+	{"embed_api_key", "ai_embed_api_key", "AI 服务：向量嵌入接口密钥", true},
+	{"embed_model", "ai_embed_model", "AI 服务：向量嵌入模型", false},
+}
+
+// aiConfig 当前生效的 AI 配置与来源（ai | translation | none）。
+func (a *App) aiConfig() (ai.Config, string) {
+	get := func(k string) string { return strings.TrimSpace(a.getSetting(k)) }
+	cfg := ai.Config{
+		Provider: get("ai_provider"), BaseURL: get("ai_base_url"), APIKey: get("ai_api_key"), Model: get("ai_model"),
+		EmbedBaseURL: get("ai_embed_base_url"), EmbedAPIKey: get("ai_embed_api_key"), EmbedModel: get("ai_embed_model"),
+	}
+	if cfg.Provider != ai.ProviderAnthropic {
+		cfg.Provider = ai.ProviderOpenAI
+	}
+	if cfg.ChatAvailable() {
+		return cfg, "ai"
+	}
+	// 回退：翻译设置中的 OpenAI / Claude
+	switch get("translation_provider") {
+	case "openai", "claude":
+		fallback := cfg
+		fallback.Provider = ai.ProviderOpenAI
+		if get("translation_provider") == "claude" {
+			fallback.Provider = ai.ProviderAnthropic
+		}
+		fallback.BaseURL, fallback.APIKey, fallback.Model = get("translation_api_base"), get("translation_api_key"), get("translation_model")
+		if fallback.ChatAvailable() {
+			return fallback, "translation"
+		}
+	}
+	return cfg, "none"
+}
+
+// —— Core 接口 ——
+
+func (a *App) AIChat(ctx context.Context, req ai.ChatRequest) (ai.ChatResponse, error) {
+	cfg, _ := a.aiConfig()
+	return ai.Chat(ctx, cfg, req)
+}
+
+func (a *App) AIEmbed(ctx context.Context, texts []string) ([][]float32, error) {
+	cfg, _ := a.aiConfig()
+	return ai.Embed(ctx, cfg, texts)
+}
+
+func (a *App) AIStatus() (chat, embed bool) {
+	cfg, _ := a.aiConfig()
+	return cfg.ChatAvailable(), cfg.EmbedAvailable()
+}
+
+// —— 管理端 ——
+
+// AdminGetAI GET /admin/ai AI 服务配置（密钥只返回是否已配置）与生效来源。
+func (a *App) AdminGetAI(c *gin.Context) {
+	out := gin.H{}
+	for _, s := range aiSettingKeys {
+		v := strings.TrimSpace(a.getSetting(s.key))
+		if s.secret {
+			out[s.field+"_set"] = v != ""
+		} else {
+			out[s.field] = v
+		}
+	}
+	if out["provider"] == "" {
+		out["provider"] = ai.ProviderOpenAI
+	}
+	cfg, source := a.aiConfig()
+	out["source"] = source
+	out["chat_available"] = cfg.ChatAvailable()
+	out["embed_available"] = cfg.EmbedAvailable()
+	ok(c, out)
+}
+
+// AdminUpdateAI PUT /admin/ai 保存 AI 服务配置（只保存传入的字段；密钥传空串表示不修改，传 "-" 清除）。
+func (a *App) AdminUpdateAI(c *gin.Context) {
+	var req map[string]*string
+	if c.ShouldBindJSON(&req) != nil {
+		fail(c, http.StatusBadRequest, "参数错误")
+		return
+	}
+	fields := []string{}
+	for _, s := range aiSettingKeys {
+		p, has := req[s.field]
+		if !has || p == nil {
+			continue
+		}
+		v := strings.TrimSpace(*p)
+		if s.secret {
+			if v == "" {
+				continue
+			}
+			if v == "-" {
+				v = ""
+			}
+		}
+		if s.field == "provider" && v != ai.ProviderOpenAI && v != ai.ProviderAnthropic {
+			fail(c, http.StatusBadRequest, "接口类型必须为 openai 或 anthropic")
+			return
+		}
+		if (s.field == "base_url" || s.field == "embed_base_url") && v != "" && !strings.HasPrefix(v, "http://") && !strings.HasPrefix(v, "https://") {
+			fail(c, http.StatusBadRequest, "接口地址需以 http:// 或 https:// 开头")
+			return
+		}
+		if err := a.setSetting(s.key, v, s.desc); err != nil {
+			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
+			return
+		}
+		fields = append(fields, s.field)
+	}
+	a.recordAudit(c, "ai.settings_updated", "config", "ai", "AI 服务", changedFields(fields...))
+	a.AdminGetAI(c)
+}
+
+// AdminTestAI POST /admin/ai/test {kind: chat|embed} 用当前配置发一次最小请求，验证连通性。
+func (a *App) AdminTestAI(c *gin.Context) {
+	var req struct {
+		Kind string `json:"kind"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+	started := time.Now()
+	if req.Kind == "embed" {
+		vecs, err := a.AIEmbed(ctx, []string{"KnowForge"})
+		if err != nil {
+			fail(c, http.StatusBadGateway, err.Error())
+			return
+		}
+		ok(c, gin.H{"dimensions": len(vecs[0]), "elapsed_ms": time.Since(started).Milliseconds()})
+		return
+	}
+	res, err := a.AIChat(ctx, ai.ChatRequest{Messages: []ai.Message{{Role: "user", Content: "Reply with the single word: pong"}}, MaxTokens: 16})
+	if err != nil {
+		fail(c, http.StatusBadGateway, err.Error())
+		return
+	}
+	ok(c, gin.H{"reply": res.Content, "elapsed_ms": time.Since(started).Milliseconds()})
+}
