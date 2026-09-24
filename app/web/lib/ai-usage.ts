@@ -1,0 +1,39 @@
+// AI 用量展示工具：tokens 紧凑格式与估算费用（cost_micros 为货币单位的百万分之一）
+
+export function formatTokens(n: number | null | undefined): string {
+  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n || 0)
+}
+
+export function formatCost(micros: number | null | undefined, currency: string): string {
+  const value = (micros || 0) / 1_000_000
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: value > 0 && value < 1 ? 4 : 2 }).format(value)
+  } catch {
+    return `${value.toFixed(4)} ${currency}`
+  }
+}
+
+export interface UsageAgg {
+  calls: number
+  errors: number
+  input_tokens: number
+  output_tokens: number
+  cost_micros: number
+}
+
+export interface MyAIUsage {
+  month_start: string
+  used_tokens: number
+  calls: number
+  limit: number // -1 不限
+  by_feature: { feature: string; calls: number; tokens: number }[]
+}
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string
+
+// aiFeatureLabel 调用功能名称（i18n：ai.feature.<key>，缺失时回退键名，便于新插件先上线再补文案）
+export function aiFeatureLabel(t: TFn, feature: string): string {
+  const k = `ai.feature.${feature}`
+  const v = t(k)
+  return v === k ? feature : v
+}

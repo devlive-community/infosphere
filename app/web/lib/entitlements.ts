@@ -34,5 +34,5 @@ export function formatEntitlement(t: TFn, def: EntitlementDef | undefined, value
   if (!def) return String(value)
   if (def.kind === 'flag') return value > 0 ? t('entitlement.on') : t('entitlement.off')
   if (value === UNLIMITED) return t('entitlement.unlimited')
-  return t(`entitlement.unit.${def.unit}`, { n: value })
+  return t(`entitlement.unit.${def.unit}`, { n: value.toLocaleString() })
 }

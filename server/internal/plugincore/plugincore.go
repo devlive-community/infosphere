@@ -86,6 +86,9 @@ type Core interface {
 	AIChat(ctx context.Context, req ai.ChatRequest) (ai.ChatResponse, error)
 	AIEmbed(ctx context.Context, texts []string) ([][]float32, error)
 	AIStatus() (chat, embed bool)
+	// AICheckQuota 按 ctx 上标注的调用方（ai.WithCaller）判定每月 AI 用量额度，超出返回 ai.ErrQuotaExceeded；
+	// 多次调用的功能可在开始前调用，避免中途失败。
+	AICheckQuota(ctx context.Context) error
 	// GuardDocumentPublish 已写入且为已发布状态的新章节交发布守卫审查，被拦截时改回草稿；返回拦截说明（放行为空）。
 	GuardDocumentPublish(book *models.Book, doc *models.Document, actorID uint) string
 	// ApplyModeration 审核结论落地（绕过发布守卫）：approve 应用 requested（发布章节/公开书籍），否则撤回发布。

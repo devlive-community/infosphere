@@ -177,6 +177,10 @@ func (a *App) AdminDeleteUser(c *gin.Context) {
 				return err
 			}
 		}
+		// AI 用量记录保留（站点统计与成本核算需要），只解除与账号的关联
+		if err := tx.Model(&models.AIUsageLog{}).Where("user_id = ?", u.ID).Update("user_id", 0).Error; err != nil {
+			return err
+		}
 		return tx.Delete(u).Error
 	}); err != nil {
 		fail(c, http.StatusInternalServerError, "删除失败: "+err.Error())

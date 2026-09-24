@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +15,8 @@ import (
 
 // AI 服务（系统设置 · AI 服务）：站点级的大模型配置，供插件（如问答）经 Core.AIChat / AIEmbed 调用。
 // 未单独配置时沿用「翻译」设置中的 OpenAI / Claude 配置。密钥只写不读。
+
+var currencyCode = regexp.MustCompile(`^[A-Z]{3}$`)
 
 var aiSettingKeys = []struct {
 	field, key, desc string
@@ -25,6 +29,10 @@ var aiSettingKeys = []struct {
 	{"embed_base_url", "ai_embed_base_url", "AI 服务：向量嵌入接口地址（OpenAI 兼容）", false},
 	{"embed_api_key", "ai_embed_api_key", "AI 服务：向量嵌入接口密钥", true},
 	{"embed_model", "ai_embed_model", "AI 服务：向量嵌入模型", false},
+	{"price_currency", "ai_price_currency", "AI 服务：计费货币（估算费用用）", false},
+	{"price_input", "ai_price_input", "AI 服务：对话输入单价（每百万 tokens）", false},
+	{"price_output", "ai_price_output", "AI 服务：对话输出单价（每百万 tokens）", false},
+	{"price_embed", "ai_price_embed", "AI 服务：向量嵌入单价（每百万 tokens）", false},
 }
 
 // aiConfig 当前生效的 AI 配置与来源（ai | translation | none）。
@@ -58,15 +66,37 @@ func (a *App) aiConfig() (ai.Config, string) {
 
 // —— Core 接口 ——
 
+// AIChat / AIEmbed 调用前按 ctx 上标注的调用方（ai.WithCaller）判定每月额度，调用后记录用量。
+
 func (a *App) AIChat(ctx context.Context, req ai.ChatRequest) (ai.ChatResponse, error) {
 	cfg, _ := a.aiConfig()
-	return ai.Chat(ctx, cfg, req)
+	caller := ai.CallerFrom(ctx)
+	if err := a.checkAIQuota(caller); err != nil {
+		return ai.ChatResponse{}, err
+	}
+	started := time.Now()
+	res, err := ai.Chat(ctx, cfg, req)
+	model := res.Model
+	if model == "" {
+		model = cfg.Model
+	}
+	a.recordAIUsage(caller, "chat", cfg.Provider, model, res.Usage, time.Since(started), err)
+	return res, err
 }
 
 func (a *App) AIEmbed(ctx context.Context, texts []string) ([][]float32, error) {
 	cfg, _ := a.aiConfig()
-	return ai.Embed(ctx, cfg, texts)
+	caller := ai.CallerFrom(ctx)
+	if err := a.checkAIQuota(caller); err != nil {
+		return nil, err
+	}
+	started := time.Now()
+	vecs, usage, err := ai.Embed(ctx, cfg, texts)
+	a.recordAIUsage(caller, "embed", ai.ProviderOpenAI, cfg.EmbedModel, usage, time.Since(started), err)
+	return vecs, err
 }
+
+func (a *App) AICheckQuota(ctx context.Context) error { return a.checkAIQuota(ai.CallerFrom(ctx)) }
 
 func (a *App) AIStatus() (chat, embed bool) {
 	cfg, _ := a.aiConfig()
@@ -126,6 +156,19 @@ func (a *App) AdminUpdateAI(c *gin.Context) {
 			fail(c, http.StatusBadRequest, "接口地址需以 http:// 或 https:// 开头")
 			return
 		}
+		if strings.HasPrefix(s.field, "price_") && s.field != "price_currency" && v != "" {
+			if f, err := strconv.ParseFloat(v, 64); err != nil || f < 0 || f > 100000 {
+				fail(c, http.StatusBadRequest, "单价需为 0 到 100000 之间的数字（每百万 tokens）")
+				return
+			}
+		}
+		if s.field == "price_currency" {
+			v = strings.ToUpper(v)
+			if v != "" && !currencyCode.MatchString(v) {
+				fail(c, http.StatusBadRequest, "货币需为三位字母代码，如 USD、CNY")
+				return
+			}
+		}
 		if err := a.setSetting(s.key, v, s.desc); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
@@ -142,7 +185,7 @@ func (a *App) AdminTestAI(c *gin.Context) {
 		Kind string `json:"kind"`
 	}
 	_ = c.ShouldBindJSON(&req)
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(ai.WithCaller(c.Request.Context(), ai.Caller{UserID: currentUser(c).ID, Feature: "admin.test"}), 60*time.Second)
 	defer cancel()
 	started := time.Now()
 	if req.Kind == "embed" {

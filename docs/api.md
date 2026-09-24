@@ -277,7 +277,7 @@ Authorization: Bearer <token>
 
 ## 权益（等级特权 / 会员）
 
-按用户生效的能力上限与开关。核心登记 `books.max`（书籍数量，含导入/复制/采集新建，不含回收站）、`collaborators.max`（单本书协作者人数，含待接受邀请，按书籍所有者计）、`upload.max_mb`（单文件上传大小）；内容采集插件登记 `collect.page`、`collect.site`（开关）与 `collect.site_max_pages`。数值 `-1` 表示不限，开关 1 开 / 0 关。
+按用户生效的能力上限与开关。核心登记 `books.max`（书籍数量，含导入/复制/采集新建，不含回收站）、`ai.monthly_tokens`（每月 AI 用量 tokens，所有 AI 功能合计，默认不限，配置了 AI 服务才可用）、`collaborators.max`（单本书协作者人数，含待接受邀请，按书籍所有者计）、`upload.max_mb`（单文件上传大小）；内容采集插件登记 `collect.page`、`collect.site`（开关）与 `collect.site_max_pages`。数值 `-1` 表示不限，开关 1 开 / 0 关。
 
 - **基础值**：全站默认，未配置时与升级前一致（书籍/协作者不限，上传与采集沿用原设置），管理员主动收紧才生效。
 - **来源**：插件登记（成长等级：当前等级及以下启用等级的累计配置；会员：有效期内独占，未配置的键回退基础值，见「会员」），高优先级来源先取值。
@@ -287,6 +287,7 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/entitlements/definitions` | 权益定义 `[{key,kind:limit\|flag,unit,min,max,allow_unlimited}]`（供等级/会员权益编辑器） | 登录 |
 | GET | `/users/me/entitlements` | 我的各项权益 `items:[{key,value,source}]`（`source` 为 base/admin/unavailable 或来源键如 level）+ `definitions` | 登录 |
+| GET | `/users/me/ai-usage` | 本月 AI 用量：`used_tokens`、`calls`、`limit`（权益 `ai.monthly_tokens`，-1 不限；超出后本月内 AI 调用返回「本月 AI 用量已达上限」）、按功能分布 `by_feature[]` | 登录 |
 | GET | `/admin/entitlements` | 权益定义 + 基础值 `items:[{...定义,base,available}]` | `site:update` |
 | PUT | `/admin/entitlements/base` | `{values:{key:value}}` 只保存传入的键；`upload.max_mb` 基础值最大 100（更大通过等级/会员授予）；写审计 `entitlement.base_updated` | `site:update` |
 
@@ -677,8 +678,10 @@ Authorization: Bearer <token>
 | GET | `/admin/configs` | 列出全部系统配置键值对（key/value/description/reserved/updated_at） | `config:manage` |
 | PUT | `/admin/configs` | 新增或更新配置 `{key,value,description}`；key 限字母数字与 `. _ : -`，≤50 字符 | `config:manage` |
 | DELETE | `/admin/configs/:key` | 删除配置键；系统关键项（site_name/site_description/version/installation_date）禁止删除 | `config:manage` |
-| GET/PUT | `/admin/ai` | AI 服务（大模型）配置：`provider` openai\|anthropic、`base_url`、`api_key`、`model`，向量嵌入 `embed_base_url`、`embed_api_key`、`embed_model`（OpenAI 兼容）。GET 密钥只返回 `api_key_set`/`embed_api_key_set`，另返回 `source`（ai\|translation\|none，未单独配置时沿用翻译服务的 OpenAI/Claude 配置）、`chat_available`、`embed_available`；PUT 只保存传入字段，密钥传空串不修改、传 `-` 清除。供插件经 `Core.AIChat/AIEmbed` 使用 | `site:update` |
+| GET/PUT | `/admin/ai` | AI 服务（大模型）配置：`provider` openai\|anthropic、`base_url`、`api_key`、`model`，向量嵌入 `embed_base_url`、`embed_api_key`、`embed_model`（OpenAI 兼容）。GET 密钥只返回 `api_key_set`/`embed_api_key_set`，另返回 `source`（ai\|translation\|none，未单独配置时沿用翻译服务的 OpenAI/Claude 配置）、`chat_available`、`embed_available`；另有费用估算单价 `price_currency`（三位代码，默认 USD）、`price_input`、`price_output`、`price_embed`（每百万 tokens）。PUT 只保存传入字段，密钥传空串不修改、传 `-` 清除。供插件经 `Core.AIChat/AIEmbed` 使用 | `site:update` |
 | POST | `/admin/ai/test` | `{kind: chat\|embed}` 用当前配置发一次最小请求：返回 `{reply, elapsed_ms}` 或 `{dimensions, elapsed_ms}`，失败 502 | `site:update` |
+| GET | `/admin/ai/usage?days=7\|30\|90` | AI 用量统计（逐次调用记录聚合）：`total{calls, errors, input_tokens, output_tokens, cost_micros}`、按日 `daily[]`、`by_feature[]`、`by_model[]`、`top_users[]`、全部功能键 `features[]`、`currency`。每次经 `Core.AIChat/AIEmbed` 的调用都记录调用方（`ai.WithCaller` 标注的用户/功能/关联对象，0 为系统）、模型、tokens（服务未返回时按文本估算并标记 `estimated`）、耗时与按调用时单价估算的费用（`cost_micros` 为货币单位百万分之一）；删除账号时记录保留但解除关联 | `site:update` |
+| GET | `/admin/ai/usage/logs?page=&page_size=&feature=&status=ok\|error&user=` | 调用明细 `items[]{log, username}`（`user` 为用户名） | `site:update` |
 | GET/PUT | `/admin/achievement-settings` | 读取/保存模块总开关、公开主页展示、解锁通知、允许用户隐藏和陈列数量 | `achievement:manage` |
 | GET | `/admin/achievement-metrics` | 返回白名单指标目录、单位、聚合方式、支持的时间窗口和过滤条件 | `achievement:manage` |
 | GET/POST | `/admin/achievements` | 分页查询或创建成就定义；列表支持 `q/status/category` | `achievement:manage` |

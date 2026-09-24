@@ -105,6 +105,87 @@ type ChatRequest struct {
 type ChatResponse struct {
 	Content   string
 	ToolCalls []ToolCall
+	Model     string
+	Usage     Usage
+}
+
+// Usage 一次调用的 token 用量；服务未返回用量时按文本长度估算（Estimated 为 true）。
+type Usage struct {
+	InputTokens  int64
+	OutputTokens int64
+	Estimated    bool
+}
+
+// Add 累加用量（任一估算则结果标记为估算）。
+func (u Usage) Add(o Usage) Usage {
+	return Usage{InputTokens: u.InputTokens + o.InputTokens, OutputTokens: u.OutputTokens + o.OutputTokens, Estimated: u.Estimated || o.Estimated}
+}
+
+// Total 输入与输出 tokens 之和。
+func (u Usage) Total() int64 { return u.InputTokens + u.OutputTokens }
+
+// EstimateTokens 粗略估算 token 数：中日韩文字约一字一个，其他字符约四个一个。
+func EstimateTokens(s string) int64 {
+	var cjk, other int64
+	for _, r := range s {
+		if r >= 0x2E80 && r <= 0x9FFF || r >= 0xAC00 && r <= 0xD7AF || r >= 0xF900 && r <= 0xFAFF {
+			cjk++
+		} else {
+			other++
+		}
+	}
+	return cjk + (other+3)/4
+}
+
+// ErrQuotaExceeded 调用方超出 AI 用量额度（由站点 AI 服务在调用前判定）。
+var ErrQuotaExceeded = errors.New("本月 AI 用量已达上限，下月恢复，或提升等级/开通会员获得更多额度")
+
+// Caller 调用方标注：谁（用户，0 表示系统/后台任务）因什么功能调用，关联什么对象；用于用量记录与额度判定。
+type Caller struct {
+	UserID  uint
+	Feature string // 如 qa.ask、qa.agent、qa.index
+	RefType string // 如 book
+	RefID   uint
+}
+
+type callerKey struct{}
+
+// WithCaller 在 ctx 上标注调用方。
+func WithCaller(ctx context.Context, c Caller) context.Context {
+	return context.WithValue(ctx, callerKey{}, c)
+}
+
+// CallerFrom 读取 ctx 上的调用方标注（未标注时 Feature 为空）。
+func CallerFrom(ctx context.Context) Caller {
+	c, _ := ctx.Value(callerKey{}).(Caller)
+	return c
+}
+
+func estimateRequest(req ChatRequest) int64 {
+	n := EstimateTokens(req.System)
+	for _, m := range req.Messages {
+		n += EstimateTokens(m.Content) + 4
+		for _, tc := range m.ToolCalls {
+			n += EstimateTokens(string(tc.Arguments))
+		}
+	}
+	for _, t := range req.Tools {
+		raw, _ := json.Marshal(t.Parameters)
+		n += EstimateTokens(t.Name+t.Description) + EstimateTokens(string(raw))
+	}
+	return n
+}
+
+// fillUsage 服务未返回用量时按请求与回复估算。
+func fillUsage(res *ChatResponse, req ChatRequest) {
+	if res.Usage.InputTokens > 0 || res.Usage.OutputTokens > 0 {
+		return
+	}
+	out := EstimateTokens(res.Content)
+	for _, tc := range res.ToolCalls {
+		out += EstimateTokens(tc.Name + string(tc.Arguments))
+	}
+	res.Usage = Usage{InputTokens: estimateRequest(req), OutputTokens: out, Estimated: true}
 }
 
 var httpClient = &http.Client{Timeout: 120 * time.Second}
@@ -199,6 +280,11 @@ func chatOpenAI(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse,
 		return ChatResponse{}, err
 	}
 	var out struct {
+		Model string `json:"model"`
+		Usage struct {
+			PromptTokens     int64 `json:"prompt_tokens"`
+			CompletionTokens int64 `json:"completion_tokens"`
+		} `json:"usage"`
 		Choices []struct {
 			Message struct {
 				Content   string `json:"content"`
@@ -216,7 +302,8 @@ func chatOpenAI(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse,
 		return ChatResponse{}, errors.New("AI 服务响应格式无效")
 	}
 	msg := out.Choices[0].Message
-	res := ChatResponse{Content: strings.TrimSpace(msg.Content)}
+	res := ChatResponse{Content: strings.TrimSpace(msg.Content), Model: firstNonEmpty(out.Model, model),
+		Usage: Usage{InputTokens: out.Usage.PromptTokens, OutputTokens: out.Usage.CompletionTokens}}
 	for _, tc := range msg.ToolCalls {
 		args := json.RawMessage(tc.Function.Arguments)
 		if !json.Valid(args) {
@@ -224,7 +311,17 @@ func chatOpenAI(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse,
 		}
 		res.ToolCalls = append(res.ToolCalls, ToolCall{ID: tc.ID, Name: tc.Function.Name, Arguments: args})
 	}
+	fillUsage(&res, req)
 	return res, nil
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func bearer(key string) string {
@@ -288,6 +385,11 @@ func chatAnthropic(ctx context.Context, cfg Config, req ChatRequest) (ChatRespon
 		return ChatResponse{}, err
 	}
 	var out struct {
+		Model string `json:"model"`
+		Usage struct {
+			InputTokens  int64 `json:"input_tokens"`
+			OutputTokens int64 `json:"output_tokens"`
+		} `json:"usage"`
 		Content []struct {
 			Type  string          `json:"type"`
 			Text  string          `json:"text"`
@@ -299,7 +401,7 @@ func chatAnthropic(ctx context.Context, cfg Config, req ChatRequest) (ChatRespon
 	if err := json.Unmarshal(data, &out); err != nil {
 		return ChatResponse{}, errors.New("AI 服务响应格式无效")
 	}
-	var res ChatResponse
+	res := ChatResponse{Model: firstNonEmpty(out.Model, model), Usage: Usage{InputTokens: out.Usage.InputTokens, OutputTokens: out.Usage.OutputTokens}}
 	var text []string
 	for _, b := range out.Content {
 		switch b.Type {
@@ -314,37 +416,48 @@ func chatAnthropic(ctx context.Context, cfg Config, req ChatRequest) (ChatRespon
 		}
 	}
 	res.Content = strings.TrimSpace(strings.Join(text, "\n"))
+	fillUsage(&res, req)
 	return res, nil
 }
 
 // —— 嵌入 ——
 
-// Embed 批量计算文本向量（OpenAI 兼容 /embeddings），按输入顺序返回。
-func Embed(ctx context.Context, cfg Config, texts []string) ([][]float32, error) {
+// Embed 批量计算文本向量（OpenAI 兼容 /embeddings），按输入顺序返回，并给出用量（InputTokens）。
+func Embed(ctx context.Context, cfg Config, texts []string) ([][]float32, Usage, error) {
 	base, key, ok := cfg.embedEndpoint()
 	if !ok {
-		return nil, errors.New("尚未配置向量嵌入服务")
+		return nil, Usage{}, errors.New("尚未配置向量嵌入服务")
 	}
 	data, err := postJSON(ctx, strings.TrimRight(base, "/")+"/embeddings", map[string]string{"Authorization": bearer(key)},
 		map[string]any{"model": cfg.EmbedModel, "input": texts})
 	if err != nil {
-		return nil, err
+		return nil, Usage{}, err
 	}
 	var out struct {
+		Usage struct {
+			PromptTokens int64 `json:"prompt_tokens"`
+		} `json:"usage"`
 		Data []struct {
 			Index     int       `json:"index"`
 			Embedding []float32 `json:"embedding"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil || len(out.Data) != len(texts) {
-		return nil, errors.New("向量嵌入响应格式无效")
+		return nil, Usage{}, errors.New("向量嵌入响应格式无效")
 	}
 	vecs := make([][]float32, len(texts))
 	for _, d := range out.Data {
 		if d.Index < 0 || d.Index >= len(vecs) {
-			return nil, errors.New("向量嵌入响应格式无效")
+			return nil, Usage{}, errors.New("向量嵌入响应格式无效")
 		}
 		vecs[d.Index] = d.Embedding
 	}
-	return vecs, nil
+	usage := Usage{InputTokens: out.Usage.PromptTokens}
+	if usage.InputTokens == 0 {
+		for _, t := range texts {
+			usage.InputTokens += EstimateTokens(t)
+		}
+		usage.Estimated = true
+	}
+	return vecs, usage, nil
 }

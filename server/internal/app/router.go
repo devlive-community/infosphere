@@ -214,6 +214,7 @@ func (a *App) Router() *gin.Engine {
 		// ── 权益：定义（供等级/会员权益编辑器）与本人生效值 ──
 		api.GET("/entitlements/definitions", a.RequireAuth(), a.EntitlementDefinitions)
 		api.GET("/users/me/entitlements", a.RequireAuth(), a.MyEntitlements)
+		api.GET("/users/me/ai-usage", a.RequireAuth(), a.MyAIUsage)
 
 		// ── 导入书籍（book:import，ZIP / PDF 成为本人的书籍；网页导入/采集由 content-collect 插件子包注册） ──
 		api.POST("/import", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportBook)
@@ -353,6 +354,8 @@ func (a *App) Router() *gin.Engine {
 			admin.GET("/admin/ai", a.RequirePermission(authz.SiteUpdate), a.AdminGetAI)
 			admin.PUT("/admin/ai", a.RequirePermission(authz.SiteUpdate), a.AdminUpdateAI)
 			admin.POST("/admin/ai/test", a.RequirePermission(authz.SiteUpdate), a.AdminTestAI)
+			admin.GET("/admin/ai/usage", a.RequirePermission(authz.SiteUpdate), a.AdminAIUsage)
+			admin.GET("/admin/ai/usage/logs", a.RequirePermission(authz.SiteUpdate), a.AdminAIUsageLogs)
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
 			// 权益：基础值（全站默认）；等级/会员等来源由插件提供
 			admin.GET("/admin/entitlements", a.RequirePermission(authz.SiteUpdate), a.AdminEntitlements)
