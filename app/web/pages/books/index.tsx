@@ -561,12 +561,15 @@ function PDFImportDialog({ book, onClose, onImported }: { book: Book; onClose: (
 function ActionRow({ book, menu, canManage, canEdit }: { book: Book; menu: React.ReactNode; canManage: boolean; canEdit: boolean }) {
   const { t } = useTranslation()
   const isNew = !book.description
+  // 已完成/已归档的书不再提示「继续写作」，左下角改为查看书籍（仍可从章节面板的编辑按钮或书籍设置进入编辑）
+  const finished = book.status === 'completed' || book.status === 'archived'
+  const writeLink = canEdit && !finished
   const [chaptersOpen, setChaptersOpen] = useState(false)
   const chaptersBtnRef = useRef<HTMLButtonElement>(null)
   return (
     <div className="flex items-center justify-between">
-      <Link href={canEdit ? `/book/writer/${encodeURIComponent(book.slug)}` : `/book/detail/${encodeURIComponent(book.slug)}`} className="text-sm font-medium text-primary-600 hover:underline">
-        {canEdit ? (isNew ? t('books.row.start') : t('books.row.continue')) : t('books.row.view')}
+      <Link href={writeLink ? `/book/writer/${encodeURIComponent(book.slug)}` : `/book/detail/${encodeURIComponent(book.slug)}`} className="text-sm font-medium text-primary-600 hover:underline">
+        {writeLink ? (isNew ? t('books.row.start') : t('books.row.continue')) : t('books.row.view')}
       </Link>
       <div className="relative flex items-center gap-1">
         <Tooltip content={t('books.tooltip.chapters')}><button ref={chaptersBtnRef} type="button" onClick={() => setChaptersOpen(!chaptersOpen)}
