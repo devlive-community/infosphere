@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"knowforge/server/internal/ai"
 	"knowforge/server/internal/auth"
 	"knowforge/server/internal/config"
 	"knowforge/server/internal/models"
@@ -183,6 +185,40 @@ func TestTranslationUsageRecorded(t *testing.T) {
 	_, mine := req(http.MethodGet, "/api/v1/users/me/ai-usage", nil, token)
 	if d := mine["data"].(map[string]any); d["translate_chars"].(float64) != 9 || d["translate_limit"].(float64) != 12 || d["used_tokens"].(float64) != 62 {
 		t.Fatalf("我的用量异常: %v", d)
+	}
+
+	// 同一调用链的多次调用归为一组；用户视图不含费用与原始错误信息
+	ctx := ai.WithCaller(context.Background(), ai.Caller{UserID: writer.ID, Feature: "qa.agent", TraceID: "trace-1"})
+	chatCfg := ai.Config{Provider: ai.ProviderOpenAI, BaseURL: fake.URL + "/v1", APIKey: "sk", Model: "gpt-x"}
+	for i := 0; i < 2; i++ {
+		if _, err := a.meteredChat(ctx, chatCfg, ai.ChatRequest{Messages: []ai.Message{{Role: "user", Content: "hi"}}}, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, logs := req(http.MethodGet, "/api/v1/users/me/ai-usage/logs", nil, token)
+	groups := logs["data"].(map[string]any)["items"].([]any)
+	if logs["data"].(map[string]any)["total"].(float64) != 3 || len(groups) != 3 {
+		t.Fatalf("应按调用链分为 3 组（2 次翻译 + 1 条问答链）: %v", logs)
+	}
+	first := groups[0].(map[string]any)
+	if first["trace_id"] != "trace-1" || first["calls"].(float64) != 2 || first["input_tokens"].(float64) != 100 || len(first["items"].([]any)) != 2 {
+		t.Fatalf("最新的调用链异常: %v", first)
+	}
+	if _, leaked := first["items"].([]any)[0].(map[string]any)["cost_micros"]; leaked {
+		t.Fatal("用户视图不应包含费用")
+	}
+	_, one := req(http.MethodGet, "/api/v1/users/me/ai-usage/logs?trace_id=trace-1", nil, token)
+	if one["data"].(map[string]any)["total"].(float64) != 1 {
+		t.Fatalf("按调用链筛选异常: %v", one)
+	}
+	adminToken, _ := auth.GenerateToken(a.Config.Secret, 1, "admin", "admin")
+	_, other := req(http.MethodGet, "/api/v1/users/me/ai-usage/logs?trace_id=trace-1", nil, adminToken)
+	if other["data"].(map[string]any)["total"].(float64) != 0 {
+		t.Fatal("不能看到他人的调用记录")
+	}
+	_, mineDaily := req(http.MethodGet, "/api/v1/users/me/ai-usage", nil, token)
+	if len(mineDaily["data"].(map[string]any)["daily"].([]any)) == 0 {
+		t.Fatal("应返回本月每日用量")
 	}
 
 	// AI 翻译同样受每月 AI 用量约束

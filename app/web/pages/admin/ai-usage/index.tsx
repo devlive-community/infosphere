@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import AdminLayout from '@/components/AdminLayout'
 import { api, formatDate } from '@/lib/api'
 import { aiFeatureLabel, formatCost, formatTokens, type UsageAgg } from '@/lib/ai-usage'
-import { Badge, Card, EmptyState, Input, Loading, Pagination, SegmentedTabs, Select, Tooltip, useFeedback } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Input, Loading, Pagination, SegmentedTabs, Select, Tooltip, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
 interface Summary {
@@ -20,7 +20,7 @@ interface Summary {
 
 interface LogItem {
   log: {
-    id: number; user_id: number; feature: string; ref_type: string; ref_id: number; kind: 'chat' | 'embed' | 'translate'; model: string
+    id: number; user_id: number; feature: string; trace_id: string; ref_type: string; ref_id: number; kind: 'chat' | 'embed' | 'translate'; model: string
     input_tokens: number; output_tokens: number; characters: number; estimated: boolean; cost_micros: number; currency: string
     duration_ms: number; status: 'ok' | 'error'; error: string; created_at: string
   }
@@ -153,6 +153,7 @@ function UsageLogs({ features }: { features: string[] }) {
   const [status, setStatus] = useState('')
   const [userInput, setUserInput] = useState('')
   const [user, setUser] = useState('')
+  const [trace, setTrace] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<{ items: LogItem[]; total: number; page_size: number } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -160,13 +161,13 @@ function UsageLogs({ features }: { features: string[] }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setData(await api('/admin/ai/usage/logs', { params: { feature, status, user, page, page_size: 20 } }))
+      setData(await api('/admin/ai/usage/logs', { params: { feature, status, user, trace_id: trace, page, page_size: 20 } }))
     } catch (e) {
       showToast({ title: t('admin.aiUsage.loadFailed'), message: (e as Error).message, tone: 'error' })
     } finally {
       setLoading(false)
     }
-  }, [feature, status, user, page, showToast, t])
+  }, [feature, status, user, trace, page, showToast, t])
 
   useEffect(() => { void load() }, [load])
 
@@ -181,6 +182,11 @@ function UsageLogs({ features }: { features: string[] }) {
           { value: 'ok', label: t('admin.aiUsage.statusOk') },
           { value: 'error', label: t('admin.aiUsage.statusError') },
         ]} />
+        {trace && (
+          <Button size="sm" variant="outline" onClick={() => { setTrace(''); setPage(1) }}>
+            <i className="fa-solid fa-xmark" aria-hidden="true" />{t('admin.aiUsage.clearTrace')}
+          </Button>
+        )}
         <form onSubmit={(e) => { e.preventDefault(); setUser(userInput.trim()); setPage(1) }}>
           <Input size="sm" className="w-40" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder={t('admin.aiUsage.userPlaceholder')} aria-label={t('admin.aiUsage.userPlaceholder')} />
         </form>
@@ -207,7 +213,15 @@ function UsageLogs({ features }: { features: string[] }) {
                 <tr key={l.id} className="align-top">
                   <td className="whitespace-nowrap py-2 pr-3 text-slate-500">{formatDate(l.created_at)}</td>
                   <td className="py-2 pr-3 text-slate-700">{l.user_id ? (username || `#${l.user_id}`) : t('admin.aiUsage.system')}</td>
-                  <td className="py-2 pr-3 text-slate-700">{aiFeatureLabel(t, l.feature)}</td>
+                  <td className="py-2 pr-3 text-slate-700">
+                    {aiFeatureLabel(t, l.feature)}
+                    {l.trace_id && !trace && (
+                      <Tooltip content={t('admin.aiUsage.viewTrace')}>
+                        <button type="button" aria-label={t('admin.aiUsage.viewTrace')} onClick={() => { setTrace(l.trace_id); setPage(1) }}
+                          className="ml-1.5 text-xs text-slate-400 hover:text-primary-600"><i className="fa-solid fa-diagram-project" aria-hidden="true" /></button>
+                      </Tooltip>
+                    )}
+                  </td>
                   <td className="py-2 pr-3 text-slate-500">{l.model || '-'}<span className="ml-1 text-xs text-slate-400">· {t(KIND_LABEL[l.kind])}</span></td>
                   <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums text-slate-700">
                     {l.kind === 'translate' ? t('admin.aiUsage.chars', { n: formatTokens(l.characters) }) : <>{formatTokens(l.input_tokens)} / {formatTokens(l.output_tokens)}</>}

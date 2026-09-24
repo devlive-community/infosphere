@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { api } from '@/lib/api'
 import { useTranslation } from '@/lib/i18n'
 import { Badge, Card } from '@/components/ui'
@@ -30,7 +31,10 @@ export default function MyEntitlementsCard({ reloadKey }: { reloadKey?: number }
   if (items.length === 0) return null
   return (
     <Card className="mt-6 p-5">
-      <h2 className="font-bold text-slate-900">{t('entitlement.mine.title')}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="font-bold text-slate-900">{t('entitlement.mine.title')}</h2>
+        {usage && <Link href="/user/ai-usage" className="ml-auto text-xs font-medium text-primary-600 hover:text-primary-700">{t('entitlement.mine.viewAIUsage')}</Link>}
+      </div>
       <p className="mt-1 text-xs text-slate-400">{t('entitlement.mine.hint')}</p>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
         {items.map((r) => (

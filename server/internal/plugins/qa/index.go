@@ -329,7 +329,7 @@ func (b *behavior) embedPending(ctx context.Context, bookID uint) error {
 		for i, c := range pending {
 			texts[i] = embedText(c)
 		}
-		vecs, err := b.core.AIEmbed(ctx, texts)
+		vecs, _, err := b.core.AIEmbed(ctx, texts)
 		if err != nil {
 			db.Model(&IndexState{}).Where("book_id = ?", bookID).Update("embed_error", truncate(err.Error(), 500))
 			return err

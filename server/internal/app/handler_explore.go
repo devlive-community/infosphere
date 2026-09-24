@@ -159,6 +159,9 @@ func (a *App) GetSiteConfig(c *gin.Context) {
 	}
 	// 仅暴露翻译是否可用，不泄露 API Key 等敏感配置
 	cfg["translation_enabled"] = a.translationEnabled()
+	// 「我的 AI 用量」入口：站点配置了 AI 服务或翻译服务时显示
+	chat, embed := a.AIStatus()
+	cfg["ai_usage_enabled"] = chat || embed || a.translationEnabled()
 	// 暴露已启用的特性插件键，供前端联动显示/隐藏对应页面与入口
 	featurePlugins := []string{}
 	for _, info := range pluginRegistry {

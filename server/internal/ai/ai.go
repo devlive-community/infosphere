@@ -8,10 +8,13 @@ package ai
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -146,6 +149,14 @@ type Caller struct {
 	Feature string // 如 qa.ask、qa.agent、qa.index
 	RefType string // 如 book
 	RefID   uint
+	TraceID string // 调用链 ID：同一次操作（如一次问答）的多次调用共用，便于按链条查看；为空时每次调用单独成链
+}
+
+// NewTraceID 生成调用链 ID。
+func NewTraceID() string {
+	b := make([]byte, 12)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 type callerKey struct{}
@@ -188,7 +199,13 @@ func fillUsage(res *ChatResponse, req ChatRequest) {
 	res.Usage = Usage{InputTokens: estimateRequest(req), OutputTokens: out, Estimated: true}
 }
 
-var httpClient = &http.Client{Timeout: 120 * time.Second}
+// httpClient 不设整体超时：生成耗时由模型决定，调用方通过 ctx 取消（如用户取消问答）；只限制建连与 TLS 握手，避免服务不可达时挂起。
+var httpClient = &http.Client{Transport: &http.Transport{
+	Proxy:               http.ProxyFromEnvironment,
+	DialContext:         (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+	TLSHandshakeTimeout: 15 * time.Second,
+	MaxIdleConnsPerHost: 8,
+}}
 
 func postJSON(ctx context.Context, url string, headers map[string]string, payload any) ([]byte, error) {
 	raw, err := json.Marshal(payload)

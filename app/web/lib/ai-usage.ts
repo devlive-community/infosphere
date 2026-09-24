@@ -30,6 +30,7 @@ export interface MyAIUsage {
   by_feature: { feature: string; calls: number; tokens: number }[]
   translate_chars: number // 本月已翻译字数
   translate_limit: number // -1 不限
+  daily: { date: string; tokens: number; characters: number }[]
 }
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string

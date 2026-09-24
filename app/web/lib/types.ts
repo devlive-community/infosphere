@@ -165,6 +165,7 @@ export interface SiteConfig {
   announcement_text?: string
   announcement_tone?: string
   translation_enabled?: boolean
+  ai_usage_enabled?: boolean // 站点配置了 AI 服务或翻译服务（显示「我的 AI 用量」入口）
   achievements_enabled?: string
   feature_plugins?: string[]
   collect_page_enabled?: boolean

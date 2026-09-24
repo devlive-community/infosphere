@@ -84,7 +84,7 @@ type Core interface {
 	LocalizeResources(c *gin.Context, kind string, ids []uint) (map[uint]LocalizedResource, string, error)
 	// AIChat / AIEmbed 调用站点「AI 服务」（对话支持工具调用；嵌入为 OpenAI 兼容）；AIStatus 两者是否已配置。
 	AIChat(ctx context.Context, req ai.ChatRequest) (ai.ChatResponse, error)
-	AIEmbed(ctx context.Context, texts []string) ([][]float32, error)
+	AIEmbed(ctx context.Context, texts []string) ([][]float32, ai.Usage, error)
 	AIStatus() (chat, embed bool)
 	// AICheckQuota 按 ctx 上标注的调用方（ai.WithCaller）判定每月 AI 用量额度，超出返回 ai.ErrQuotaExceeded；
 	// 多次调用的功能可在开始前调用，避免中途失败。

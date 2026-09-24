@@ -91,16 +91,16 @@ func (a *App) meteredChat(ctx context.Context, cfg ai.Config, req ai.ChatRequest
 	return res, err
 }
 
-func (a *App) AIEmbed(ctx context.Context, texts []string) ([][]float32, error) {
+func (a *App) AIEmbed(ctx context.Context, texts []string) ([][]float32, ai.Usage, error) {
 	cfg, _ := a.aiConfig()
 	caller := ai.CallerFrom(ctx)
 	if err := a.checkAIQuota(caller); err != nil {
-		return nil, err
+		return nil, ai.Usage{}, err
 	}
 	started := time.Now()
 	vecs, usage, err := ai.Embed(ctx, cfg, texts)
 	a.recordAIUsage(caller, "embed", ai.ProviderOpenAI, cfg.EmbedModel, usage, 0, time.Since(started), err)
-	return vecs, err
+	return vecs, usage, err
 }
 
 func (a *App) AICheckQuota(ctx context.Context) error { return a.checkAIQuota(ai.CallerFrom(ctx)) }
@@ -192,11 +192,10 @@ func (a *App) AdminTestAI(c *gin.Context) {
 		Kind string `json:"kind"`
 	}
 	_ = c.ShouldBindJSON(&req)
-	ctx, cancel := context.WithTimeout(ai.WithCaller(c.Request.Context(), ai.Caller{UserID: currentUser(c).ID, Feature: "admin.test"}), 60*time.Second)
-	defer cancel()
+	ctx := ai.WithCaller(c.Request.Context(), ai.Caller{UserID: currentUser(c).ID, Feature: "admin.test"})
 	started := time.Now()
 	if req.Kind == "embed" {
-		vecs, err := a.AIEmbed(ctx, []string{"KnowForge"})
+		vecs, _, err := a.AIEmbed(ctx, []string{"KnowForge"})
 		if err != nil {
 			fail(c, http.StatusBadGateway, err.Error())
 			return

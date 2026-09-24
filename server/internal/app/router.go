@@ -215,6 +215,7 @@ func (a *App) Router() *gin.Engine {
 		api.GET("/entitlements/definitions", a.RequireAuth(), a.EntitlementDefinitions)
 		api.GET("/users/me/entitlements", a.RequireAuth(), a.MyEntitlements)
 		api.GET("/users/me/ai-usage", a.RequireAuth(), a.MyAIUsage)
+		api.GET("/users/me/ai-usage/logs", a.RequireAuth(), a.MyAIUsageLogs)
 
 		// ── 导入书籍（book:import，ZIP / PDF 成为本人的书籍；网页导入/采集由 content-collect 插件子包注册） ──
 		api.POST("/import", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportBook)

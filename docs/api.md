@@ -287,7 +287,8 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/entitlements/definitions` | 权益定义 `[{key,kind:limit\|flag,unit,min,max,allow_unlimited}]`（供等级/会员权益编辑器） | 登录 |
 | GET | `/users/me/entitlements` | 我的各项权益 `items:[{key,value,source}]`（`source` 为 base/admin/unavailable 或来源键如 level）+ `definitions` | 登录 |
-| GET | `/users/me/ai-usage` | 本月 AI 用量：`used_tokens`、`calls`、`limit`（权益 `ai.monthly_tokens`，-1 不限；超出后本月内 AI 调用返回「本月 AI 用量已达上限」）、按功能分布 `by_feature[]`，以及本月翻译字数 `translate_chars` 与额度 `translate_limit` | 登录 |
+| GET | `/users/me/ai-usage` | 本月 AI 用量：`used_tokens`、`calls`、`limit`（权益 `ai.monthly_tokens`，-1 不限；超出后本月内 AI 调用返回「本月 AI 用量已达上限」）、按功能分布 `by_feature[]`、本月每日用量 `daily[]{date, tokens, characters}`，以及本月翻译字数 `translate_chars` 与额度 `translate_limit` | 登录 |
+| GET | `/users/me/ai-usage/logs?page=&page_size=&feature=&trace_id=` | 我的全部模型调用，按调用链（`trace_id`，同一次操作如一次提问的多次调用）分组，新→旧：`items[]{trace_id, feature, ref_type, ref_id, started_at, ended_at, calls, errors, input_tokens, output_tokens, characters, duration_ms, items[]}`，每次调用含 `kind`（chat\|embed\|translate）、`model`、tokens/字数、`estimated`、`duration_ms`、`status`；不返回费用与 AI 服务的原始报错 | 登录 |
 | GET | `/admin/entitlements` | 权益定义 + 基础值 `items:[{...定义,base,available}]` | `site:update` |
 | PUT | `/admin/entitlements/base` | `{values:{key:value}}` 只保存传入的键；`upload.max_mb` 基础值最大 100（更大通过等级/会员授予）；写审计 `entitlement.base_updated` | `site:update` |
 
@@ -686,7 +687,7 @@ Authorization: Bearer <token>
 | GET/PUT | `/admin/ai` | AI 服务（大模型）配置：`provider` openai\|anthropic、`base_url`、`api_key`、`model`，向量嵌入 `embed_base_url`、`embed_api_key`、`embed_model`（OpenAI 兼容）。GET 密钥只返回 `api_key_set`/`embed_api_key_set`，另返回 `source`（ai\|translation\|none，未单独配置时沿用翻译服务的 OpenAI/Claude 配置）、`chat_available`、`embed_available`；另有费用估算单价 `price_currency`（三位代码，默认 USD）、`price_input`、`price_output`、`price_embed`（每百万 tokens）、`price_translate`（Google 翻译，每百万字符）。PUT 只保存传入字段，密钥传空串不修改、传 `-` 清除。供插件经 `Core.AIChat/AIEmbed` 使用 | `site:update` |
 | POST | `/admin/ai/test` | `{kind: chat\|embed}` 用当前配置发一次最小请求：返回 `{reply, elapsed_ms}` 或 `{dimensions, elapsed_ms}`，失败 502 | `site:update` |
 | GET | `/admin/ai/usage?days=7\|30\|90` | AI 用量统计（逐次调用记录聚合）：`total{calls, errors, input_tokens, output_tokens, cost_micros}`、按日 `daily[]`、`by_feature[]`、`by_model[]`、`top_users[]`、全部功能键 `features[]`、`currency`。站点内所有模型调用（经 `Core.AIChat/AIEmbed` 的 AI 服务调用与翻译服务，测试 `TestModelCallsAreMetered` 禁止绕过）都记录调用方（`ai.WithCaller` 标注的用户/功能/关联对象，0 为系统）、模型、tokens（服务未返回时按文本估算并标记 `estimated`）、耗时与按调用时单价估算的费用（`cost_micros` 为货币单位百万分之一）；删除账号时记录保留但解除关联 | `site:update` |
-| GET | `/admin/ai/usage/logs?page=&page_size=&feature=&status=ok\|error&user=` | 调用明细 `items[]{log, username}`（`user` 为用户名） | `site:update` |
+| GET | `/admin/ai/usage/logs?page=&page_size=&feature=&status=ok\|error&user=&trace_id=` | 调用明细 `items[]{log, username}`（`user` 为用户名，`trace_id` 查看一条调用链的全部调用）。AI 调用不设整体超时（只限制建连与 TLS 握手），由调用方取消 | `site:update` |
 | GET/PUT | `/translation` | 翻译服务配置（写作台与多语言内容的「翻译」按钮）：`provider` none\|google\|openai\|claude、`api_key`、`api_base`、`model` | 管理员 |
 | POST | `/translate` | 登录用户翻译文本 `{text(≤20000 字), target_lang?, target_label?, source_lang?, ref_type?: document\|book\|resource, ref_id?}` → `{text}`。每次调用写入 AI 用量记录（功能 `translate`）：OpenAI/Claude 经统一 AI 客户端记录 tokens 与原文字数并受 `ai.monthly_tokens` 约束，Google 按字符记录（`kind=translate`，按 `price_translate` 计价）；所有方式受权益 `translate.monthly_chars`（每月翻译字数，默认不限）约束，剩余不足返回 429 | 登录 |
 | GET/PUT | `/admin/achievement-settings` | 读取/保存模块总开关、公开主页展示、解锁通知、允许用户隐藏和陈列数量 | `achievement:manage` |

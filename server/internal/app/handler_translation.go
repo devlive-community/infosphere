@@ -186,7 +186,7 @@ func (a *App) Translate(c *gin.Context) {
 		return
 	}
 	u := currentUser(c)
-	if limit := a.entitlement(u, entTranslateMonthlyChars); limit != plugincore.Unlimited {
+	if limit, enforced := a.meteredLimit(u, entTranslateMonthlyChars); enforced {
 		if left := limit - a.translateMonthUsed(u.ID); chars > left {
 			if left < 0 {
 				left = 0
@@ -199,8 +199,7 @@ func (a *App) Translate(c *gin.Context) {
 	if translateRefTypes[req.RefType] {
 		caller.RefType, caller.RefID = req.RefType, req.RefID
 	}
-	ctx, cancel := context.WithTimeout(ai.WithCaller(c.Request.Context(), caller), 60*time.Second)
-	defer cancel()
+	ctx := ai.WithCaller(c.Request.Context(), caller) // 不设整体超时：长文本翻译由模型决定耗时，用户离开页面即取消
 
 	var (
 		translated string

@@ -825,5 +825,8 @@ func All(db *gorm.DB) error {
 	); err != nil {
 		return err
 	}
+	if err := backfillAITraceIDs(db); err != nil {
+		return err
+	}
 	return SeedI18n(db)
 }

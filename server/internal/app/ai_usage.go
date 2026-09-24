@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"knowforge/server/internal/ai"
 	"knowforge/server/internal/models"
@@ -71,6 +72,15 @@ func (p aiPricing) costMicros(kind string, u ai.Usage, chars int64) int64 {
 	return int64(math.Round(float64(u.InputTokens)*p.Input + float64(u.OutputTokens)*p.Output))
 }
 
+// meteredLimit 按月计量权益的生效上限；不限或权益不可用（如对应服务未配置）时不做限制。
+func (a *App) meteredLimit(u *models.User, key string) (int64, bool) {
+	r, has := plugincore.ResolveEntitlements(a, u)[key]
+	if !has || r.Source == "unavailable" || r.Value == plugincore.Unlimited {
+		return 0, false
+	}
+	return r.Value, true
+}
+
 func monthStart(now time.Time) time.Time {
 	return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 }
@@ -92,8 +102,8 @@ func (a *App) checkAIQuota(caller ai.Caller) error {
 	if a.DB.First(&u, caller.UserID).Error != nil {
 		return nil
 	}
-	limit := a.entitlement(&u, entAIMonthlyTokens)
-	if limit == plugincore.Unlimited {
+	limit, enforced := a.meteredLimit(&u, entAIMonthlyTokens)
+	if !enforced {
 		return nil
 	}
 	if a.aiMonthUsed(u.ID) >= limit {
@@ -106,12 +116,15 @@ func (a *App) checkAIQuota(caller ai.Caller) error {
 func (a *App) recordAIUsage(caller ai.Caller, kind, provider, model string, usage ai.Usage, chars int64, elapsed time.Duration, callErr error) {
 	pricing := a.aiPricing()
 	row := models.AIUsageLog{
-		UserID: caller.UserID, Feature: caller.Feature, RefType: caller.RefType, RefID: caller.RefID,
+		UserID: caller.UserID, Feature: caller.Feature, RefType: caller.RefType, RefID: caller.RefID, TraceID: caller.TraceID,
 		Kind: kind, Provider: provider, Model: truncateRunes(model, 100), DurationMs: elapsed.Milliseconds(),
 		Currency: pricing.Currency, Status: "ok",
 	}
 	if row.Feature == "" {
 		row.Feature = "other"
+	}
+	if row.TraceID == "" {
+		row.TraceID = ai.NewTraceID()
 	}
 	if callErr != nil {
 		row.Status, row.Error = "error", truncateRunes(callErr.Error(), 300)
@@ -148,9 +161,116 @@ func (a *App) MyAIUsage(c *gin.Context) {
 		calls += r.Calls
 		items = append(items, gin.H{"feature": r.Feature, "calls": r.Calls, "tokens": r.Tokens})
 	}
-	ok(c, gin.H{"month_start": monthStart(time.Now()), "used_tokens": used, "calls": calls,
+	// 本月每日用量（tokens 与翻译字数），按服务器本地日期
+	now := time.Now()
+	start := monthStart(now)
+	daily := map[string][2]int64{}
+	var dayRows []models.AIUsageLog
+	a.DB.Select("input_tokens, output_tokens, characters, created_at").
+		Where("user_id = ? AND status = ? AND created_at >= ?", u.ID, "ok", start).Find(&dayRows)
+	for _, r := range dayRows {
+		k := r.CreatedAt.In(now.Location()).Format("2006-01-02")
+		v := daily[k]
+		daily[k] = [2]int64{v[0] + r.InputTokens + r.OutputTokens, v[1] + r.Characters}
+	}
+	series := []gin.H{}
+	for d := start; !d.After(now); d = d.AddDate(0, 0, 1) {
+		k := d.Format("2006-01-02")
+		series = append(series, gin.H{"date": k, "tokens": daily[k][0], "characters": daily[k][1]})
+	}
+	ok(c, gin.H{"month_start": monthStart(time.Now()), "used_tokens": used, "calls": calls, "daily": series,
 		"limit": a.entitlement(u, entAIMonthlyTokens), "by_feature": items,
 		"translate_chars": a.translateMonthUsed(u.ID), "translate_limit": a.entitlement(u, entTranslateMonthlyChars)})
+}
+
+// userCallView 用户可见的单次调用（不含费用与服务端原始错误信息，避免泄露站点配置）。
+type userCallView struct {
+	ID           uint      `json:"id"`
+	Feature      string    `json:"feature"`
+	Kind         string    `json:"kind"`
+	Model        string    `json:"model"`
+	InputTokens  int64     `json:"input_tokens"`
+	OutputTokens int64     `json:"output_tokens"`
+	Characters   int64     `json:"characters"`
+	Estimated    bool      `json:"estimated"`
+	DurationMs   int64     `json:"duration_ms"`
+	Status       string    `json:"status"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// userTraceView 一条调用链（同一次操作的全部调用，按时间顺序）及其合计。
+type userTraceView struct {
+	TraceID      string         `json:"trace_id"`
+	Feature      string         `json:"feature"`
+	RefType      string         `json:"ref_type"`
+	RefID        uint           `json:"ref_id"`
+	StartedAt    time.Time      `json:"started_at"`
+	EndedAt      time.Time      `json:"ended_at"`
+	Calls        int            `json:"calls"`
+	Errors       int            `json:"errors"`
+	InputTokens  int64          `json:"input_tokens"`
+	OutputTokens int64          `json:"output_tokens"`
+	Characters   int64          `json:"characters"`
+	DurationMs   int64          `json:"duration_ms"` // 各次调用耗时之和
+	Items        []userCallView `json:"items"`
+}
+
+// MyAIUsageLogs GET /users/me/ai-usage/logs?page=&page_size=&feature=&trace_id= 我的 AI 调用记录，按调用链分组（新→旧）。
+func (a *App) MyAIUsageLogs(c *gin.Context) {
+	u := currentUser(c)
+	page, pageSize := paginate(c)
+	base := func() *gorm.DB {
+		q := a.DB.Model(&models.AIUsageLog{}).Where("user_id = ?", u.ID)
+		if f := strings.TrimSpace(c.Query("feature")); f != "" {
+			q = q.Where("feature = ?", f)
+		}
+		if tr := strings.TrimSpace(c.Query("trace_id")); tr != "" {
+			q = q.Where("trace_id = ?", tr)
+		}
+		return q
+	}
+	var total int64
+	base().Distinct("trace_id").Count(&total)
+	var groups []struct {
+		TraceID string
+		LastID  uint
+	}
+	base().Select("trace_id, MAX(id) AS last_id").Group("trace_id").Order("last_id DESC").
+		Offset((page - 1) * pageSize).Limit(pageSize).Scan(&groups)
+	ids := make([]string, 0, len(groups))
+	for _, g := range groups {
+		ids = append(ids, g.TraceID)
+	}
+	byTrace := map[string]*userTraceView{}
+	if len(ids) > 0 {
+		var rows []models.AIUsageLog
+		a.DB.Where("user_id = ? AND trace_id IN ?", u.ID, ids).Order("id ASC").Find(&rows)
+		for _, r := range rows {
+			t := byTrace[r.TraceID]
+			if t == nil {
+				t = &userTraceView{TraceID: r.TraceID, Feature: r.Feature, RefType: r.RefType, RefID: r.RefID, StartedAt: r.CreatedAt, Items: []userCallView{}}
+				byTrace[r.TraceID] = t
+			}
+			t.EndedAt = r.CreatedAt
+			t.Calls++
+			if r.Status != "ok" {
+				t.Errors++
+			}
+			t.InputTokens += r.InputTokens
+			t.OutputTokens += r.OutputTokens
+			t.Characters += r.Characters
+			t.DurationMs += r.DurationMs
+			t.Items = append(t.Items, userCallView{ID: r.ID, Feature: r.Feature, Kind: r.Kind, Model: r.Model, InputTokens: r.InputTokens,
+				OutputTokens: r.OutputTokens, Characters: r.Characters, Estimated: r.Estimated, DurationMs: r.DurationMs, Status: r.Status, CreatedAt: r.CreatedAt})
+		}
+	}
+	items := make([]*userTraceView, 0, len(groups))
+	for _, g := range groups {
+		if t := byTrace[g.TraceID]; t != nil {
+			items = append(items, t)
+		}
+	}
+	ok(c, plugincore.PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
 }
 
 // —— 管理端 ——
@@ -280,7 +400,7 @@ func (a *App) AdminAIUsage(c *gin.Context) {
 	})
 }
 
-// AdminAIUsageLogs GET /admin/ai/usage/logs?page=&page_size=&feature=&status=&user= 调用明细（user 为用户名）。
+// AdminAIUsageLogs GET /admin/ai/usage/logs?page=&page_size=&feature=&status=&user=&trace_id= 调用明细（user 为用户名）。
 func (a *App) AdminAIUsageLogs(c *gin.Context) {
 	page, pageSize := paginate(c)
 	q := a.DB.Model(&models.AIUsageLog{})
@@ -289,6 +409,9 @@ func (a *App) AdminAIUsageLogs(c *gin.Context) {
 	}
 	if s := c.Query("status"); s == "ok" || s == "error" {
 		q = q.Where("status = ?", s)
+	}
+	if tr := strings.TrimSpace(c.Query("trace_id")); tr != "" {
+		q = q.Where("trace_id = ?", tr)
 	}
 	if name := strings.TrimSpace(c.Query("user")); name != "" {
 		var u models.User

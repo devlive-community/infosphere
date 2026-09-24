@@ -73,7 +73,7 @@ func (b *behavior) search(ctx context.Context, chunks []Chunk, query string, k i
 		}
 	}
 	if _, embed := b.core.AIStatus(); embed && hasVectors {
-		if qv, err := b.core.AIEmbed(ctx, []string{query}); err == nil && len(qv) == 1 {
+		if qv, _, err := b.core.AIEmbed(ctx, []string{query}); err == nil && len(qv) == 1 {
 			vec = make([]float64, len(chunks))
 			for i, c := range chunks {
 				if len(c.Embedding) > 0 {
