@@ -428,7 +428,8 @@ func (a *App) importBookFromZIP(stored storedZIP, u *models.User, customTitle st
 
 	bookData, found := entries["book.md"]
 	if !found {
-		return zipImportResult{}, http.StatusBadRequest, fmt.Errorf("ZIP 缺少 book.md")
+		// 非 KnowForge 导出格式：按普通 Markdown 目录导入（目录 → 章节层级）
+		return a.importMarkdownAsBook(entries, u, customTitle, humanizeName(stored.Filename), false)
 	}
 	bookFields, lists, _ := parseFrontMatter(string(bookData))
 	title := bookFields.get("title")

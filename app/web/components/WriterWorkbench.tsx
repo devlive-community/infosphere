@@ -134,6 +134,8 @@ export default function Writer({ user }: WriterProps) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [chapterMenu, setChapterMenu] = useState<ChapterMenuState | null>(null)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
+  const mdInputRef = useRef<HTMLInputElement>(null)
+  const [importingMd, setImportingMd] = useState(false) // 从 Markdown 导入章节（进行中显示状态）
   const [insertMenuOpen, setInsertMenuOpen] = useState(false)
   const [metaMenuOpen, setMetaMenuOpen] = useState(false)
   const [translateMenuOpen, setTranslateMenuOpen] = useState(false)
@@ -288,6 +290,27 @@ export default function Writer({ user }: WriterProps) {
   const loadTree = useCallback(async (b: Book) => {
     setTree((await api<Document[]>(`/books/${b.id}/documents`)) || [])
   }, [])
+
+  // importMarkdown 把选择的 .md 文件（可附带图片）或 Markdown ZIP 导入为本书第一级章节（目录结构 → 章节层级）
+  async function importMarkdown(files: File[]) {
+    if (!book || files.length === 0) return
+    setImportingMd(true)
+    try {
+      const form = new FormData()
+      files.forEach((f) => form.append('files', f))
+      const token = getToken()
+      const response = await fetch(`${API_BASE}/api/v1/books/${book.id}/documents/import-markdown`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: form })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok || payload.success === false) throw new Error(payload.message || t('writer.importMarkdownFailed'))
+      await loadTree(book)
+      showToast({ message: t('writer.importMarkdownDone', { count: payload.data?.imported_doc ?? 0 }), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('writer.importMarkdownFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setImportingMd(false)
+      if (mdInputRef.current) mdInputRef.current.value = ''
+    }
+  }
 
   // 首次加载章节树后默认展开所有含子章节的节点（只执行一次，不干扰后续手动折叠）
   useEffect(() => {
@@ -1369,8 +1392,12 @@ export default function Writer({ user }: WriterProps) {
                       <button onClick={() => { createNew(); setNewMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FileTextIcon className="h-4 w-4 text-slate-400" /> {t('writer.newChapterBtn')}</button>
                       <button onClick={() => { setNewMenuOpen(false); if (!current) { showToast({ message: t('writer.needParent'), tone: 'error' }); return } createNew() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><FolderIcon className="h-4 w-4 text-slate-400" /> {t('writer.newSubChapter')}</button>
                       {collectEnabled && <button onClick={() => openWebImport()} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><GlobeIcon className="h-4 w-4 text-slate-400" /> {t('writer.fromWeb')}</button>}
+                      <button onClick={() => { setNewMenuOpen(false); mdInputRef.current?.click() }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"><i className="fa-brands fa-markdown w-4 text-center text-slate-400" aria-hidden="true" /> {t('writer.fromMarkdown')}</button>
                     </div>
                   )}
+                  <input ref={mdInputRef} type="file" multiple accept=".md,.markdown,.zip,application/zip,image/*" className="sr-only" aria-label={t('writer.fromMarkdown')}
+                    onChange={(e) => void importMarkdown(Array.from(e.target.files || []))} />
+                  {importingMd && <div className="mt-2 rounded-lg border border-primary-100 bg-primary-50/50 px-3 py-2"><Loading className="py-0.5" label={t('writer.importingMarkdown')} /></div>}
                 </div>
               </div>
               <div ref={tocScrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-3 pb-2"

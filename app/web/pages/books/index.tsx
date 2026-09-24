@@ -9,7 +9,7 @@ import { isQueuedTask, waitForTask, type QueuedTask } from '@/lib/background-tas
 import { useTranslation } from '@/lib/i18n'
 import { useRequireAuth , useApp} from '@/lib/auth'
 import { useGridPageSize } from '@/lib/useGridPageSize'
-import { Button, ButtonLink, Badge, DropdownMenu, EmptyState, Field, Input, Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
+import { Button, ButtonLink, Badge, Checkbox, DropdownMenu, EmptyState, Field, Input, Pagination, SegmentedTabs, Select, Loading, Tooltip, useFeedback } from '@/components/ui'
 import BookCard from '@/components/BookCard'
 import MyLibraryTabs from '@/components/MyLibraryTabs'
 import BookCopyDialog from '@/components/BookCopyDialog'
@@ -260,7 +260,7 @@ export default function MyBooks() {
   )
 }
 
-type ImportKind = 'zip' | 'pdf' | 'web'
+type ImportKind = 'zip' | 'pdf' | 'web' | 'markdown'
 type WebRenderMode = 'auto' | 'static' | 'browser'
 type ImportResult = { book: Book; message?: string; imported_doc?: number; render_mode?: string }
 
@@ -269,6 +269,8 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
   const webCollectEnabled = entitlementAllowed(me, 'collect.page', site.collect_page_enabled !== false) // 单页采集权益（含插件启用）：无权限则不显示「网页」导入
   const [kind, setKind] = useState<ImportKind>('pdf')
   const [file, setFile] = useState<File | null>(null)
+  const [mdFiles, setMdFiles] = useState<File[]>([]) // Markdown：多个 .md（可附带图片）或一个 ZIP
+  const [publishChapters, setPublishChapters] = useState(false)
   const [title, setTitle] = useState('')
   const [url, setURL] = useState('')
   const [renderMode, setRenderMode] = useState<WebRenderMode>('auto')
@@ -288,6 +290,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
     if (submitting) return
     setKind(next)
     setFile(null)
+    setMdFiles([])
     setError('')
     setResult(null)
   }
@@ -307,8 +310,24 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
     return payload.data as ImportResult | QueuedTask<ImportResult>
   }
 
+  async function uploadMarkdown(files: File[]): Promise<ImportResult> {
+    const form = new FormData()
+    files.forEach((f) => form.append('files', f))
+    if (title.trim()) form.append('title', title.trim())
+    if (publishChapters) form.append('publish', 'true')
+    const token = getToken()
+    const response = await fetch(`${API_BASE}/api/v1/import/markdown`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: form })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok || payload.success === false) throw new Error(payload.message || t('books.import.failed', { status: response.status }))
+    return payload.data as ImportResult
+  }
+
   async function submit() {
-    if (kind !== 'web' && !file) {
+    if (kind === 'markdown' && mdFiles.length === 0) {
+      setError(t('books.import.needMarkdown'))
+      return
+    }
+    if (kind !== 'web' && kind !== 'markdown' && !file) {
       setError(t('books.import.needFile', { type: kind === 'pdf' ? 'PDF' : 'ZIP' }))
       return
     }
@@ -321,7 +340,9 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
     try {
       const response = kind === 'web'
         ? await api<ImportResult>('/import/web', { method: 'POST', body: { url: url.trim(), title: title.trim(), render_mode: renderMode } })
-        : await uploadFile(kind === 'pdf' ? '/import/pdf' : '/import', file as File)
+        : kind === 'markdown'
+          ? await uploadMarkdown(mdFiles)
+          : await uploadFile(kind === 'pdf' ? '/import/pdf' : '/import', file as File)
       const imported = isQueuedTask(response) ? await waitForTask<ImportResult>(response.task.id) : response
       setResult(imported)
       await onImported()
@@ -336,7 +357,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
     ? t('books.import.loading.pdf')
     : kind === 'web'
       ? renderMode === 'static' ? t('books.import.loading.static') : t('books.import.loading.browser')
-      : t('books.import.loading.zip')
+      : kind === 'markdown' ? t('books.import.loading.markdown') : t('books.import.loading.zip')
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/30 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
@@ -359,6 +380,7 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
             onChange={(value) => switchKind(value as ImportKind)} items={[
               { value: 'pdf', label: t('books.import.kind.pdf'), icon: <FileTextIcon className="h-4 w-4" /> },
               ...(webCollectEnabled ? [{ value: 'web', label: t('books.import.kind.web'), icon: <GlobeIcon className="h-4 w-4" /> }] : []),
+              { value: 'markdown', label: t('books.import.kind.markdown'), icon: <i className="fa-brands fa-markdown text-sm" aria-hidden="true" /> },
               { value: 'zip', label: t('books.import.kind.zip'), icon: <UploadIcon className="h-4 w-4" /> },
             ]} />
 
@@ -400,6 +422,25 @@ function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImpo
                     {!browserAvailable && <p className="mt-2 text-xs leading-5 text-amber-600">{t('books.import.noBrowser')}</p>}
                     {browserAvailable && renderMode !== 'static' && <p className="mt-2 text-xs leading-5 text-slate-400">{t('books.import.browserHint')}</p>}
                   </fieldset>
+                </>
+              ) : kind === 'markdown' ? (
+                <>
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700">{t('books.import.fileLabel')}</span>
+                    <span className="mt-2 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-6 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/40">
+                      <UploadIcon className="h-7 w-7 text-primary-500" />
+                      <span className="mt-3 text-sm font-medium text-slate-700 [overflow-wrap:anywhere]">
+                        {mdFiles.length === 0 ? t('books.import.chooseMarkdown') : mdFiles.length === 1 ? mdFiles[0].name : t('books.import.markdownSelected', { count: mdFiles.length })}
+                      </span>
+                      <span className="mt-1 text-xs leading-5 text-slate-400">{t('books.import.markdownHint')}</span>
+                      <input type="file" multiple accept=".md,.markdown,.zip,application/zip,image/*" className="sr-only"
+                        onChange={(event) => { setMdFiles(Array.from(event.target.files || [])); setError('') }} />
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                    <Checkbox checked={publishChapters} onChange={setPublishChapters} ariaLabel={t('books.import.publishChapters')} />
+                    {t('books.import.publishChapters')}
+                  </label>
                 </>
               ) : (
                 <label className="block">

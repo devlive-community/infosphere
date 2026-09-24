@@ -172,6 +172,7 @@ func (a *App) Router() *gin.Engine {
 			books.POST("/:id/copy", a.RequirePermission(authz.BookCreate), a.CopyBook)
 			books.GET("/:id/export", a.RequirePermission(authz.BookExport), a.ExportBook)
 			books.POST("/:id/import/pdf", a.RequirePermission(authz.BookImport), a.ReimportPDFBook)
+			books.POST("/:id/documents/import-markdown", a.RequirePermission(authz.DocumentCreate), a.ImportMarkdownDocuments)
 			books.POST("/:id/cleanup/permalink-anchors", a.RequirePermission(authz.BookUpdate), a.CleanupBookPermalinks)
 			books.GET("/:id/read-chapters", a.RequirePermission(authz.UserRead), a.ReadChapters)
 			books.GET("/:id/export-style", a.RequirePermission(authz.BookUpdate), a.GetBookExportStyle)
@@ -216,6 +217,7 @@ func (a *App) Router() *gin.Engine {
 		// ── 导入书籍（book:import，ZIP / PDF 成为本人的书籍；网页导入/采集由 content-collect 插件子包注册） ──
 		api.POST("/import", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportBook)
 		api.POST("/import/pdf", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportPDFBook)
+		api.POST("/import/markdown", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportMarkdownBook)
 		api.GET("/tasks/:id", a.RequireAuth(), a.GetBackgroundJob)
 
 		// ── 站内通知（notification:*；SSE 端点自行鉴权，EventSource 无法带请求头） ──
