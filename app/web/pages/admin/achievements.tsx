@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import FeatureGate from '@/components/FeatureGate'
 import LocalizedFields, { type ResourceTranslations } from '@/components/LocalizedFields'
 import AchievementIcon from '@/components/AchievementIcon'
+import AchievementPresetsModal from '@/components/AchievementPresetsModal'
 import UserAvatar from '@/components/UserAvatar'
 import { API_BASE, api, getToken } from '@/lib/api'
 import { useApp } from '@/lib/auth'
@@ -107,6 +108,7 @@ export default function AdminAchievements() {
   const { site } = useApp()
   const growthEnabled = (site.feature_plugins || []).includes('growth')
   const fileRef = useRef<HTMLInputElement>(null)
+  const [presetsOpen, setPresetsOpen] = useState(false)
 
   const categoryLabels: Record<string, string> = { reading: t('admin.achievements.category.reading'), creation: t('admin.achievements.category.creation'), community: t('admin.achievements.category.community'), account: t('admin.achievements.category.account'), special: t('admin.achievements.category.special') }
   const statusLabels: Record<string, string> = { draft: t('admin.achievements.status.draft'), active: t('admin.achievements.status.active'), paused: t('admin.achievements.status.paused'), archived: t('admin.achievements.status.archived') }
@@ -291,9 +293,16 @@ export default function AdminAchievements() {
   return (
     <FeatureGate feature="achievements">
     <AdminLayout current="achievements" breadcrumb={t('admin.achievements.title')}>
+      <AchievementPresetsModal open={presetsOpen} onClose={() => setPresetsOpen(false)} showReward={growthEnabled}
+        onInstalled={() => { loadDefinitions().catch(() => {}) }} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div><h1 className="text-3xl font-bold text-slate-900">{t('admin.achievements.title')}</h1><p className="mt-1.5 text-sm text-slate-500">{t('admin.achievements.description')}</p></div>
-        {tab === 'definitions' && <Button onClick={() => openForm(emptyForm())}><i className="fa-solid fa-plus" aria-hidden="true" /> {t('admin.achievements.createNew')}</Button>}
+        {tab === 'definitions' && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setPresetsOpen(true)}><i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" /> {t('admin.achievements.presets.open')}</Button>
+            <Button onClick={() => openForm(emptyForm())}><i className="fa-solid fa-plus" aria-hidden="true" /> {t('admin.achievements.createNew')}</Button>
+          </div>
+        )}
       </div>
 
       <SegmentedTabs className="mt-6" value={tab} onChange={(value) => setTab(value as Tab)} ariaLabel={t('admin.achievements.title')} items={[

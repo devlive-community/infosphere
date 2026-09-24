@@ -22,3 +22,5 @@ func EvaluateForUser(core plugincore.Core, userID uint, definition models.Achiev
 func EvaluateMetric(core plugincore.Core, userID uint, rule models.AchievementRule) (int64, error) {
 	return (&behavior{core: core}).evaluateAchievementMetric(userID, rule)
 }
+
+func PresetCount() int { return len(presetAchievements) }

@@ -28,6 +28,9 @@ const (
 	cfgAchievementsShowcaseLimit = "achievements_showcase_limit"
 )
 
+// maxRewardXP 单个成就的奖励经验上限。
+const maxRewardXP = 100000
+
 var achievementKeyPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{2,79}$`)
 
 type achievementSettings struct {
@@ -213,6 +216,7 @@ type achievementDefinitionRequest struct {
 	AssetID            *uint                                     `json:"asset_id"`
 	SeriesKey          string                                    `json:"series_key"`
 	Tier               int                                       `json:"tier"`
+	RewardXP           int                                       `json:"reward_xp"`
 	SupersedesPrevious bool                                      `json:"supersedes_previous"`
 	RuleLogic          string                                    `json:"rule_logic"`
 	GrantMode          string                                    `json:"grant_mode"`
@@ -312,6 +316,9 @@ func normalizeAchievementRequest(req *achievementDefinitionRequest) error {
 	if !oneOf(req.ProgressMode, "aggregate", "primary", "hidden") {
 		return fmt.Errorf("进度展示方式无效")
 	}
+	if req.RewardXP < 0 || req.RewardXP > maxRewardXP {
+		return fmt.Errorf("奖励经验需在 0 到 %d 之间", maxRewardXP)
+	}
 	if req.Tier < 1 {
 		req.Tier = 1
 	}
@@ -397,7 +404,7 @@ func definitionFromRequest(req achievementDefinitionRequest, userID uint) models
 		Key: req.Key, Name: req.Name, NameEn: req.NameEn, Description: req.Description,
 		DescriptionEn: req.DescriptionEn, LockedHint: req.LockedHint, LockedHintEn: req.LockedHintEn,
 		Category: req.Category, Status: req.Status, Rarity: req.Rarity, IconType: req.IconType,
-		IconValue: req.IconValue, AssetID: req.AssetID, SeriesKey: req.SeriesKey, Tier: req.Tier,
+		IconValue: req.IconValue, AssetID: req.AssetID, SeriesKey: req.SeriesKey, Tier: req.Tier, RewardXP: req.RewardXP,
 		SupersedesPrevious: req.SupersedesPrevious, RuleLogic: req.RuleLogic, GrantMode: req.GrantMode,
 		Visibility: req.Visibility, ProgressMode: req.ProgressMode, ActiveFrom: req.ActiveFrom,
 		ActiveUntil: req.ActiveUntil, SortOrder: req.SortOrder, Version: 1, CreatedBy: userID, UpdatedBy: userID,
@@ -607,7 +614,7 @@ func (am *behavior) AdminUpdateAchievement(c *gin.Context) {
 		}
 		if err := tx.Model(&definition).Select(
 			"achievement_key", "name", "name_en", "description", "description_en", "locked_hint", "locked_hint_en",
-			"category", "status", "rarity", "icon_type", "icon_value", "asset_id", "series_key", "tier",
+			"category", "status", "rarity", "icon_type", "icon_value", "asset_id", "series_key", "tier", "reward_xp",
 			"supersedes_previous", "rule_logic", "grant_mode", "visibility", "progress_mode", "active_from",
 			"active_until", "sort_order", "version", "updated_by",
 		).Updates(&updates).Error; err != nil {

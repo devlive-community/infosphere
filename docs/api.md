@@ -565,6 +565,8 @@ Authorization: Bearer <token>
 | GET/PUT/DELETE | `/admin/achievements/:id` | 查看、版本化更新、删除草稿或归档已有生命周期的定义 | `achievement:manage` |
 | POST | `/admin/achievements/:id/recalculate` | 把指定 active 自动成就加入后台全用户重算队列，返回 202 与 task | `achievement:manage` |
 | POST | `/admin/achievement-icons` | multipart `file`，最大 512KB；支持 PNG/JPEG/GIF/WebP 与白名单净化 SVG | `achievement:manage` |
+| GET | `/admin/achievement-presets` | 内置预设成就列表（阅读/创作/互动/账号/签到/成长的阶梯成就，含中英文名称与描述、稀有度、奖励经验、指标与目标）及 `installed`（同 key 成就已存在即视为已安装，含已归档） | `achievement:manage` |
+| POST | `/admin/achievement-presets/install` | `{keys?: []}` 安装选中的（缺省为全部）未安装预设，返回 `{installed}`；与手工创建同一套校验、中英文翻译与版本快照，安装后为普通成就。插件首次启用且尚无任何成就时自动安装全部预设 | `achievement:manage` |
 | GET/POST | `/admin/achievement-grants` | 分页查询授予记录，或按 `{username,achievement_id,reason?,is_public?}` 人工授予 | `achievement:grant` |
 | POST | `/admin/achievement-grants/:id/revoke` | 按 `{reason}` 撤销授予，记录保留并写审计 | `achievement:grant` |
 

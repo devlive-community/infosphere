@@ -466,3 +466,110 @@ func TestCheckinAchievementMetrics(t *testing.T) {
 		t.Fatalf("断签后当前连续应为 0，实际 %d", v)
 	}
 }
+
+// 预设成就：首次启用自动安装全部预设（均为启用中的自动成就、带中英文翻译与版本快照）；读完一章即解锁「开卷有益」；
+// 管理员可查看安装状态、按需补装被删除的预设；重复启用不会重复安装。
+func TestPresetAchievements(t *testing.T) {
+	e := newTestEnv(t)
+	e.enable(t, "achievements")
+	_ = e.app.SetSetting("achievements_notifications_enabled", "false", "test")
+
+	var defs []models.AchievementDefinition
+	e.db.Preload("Rules").Where("achievement_key LIKE ?", "preset.%").Find(&defs)
+	if len(defs) != achievements.PresetCount() {
+		t.Fatalf("首次启用应安装全部 %d 个预设，实际 %d", achievements.PresetCount(), len(defs))
+	}
+	for _, d := range defs {
+		if d.Status != "active" || d.GrantMode != "auto" || len(d.Rules) != 1 {
+			t.Fatalf("预设 %s 应为启用中的自动成就且有 1 条规则: %+v", d.Key, d)
+		}
+		var locales int64
+		e.db.Model(&models.LocalizedResourceContent{}).Where("resource_type = ? AND resource_id = ? AND published <> ''", "achievement", d.ID).Count(&locales)
+		var versions int64
+		e.db.Model(&models.AchievementDefinitionVersion{}).Where("achievement_id = ?", d.ID).Count(&versions)
+		if locales != 2 || versions != 1 {
+			t.Fatalf("预设 %s 应发布中英文翻译并有版本快照: locales=%d versions=%d", d.Key, locales, versions)
+		}
+	}
+
+	// 端到端：读完一章 → 业务活动 → 评估任务 → 解锁「开卷有益」
+	user := e.user(t, "preset-reader")
+	book := models.Book{Title: "P", Slug: "preset-book", UserID: e.admin.ID, Status: "published", IsPublic: true}
+	e.db.Create(&book)
+	doc := models.Document{BookID: book.ID, UserID: e.admin.ID, Title: "c", Slug: "c", Status: "published"}
+	e.db.Create(&doc)
+	e.db.Create(&models.ReadChapter{UserID: user.ID, BookID: book.ID, DocID: doc.ID})
+	plugincore.FireActivity(e.app, plugincore.ActivityEvent{UserID: user.ID, Type: "chapter.read", SourceType: "document", SourceID: jsonID(doc.ID), DedupeKey: "chapter.read:preset"})
+	e.drainJobs(t)
+	var first models.AchievementDefinition
+	e.db.Where("achievement_key = ?", "preset.reading.chapters.1").First(&first)
+	var grants int64
+	e.db.Model(&models.UserAchievement{}).Where("user_id = ? AND achievement_id = ?", user.ID, first.ID).Count(&grants)
+	if grants != 1 {
+		t.Fatalf("读完第一章应解锁「开卷有益」，实际授予 %d", grants)
+	}
+
+	// 已有授予的预设被「删除」只会归档，仍算已安装（不会被重新装回，尊重管理员的处理）
+	if status, payload := e.do(t, http.MethodDelete, "/api/v1/admin/achievements/"+jsonID(first.ID), "", e.token); status != http.StatusOK {
+		t.Fatalf("删除预设失败: %d %v", status, payload)
+	}
+	// 模拟旧站点缺少某个（后来新增的）预设 → 列表显示未安装 → 按需补装；再次安装不重复
+	var missing models.AchievementDefinition
+	e.db.Where("achievement_key = ?", "preset.account.anniversary").First(&missing)
+	e.db.Where("achievement_id = ?", missing.ID).Delete(&models.AchievementRule{})
+	e.db.Where("achievement_id = ?", missing.ID).Delete(&models.AchievementDefinitionVersion{})
+	e.db.Where("resource_type = ? AND resource_id = ?", "achievement", missing.ID).Delete(&models.LocalizedResourceContent{})
+	e.db.Delete(&missing)
+	_, payload := e.do(t, http.MethodGet, "/api/v1/admin/achievement-presets", "", e.token)
+	notInstalled := []string{}
+	for _, it := range payload["data"].(map[string]any)["items"].([]any) {
+		if item := it.(map[string]any); item["installed"] == false {
+			notInstalled = append(notInstalled, item["key"].(string))
+		}
+	}
+	if len(notInstalled) != 1 || notInstalled[0] != "preset.account.anniversary" {
+		t.Fatalf("删除后应只有该预设显示未安装: %v", notInstalled)
+	}
+	_, payload = e.do(t, http.MethodPost, "/api/v1/admin/achievement-presets/install", `{"keys":["preset.account.anniversary"]}`, e.token)
+	if payload["data"].(map[string]any)["installed"].(float64) != 1 {
+		t.Fatalf("应补装 1 个预设: %v", payload)
+	}
+	_, payload = e.do(t, http.MethodPost, "/api/v1/admin/achievement-presets/install", `{}`, e.token)
+	if payload["data"].(map[string]any)["installed"].(float64) != 0 {
+		t.Fatalf("全部已安装时不应重复安装: %v", payload)
+	}
+
+	// 停用再启用插件（已有成就）不会重复安装
+	e.do(t, http.MethodPost, "/api/v1/admin/plugins/achievements/uninstall", "", e.token)
+	e.enable(t, "achievements")
+	var total int64
+	e.db.Model(&models.AchievementDefinition{}).Where("achievement_key LIKE ?", "preset.%").Count(&total)
+	if int(total) != achievements.PresetCount() {
+		t.Fatalf("重复启用不应重复安装预设，实际 %d", total)
+	}
+}
+
+// 后台创建/更新成就时保存奖励经验（修复：此前请求结构缺少 reward_xp，表单填写的奖励经验不会生效），并校验范围。
+func TestAchievementRewardXPIsSaved(t *testing.T) {
+	e := newTestEnv(t)
+	e.enable(t, "achievements")
+	status, payload := e.do(t, http.MethodPost, "/api/v1/admin/achievements", `{"key":"custom.reward","name":"自定义奖励","category":"special","status":"draft","grant_mode":"manual","reward_xp":25}`, e.token)
+	if status != http.StatusOK {
+		t.Fatalf("创建成就失败: %d %v", status, payload)
+	}
+	var d models.AchievementDefinition
+	e.db.Where("achievement_key = ?", "custom.reward").First(&d)
+	if d.RewardXP != 25 {
+		t.Fatalf("奖励经验应保存为 25，实际 %d", d.RewardXP)
+	}
+	if status, _ := e.do(t, http.MethodPut, "/api/v1/admin/achievements/"+jsonID(d.ID), `{"key":"custom.reward","name":"自定义奖励","category":"special","status":"draft","grant_mode":"manual","reward_xp":60}`, e.token); status != http.StatusOK {
+		t.Fatalf("更新成就失败: %d", status)
+	}
+	e.db.First(&d, d.ID)
+	if d.RewardXP != 60 {
+		t.Fatalf("更新后奖励经验应为 60，实际 %d", d.RewardXP)
+	}
+	if status, _ := e.do(t, http.MethodPost, "/api/v1/admin/achievements", `{"key":"custom.too-much","name":"超额","category":"special","status":"draft","grant_mode":"manual","reward_xp":200000}`, e.token); status != http.StatusBadRequest {
+		t.Fatalf("奖励经验超出上限应 400，实际 %d", status)
+	}
+}

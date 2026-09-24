@@ -109,6 +109,8 @@ func (am *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	ach.DELETE("/admin/achievements/:id", manage, am.AdminDeleteAchievement)
 	ach.POST("/admin/achievements/:id/recalculate", manage, am.AdminRecalculateAchievement)
 	ach.POST("/admin/achievement-icons", manage, am.AdminUploadAchievementIcon)
+	ach.GET("/admin/achievement-presets", manage, am.AdminListPresets)
+	ach.POST("/admin/achievement-presets/install", manage, am.AdminInstallPresets)
 	ach.GET("/admin/achievement-grants", grant, am.AdminListAchievementGrants)
 	ach.POST("/admin/achievement-grants", grant, am.AdminGrantAchievement)
 	ach.POST("/admin/achievement-grants/:id/revoke", grant, am.AdminRevokeAchievement)
