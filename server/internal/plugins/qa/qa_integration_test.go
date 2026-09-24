@@ -19,15 +19,19 @@ import (
 	"knowforge/server/internal/auth"
 	"knowforge/server/internal/config"
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 	"knowforge/server/internal/plugins/qa"
 )
 
 // 集成测试（经 HTTP，AI 服务用本地假服务器模拟 OpenAI 兼容接口）：索引与向量化、标准问答出处、划词提问、Agent 工具调用、每日额度、社区问答。
 
 type fakeAI struct {
-	mu      sync.Mutex
-	prompts []string // 每次对话请求中最后一条 user 消息
-	embeds  int
+	mu         sync.Mutex
+	prompts    []string // 每次对话请求中最后一条 user 消息
+	embeds     int
+	toolRounds int           // Agent 模式下连续请求工具的轮数（默认 1）
+	sameArgs   bool          // 每轮请求完全相同的工具调用
+	delay      time.Duration // 每次对话的响应延迟
 }
 
 func (f *fakeAI) handler() http.Handler {
@@ -59,10 +63,10 @@ func (f *fakeAI) handler() http.Handler {
 			Tools []any `json:"tools"`
 		}
 		_ = json.Unmarshal(raw, &req)
-		hasTool, lastUser := false, ""
+		toolMsgs, lastUser := 0, ""
 		for _, m := range req.Messages {
 			if m.Role == "tool" {
-				hasTool = true
+				toolMsgs++
 			}
 			if m.Role == "user" {
 				lastUser = m.Content
@@ -70,13 +74,26 @@ func (f *fakeAI) handler() http.Handler {
 		}
 		f.mu.Lock()
 		f.prompts = append(f.prompts, lastUser)
+		rounds, same, delay := f.toolRounds, f.sameArgs, f.delay
 		f.mu.Unlock()
+		if rounds == 0 {
+			rounds = 1
+		}
+		select {
+		case <-time.After(delay):
+		case <-r.Context().Done():
+			return
+		}
 		msg := map[string]any{"role": "assistant", "content": "缓存用于加速读取 [1]。"}
-		if len(req.Tools) > 0 && !hasTool {
+		if len(req.Tools) > 0 && toolMsgs < rounds {
+			args := fmt.Sprintf(`{"query":"索引 %d"}`, toolMsgs)
+			if same || toolMsgs == 0 {
+				args = `{"query":"索引"}`
+			}
 			msg = map[string]any{"role": "assistant", "content": "", "tool_calls": []map[string]any{{
-				"id": "call_1", "type": "function", "function": map[string]any{"name": "search_book", "arguments": `{"query":"索引"}`},
+				"id": fmt.Sprintf("call_%d", toolMsgs), "type": "function", "function": map[string]any{"name": "search_book", "arguments": args},
 			}}}
-		} else if hasTool {
+		} else if toolMsgs > 0 {
 			msg["content"] = "索引帮助检索 [1]。"
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"model": "fake-1", "usage": map[string]any{"prompt_tokens": 100, "completion_tokens": 20}, "choices": []map[string]any{{"message": msg}}})
@@ -177,6 +194,33 @@ func (e *testEnv) runJobs(t *testing.T) {
 
 func data(p map[string]any) map[string]any { d, _ := p["data"].(map[string]any); return d }
 
+// ask 提问并等待后台回答结束（非 200 时直接返回）；返回的 data 为最终的问答记录。
+func (e *testEnv) ask(t *testing.T, u *models.User, base, body string) (int, map[string]any) {
+	t.Helper()
+	status, p := e.as(t, u, http.MethodPost, base+"/ask", body)
+	if status != http.StatusOK {
+		return status, p
+	}
+	if data(p)["status"] != "running" {
+		t.Fatalf("提问应立即返回进行中的记录: %v", p)
+	}
+	return status, e.waitAsk(t, u, uint(data(p)["id"].(float64)))
+}
+
+func (e *testEnv) waitAsk(t *testing.T, u *models.User, id uint) map[string]any {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		_, p := e.as(t, u, http.MethodGet, fmt.Sprintf("/api/v1/qa/asks/%d", id), "")
+		if data(p)["status"] != "running" {
+			return p
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("问答 %d 未在测试时限内结束", id)
+	return nil
+}
+
 func TestQAFlow(t *testing.T) {
 	fake := &fakeAI{}
 	aiServer := httptest.NewServer(fake.handler())
@@ -203,7 +247,7 @@ func TestQAFlow(t *testing.T) {
 	}
 
 	// 标准问答：出处指向小节锚点；草稿不进入索引
-	status, ask := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"缓存有什么用？"}`)
+	status, ask := e.ask(t, reader, base, `{"question":"缓存有什么用？"}`)
 	if status != http.StatusOK {
 		t.Fatalf("提问失败: %d %v", status, ask)
 	}
@@ -225,14 +269,14 @@ func TestQAFlow(t *testing.T) {
 	}
 	// 内容未变化时不重建、不重复向量化
 	before := fake.embeds
-	e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"索引是什么"}`)
+	e.ask(t, reader, base, `{"question":"索引是什么"}`)
 	e.runJobs(t)
 	if fake.embeds != before+1 { // 仅查询向量
 		t.Fatalf("不应重新向量化: %d -> %d", before, fake.embeds)
 	}
 
 	// 划词提问：包含选中文字的小节优先加入
-	status, sel := e.as(t, reader, http.MethodPost, base+"/ask", fmt.Sprintf(`{"selection":"数据库常用 B+ 树","doc_id":%d}`, docID))
+	status, sel := e.ask(t, reader, base, fmt.Sprintf(`{"selection":"数据库常用 B+ 树","doc_id":%d}`, docID))
 	if status != http.StatusOK || data(sel)["question"] != "请解释这段内容" {
 		t.Fatalf("划词提问失败: %d %v", status, sel)
 	}
@@ -241,7 +285,7 @@ func TestQAFlow(t *testing.T) {
 	}
 
 	// Agent 模式：调用 search_book 后作答
-	status, ag := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"索引怎么实现？","mode":"agent"}`)
+	status, ag := e.ask(t, reader, base, `{"question":"索引怎么实现？","mode":"agent"}`)
 	if status != http.StatusOK || data(ag)["steps"].(float64) != 1 || data(ag)["mode"] != "agent" {
 		t.Fatalf("Agent 问答失败: %d %v", status, ag)
 	}
@@ -253,7 +297,7 @@ func TestQAFlow(t *testing.T) {
 	if err := e.app.SetSetting("qa_ai_daily", "4", ""); err != nil {
 		t.Fatal(err)
 	}
-	if status, p := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"再问一次"}`); status != http.StatusTooManyRequests {
+	if status, p := e.ask(t, reader, base, `{"question":"再问一次"}`); status != http.StatusTooManyRequests {
 		t.Fatalf("超出额度应 429: %d %v", status, p)
 	}
 	_, hist := e.as(t, reader, http.MethodGet, base+"/asks", "")
@@ -264,7 +308,7 @@ func TestQAFlow(t *testing.T) {
 	// 管理员关闭 Agent 模式
 	e.req(t, e.token, http.MethodPut, "/api/v1/admin/qa/settings", `{"agent_enabled":false}`)
 	e.app.SetSetting("qa_ai_daily", "100", "")
-	if status, _ := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"x","mode":"agent"}`); status != http.StatusBadRequest {
+	if status, _ := e.ask(t, reader, base, `{"question":"x","mode":"agent"}`); status != http.StatusBadRequest {
 		t.Fatalf("关闭 Agent 后应拒绝: %d", status)
 	}
 	if status, p := e.req(t, e.token, http.MethodPut, "/api/v1/admin/qa/settings", `{"top_k":20}`); status != http.StatusBadRequest {
@@ -367,12 +411,12 @@ func TestQAUsageAndEntitlements(t *testing.T) {
 	e.as(t, author, http.MethodPost, fmt.Sprintf("/api/v1/books/%d/documents", bookID), `{"title":"第一章","content":"## 缓存\n\n缓存可以加速读取。\n\n## 索引\n\n索引帮助检索。","status":"published"}`)
 
 	// 标准问答：1 次模型调用，按服务返回的用量记账
-	status, ask := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"缓存有什么用？"}`)
+	status, ask := e.ask(t, reader, base, `{"question":"缓存有什么用？"}`)
 	if status != http.StatusOK || data(ask)["calls"].(float64) != 1 || data(ask)["input_tokens"].(float64) != 100 || data(ask)["output_tokens"].(float64) != 20 {
 		t.Fatalf("问答用量异常: %d %v", status, ask)
 	}
 	// 深度模式：2 次模型调用（检索 + 作答）
-	status, ag := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"索引怎么实现？","mode":"agent"}`)
+	status, ag := e.ask(t, reader, base, `{"question":"索引怎么实现？","mode":"agent"}`)
 	if status != http.StatusOK || data(ag)["calls"].(float64) != 2 || data(ag)["input_tokens"].(float64) != 200 {
 		t.Fatalf("深度模式用量异常: %d %v", status, ag)
 	}
@@ -419,7 +463,7 @@ func TestQAUsageAndEntitlements(t *testing.T) {
 	if _, st := e.as(t, reader, http.MethodGet, base+"/status", ""); data(st)["agent_available"] != false {
 		t.Fatalf("深度模式权益为 0 时不可用: %v", st)
 	}
-	if status, _ := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"x","mode":"agent"}`); status != http.StatusTooManyRequests {
+	if status, _ := e.ask(t, reader, base, `{"question":"x","mode":"agent"}`); status != http.StatusTooManyRequests {
 		t.Fatalf("深度模式应被拒绝: %d", status)
 	}
 
@@ -427,7 +471,7 @@ func TestQAUsageAndEntitlements(t *testing.T) {
 	if err := e.app.SetSetting("ai_monthly_tokens", "300", ""); err != nil {
 		t.Fatal(err)
 	}
-	status, p := e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"还能问吗？"}`)
+	status, p := e.ask(t, reader, base, `{"question":"还能问吗？"}`)
 	if status != http.StatusTooManyRequests || !strings.Contains(p["message"].(string)+fmt.Sprint(p["error"]), "本月") {
 		t.Fatalf("超出每月额度应 429: %d %v", status, p)
 	}
@@ -436,7 +480,7 @@ func TestQAUsageAndEntitlements(t *testing.T) {
 		t.Fatalf("当日次数异常: %v", quota)
 	}
 	// 其他用户未超额度，不受影响
-	if status, p := e.as(t, other, http.MethodPost, base+"/ask", `{"question":"缓存？"}`); status != http.StatusOK {
+	if status, p := e.ask(t, other, base, `{"question":"缓存？"}`); status != http.StatusOK {
 		t.Fatalf("其他用户应可提问: %d %v", status, p)
 	}
 
@@ -456,5 +500,115 @@ func TestQAUsageAndEntitlements(t *testing.T) {
 	e.as(t, reader, http.MethodPost, base+"/questions", `{"title":"社区提问"}`)
 	if _, mq := e.as(t, reader, http.MethodGet, "/api/v1/qa/me/questions", ""); data(mq)["total"].(float64) != 1 {
 		t.Fatalf("我的提问异常: %v", mq)
+	}
+}
+
+func TestQAAgentUnboundedTraceAndCancel(t *testing.T) {
+	fake := &fakeAI{toolRounds: 9}
+	aiServer := httptest.NewServer(fake.handler())
+	t.Cleanup(aiServer.Close)
+	e := newTestEnv(t, aiServer.URL)
+	author, reader, other := e.user(t, "author"), e.user(t, "reader"), e.user(t, "other")
+	e.app.SetSetting("qa_agent_daily", "-1", "")
+	_, created := e.as(t, author, http.MethodPost, "/api/v1/books", `{"title":"链路之书","status":"published","is_public":true}`)
+	bookID := uint(data(created)["id"].(float64))
+	base := fmt.Sprintf("/api/v1/qa/books/%d", bookID)
+	e.as(t, author, http.MethodPost, fmt.Sprintf("/api/v1/books/%d/documents", bookID), `{"title":"第一章","content":"## 缓存\n\n缓存可以加速读取。\n\n## 索引\n\n索引帮助检索。","status":"published"}`)
+
+	// 深度模式不限轮数：9 轮工具调用 + 最终作答 = 10 次模型调用（超过原先 7 次上限）
+	status, p := e.ask(t, reader, base, `{"question":"索引怎么实现？","mode":"agent"}`)
+	ag := data(p)
+	if status != http.StatusOK || ag["status"] != "done" || ag["steps"].(float64) != 9 || ag["calls"].(float64) != 10 {
+		t.Fatalf("深度模式应不限轮数: %d %v", status, p)
+	}
+	trace := ag["trace"].([]any)
+	modelSteps, tools := 0, 0
+	for _, raw := range trace {
+		st := raw.(map[string]any)
+		switch st["type"] {
+		case "model":
+			modelSteps++
+			if st["model"] != "fake-1" || st["input_tokens"].(float64) != 100 {
+				t.Fatalf("模型步骤异常: %v", st)
+			}
+		case "tool":
+			tools++
+			if st["name"] != "search_book" || st["query"] == "" || st["mode"] == nil {
+				t.Fatalf("工具步骤异常: %v", st)
+			}
+		}
+	}
+	last := trace[len(trace)-1].(map[string]any)
+	if modelSteps != 10 || tools != 9 || last["type"] != "model" || last["tool_calls"] != nil {
+		t.Fatalf("调用链异常: models=%d tools=%d last=%v", modelSteps, tools, last)
+	}
+	if first := trace[0].(map[string]any); first["type"] != "model" || len(first["tool_calls"].([]any)) != 1 {
+		t.Fatalf("首个模型步骤应请求工具: %v", first)
+	}
+	// 与核心 AI 用量记录按调用链 ID 对应
+	var chained int64
+	e.db.Model(&models.AIUsageLog{}).Where("trace_id = ? AND kind = ?", ag["trace_id"], "chat").Count(&chained)
+	if chained != 10 {
+		t.Fatalf("核心用量记录应有 10 次对话调用，实际 %d", chained)
+	}
+	_, mine := e.as(t, reader, http.MethodGet, "/api/v1/users/me/ai-usage/logs?trace_id="+ag["trace_id"].(string), "")
+	if g := data(mine)["items"].([]any); len(g) != 1 || g[0].(map[string]any)["calls"].(float64) < 10 {
+		t.Fatalf("我的调用链异常: %v", mine)
+	}
+	// 他人不可查看
+	if status, _ := e.as(t, other, http.MethodGet, fmt.Sprintf("/api/v1/qa/asks/%d", uint(ag["id"].(float64))), ""); status != http.StatusNotFound {
+		t.Fatalf("不能查看他人的问答: %d", status)
+	}
+
+	// 完全相同的工具调用不重复执行
+	fake.mu.Lock()
+	fake.toolRounds, fake.sameArgs = 3, true
+	fake.mu.Unlock()
+	_, p = e.ask(t, reader, base, `{"question":"缓存呢？","mode":"agent"}`)
+	dups := 0
+	for _, raw := range data(p)["trace"].([]any) {
+		if st := raw.(map[string]any); st["type"] == "tool" && st["note"] == "duplicate" {
+			dups++
+		}
+	}
+	if data(p)["status"] != "done" || dups != 2 {
+		t.Fatalf("重复的工具调用应直接提示（2 次）: %d %v", dups, p)
+	}
+
+	// 标准模式调用链：检索 → 模型
+	_, p = e.ask(t, reader, base, `{"question":"缓存有什么用？"}`)
+	types := []string{}
+	for _, raw := range data(p)["trace"].([]any) {
+		types = append(types, raw.(map[string]any)["type"].(string))
+	}
+	if strings.Join(types, ",") != "retrieve,model" && strings.Join(types, ",") != "embed,retrieve,model" {
+		t.Fatalf("标准模式调用链异常: %v", types)
+	}
+
+	// 取消进行中的问答
+	fake.mu.Lock()
+	fake.delay = 3 * time.Second
+	fake.mu.Unlock()
+	status, p = e.as(t, reader, http.MethodPost, base+"/ask", `{"question":"慢一点","mode":"agent"}`)
+	id := uint(data(p)["id"].(float64))
+	time.Sleep(100 * time.Millisecond)
+	if status, _ := e.as(t, reader, http.MethodPost, fmt.Sprintf("/api/v1/qa/asks/%d/cancel", id), ""); status != http.StatusOK {
+		t.Fatalf("取消失败: %d", status)
+	}
+	final := data(e.waitAsk(t, reader, id))
+	if final["status"] != "canceled" || final["error"] != "已取消" {
+		t.Fatalf("取消后状态异常: %v", final)
+	}
+	if status, _ := e.as(t, reader, http.MethodPost, fmt.Sprintf("/api/v1/qa/asks/%d/cancel", id), ""); status != http.StatusConflict {
+		t.Fatalf("已结束的问答不能再取消: %d", status)
+	}
+
+	// 服务重启遗留的进行中记录由巡检标记为中断
+	orphan := qa.Ask{BookID: bookID, UserID: reader.ID, Mode: "rag", Question: "遗留", Status: "running", CreatedAt: time.Now().Add(-time.Minute)}
+	e.db.Create(&orphan)
+	plugincore.FireJobQueueSweep(e.app, e.app.Jobs)
+	e.db.First(&orphan, orphan.ID)
+	if orphan.Status != "failed" || orphan.Error == "" {
+		t.Fatalf("遗留记录应标记中断: %+v", orphan)
 	}
 }

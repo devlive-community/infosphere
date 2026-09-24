@@ -58,10 +58,11 @@ type scored struct {
 	score float64
 }
 
-// search 在分块中检索与 query 最相关的 k 个（有向量时混合打分，否则只用关键词）。
-func (b *behavior) search(ctx context.Context, chunks []Chunk, query string, k int) []Chunk {
+// search 在分块中检索与 query 最相关的 k 个（有向量时混合打分，否则只用关键词），返回命中与检索方式（hybrid | keyword）。
+// 计算查询向量的调用记入调用链。
+func (b *behavior) search(ctx context.Context, tr *tracer, chunks []Chunk, query string, k int) ([]Chunk, string) {
 	if len(chunks) == 0 || strings.TrimSpace(query) == "" {
-		return nil
+		return nil, "keyword"
 	}
 	kw := bm25(chunks, terms(query))
 	var vec []float64
@@ -73,7 +74,14 @@ func (b *behavior) search(ctx context.Context, chunks []Chunk, query string, k i
 		}
 	}
 	if _, embed := b.core.AIStatus(); embed && hasVectors {
-		if qv, _, err := b.core.AIEmbed(ctx, []string{query}); err == nil && len(qv) == 1 {
+		startMs, started := tr.begin()
+		qv, usage, err := b.core.AIEmbed(ctx, []string{query})
+		step := TraceStep{Type: "embed", Query: truncate(query, 200), InputTokens: usage.InputTokens, Estimated: usage.Estimated}
+		if err != nil {
+			step.Error, step.Note = userError(err), "fallback_keyword"
+		}
+		tr.add(step, startMs, started)
+		if err == nil && len(qv) == 1 {
 			vec = make([]float64, len(chunks))
 			for i, c := range chunks {
 				if len(c.Embedding) > 0 {
@@ -84,6 +92,10 @@ func (b *behavior) search(ctx context.Context, chunks []Chunk, query string, k i
 	}
 	normalize(kw)
 	normalize(vec)
+	mode := "keyword"
+	if vec != nil {
+		mode = "hybrid"
+	}
 	results := make([]scored, 0, len(chunks))
 	for i, c := range chunks {
 		s := kw[i]
@@ -99,7 +111,7 @@ func (b *behavior) search(ctx context.Context, chunks []Chunk, query string, k i
 	for i := 0; i < len(results) && i < k; i++ {
 		out = append(out, results[i].chunk)
 	}
-	return out
+	return out, mode
 }
 
 func normalize(v []float64) {

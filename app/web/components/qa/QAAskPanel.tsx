@@ -3,6 +3,7 @@ import { api, formatDate } from '@/lib/api'
 import type { PageResult, User } from '@/lib/types'
 import { renderAnswer, citationHref, type QAAsk, type QACitation, type QAStatus } from '@/lib/qa'
 import { formatTokens } from '@/lib/ai-usage'
+import QATrace from '@/components/qa/QATrace'
 import { Badge, Button, ButtonLink, Loading, Switch, Textarea, Tooltip, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
@@ -28,7 +29,8 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
   const [loading, setLoading] = useState(true)
   const [question, setQuestion] = useState('')
   const [agent, setAgent] = useState(false)
-  const [pending, setPending] = useState<{ question: string; selection: string } | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [canceling, setCanceling] = useState<number | null>(null)
   const [sharing, setSharing] = useState<number | null>(null)
   const [reindexing, setReindexing] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -51,7 +53,31 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
   }, [book.id, user, showToast, t])
 
   useEffect(() => { void load() }, [load])
-  useEffect(() => { bottomRef.current?.scrollIntoView({ block: 'end' }) }, [asks.length, pending])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ block: 'end' }) }, [asks.length])
+
+  // 进行中的问答在后台生成：轮询获取实时调用链与结果；结束后刷新今日额度
+  const runningKey = asks.filter((a) => a.status === 'running').map((a) => a.id).join(',')
+  useEffect(() => {
+    if (!runningKey) return
+    const ids = runningKey.split(',').map(Number)
+    let busy = false
+    const timer = setInterval(async () => {
+      if (busy) return
+      busy = true
+      try {
+        const latest = await Promise.all(ids.map((id) => api<QAAsk>(`/qa/asks/${id}`).catch(() => null)))
+        const byId = new Map(latest.filter((a): a is QAAsk => Boolean(a)).map((a) => [a.id, a]))
+        setAsks((list) => list.map((a) => byId.get(a.id) || a))
+        if (latest.some((a) => a && a.status !== 'running')) {
+          api<QAStatus>(`/qa/books/${book.id}/status`).then(setStatus).catch(() => {})
+        }
+      } finally {
+        busy = false
+      }
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [runningKey, book.id])
+  const anyRunning = runningKey !== '' 
   useEffect(() => { if (selection) inputRef.current?.focus() }, [selection])
 
   const left = (used: number, limit: number) => (limit < 0 ? Infinity : Math.max(0, limit - used))
@@ -61,8 +87,8 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
 
   async function ask() {
     const q = question.trim()
-    if ((!q && !selection) || pending) return
-    setPending({ question: q || t('qa.ask.explainSelection'), selection })
+    if ((!q && !selection) || submitting || anyRunning) return
+    setSubmitting(true)
     try {
       const created = await api<QAAsk>(`/qa/books/${book.id}/ask`, { method: 'POST', body: {
         question: q, selection, doc_id: docId || 0, mode: useAgent ? 'agent' : 'rag',
@@ -70,13 +96,22 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
       setAsks((list) => [...list, created])
       setQuestion('')
       onClearSelection()
-      if (created.calls > 0) {
-        setStatus((s) => s && s.quota ? { ...s, quota: { ...s.quota, used: s.quota.used + 1, agent_used: s.quota.agent_used + (created.mode === 'agent' ? 1 : 0) } } : s)
-      }
+      setStatus((s) => s && s.quota ? { ...s, quota: { ...s.quota, used: s.quota.used + 1, agent_used: s.quota.agent_used + (created.mode === 'agent' ? 1 : 0) } } : s)
     } catch (e) {
       showToast({ title: t('qa.ask.failed'), message: (e as Error).message, tone: 'error' })
     } finally {
-      setPending(null)
+      setSubmitting(false)
+    }
+  }
+
+  async function cancel(item: QAAsk) {
+    setCanceling(item.id)
+    try {
+      await api(`/qa/asks/${item.id}/cancel`, { method: 'POST' })
+    } catch (e) {
+      showToast({ title: t('qa.ask.cancelFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setCanceling(null)
     }
   }
 
@@ -150,7 +185,7 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
       </div>
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4">
-        {asks.length === 0 && !pending && (
+        {asks.length === 0 && (
           <div className="rounded-xl bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-500">
             <p className="font-medium text-slate-700">{t('qa.ask.introTitle')}</p>
             <p className="mt-1">{t('qa.ask.intro')}</p>
@@ -158,14 +193,9 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
         )}
         {asks.map((item) => (
           <AskItem key={item.id} item={item} bookSlug={book.slug} sharing={sharing === item.id} shareDisabled={sharing !== null}
-            onShare={() => void share(item)} onClick={(e) => citeClick(e, item)} onCite={onCite} />
+            onShare={() => void share(item)} onClick={(e) => citeClick(e, item)} onCite={onCite}
+            canceling={canceling === item.id} onCancel={() => void cancel(item)} />
         ))}
-        {pending && (
-          <div className="space-y-2">
-            <QuestionBubble question={pending.question} selection={pending.selection} />
-            <Loading className="rounded-xl bg-slate-50 py-6" label={t(useAgent ? 'qa.ask.thinkingAgent' : 'qa.ask.thinking')} />
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
 
@@ -179,7 +209,7 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
             </button>
           </div>
         )}
-        <Textarea ref={inputRef} rows={3} value={question} maxLength={1000} disabled={Boolean(pending)}
+        <Textarea ref={inputRef} rows={3} value={question} maxLength={1000} disabled={submitting}
           placeholder={selection ? t('qa.ask.placeholderSelection') : t('qa.ask.placeholder')}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void ask() } }} />
@@ -187,16 +217,18 @@ export default function QAAskPanel({ user, book, docId, selection, onClearSelect
           {status.agent_available ? (
             <Tooltip content={agentLeft > 0 ? t('qa.ask.agentHint') : t('qa.ask.agentUsedUp')}>
               <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
-                <Switch checked={useAgent} onChange={setAgent} ariaLabel={t('qa.ask.agent')} disabled={Boolean(pending) || agentLeft <= 0} />
+                <Switch checked={useAgent} onChange={setAgent} ariaLabel={t('qa.ask.agent')} disabled={submitting || agentLeft <= 0} />
                 {t('qa.ask.agent')}
               </label>
             </Tooltip>
           ) : status.quota?.agent_limit === 0 && (
             <span className="text-xs text-slate-400">{t('qa.ask.agentLocked')}</span>
           )}
-          <Button className="ml-auto" size="sm" loading={Boolean(pending)} disabled={(!question.trim() && !selection) || quotaLeft <= 0} onClick={() => void ask()}>
-            <i className="fa-solid fa-paper-plane" aria-hidden="true" />{t('qa.ask.submit')}
-          </Button>
+          <Tooltip content={anyRunning ? t('qa.ask.waitRunning') : t('qa.ask.submit')}>
+            <Button className="ml-auto" size="sm" loading={submitting} disabled={(!question.trim() && !selection) || quotaLeft <= 0 || anyRunning} onClick={() => void ask()}>
+              <i className="fa-solid fa-paper-plane" aria-hidden="true" />{t('qa.ask.submit')}
+            </Button>
+          </Tooltip>
         </div>
       </div>
     </div>
@@ -212,7 +244,7 @@ function QuestionBubble({ question, selection }: { question: string; selection: 
   )
 }
 
-function AskItem({ item, bookSlug, sharing, shareDisabled, onShare, onClick, onCite }: {
+function AskItem({ item, bookSlug, sharing, shareDisabled, onShare, onClick, onCite, canceling, onCancel }: {
   item: QAAsk
   bookSlug: string
   sharing: boolean
@@ -220,28 +252,56 @@ function AskItem({ item, bookSlug, sharing, shareDisabled, onShare, onClick, onC
   onShare: () => void
   onClick: (e: MouseEvent<HTMLElement>) => void
   onCite?: (c: QACitation) => void
+  canceling: boolean
+  onCancel: () => void
 }) {
   const { t } = useTranslation()
-  const html = useMemo(() => renderAnswer(item.answer, bookSlug, item.citations), [item.answer, bookSlug, item.citations])
+  const [showTrace, setShowTrace] = useState(false)
+  const html = useMemo(() => item.status === 'done' ? renderAnswer(item.answer, bookSlug, item.citations) : '', [item.status, item.answer, bookSlug, item.citations])
+  const running = item.status === 'running'
   return (
     <div className="space-y-2">
       <QuestionBubble question={item.question} selection={item.selection} />
       <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3">
-        <div className="markdown-body qa-answer text-sm" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />
-        {item.citations.length > 0 && <CitationList citations={item.citations} bookSlug={bookSlug} onCite={onCite} />}
+        {running ? (
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Loading className="!p-0" label={t(item.mode === 'agent' ? 'qa.ask.thinkingAgent' : 'qa.ask.thinking')} />
+            <Button size="sm" variant="ghost" className="ml-auto text-rose-600" loading={canceling} onClick={onCancel}>
+              <i className="fa-solid fa-stop" aria-hidden="true" />{t('qa.ask.cancel')}
+            </Button>
+          </div>
+        ) : item.status === 'done' ? (
+          <>
+            <div className="markdown-body qa-answer text-sm" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />
+            {item.citations.length > 0 && <CitationList citations={item.citations} bookSlug={bookSlug} onCite={onCite} />}
+          </>
+        ) : (
+          <p className={`text-sm ${item.status === 'canceled' ? 'text-slate-500' : 'text-rose-600'}`}>
+            <i className={`fa-solid ${item.status === 'canceled' ? 'fa-ban' : 'fa-circle-exclamation'} mr-1.5`} aria-hidden="true" />
+            {item.status === 'canceled' ? t('qa.ask.canceled') : (item.error || t('qa.ask.failed'))}
+          </p>
+        )}
+        {(running || showTrace) && <div className="mt-3"><QATrace ask={item} /></div>}
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
           {item.mode === 'agent' && <Badge tone="violet">{t('qa.ask.agentSteps', { n: item.steps })}</Badge>}
           <span>{formatDate(item.created_at)}</span>
-          {item.calls > 0 && (
+          {item.calls > 0 && !running && (
             <Tooltip content={t('qa.ask.usageHint', { calls: item.calls, input: item.input_tokens, output: item.output_tokens })}>
               <span>· {t(item.estimated ? 'qa.ask.usageEstimated' : 'qa.ask.usage', { tokens: formatTokens(item.input_tokens + item.output_tokens) })}</span>
             </Tooltip>
           )}
-          <Tooltip content={t('qa.ask.shareHint')}>
-            <Button size="sm" variant="ghost" className="ml-auto" loading={sharing} disabled={shareDisabled} onClick={onShare}>
-              <i className="fa-solid fa-people-group" aria-hidden="true" />{t('qa.ask.share')}
+          {!running && (
+            <Button size="sm" variant="ghost" onClick={() => setShowTrace(!showTrace)}>
+              <i className="fa-solid fa-diagram-project" aria-hidden="true" />{showTrace ? t('qa.trace.hide') : t('qa.trace.show')}
             </Button>
-          </Tooltip>
+          )}
+          {item.status === 'done' && (
+            <Tooltip content={t('qa.ask.shareHint')}>
+              <Button size="sm" variant="ghost" className="ml-auto" loading={sharing} disabled={shareDisabled} onClick={onShare}>
+                <i className="fa-solid fa-people-group" aria-hidden="true" />{t('qa.ask.share')}
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </div>
     </div>

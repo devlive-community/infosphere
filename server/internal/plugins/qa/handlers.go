@@ -1,9 +1,7 @@
 package qa
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -38,6 +36,8 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	api.GET("/qa/books/:id/asks", with(b.MyAsks)...)
 	api.GET("/qa/me/asks", with(b.MyAllAsks)...)
 	api.DELETE("/qa/asks/:id", with(b.DeleteAsk)...)
+	api.GET("/qa/asks/:id", with(b.GetAsk)...)
+	api.POST("/qa/asks/:id/cancel", with(b.CancelAsk)...)
 	api.GET("/qa/me/questions", with(b.MyQuestions)...)
 	api.GET("/qa/me/quota", with(b.MyQuota)...)
 	api.POST("/qa/books/:id/reindex", with(b.Reindex)...)
@@ -128,7 +128,7 @@ func (b *behavior) isEditor(u *models.User, book *models.Book) bool {
 }
 
 // dailyQuota 今日已用与上限（-1 不限）：全部 AI 提问与其中的深度模式提问。
-// 只计成功且实际调用了模型的提问（失败、书中无相关内容不计）。
+// 计入进行中的提问与成功且实际调用了模型的提问（失败、取消、书中无相关内容不计）。
 type dailyQuota struct {
 	Used       int64 `json:"used"`
 	Limit      int64 `json:"limit"`
@@ -145,7 +145,7 @@ func (b *behavior) quota(u *models.User) dailyQuota {
 		N    int64
 	}
 	b.core.Gorm().Model(&Ask{}).Select("mode, COUNT(*) AS n").
-		Where("user_id = ? AND created_at >= ? AND status = ? AND calls > 0", u.ID, start, "done").Group("mode").Scan(&rows)
+		Where("user_id = ? AND created_at >= ? AND (status = ? OR (status = ? AND calls > 0))", u.ID, start, askRunning, askDone).Group("mode").Scan(&rows)
 	for _, r := range rows {
 		q.Used += r.N
 		if r.Mode == "agent" {
@@ -181,16 +181,20 @@ func (b *behavior) Status(c *gin.Context) {
 
 type askView struct {
 	Ask
-	Citations []Citation `json:"citations"`
+	Citations []Citation  `json:"citations"`
+	Trace     []TraceStep `json:"trace"`
 }
 
 func toAskView(a Ask) askView {
-	v := askView{Ask: a, Citations: []Citation{}}
+	v := askView{Ask: a, Citations: []Citation{}, Trace: []TraceStep{}}
 	_ = json.Unmarshal([]byte(a.Citations), &v.Citations)
+	_ = json.Unmarshal([]byte(a.Trace), &v.Trace)
 	return v
 }
 
 // AskAI POST /qa/books/:id/ask {question, doc_id?, selection?, mode: rag|agent}
+// 校验与额度判定后立即返回 status=running 的问答记录，回答在后台生成（不限时长与轮数）；
+// 客户端轮询 GET /qa/asks/:id 获取实时调用链与结果，可 POST /qa/asks/:id/cancel 取消。
 func (b *behavior) AskAI(c *gin.Context) {
 	book, found := b.readableBook(c)
 	if !found {
@@ -247,52 +251,53 @@ func (b *behavior) AskAI(c *gin.Context) {
 	if mode == "agent" {
 		feature = "qa.agent"
 	}
-	ctx, cancel := context.WithTimeout(ai.WithCaller(c.Request.Context(), ai.Caller{UserID: u.ID, Feature: feature, RefType: "book", RefID: book.ID}), 150*time.Second)
-	defer cancel()
-	if err := b.core.AICheckQuota(ctx); err != nil {
+	caller := ai.Caller{UserID: u.ID, Feature: feature, RefType: "book", RefID: book.ID, TraceID: ai.NewTraceID()}
+	if err := b.core.AICheckQuota(ai.WithCaller(c.Request.Context(), caller)); err != nil {
 		b.core.Fail(c, http.StatusTooManyRequests, err.Error())
 		return
 	}
-	if _, err := b.ensureIndex(ctx, book.ID); err != nil {
-		b.core.Fail(c, http.StatusInternalServerError, "建立索引失败: "+err.Error())
+	rec := Ask{BookID: book.ID, UserID: u.ID, DocID: req.DocID, Mode: mode, Question: question, Selection: selection,
+		Status: askRunning, TraceID: caller.TraceID, Citations: "[]", Trace: "[]"}
+	if err := b.core.Gorm().Create(&rec).Error; err != nil {
+		b.core.Fail(c, http.StatusInternalServerError, "提问失败")
 		return
 	}
-	chunks := b.loadChunks(u, book)
-	var (
-		res answerResult
-		err error
-	)
-	if mode == "agent" {
-		res, err = b.answerAgent(ctx, book, chunks, question, selection, req.DocID)
-	} else {
-		res, err = b.answerRAG(ctx, book, chunks, question, selection, req.DocID, s.TopK)
-	}
-	rec := Ask{BookID: book.ID, UserID: u.ID, DocID: req.DocID, Mode: mode, Question: question, Selection: selection, Status: "done",
-		Steps: res.Steps, Calls: res.Calls, InputTokens: res.Usage.InputTokens, OutputTokens: res.Usage.OutputTokens, Estimated: res.Usage.Estimated}
-	if err != nil {
-		rec.Status, rec.Error = "failed", truncate(err.Error(), 500)
-		b.core.Gorm().Create(&rec)
-		if errors.Is(err, ai.ErrQuotaExceeded) {
-			b.core.Fail(c, http.StatusTooManyRequests, err.Error())
-			return
-		}
-		b.core.Fail(c, http.StatusBadGateway, "AI 回答失败："+err.Error())
-		return
-	}
-	raw, _ := json.Marshal(res.Citations)
-	rec.Answer, rec.Citations = res.Answer, string(raw)
-	b.core.Gorm().Create(&rec)
+	b.startAsk(rec, *u, *book, caller, s.TopK)
 	b.core.OK(c, toAskView(rec))
 }
 
-// MyAsks GET /qa/books/:id/asks?page= 我在本书的 AI 问答记录。
+// GetAsk GET /qa/asks/:id 我的一条问答（含实时调用链；进行中时 status=running）。
+func (b *behavior) GetAsk(c *gin.Context) {
+	var rec Ask
+	if b.core.Gorm().Where("id = ? AND user_id = ?", c.Param("id"), b.core.CurrentUser(c).ID).First(&rec).Error != nil {
+		b.core.Fail(c, http.StatusNotFound, "记录不存在")
+		return
+	}
+	b.core.OK(c, toAskView(rec))
+}
+
+// CancelAsk POST /qa/asks/:id/cancel 取消进行中的问答（已产生的调用照常记录）。
+func (b *behavior) CancelAsk(c *gin.Context) {
+	var rec Ask
+	if b.core.Gorm().Where("id = ? AND user_id = ?", c.Param("id"), b.core.CurrentUser(c).ID).First(&rec).Error != nil {
+		b.core.Fail(c, http.StatusNotFound, "记录不存在")
+		return
+	}
+	if rec.Status != askRunning || !cancelAsk(rec.ID) {
+		b.core.Fail(c, http.StatusConflict, "该问答已结束")
+		return
+	}
+	b.core.OK(c, gin.H{"message": "正在取消"})
+}
+
+// MyAsks GET /qa/books/:id/asks?page= 我在本书的 AI 问答记录（含进行中、失败与已取消）。
 func (b *behavior) MyAsks(c *gin.Context) {
 	book, found := b.readableBook(c)
 	if !found {
 		return
 	}
 	page, pageSize := b.core.Paginate(c)
-	q := b.core.Gorm().Model(&Ask{}).Where("book_id = ? AND user_id = ? AND status = ?", book.ID, b.core.CurrentUser(c).ID, "done")
+	q := b.core.Gorm().Model(&Ask{}).Where("book_id = ? AND user_id = ?", book.ID, b.core.CurrentUser(c).ID)
 	var total int64
 	q.Count(&total)
 	var rows []Ask
@@ -331,11 +336,11 @@ func (b *behavior) books(u *models.User, ids []uint) map[uint]bookBrief {
 	return out
 }
 
-// MyAllAsks GET /qa/me/asks?page=&book_id= 我在全部书籍中的 AI 问答记录（含消耗），新→旧。
+// MyAllAsks GET /qa/me/asks?page=&book_id= 我在全部书籍中的 AI 问答记录（含消耗与调用链，含进行中/失败/已取消），新→旧。
 func (b *behavior) MyAllAsks(c *gin.Context) {
 	u := b.core.CurrentUser(c)
 	page, pageSize := b.core.Paginate(c)
-	q := b.core.Gorm().Model(&Ask{}).Where("user_id = ? AND status = ?", u.ID, "done")
+	q := b.core.Gorm().Model(&Ask{}).Where("user_id = ?", u.ID)
 	if id := b.core.AtoiDefault(c.Query("book_id"), 0); id > 0 {
 		q = q.Where("book_id = ?", id)
 	}
@@ -356,13 +361,15 @@ func (b *behavior) MyAllAsks(c *gin.Context) {
 	b.core.OK(c, plugincore.PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
 }
 
-// DeleteAsk DELETE /qa/asks/:id 删除自己的一条 AI 问答记录（不退还当日次数）。
+// DeleteAsk DELETE /qa/asks/:id 删除自己的一条 AI 问答记录（进行中的会先取消；不退还当日次数）。
 func (b *behavior) DeleteAsk(c *gin.Context) {
-	res := b.core.Gorm().Where("id = ? AND user_id = ?", c.Param("id"), b.core.CurrentUser(c).ID).Delete(&Ask{})
-	if res.RowsAffected == 0 {
+	var rec Ask
+	if b.core.Gorm().Where("id = ? AND user_id = ?", c.Param("id"), b.core.CurrentUser(c).ID).First(&rec).Error != nil {
 		b.core.Fail(c, http.StatusNotFound, "记录不存在")
 		return
 	}
+	cancelAsk(rec.ID) // 进行中的先取消（已产生的调用仍记入 AI 用量）
+	b.core.Gorm().Delete(&Ask{}, rec.ID)
 	b.core.OK(c, gin.H{"message": "已删除"})
 }
 
@@ -502,7 +509,7 @@ func (b *behavior) CreateQuestion(c *gin.Context) {
 	q := Question{BookID: book.ID, UserID: u.ID, DocID: req.DocID, Title: title, Body: body, Selection: strings.TrimSpace(req.Selection), Status: "open"}
 	if req.AskID != 0 {
 		var ask Ask
-		if b.core.Gorm().Where("id = ? AND user_id = ? AND book_id = ?", req.AskID, u.ID, book.ID).First(&ask).Error == nil {
+		if b.core.Gorm().Where("id = ? AND user_id = ? AND book_id = ? AND status = ?", req.AskID, u.ID, book.ID, askDone).First(&ask).Error == nil {
 			q.AIAnswer, q.AICitations = ask.Answer, ask.Citations
 			if q.Selection == "" {
 				q.Selection, q.DocID = ask.Selection, ask.DocID

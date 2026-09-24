@@ -55,15 +55,26 @@ type Ask struct {
 	Citations    string    `gorm:"type:text" json:"-"` // JSON []Citation
 	Steps        int       `json:"steps"`              // Agent 工具调用次数
 	Calls        int       `json:"calls"`              // 模型调用次数
-	InputTokens  int64     `json:"input_tokens"`       // 本次问答消耗（对话部分）
+	InputTokens  int64     `json:"input_tokens"`       // 本次问答消耗（含向量化查询）
 	OutputTokens int64     `json:"output_tokens"`
-	Estimated    bool      `json:"estimated"` // 用量为估算值
-	Status       string    `gorm:"size:10" json:"status"`
-	Error        string    `gorm:"size:500" json:"error"`
+	Estimated    bool      `json:"estimated"`                     // 用量含估算值
+	Status       string    `gorm:"size:10" json:"status"`         // running | done | failed | canceled
+	Error        string    `gorm:"size:500" json:"error"`         // 面向读者的错误说明（不含 AI 服务原始报错）
+	TraceID      string    `gorm:"size:40;index" json:"trace_id"` // 与核心 AI 用量记录的调用链 ID 一致
+	Trace        string    `gorm:"type:text" json:"-"`            // JSON []TraceStep 调用链
+	DurationMs   int64     `json:"duration_ms"`
 	CreatedAt    time.Time `gorm:"index" json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 func (Ask) TableName() string { return "qa_asks" }
+
+const (
+	askRunning  = "running"
+	askDone     = "done"
+	askFailed   = "failed"
+	askCanceled = "canceled"
+)
 
 // Question 社区提问（公开）；可附带提问者的 AI 回答作为参考。
 type Question struct {

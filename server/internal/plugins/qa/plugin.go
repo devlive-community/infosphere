@@ -15,6 +15,7 @@ import (
 
 	"knowforge/server/internal/authz"
 	"knowforge/server/internal/i18ntext"
+	"knowforge/server/internal/jobqueue"
 	"knowforge/server/internal/plugincore"
 	"knowforge/server/internal/plugins"
 )
@@ -52,6 +53,11 @@ func init() {
 	})
 	plugincore.RegisterBehavior(&behavior{})
 	plugincore.RegisterUserDataModels(&Ask{}, &Question{}, &Answer{})
+	plugincore.OnJobQueueSweep(func(core plugincore.Core, _ *jobqueue.Queue) {
+		if core.PluginEnabled(plugins.KeyQA) {
+			sweepInterruptedAsks(core)
+		}
+	})
 	plugincore.RegisterJob(indexJobType, func(core plugincore.Core) func(ctx context.Context, raw json.RawMessage) error {
 		return (&behavior{core: core}).runEmbedJob
 	})

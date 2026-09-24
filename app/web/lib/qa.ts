@@ -25,8 +25,33 @@ export interface QAAsk {
   input_tokens: number
   output_tokens: number
   estimated: boolean
+  status: 'running' | 'done' | 'failed' | 'canceled'
+  error: string
+  trace_id: string
+  duration_ms: number
   created_at: string
   citations: QACitation[]
+  trace: QATraceStep[]
+}
+
+// QATraceStep 调用链中的一步（与服务端 TraceStep 一致）
+export interface QATraceStep {
+  type: 'context' | 'embed' | 'retrieve' | 'model' | 'tool'
+  start_ms: number
+  duration_ms: number
+  model?: string
+  input_tokens?: number
+  output_tokens?: number
+  estimated?: boolean
+  tool_calls?: { name: string; args: string }[]
+  output?: string
+  name?: string
+  args?: string
+  query?: string
+  mode?: 'hybrid' | 'keyword'
+  hits?: { n: number; doc_title: string; heading: string }[]
+  note?: string
+  error?: string
 }
 
 // QAQuota 今日额度（limit / agent_limit 为 -1 表示不限；agent_limit 为 0 表示当前等级/会员不含深度模式）

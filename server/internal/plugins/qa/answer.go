@@ -13,9 +13,9 @@ import (
 )
 
 // 作答：标准模式（检索 → 片段 → 回答）与 Agent 模式（模型用工具多步检索/阅读后回答），回答中的 [n] 映射为出处。
+// 不限制总时长与轮数：Agent 模式直到模型不再调用工具为止；可由读者取消，并受每月 AI 用量权益约束。每一步都写入调用链。
 
 const (
-	maxAgentSteps  = 6
 	snippetRunes   = 160
 	toolSnippet    = 300
 	selectionHints = 2 // 划词提问时优先加入包含选中文字的小节数
@@ -132,24 +132,49 @@ func selectionChunks(chunks []Chunk, docID uint, selection string) []Chunk {
 	return hits
 }
 
-// answerResult 一次作答的结果与消耗（Calls 为模型调用次数，Steps 为 Agent 工具调用次数）。
+// answerResult 一次作答的结果（消耗见调用链合计）。
 type answerResult struct {
 	Answer    string
 	Citations []Citation
-	Steps     int
-	Calls     int
-	Usage     ai.Usage
+	Steps     int // Agent 工具调用次数
+}
+
+// chat 调用模型并把本次调用记入调用链（模型、tokens、耗时、请求的工具）。
+func (b *behavior) chat(ctx context.Context, tr *tracer, req ai.ChatRequest) (ai.ChatResponse, error) {
+	startMs, started := tr.begin()
+	res, err := b.core.AIChat(ctx, req)
+	step := TraceStep{Type: "model", Model: res.Model, InputTokens: res.Usage.InputTokens, OutputTokens: res.Usage.OutputTokens, Estimated: res.Usage.Estimated}
+	if err != nil {
+		step.Error = userError(err)
+	}
+	for _, tc := range res.ToolCalls {
+		step.ToolCalls = append(step.ToolCalls, TraceToolCall{Name: tc.Name, Args: truncate(string(tc.Arguments), 300)})
+	}
+	if len(res.ToolCalls) > 0 {
+		step.Output = truncate(res.Content, 300)
+	}
+	tr.add(step, startMs, started)
+	return res, err
+}
+
+// contextHints 划词提问：记录所在章节中定位到的小节。
+func contextHints(tr *tracer, src *sources, chunks []Chunk, docID uint, selection string) []Chunk {
+	startMs, started := tr.begin()
+	hints := selectionChunks(chunks, docID, selection)
+	if len(hints) > 0 {
+		tr.add(TraceStep{Type: "context", Query: truncate(selection, 200), Hits: hitsOf(src, hints)}, startMs, started)
+	}
+	return hints
 }
 
 // answerRAG 标准模式：检索相关片段后一次作答。
-func (b *behavior) answerRAG(ctx context.Context, book *models.Book, chunks []Chunk, question, selection string, docID uint, topK int) (answerResult, error) {
+func (b *behavior) answerRAG(ctx context.Context, tr *tracer, book *models.Book, chunks []Chunk, question, selection string, docID uint, topK int) (answerResult, error) {
 	src := newSources()
-	for _, c := range selectionChunks(chunks, docID, selection) {
-		src.add(c)
-	}
-	for _, c := range b.search(ctx, chunks, question+" "+selection, topK) {
-		src.add(c)
-	}
+	contextHints(tr, src, chunks, docID, selection)
+	query := strings.TrimSpace(question + " " + selection)
+	startMs, started := tr.begin()
+	hits, mode := b.search(ctx, tr, chunks, query, topK)
+	tr.add(TraceStep{Type: "retrieve", Query: truncate(query, 200), Mode: mode, Hits: hitsOf(src, hits)}, startMs, started)
 	if len(src.list) == 0 {
 		return answerResult{Answer: noContentAnswer, Citations: []Citation{}}, nil
 	}
@@ -159,11 +184,11 @@ func (b *behavior) answerRAG(ctx context.Context, book *models.Book, chunks []Ch
 	for i, c := range src.list {
 		fmt.Fprintf(&sb, "\n\n[%d] %s\n%s", i+1, label(c), c.Content)
 	}
-	res, err := b.core.AIChat(ctx, ai.ChatRequest{System: systemPrompt(book, false), Messages: []ai.Message{{Role: "user", Content: sb.String()}}, MaxTokens: 1500, Temperature: 0.2})
+	res, err := b.chat(ctx, tr, ai.ChatRequest{System: systemPrompt(book, false), Messages: []ai.Message{{Role: "user", Content: sb.String()}}, MaxTokens: 1500, Temperature: 0.2})
 	if err != nil {
 		return answerResult{}, err
 	}
-	return answerResult{Answer: res.Content, Citations: src.citations(res.Content), Calls: 1, Usage: res.Usage}, nil
+	return answerResult{Answer: res.Content, Citations: src.citations(res.Content)}, nil
 }
 
 var agentTools = []ai.Tool{
@@ -179,15 +204,16 @@ var agentTools = []ai.Tool{
 	{Name: "get_toc", Description: "查看全书目录（章节与其中的小节及 id）。", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 }
 
-// answerAgent Agent 模式：模型调用工具多步检索与阅读后作答。
-func (b *behavior) answerAgent(ctx context.Context, book *models.Book, chunks []Chunk, question, selection string, docID uint) (answerResult, error) {
+// answerAgent Agent 模式：模型调用工具多步检索与阅读后作答，直到模型不再调用工具（不限轮数）。
+// 与之前完全相同的工具调用不重复执行，直接提示模型基于已有结果继续，避免原地打转。
+func (b *behavior) answerAgent(ctx context.Context, tr *tracer, book *models.Book, chunks []Chunk, question, selection string, docID uint) (answerResult, error) {
 	src := newSources()
 	byID := map[uint]Chunk{}
 	for _, c := range chunks {
 		byID[c.ID] = c
 	}
 	messages := []ai.Message{{Role: "user", Content: questionText(question, selection)}}
-	if hints := selectionChunks(chunks, docID, selection); len(hints) > 0 {
+	if hints := contextHints(tr, src, chunks, docID, selection); len(hints) > 0 {
 		var sb strings.Builder
 		sb.WriteString("读者当前所在章节的相关小节（可直接引用）：")
 		for _, c := range hints {
@@ -196,53 +222,54 @@ func (b *behavior) answerAgent(ctx context.Context, book *models.Book, chunks []
 		messages[0].Content += "\n\n" + sb.String()
 	}
 	out := answerResult{}
-	final := ""
-	for round := 0; round < maxAgentSteps; round++ {
-		res, err := b.core.AIChat(ctx, ai.ChatRequest{System: systemPrompt(book, true), Messages: messages, Tools: agentTools, MaxTokens: 1500, Temperature: 0.2})
+	seen := map[string]int{} // 工具名+参数 → 首次执行的步骤序号
+	for {
+		res, err := b.chat(ctx, tr, ai.ChatRequest{System: systemPrompt(book, true), Messages: messages, Tools: agentTools, MaxTokens: 1500, Temperature: 0.2})
 		if err != nil {
 			return out, err
 		}
-		out.Calls++
-		out.Usage = out.Usage.Add(res.Usage)
 		if len(res.ToolCalls) == 0 {
-			final = res.Content
-			break
+			out.Answer, out.Citations = res.Content, src.citations(res.Content)
+			return out, nil
 		}
 		messages = append(messages, ai.Message{Role: "assistant", Content: res.Content, ToolCalls: res.ToolCalls})
 		for _, call := range res.ToolCalls {
 			out.Steps++
-			messages = append(messages, ai.Message{Role: "tool", ToolCallID: call.ID, Content: b.runTool(ctx, call, chunks, byID, src)})
+			key := call.Name + "\x00" + string(call.Arguments)
+			var result string
+			if first, dup := seen[key]; dup {
+				startMs, started := tr.begin()
+				result = fmt.Sprintf("与第 %d 次工具调用完全相同，结果同上。请基于已获得的信息作答，或换用其他查询。", first)
+				tr.add(TraceStep{Type: "tool", Name: call.Name, Args: truncate(string(call.Arguments), 300), Note: "duplicate"}, startMs, started)
+			} else {
+				seen[key] = out.Steps
+				result = b.runTool(ctx, tr, call, chunks, byID, src)
+			}
+			messages = append(messages, ai.Message{Role: "tool", ToolCallID: call.ID, Content: result})
 		}
 	}
-	if final == "" { // 步数用尽：要求直接作答
-		messages = append(messages, ai.Message{Role: "user", Content: "请根据以上检索到的内容直接给出最终回答，并用 [编号] 标注出处。"})
-		res, err := b.core.AIChat(ctx, ai.ChatRequest{System: systemPrompt(book, false), Messages: messages, MaxTokens: 1500, Temperature: 0.2})
-		if err != nil {
-			return out, err
-		}
-		out.Calls++
-		out.Usage = out.Usage.Add(res.Usage)
-		final = res.Content
-	}
-	out.Answer, out.Citations = final, src.citations(final)
-	return out, nil
 }
 
-func (b *behavior) runTool(ctx context.Context, call ai.ToolCall, chunks []Chunk, byID map[uint]Chunk, src *sources) string {
+func (b *behavior) runTool(ctx context.Context, tr *tracer, call ai.ToolCall, chunks []Chunk, byID map[uint]Chunk, src *sources) string {
 	var args struct {
 		Query string `json:"query"`
 		TopK  int    `json:"top_k"`
 		ID    uint   `json:"id"`
 	}
 	_ = json.Unmarshal(call.Arguments, &args)
+	startMs, started := tr.begin()
+	step := TraceStep{Type: "tool", Name: call.Name, Args: truncate(string(call.Arguments), 300)}
+	defer func() { tr.add(step, startMs, started) }()
 	switch call.Name {
 	case "search_book":
 		k := args.TopK
 		if k <= 0 || k > 8 {
 			k = 5
 		}
-		hits := b.search(ctx, chunks, args.Query, k)
+		hits, mode := b.search(ctx, tr, chunks, args.Query, k)
+		step.Query, step.Mode, step.Hits = truncate(args.Query, 200), mode, hitsOf(src, hits)
 		if len(hits) == 0 {
+			step.Note = "not_found"
 			return "没有找到相关内容。"
 		}
 		var sb strings.Builder
@@ -253,8 +280,10 @@ func (b *behavior) runTool(ctx context.Context, call ai.ToolCall, chunks []Chunk
 	case "read_section":
 		c, ok := byID[args.ID]
 		if !ok {
+			step.Note = "not_found"
 			return "没有这个小节（id 无效或无权阅读）。"
 		}
+		step.Hits = hitsOf(src, []Chunk{c})
 		return fmt.Sprintf("[%d] %s\n%s", src.add(c), label(c), c.Content)
 	case "get_toc":
 		var sb strings.Builder
@@ -270,7 +299,9 @@ func (b *behavior) runTool(ctx context.Context, call ai.ToolCall, chunks []Chunk
 				fmt.Fprintf(&sb, "  - （开头）(id=%d)\n", c.ID)
 			}
 		}
+		step.Note = "toc"
 		return truncate(sb.String(), 6000)
 	}
+	step.Note = "unknown_tool"
 	return "未知工具。"
 }

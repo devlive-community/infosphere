@@ -5,6 +5,7 @@ import Container from '@/components/Container'
 import FeatureGate from '@/components/FeatureGate'
 import Seo from '@/components/Seo'
 import { CitationList } from '@/components/qa/QAAskPanel'
+import QATrace from '@/components/qa/QATrace'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
@@ -124,14 +125,16 @@ function AskHistory() {
 function AskCard({ item, deleting, disabled, onDelete }: { item: AskItem; deleting: boolean; disabled: boolean; onDelete: () => void }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [showTrace, setShowTrace] = useState(false)
   const { ask, book, book_available: available } = item
-  const html = useMemo(() => open && available ? renderAnswer(ask.answer, book.slug, ask.citations) : '', [open, available, ask, book.slug])
+  const html = useMemo(() => open && available && ask.status === 'done' ? renderAnswer(ask.answer, book.slug, ask.citations) : '', [open, available, ask, book.slug])
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
         {available ? <Link href={`/book/detail/${encodeURIComponent(book.slug)}?tab=qa`} className="font-medium text-primary-600 hover:text-primary-700">{book.title}</Link>
           : <span>{t('qa.mine.bookUnavailable')}</span>}
         {ask.mode === 'agent' && <Badge tone="violet">{t('qa.ask.agentSteps', { n: ask.steps })}</Badge>}
+        {ask.status !== 'done' && <Badge tone={ask.status === 'running' ? 'sky' : ask.status === 'canceled' ? 'slate' : 'rose'}>{t(`qa.mine.status.${ask.status}`)}</Badge>}
         <span>{formatDate(ask.created_at)}</span>
         {ask.calls > 0 && (
           <Tooltip content={t('qa.ask.usageHint', { calls: ask.calls, input: ask.input_tokens, output: ask.output_tokens })}>
@@ -144,7 +147,9 @@ function AskCard({ item, deleting, disabled, onDelete }: { item: AskItem; deleti
       </div>
       <p className="mt-2 break-words font-medium text-slate-900">{ask.question}</p>
       {ask.selection && <blockquote className="mt-1.5 line-clamp-2 border-l-2 border-primary-300 pl-3 text-sm text-slate-500">{ask.selection}</blockquote>}
-      {open && available ? (
+      {ask.status !== 'done' ? (
+        <p className="mt-2 text-sm text-slate-500">{ask.status === 'running' ? t('qa.mine.runningHint') : ask.status === 'canceled' ? t('qa.ask.canceled') : ask.error}</p>
+      ) : open && available ? (
         <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
           <div className="markdown-body qa-answer text-sm" dangerouslySetInnerHTML={{ __html: html }} />
           {ask.citations.length > 0 && <CitationList citations={ask.citations} bookSlug={book.slug} />}
@@ -152,11 +157,17 @@ function AskCard({ item, deleting, disabled, onDelete }: { item: AskItem; deleti
       ) : (
         <p className="mt-2 line-clamp-2 text-sm text-slate-500">{ask.answer}</p>
       )}
-      {available && (
-        <button type="button" onClick={() => setOpen(!open)} className="mt-2 text-xs font-medium text-primary-600 hover:text-primary-700">
-          {open ? t('qa.mine.collapse') : t('qa.mine.expand')}
+      {showTrace && <div className="mt-3"><QATrace ask={ask} /></div>}
+      <div className="mt-2 flex gap-4 text-xs font-medium">
+        {available && ask.status === 'done' && (
+          <button type="button" onClick={() => setOpen(!open)} className="text-primary-600 hover:text-primary-700">
+            {open ? t('qa.mine.collapse') : t('qa.mine.expand')}
+          </button>
+        )}
+        <button type="button" onClick={() => setShowTrace(!showTrace)} className="text-primary-600 hover:text-primary-700">
+          {showTrace ? t('qa.trace.hide') : t('qa.trace.show')}
         </button>
-      )}
+      </div>
     </Card>
   )
 }
