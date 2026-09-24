@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import { ClockIcon } from '@/components/icons'
-import { Badge, Button, EmptyState, Input, Loading, Pagination, Select, useFeedback } from '@/components/ui'
+import { Badge, Button, EmptyState, Loading, Pagination, Select, useFeedback } from '@/components/ui'
 import { api, formatDate } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
@@ -34,7 +34,6 @@ export default function AdminTasks() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState('')
-  const [typeInput, setTypeInput] = useState('')
   const [jobType, setJobType] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -57,11 +56,15 @@ export default function AdminTasks() {
     failed: { label: t('admin.tasks.status.failed'), tone: 'rose' },
   }
 
-  const typeLabels: Record<string, string> = {
-    'email.send': t('admin.tasks.type.emailSend'),
-    'content.import.pdf': t('admin.tasks.type.pdfImport'),
-    'content.import.zip': t('admin.tasks.type.zipImport'),
-  }
+  // 任务类型名称：admin.tasks.types.<类型>（核心与插件登记的类型），缺失时回退原始类型
+  const typeText = (type: string) => { const k = `admin.tasks.types.${type}`; const v = t(k); return v === k ? type : v }
+  // 类型筛选项：服务端已注册的任务类型
+  const [types, setTypes] = useState<string[]>([])
+  useEffect(() => {
+    if (!isAdmin) return
+    api<{ items: string[] }>('/admin/tasks/types').then((r) => setTypes(r.items || [])).catch(() => { /* 不影响列表 */ })
+  }, [isAdmin])
+  const typeOptions = [{ value: '', label: t('admin.tasks.typeAll') }, ...types.map((ty) => ({ value: ty, label: typeText(ty) }))]
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true)
@@ -102,12 +105,6 @@ export default function AdminTasks() {
     }
   }
 
-  function applyType(event: React.FormEvent) {
-    event.preventDefault()
-    setPage(1)
-    setJobType(typeInput.trim())
-  }
-
   return (
     <AdminLayout current="tasks" breadcrumb={t('admin.nav.tasks')}>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -122,12 +119,11 @@ export default function AdminTasks() {
 
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
-          <form onSubmit={applyType} className="w-full sm:w-56">
-            <Input value={typeInput} onChange={(event) => setTypeInput(event.target.value)} placeholder={t('admin.tasks.typePlaceholder')} />
-          </form>
+          <Select className="w-full sm:w-56" value={jobType} options={typeOptions} searchable
+            onChange={(value) => { setJobType(value); setPage(1) }} />
           <Select className="w-40" value={status} options={statusOptions}
             onChange={(value) => { setStatus(value); setPage(1) }} />
-          {(jobType || status) && <Button variant="ghost" onClick={() => { setTypeInput(''); setJobType(''); setStatus(''); setPage(1) }}>{t('common.actions.clearFilter')}</Button>}
+          {(jobType || status) && <Button variant="ghost" onClick={() => { setJobType(''); setStatus(''); setPage(1) }}>{t('common.actions.clearFilter')}</Button>}
         </div>
       </div>
 
@@ -158,7 +154,7 @@ export default function AdminTasks() {
                     return (
                       <tr key={task.id} className="align-top hover:bg-slate-50/60">
                         <td className="px-5 py-4">
-                          <p className="font-medium text-slate-800">{typeLabels[task.type] || task.type}</p>
+                          <p className="font-medium text-slate-800">{typeText(task.type)}</p>
                           <p className="mt-0.5 text-xs text-slate-400">#{task.id} · {task.type}</p>
                         </td>
                         <td className="px-5 py-4"><Badge tone={meta.tone}>{meta.label}</Badge></td>

@@ -17,27 +17,54 @@ interface AuditLog {
   resource_type: string
   resource_id: string
   resource_label: string
-  summary: Record<string, unknown>
+  summary: Record<string, unknown> | null
   created_at: string
 }
 
-function displayValue(value: unknown, t: (key: string) => string): string {
+type TFn = (key: string, vars?: Record<string, string | number>) => string
+
+// label 取可选的 i18n 文案：键不存在时返回 undefined（便于逐级回退）。
+function label(t: TFn, key: string, vars?: Record<string, string | number>): string | undefined {
+  const v = t(key, vars)
+  return v === key ? undefined : v
+}
+
+// 审计词汇的多语言：操作 / 资源类型 / 摘要字段名（字段名还可复用权益名称），缺失时回退原始值。
+const actionText = (t: TFn, action: string) => label(t, `admin.audit.actions.${action}`) || action
+const resourceText = (t: TFn, type: string) => label(t, `admin.audit.resources.${type}`) || type
+const fieldText = (t: TFn, field: string) => label(t, `admin.audit.fields.${field}`) || label(t, `entitlement.${field}.label`) || field
+
+// targetText 资源名称：系统类目标（如「邮件配置」「基础权益」）的名称由服务端以中文存储，这里按类型 + ID 本地化；
+// 用户内容（书名、用户名等）原样显示。
+function targetText(t: TFn, item: AuditLog): string {
+  if (item.action === 'i18n.messages_updated') return t('admin.audit.targets.languagePack', { code: item.resource_id })
+  const known = label(t, `admin.audit.targets.${item.resource_type}.${item.resource_id.replace(/[^\w]/g, '_')}`)
+  return known || item.resource_label || `${resourceText(t, item.resource_type)} ${item.resource_id}`
+}
+
+function displayValue(value: unknown, t: TFn): string {
   if (typeof value === 'boolean') return value ? t('common.boolean.yes') : t('common.boolean.no')
   if (value === null || value === undefined || value === '') return t('common.unset')
+  if (Array.isArray(value)) return value.map((v) => displayValue(v, t)).join(t('admin.audit.format.listSep'))
+  if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
 }
 
-function summaryText(summary: Record<string, unknown>, t: (key: string) => string): string {
+// summaryText 变更摘要：字段名本地化，标点按语言（format 键）拼接。
+function summaryText(summary: Record<string, unknown> | null, t: TFn): string {
+  if (!summary) return t('admin.audit.completed')
   const fields = summary.changed_fields
-  if (Array.isArray(fields)) return `${t('admin.audit.changedFields')}${fields.map((f) => displayValue(f, t)).join('、')}`
+  if (Array.isArray(fields)) return `${t('admin.audit.changedFields')}${fields.map((f) => fieldText(t, String(f))).join(t('admin.audit.format.listSep'))}`
   const parts = Object.entries(summary).map(([key, value]) => {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const change = value as { from?: unknown; to?: unknown }
-      if ('from' in change || 'to' in change) return `${key}：${displayValue(change.from, t)} → ${displayValue(change.to, t)}`
+      if ('from' in change || 'to' in change) {
+        return t('admin.audit.format.change', { field: fieldText(t, key), from: displayValue(change.from, t), to: displayValue(change.to, t) })
+      }
     }
-    return `${key}：${displayValue(value, t)}`
+    return t('admin.audit.format.field', { field: fieldText(t, key), value: displayValue(value, t) })
   })
-  return parts.join('；') || t('admin.audit.completed')
+  return parts.join(t('admin.audit.format.partSep')) || t('admin.audit.completed')
 }
 
 export default function AdminAuditLogs() {
@@ -45,49 +72,14 @@ export default function AdminAuditLogs() {
   const { t } = useTranslation()
   const isAdmin = user?.role === 'admin'
 
-  const actionOptions = [
-    { value: '', label: t('admin.audit.action.all') },
-    { value: 'user.role_updated', label: t('admin.audit.action.userRoleUpdated') },
-    { value: 'user.status_updated', label: t('admin.audit.action.userStatusUpdated') },
-    { value: 'user.deleted', label: t('admin.audit.action.userDeleted') },
-    { value: 'book.moderated', label: t('admin.audit.action.bookModerated') },
-    { value: 'book.permanently_deleted', label: t('admin.audit.action.bookPermanentlyDeleted') },
-    { value: 'document.permanently_deleted', label: t('admin.audit.action.documentPermanentlyDeleted') },
-    { value: 'report.resolved', label: t('admin.audit.action.reportResolved') },
-    { value: 'site.updated', label: t('admin.audit.action.siteUpdated') },
-    { value: 'config.updated', label: t('admin.audit.action.configUpdated') },
-    { value: 'config.deleted', label: t('admin.audit.action.configDeleted') },
-    { value: 'mail.updated', label: t('admin.audit.action.mailUpdated') },
-    { value: 'oauth.updated', label: t('admin.audit.action.oauthUpdated') },
-    { value: 'storage.updated', label: t('admin.audit.action.storageUpdated') },
-    { value: 'system.upgraded', label: t('admin.audit.action.systemUpgraded') },
-    { value: 'task.retried', label: t('admin.audit.action.taskRetried') },
-    { value: 'achievement.settings_updated', label: t('admin.audit.action.achievementSettingsUpdated') },
-    { value: 'achievement.created', label: t('admin.audit.action.achievementCreated') },
-    { value: 'achievement.updated', label: t('admin.audit.action.achievementUpdated') },
-    { value: 'achievement.archived', label: t('admin.audit.action.achievementArchived') },
-    { value: 'achievement.recalculated', label: t('admin.audit.action.achievementRecalculated') },
-    { value: 'achievement.icon_uploaded', label: t('admin.audit.action.achievementIconUploaded') },
-    { value: 'achievement.granted', label: t('admin.audit.action.achievementGranted') },
-    { value: 'achievement.revoked', label: t('admin.audit.action.achievementRevoked') },
-  ]
-
-  const resourceOptions = [
-    { value: '', label: t('admin.audit.resource.all') },
-    { value: 'user', label: t('admin.audit.resource.user') },
-    { value: 'book', label: t('admin.audit.resource.book') },
-    { value: 'document', label: t('admin.audit.resource.document') },
-    { value: 'report', label: t('admin.audit.resource.report') },
-    { value: 'config', label: t('admin.audit.resource.config') },
-    { value: 'site', label: t('admin.audit.resource.site') },
-    { value: 'system', label: t('admin.audit.resource.system') },
-    { value: 'task', label: t('admin.audit.resource.task') },
-    { value: 'achievement', label: t('admin.audit.resource.achievement') },
-    { value: 'achievement_asset', label: t('admin.audit.resource.achievementAsset') },
-    { value: 'achievement_grant', label: t('admin.audit.resource.achievementGrant') },
-  ]
-  const actionLabels = Object.fromEntries(actionOptions.map((item) => [item.value, item.label]))
-  const resourceLabels = Object.fromEntries(resourceOptions.map((item) => [item.value, item.label]))
+  // 筛选项：审计日志中实际出现过的操作与资源类型（服务端去重），标签按当前语言
+  const [facets, setFacets] = useState<{ actions: string[]; resource_types: string[] }>({ actions: [], resource_types: [] })
+  useEffect(() => {
+    if (!isAdmin) return
+    api<{ actions: string[]; resource_types: string[] }>('/admin/audit-logs/facets').then(setFacets).catch(() => { /* 筛选项加载失败不影响列表 */ })
+  }, [isAdmin])
+  const actionOptions = [{ value: '', label: t('admin.audit.action.all') }, ...facets.actions.map((a) => ({ value: a, label: actionText(t, a) }))]
+  const resourceOptions = [{ value: '', label: t('admin.audit.resource.all') }, ...facets.resource_types.map((r) => ({ value: r, label: resourceText(t, r) }))]
   const [items, setItems] = useState<AuditLog[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -197,10 +189,10 @@ export default function AdminAuditLogs() {
                         <p className="font-medium text-slate-800">{item.actor_username}</p>
                         <p className="mt-0.5 text-xs text-slate-400">ID {item.actor_id}</p>
                       </td>
-                      <td className="px-5 py-4"><Badge tone="slate">{actionLabels[item.action] || item.action}</Badge></td>
+                      <td className="px-5 py-4"><Badge tone="slate">{actionText(t, item.action)}</Badge></td>
                       <td className="px-5 py-4">
-                        <p className="font-medium text-slate-700">{item.resource_label || `${resourceLabels[item.resource_type] || item.resource_type} ${item.resource_id}`}</p>
-                        <p className="mt-0.5 text-xs text-slate-400">{resourceLabels[item.resource_type] || item.resource_type} · {item.resource_id}</p>
+                        <p className="font-medium text-slate-700">{targetText(t, item)}</p>
+                        <p className="mt-0.5 text-xs text-slate-400">{resourceText(t, item.resource_type)} · {item.resource_id}</p>
                       </td>
                       <td className="max-w-lg px-5 py-4 leading-6 text-slate-600">{summaryText(item.summary, t)}</td>
                     </tr>

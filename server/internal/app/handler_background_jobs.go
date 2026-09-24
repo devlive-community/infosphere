@@ -120,3 +120,12 @@ func (a *App) AdminRetryBackgroundJob(c *gin.Context) {
 	a.recordAudit(c, "task.retried", "task", strconv.FormatUint(id64, 10), "异步任务", map[string]any{"task_id": id64})
 	ok(c, gin.H{"id": id64, "status": jobqueue.StatusPending})
 }
+
+// AdminBackgroundJobTypes GET /admin/tasks/types 已注册的任务类型（核心与插件），供管理端按类型筛选。
+func (a *App) AdminBackgroundJobTypes(c *gin.Context) {
+	types := []string{}
+	if queue := a.jobQueue(); queue != nil {
+		types = queue.Types()
+	}
+	ok(c, gin.H{"items": types})
+}

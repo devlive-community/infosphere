@@ -84,6 +84,8 @@ KNOWN_NON_KEYS = {
     'book.moderated', 'book.permanently_deleted', 'report.resolved',
     # pages/admin/growth: 经验流水规则筛选的系统规则键（数据值，文案键为 growth.rule.*）
     'admin.adjust',
+    # pages/admin/audit-logs: 审计操作标识（数据值，文案键为 admin.audit.actions.*）
+    'i18n.messages_updated',
 }
 
 KEY_RE = re.compile(r"'([a-zA-Z][\w.]*)'\s*:")

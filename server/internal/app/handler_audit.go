@@ -115,3 +115,11 @@ func (a *App) AdminListAuditLogs(c *gin.Context) {
 }
 
 func auditID(id uint) string { return strconv.FormatUint(uint64(id), 10) }
+
+// AdminAuditLogFacets GET /admin/audit-logs/facets 审计日志中实际出现过的操作与资源类型，供筛选下拉（只列有记录的项）。
+func (a *App) AdminAuditLogFacets(c *gin.Context) {
+	actions, resources := []string{}, []string{}
+	a.DB.Model(&models.AuditLog{}).Distinct().Order("action ASC").Pluck("action", &actions)
+	a.DB.Model(&models.AuditLog{}).Distinct().Order("resource_type ASC").Pluck("resource_type", &resources)
+	ok(c, gin.H{"actions": actions, "resource_types": resources})
+}

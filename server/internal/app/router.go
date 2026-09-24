@@ -332,7 +332,9 @@ func (a *App) Router() *gin.Engine {
 			// 控制台首页时间线（user:manage，仅管理员）：最近注册用户 + 最近建书（不限可见性）
 			admin.GET("/admin/activity", a.RequirePermission(authz.UserManage), a.AdminActivity)
 			admin.GET("/admin/stats", a.RequirePermission(authz.StatsRead), a.AdminStats)
+			admin.GET("/admin/audit-logs/facets", a.RequirePermission(authz.AuditRead), a.AdminAuditLogFacets)
 			admin.GET("/admin/audit-logs", a.RequirePermission(authz.AuditRead), a.AdminListAuditLogs)
+			admin.GET("/admin/tasks/types", a.RequirePermission(authz.TaskRead), a.AdminBackgroundJobTypes)
 			admin.GET("/admin/tasks", a.RequirePermission(authz.TaskRead), a.AdminListBackgroundJobs)
 			admin.POST("/admin/tasks/:id/retry", a.RequirePermission(authz.TaskRetry), a.AdminRetryBackgroundJob)
 			admin.GET("/admin/reports", a.RequirePermission(authz.ReportRead), a.AdminListContentReports)

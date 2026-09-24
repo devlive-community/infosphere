@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -78,6 +79,21 @@ func (q *Queue) Register(jobType string, handler Handler) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.handlers[jobType] = handler
+}
+
+// Types 已注册的任务类型（排序后），供管理端筛选与展示。
+func (q *Queue) Types() []string {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	out := make([]string, 0, len(q.handlers)+len(q.resultHandlers))
+	for t := range q.handlers {
+		out = append(out, t)
+	}
+	for t := range q.resultHandlers {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func (q *Queue) Enqueue(ctx context.Context, jobType string, payload any, maxAttempts int) (*models.BackgroundJob, error) {
