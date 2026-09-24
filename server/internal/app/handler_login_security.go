@@ -122,7 +122,8 @@ func (a *App) recordLoginFailure(username string) {
 	now := time.Now()
 	var l models.LoginLockout
 	if a.DB.Where("username = ?", username).First(&l).Error != nil {
-		l = models.LoginLockout{Username: username, WindowStart: now}
+		// LockedUntil 初始化为当前时间（即未锁定）：零值会写成 '0000-00-00'，MySQL 严格模式下插入失败导致锁定永不生效
+		l = models.LoginLockout{Username: username, WindowStart: now, LockedUntil: now}
 	}
 	if now.Sub(l.WindowStart) > a.lockoutWindow() {
 		l.Fails = 0

@@ -967,7 +967,8 @@ func (am *behavior) evaluateAchievementForUser(userID uint, definition models.Ac
 	now := currentTime()
 	createdGrant := false
 	err := am.core.Gorm().Transaction(func(tx *gorm.DB) error {
-		progress := models.UserAchievementProgress{UserID: userID, AchievementID: definition.ID}
+		// 时间字段须有值：MySQL 严格模式拒绝零值日期 '0000-00-00'（SQLite 不报错，测试覆盖不到）
+		progress := models.UserAchievementProgress{UserID: userID, AchievementID: definition.ID, DefinitionVersion: definition.Version, LastEvaluatedAt: now}
 		if err := tx.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "user_id"}, {Name: "achievement_id"}}, DoNothing: true,
 		}).Create(&progress).Error; err != nil {

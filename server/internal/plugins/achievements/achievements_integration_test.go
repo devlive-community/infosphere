@@ -164,6 +164,10 @@ func TestAchievementEvaluationCreatesProgressAndSingleGrant(t *testing.T) {
 	if progress.Percent != 100 || progress.Status != "unlocked" || progress.CurrentValue != 3 {
 		t.Fatalf("unexpected progress: %+v", progress)
 	}
+	// 回归：时间字段不能为零值（MySQL 严格模式拒绝 '0000-00-00'）
+	if progress.LastEvaluatedAt.IsZero() {
+		t.Fatal("last_evaluated_at 不应为零值")
+	}
 	var grants int64
 	e.db.Model(&models.UserAchievement{}).Where("user_id = ? AND achievement_id = ?", user.ID, definition.ID).Count(&grants)
 	if grants != 1 {
