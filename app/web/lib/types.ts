@@ -36,6 +36,9 @@ export interface Tag {
   book_count?: number
 }
 
+/** 书籍「更多信息」中的一项（类型见 lib/book-info.ts） */
+export interface BookInfoItem { type: string; label?: string; value: string }
+
 export interface Book {
   id: number
   title: string
@@ -70,6 +73,7 @@ export interface Book {
   guest_export_enabled?: boolean
   export_style_shared?: boolean
   export_formats?: string
+  extra_info?: BookInfoItem[] // 「更多信息」附加属性（GitHub、原始文档地址等）
   user?: Pick<User, 'id' | 'username' | 'avatar' | 'email' | 'bio' | 'github_url' | 'role'>
   tags?: Tag[]
   crawling?: boolean

@@ -55,6 +55,7 @@ func TestCopyBook(t *testing.T) {
 
 	_, created := req(http.MethodPost, "/api/v1/books", map[string]any{"title": "原书", "status": "published", "is_public": true}, token)
 	bookID := int(created["data"].(map[string]any)["id"].(float64))
+	req(http.MethodPut, fmt.Sprintf("/api/v1/books/%d", bookID), map[string]any{"extra_info": []any{map[string]any{"type": "source", "value": "https://example.com/docs"}}}, token)
 	mkDoc := func(title string, parent *int) int {
 		body := map[string]any{"title": title, "content": "正文 " + title, "status": "published"}
 		if parent != nil {
@@ -79,6 +80,9 @@ func TestCopyBook(t *testing.T) {
 	newBook := fb["book"].(map[string]any)
 	if newBook["is_public"] != false || newBook["status"] != "draft" {
 		t.Fatalf("副本应为私有草稿: %v", newBook)
+	}
+	if info, _ := newBook["extra_info"].([]any); len(info) != 1 {
+		t.Fatalf("副本应保留更多信息: %v", newBook["extra_info"])
 	}
 	newID := int(newBook["id"].(float64))
 	_, tree := req(http.MethodGet, fmt.Sprintf("/api/v1/books/%d/documents", newID), nil, token)

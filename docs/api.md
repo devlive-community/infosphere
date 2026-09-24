@@ -299,7 +299,7 @@ Authorization: Bearer <token>
 | GET | `/books/:id` | 书籍详情（含作者） | `book:read` |
 | GET | `/books/slug/:slug` | 按 slug 查书籍 | `book:read` |
 | GET | `/books/slug/:slug/access` | 服务端计算当前用户的对象级能力：`can_read/can_manage/can_edit_content/can_export/collaborator_role` | `book:read` + 登录 |
-| PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀/阅读水印/`child_status_follow_parent` 新建子章节状态跟随父章节）；`slug` 仅当 `slug_editable=true` 时可改一次，改后自动置为不可改（复制出的书籍具备该资格） | `book:update` |
+| PUT | `/books/:id` | 更新书籍（标题/简介/封面/状态/公开性/排序规则/章节前缀/阅读水印/`child_status_follow_parent` 新建子章节状态跟随父章节）；`slug` 仅当 `slug_editable=true` 时可改一次，改后自动置为不可改（复制出的书籍具备该资格）；`extra_info:[{type,label?,value}]` 为「更多信息」附加属性（整体替换，最多 20 项，空值项丢弃；`type` 取 github/gitlab/gitee/website/source/docs/demo（需 http(s) 链接）、email、author/license/version/isbn（文本）或 custom（需 `label`），在书籍详情页展示，随导出/导入与复制保留） | `book:update` |
 | DELETE | `/books/:id` | 将书籍及当前章节移入 30 天回收站 | `book:delete` |
 | GET | `/books/status-counts?scope=owned\|collaborating` | 当前用户创建或已接受协作书籍的状态统计 | `book:read` |
 | POST | `/books/:id/view` | 可见书籍浏览计数 +1，并写入按日、来源聚合桶；可选 JSON `{referrer}`，只保存来源类别，不保存原始网址；不可见资源统一返回 404 | `book:read` |

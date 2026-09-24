@@ -103,7 +103,7 @@ func (a *App) CopyBook(c *gin.Context) {
 		ChildStatusFollowParent: src.ChildStatusFollowParent,
 		Language:                src.Language, TransGroup: src.TransGroup,
 		Version: src.Version, VersionGroup: src.VersionGroup,
-		WatermarkEnabled: src.WatermarkEnabled, WatermarkText: src.WatermarkText,
+		WatermarkEnabled: src.WatermarkEnabled, WatermarkText: src.WatermarkText, ExtraInfo: append(models.BookInfo{}, src.ExtraInfo...),
 		ExportEnabled: src.ExportEnabled, GuestExportEnabled: src.GuestExportEnabled,
 		ExportStyleShared: src.ExportStyleShared, ExportFormats: src.ExportFormats,
 	}

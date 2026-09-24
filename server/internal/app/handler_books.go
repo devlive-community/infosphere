@@ -257,6 +257,8 @@ type bookPayload struct {
 	GuestExportEnabled      *bool   `json:"guest_export_enabled"`
 	ExportStyleShared       *bool   `json:"export_style_shared"`
 	ExportFormats           *string `json:"export_formats"`
+	// ExtraInfo 「更多信息」附加属性（整体替换）
+	ExtraInfo *[]models.BookInfoItem `json:"extra_info"`
 }
 
 const maxWatermarkLength = 80
@@ -600,6 +602,14 @@ func (a *App) UpdateBook(c *gin.Context) {
 	}
 	if req.ExportFormats != nil {
 		book.ExportFormats = normalizeExportFormats(*req.ExportFormats)
+	}
+	if req.ExtraInfo != nil {
+		info, err := normalizeBookInfo(*req.ExtraInfo)
+		if err != nil {
+			fail(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		book.ExtraInfo = info
 	}
 	if req.Slug != nil && *req.Slug != book.Slug {
 		// 访问路径只允许在「可编辑」时修改一次（目前仅复制出的书籍具备该资格）

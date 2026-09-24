@@ -76,6 +76,9 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     'admin.membership.status.': ['active', 'archived'],
     'admin.membership.action.': ['grant', 'extend', 'switch', 'adjust', 'revoke'],
     'membership.action.': ['grant', 'extend', 'switch', 'adjust', 'revoke'],
+    # 书籍更多信息：t(`bookInfo.type.${type}`)（lib/book-info.ts BOOK_INFO_TYPES）、t(`bookInfo.placeholder.${kind}`)
+    'bookInfo.type.': ['github', 'gitlab', 'gitee', 'website', 'source', 'docs', 'demo', 'email', 'author', 'license', 'version', 'isbn', 'custom'],
+    'bookInfo.placeholder.': ['url', 'email', 'text'],
     # 支付：支付方式 / 订单状态 / 管理端 tab、订单操作（op.${op}Title|Message|Done）、支付方式说明与配置字段
     'payment.channel.': ['offline', 'alipay', 'wechat', 'stripe'],
     'payment.channelHint.': ['offline', 'alipay', 'wechat', 'stripe'],

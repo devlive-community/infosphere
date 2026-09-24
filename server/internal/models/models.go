@@ -397,6 +397,8 @@ type Book struct {
 	ExportStyleShared bool `gorm:"default:false" json:"export_style_shared"`
 	// ExportFormats 逗号分隔的允许导出格式（pdf,markdown）；空表示全部格式可用
 	ExportFormats string         `gorm:"size:100;default:''" json:"export_formats"`
+	// ExtraInfo 「更多信息」附加属性（GitHub、原始文档地址、许可证等），书籍详情页展示
+	ExtraInfo BookInfo `gorm:"type:text" json:"extra_info"`
 	User          *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	// Tags 由代码手动加载（attachBookTags），不走 GORM many2many——避免核心 Book 硬依赖标签插件表。
 	Tags []Tag `gorm:"-" json:"tags,omitempty"`

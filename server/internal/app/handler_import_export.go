@@ -125,6 +125,11 @@ func (a *App) buildBookMarkdownZip(book *models.Book) ([]byte, error) {
 		set("watermark_enabled", strconv.FormatBool(book.WatermarkEnabled)).
 		set("watermark_text", book.WatermarkText).
 		set("cover_image", cover)
+	if len(book.ExtraInfo) > 0 {
+		if raw, err := json.Marshal(book.ExtraInfo); err == nil {
+			bookFields.set("extra_info", string(raw)) // 「更多信息」以 JSON 字符串保存
+		}
+	}
 	tagNames := []string{}
 	for _, t := range book.Tags {
 		tagNames = append(tagNames, t.Name)
@@ -459,6 +464,15 @@ func (a *App) importBookFromZIP(stored storedZIP, u *models.User, customTitle st
 		ChapterPrefix:    bookFields.get("chapter_prefix"),
 		WatermarkEnabled: watermarkEnabled,
 		WatermarkText:    watermarkText,
+	}
+	// 「更多信息」：格式不合法时忽略（不阻断导入）
+	if raw := bookFields.get("extra_info"); raw != "" {
+		var items []models.BookInfoItem
+		if json.Unmarshal([]byte(raw), &items) == nil {
+			if info, err := normalizeBookInfo(items); err == nil {
+				book.ExtraInfo = info
+			}
+		}
 	}
 	if !allowedOrderCols[book.OrderCol] {
 		book.OrderCol = "created_at"

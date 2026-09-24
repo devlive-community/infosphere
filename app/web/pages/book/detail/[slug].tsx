@@ -20,6 +20,7 @@ import BookTranslations from '@/components/BookTranslations'
 import BookVersions from '@/components/BookVersions'
 import BookCopyDialog from '@/components/BookCopyDialog'
 import BookReviews from '@/components/BookReviews'
+import BookExtraInfo from '@/components/BookExtraInfo'
 import ReportButton from '@/components/ReportButton'
 import CoverImage from '@/components/CoverImage'
 import Seo from '@/components/Seo'
@@ -544,6 +545,8 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
                 <InfoRow icon={<LinkIcon className="h-4 w-4" />} label={t('detail.infoPath')} value={`/${book.slug}`} mono />
               </dl>
             </div>
+
+            <BookExtraInfo items={book.extra_info} />
 
             <ReportButton targetType="book" targetId={book.id} size="md"
               className="w-full border border-rose-300 text-rose-600 hover:bg-rose-50" />

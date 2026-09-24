@@ -104,6 +104,26 @@ func TestBookExportImport(t *testing.T) {
 	request(http.MethodPut, fmt.Sprintf("/api/v1/books/%d", bookID), map[string]any{
 		"cover_image": imageURL,
 	}, aliceToken)
+	// 更多信息：非法链接/自定义项缺名称 400；合法项保存（空值项丢弃）
+	for _, bad := range []any{
+		[]any{map[string]any{"type": "github", "value": "not-a-url"}},
+		[]any{map[string]any{"type": "custom", "value": "x"}},
+		[]any{map[string]any{"type": "email", "value": "bad@"}},
+		[]any{map[string]any{"type": "unknown", "value": "x"}},
+	} {
+		if s, _ := request(http.MethodPut, fmt.Sprintf("/api/v1/books/%d", bookID), map[string]any{"extra_info": bad}, aliceToken); s != http.StatusBadRequest {
+			t.Fatalf("非法更多信息应 400: %v → %d", bad, s)
+		}
+	}
+	extraInfo := []any{
+		map[string]any{"type": "github", "value": "https://github.com/devlive-community/knowforge"},
+		map[string]any{"type": "license", "value": "MIT"},
+		map[string]any{"type": "custom", "label": "交流群", "value": "QQ 123456: 欢迎"},
+		map[string]any{"type": "docs", "value": "  "},
+	}
+	if s, p := request(http.MethodPut, fmt.Sprintf("/api/v1/books/%d", bookID), map[string]any{"extra_info": extraInfo}, aliceToken); s != 200 || len(p["data"].(map[string]any)["extra_info"].([]any)) != 3 {
+		t.Fatalf("保存更多信息失败: %d %v", s, p)
+	}
 	mkDoc := func(payload map[string]any) int {
 		t.Helper()
 		s, d := request(http.MethodPost, fmt.Sprintf("/api/v1/books/%d/documents", bookID), payload, aliceToken)
@@ -256,6 +276,9 @@ func TestBookExportImport(t *testing.T) {
 	}
 	if len(gotBook["tags"].([]any)) != 2 {
 		t.Fatalf("标签未还原: %v", gotBook["tags"])
+	}
+	if info := gotBook["extra_info"].([]any); len(info) != 3 || info[2].(map[string]any)["label"] != "交流群" || info[2].(map[string]any)["value"] != "QQ 123456: 欢迎" {
+		t.Fatalf("更多信息未还原: %v", gotBook["extra_info"])
 	}
 	status, tree := request(http.MethodGet, fmt.Sprintf("/api/v1/books/%d/documents", newBookID), nil, aliceToken)
 	docs := tree["data"].([]any)
