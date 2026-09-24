@@ -417,6 +417,8 @@ type Book struct {
 	VersionCount int `gorm:"-" json:"version_count,omitempty"`
 	// LatestVersion 非持久化：本书所在版本组中被标记为「最新版」的书籍的版本号（列表卡片展示「最新版本 xxx」）。
 	LatestVersion string `gorm:"-" json:"latest_version,omitempty"`
+	// PublishHeld 非持久化：本次保存中「公开」被发布守卫（如内容审核）拦截时的说明，书籍保持私有
+	PublishHeld string `gorm:"-" json:"publish_held,omitempty"`
 }
 
 // Tag 标签
@@ -758,6 +760,8 @@ type Document struct {
 	DeletedBy     uint           `gorm:"index;default:0" json:"-"`
 	TrashGroup    string         `gorm:"size:64;index" json:"-"`
 	Children      []*Document    `gorm:"-" json:"children,omitempty"`
+	// PublishHeld 非持久化：本次保存中「发布」被发布守卫（如内容审核）拦截时的说明，章节保持未发布
+	PublishHeld string `gorm:"-" json:"publish_held,omitempty"`
 }
 
 // DocumentRevision 章节不可变历史版本。只允许新增与读取，不提供更新接口。

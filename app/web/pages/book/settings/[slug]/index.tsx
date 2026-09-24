@@ -61,7 +61,8 @@ export default function BookSettingsBasic({ book }: InferGetServerSidePropsType<
         submitLabel={t('bookSettings.basic.submit')}
         onSubmit={async (payload) => {
           delete payload.slug
-          await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
+          const updated = await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
+          if (updated.publish_held) showToast({ title: t('moderation.heldBookTitle'), message: updated.publish_held, tone: 'error' })
           router.push(`/book/detail/${encodeURIComponent(book.slug)}`)
         }}
       />

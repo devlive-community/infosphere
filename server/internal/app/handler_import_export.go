@@ -569,6 +569,13 @@ func (a *App) importBookFromZIP(stored storedZIP, u *models.User, customTitle st
 		}
 	}
 
+	for _, p := range pendings {
+		if p.doc.Status == "published" {
+			doc := p.doc
+			a.GuardDocumentPublish(&book, &doc, u.ID)
+		}
+	}
+	book.PublishHeld = a.guardBookVisible(&book, u.ID)
 	return zipImportResult{Book: book, ImportedDoc: len(created), Source: "zip", Message: fmt.Sprintf("导入完成：《%s》共 %d 个章节", book.Title, len(created))}, http.StatusOK, nil
 }
 

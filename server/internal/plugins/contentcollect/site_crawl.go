@@ -591,6 +591,7 @@ func (cc *behavior) crawlCreateDocument(book *models.Book, userID uint, title, c
 	if err := cc.core.Gorm().Create(&doc).Error; err != nil {
 		return nil, err
 	}
+	cc.core.GuardDocumentPublish(book, &doc, userID) // 按书籍默认状态直接发布时交发布守卫（如内容审核）审查
 	return &doc, nil
 }
 

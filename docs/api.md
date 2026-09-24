@@ -488,6 +488,25 @@ Authorization: Bearer <token>
 | POST | `/admin/payment/orders/:no/fulfill` | 重试履约（已支付但履约失败；巡检也会自动重试） | `payment:manage` |
 | GET/PUT | `/admin/payment/settings` | 各支付方式配置；密钥类字段（私钥、公钥、APIv3 密钥、Stripe 密钥）只写不读，GET 仅返回 `<字段>_set`，PUT 传空串表示不修改；保存前校验密钥格式。GET 另含 `notify_urls`、`available`、`site_url_set` | `payment:manage` |
 
+## 发布审核（「发布审核」插件，默认关闭，Issue #87）
+
+敏感词词典 + 发布前自动审查，经 `plugincore.RegisterPublishGuard` 接入核心发布路径：章节发布（含创建即发布、已发布章节修改标题/正文、级联发布、Markdown/ZIP 导入、网页采集）与书籍公开（含公开书籍修改标题/简介、ZIP 还原）。匹配为 Aho-Corasick，忽略大小写与全角半角，可选忽略词语中间插入的空白与符号。
+- **未命中**：直接发布，记入「自动通过」（管理员可复审：确认无误，或驳回并撤回发布）。
+- **命中**：拦截——章节保持未发布（已发布的改动会撤回为草稿）、书籍保持私有；响应中 `publish_held` 为说明；记录命中位置（字段、行、列、原文片段、上下文），通知作者与全部管理员。管理员通过 → 自动发布（章节触发首次发布事件）；驳回（需填写意见）→ 把命中位置与意见通知作者。作者修改后再次发布时同一对象复用记录，未再命中则直接发布。
+- 默认管理员发布免审；可分别关闭章节/书籍审查。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/users/me/moderation-cases?page=` | 我的审核记录（待审核/已通过/已驳回，含 `hits` 与 `review_note`；不含未复审的自动通过） | `moderation:read` |
+| GET | `/admin/moderation/cases?status=pending\|auto_passed\|handled\|approved\|rejected&kind=document\|book&q=&page=` | 审核记录 `items:[{case{…,hits},user,book,doc_slug}]` + `pending` 待审核数 | `moderation:manage` |
+| GET | `/admin/moderation/cases/:id/content` | 对象当前文本 `fields` 与按当前词典重新计算的 `hits` | `moderation:manage` |
+| POST | `/admin/moderation/cases/:id/approve` | 通过（待审核 → 发布；自动通过 → 确认），已处理的 409 | `moderation:manage` |
+| POST | `/admin/moderation/cases/:id/reject` | `{note}` 驳回（必填意见；自动通过的撤回发布），通知作者 | `moderation:manage` |
+| GET/POST | `/admin/moderation/words` | 列表 `?q=&category=&page=`（附 `categories`、`enabled_total`）；批量添加 `{words, category?}`（换行/逗号/顿号分隔，已存在跳过，单个 ≤50 字，一次 ≤5000），返回 `{added, skipped}` | `moderation:manage` |
+| PUT/DELETE | `/admin/moderation/words/:id` | `{enabled?, category?}` / 删除 | `moderation:manage` |
+| POST | `/admin/moderation/test` | `{text}` 用当前词典与设置试审，返回 `hits` | `moderation:manage` |
+| GET/PUT | `/admin/moderation/settings` | `{scope_documents, scope_books, skip_noise, admin_exempt, notify_pass}`，PUT 可只传部分字段 | `moderation:manage` |
+
 ## 站内通知（登录用户）
 
 | 方法 | 路径 | 说明 | 权限 |

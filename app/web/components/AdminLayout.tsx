@@ -13,7 +13,7 @@ import {
   ActivityIcon, ClockIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'tags' | 'achievements' | 'growth' | 'membership' | 'payment' | 'reports' | 'audit' | 'tasks' | 'languages' | 'settings' | 'plugins' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'tags' | 'achievements' | 'growth' | 'membership' | 'payment' | 'moderation' | 'reports' | 'audit' | 'tasks' | 'languages' | 'settings' | 'plugins' | 'upgrade'
 
 function ReportIcon({ className }: { className?: string }) {
   return <i className={`fa-solid fa-flag ${className || ''}`.trim()} aria-hidden="true" />
@@ -71,6 +71,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
     { key: 'growth', labelKey: 'admin.nav.growth', href: '/admin/growth', icon: ({ className }) => <i className={`fa-solid fa-ranking-star ${className || ''}`} aria-hidden="true" /> },
     { key: 'membership', labelKey: 'admin.nav.membership', href: '/admin/membership', icon: ({ className }) => <i className={`fa-solid fa-crown ${className || ''}`} aria-hidden="true" /> },
     { key: 'payment', labelKey: 'admin.nav.payment', href: '/admin/payment', icon: ({ className }) => <i className={`fa-solid fa-credit-card ${className || ''}`} aria-hidden="true" /> },
+    { key: 'moderation', labelKey: 'admin.nav.moderation', href: '/admin/moderation', icon: ({ className }) => <i className={`fa-solid fa-shield-halved ${className || ''}`} aria-hidden="true" /> },
     { key: 'reports', labelKey: 'admin.nav.reports', href: '/admin/reports', icon: ReportIcon },
     { key: 'audit', labelKey: 'admin.nav.audit', href: '/admin/audit-logs', icon: ActivityIcon },
     { key: 'tasks', labelKey: 'admin.nav.tasks', href: '/admin/tasks', icon: ClockIcon },
@@ -88,6 +89,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
     if (item.key === 'growth') return features.includes('growth')
     if (item.key === 'membership') return features.includes('membership')
     if (item.key === 'payment') return features.includes('payment')
+    if (item.key === 'moderation') return features.includes('moderation')
     return true
   })
 

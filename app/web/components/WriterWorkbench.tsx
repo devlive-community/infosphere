@@ -464,7 +464,10 @@ export default function Writer({ user }: WriterProps) {
         try { localStorage.removeItem(draftKey(updated.id)) } catch { /* 忽略 */ }
         setDraftRecovery(null)
         setCurrent(updated)
-        if (opts?.status) setStatus(opts.status)
+        if (updated.publish_held) {
+          setStatus(updated.status) // 发布被内容审核拦截：保持未发布
+          showToast({ title: t('moderation.heldTitle'), message: updated.publish_held, tone: 'error' })
+        } else if (opts?.status) setStatus(opts.status)
         await loadTree(book)
         selectDoc(updated.slug, true)
       } else {
@@ -473,7 +476,10 @@ export default function Writer({ user }: WriterProps) {
         snapshot.current = JSON.stringify([created.title, created.content || '', created.status, created.parent_id ? String(created.parent_id) : '', created.sort_order, created.allow_comments !== false, created.slug || '', created.external_url || '', created.external_new_tab !== false])
         loadedDocId.current = created.id
         setCurrent(created)
-        if (opts?.status) setStatus(opts.status)
+        if (created.publish_held) {
+          setStatus(created.status)
+          showToast({ title: t('moderation.heldTitle'), message: created.publish_held, tone: 'error' })
+        } else if (opts?.status) setStatus(opts.status)
         await loadTree(book)
         selectDoc(created.slug, true)
       }
@@ -692,7 +698,8 @@ export default function Writer({ user }: WriterProps) {
       }
       const updated = await api<Book>(`/books/${book.id}`, { method: 'PUT', body: payload })
       setBook(updated)
-      showToast({ message: t('writer.bookSettingsSaved'), tone: 'success' })
+      if (updated.publish_held) showToast({ title: t('moderation.heldBookTitle'), message: updated.publish_held, tone: 'error' })
+      else showToast({ message: t('writer.bookSettingsSaved'), tone: 'success' })
     } catch (e) { showToast({ title: t('writer.saveFailed'), message: (e as Error).message, tone: 'error' }) } finally { setSavingBook(false) }
   }
 

@@ -74,6 +74,7 @@ export interface Book {
   export_style_shared?: boolean
   export_formats?: string
   extra_info?: BookInfoItem[] // 「更多信息」附加属性（GitHub、原始文档地址等）
+  publish_held?: string // 本次保存「公开」被内容审核拦截时的说明（书籍保持私有）
   user?: Pick<User, 'id' | 'username' | 'avatar' | 'email' | 'bio' | 'github_url' | 'role'>
   tags?: Tag[]
   crawling?: boolean
@@ -111,6 +112,7 @@ export interface Document {
   user_id: number
   sort_order: number
   view_count?: number
+  publish_held?: string // 本次保存「发布」被内容审核拦截时的说明（章节保持未发布）
   status: DocumentStatus
   icon?: string
   external_url?: string

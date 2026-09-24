@@ -81,6 +81,10 @@ type Core interface {
 	DefaultContentLocale() (string, error)
 	// LocalizeResources 按请求语言回退链解析资源的已发布翻译（并设置 Content-Language 等响应头），返回请求语言代码。
 	LocalizeResources(c *gin.Context, kind string, ids []uint) (map[uint]LocalizedResource, string, error)
+	// GuardDocumentPublish 已写入且为已发布状态的新章节交发布守卫审查，被拦截时改回草稿；返回拦截说明（放行为空）。
+	GuardDocumentPublish(book *models.Book, doc *models.Document, actorID uint) string
+	// ApplyModeration 审核结论落地（绕过发布守卫）：approve 应用 requested（发布章节/公开书籍），否则撤回发布。
+	ApplyModeration(kind string, id uint, approve bool, requested map[string]string) error
 	// EnsureBookQuota 校验用户是否还能创建书籍（书籍数量权益）；超限返回可展示的错误。
 	EnsureBookQuota(u *models.User) error
 	// PublicBackgroundJob 后台任务的对外视图（不含 payload），与 /tasks/:id 返回形状一致。

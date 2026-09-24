@@ -383,6 +383,9 @@ func (cc *behavior) createImportedWebDocument(book *models.Book, u *models.User,
 		revision := cc.core.NewDocumentRevision(&doc, u.ID, "create")
 		return tx.Create(&revision).Error
 	})
+	if err == nil {
+		doc.PublishHeld = cc.core.GuardDocumentPublish(book, &doc, u.ID) // 事务外审查（直接发布时）
+	}
 	return doc, err
 }
 

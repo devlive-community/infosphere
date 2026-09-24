@@ -32,6 +32,7 @@ const (
 	KeyTags             = "tags"
 	KeyMembership       = "membership"
 	KeyPayment          = "payment"
+	KeyModeration       = "moderation"
 )
 
 // Meta 一个插件的声明式元数据（不含依赖 app 的行为）。

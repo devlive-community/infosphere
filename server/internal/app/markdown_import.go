@@ -349,6 +349,7 @@ func (m *markdownImporter) importTree(book *models.Book, u *models.User, root *m
 	q.Count(&startOrder)
 
 	created := 0
+	var toPublish []*models.Document // 请求发布的章节：先以草稿写入，事务结束后交发布守卫审查再发布
 	allowComments := true
 	var create func(tx *gorm.DB, n *mdNode, parent *uint, order int) error
 	create = func(tx *gorm.DB, n *mdNode, parent *uint, order int) error {
@@ -360,6 +361,10 @@ func (m *markdownImporter) importTree(book *models.Book, u *models.User, root *m
 			docStatus = m.a.initialChapterStatus(book, parent)
 		}
 		content := m.rewriteLinks(n.src, m.rewriteImages(n.src, n.body))
+		publish := docStatus == "published"
+		if publish {
+			docStatus = "draft"
+		}
 		doc := models.Document{
 			BookID: book.ID, ParentID: parent, Title: n.title, Slug: n.slug, Content: content,
 			UserID: u.ID, SortOrder: order, Status: docStatus, AllowComments: &allowComments,
@@ -373,6 +378,9 @@ func (m *markdownImporter) importTree(book *models.Book, u *models.User, root *m
 			return err
 		}
 		created++
+		if publish {
+			toPublish = append(toPublish, &doc)
+		}
 		for i, c := range n.children {
 			if err := create(tx, c, &doc.ID, i); err != nil {
 				return err
@@ -388,6 +396,11 @@ func (m *markdownImporter) importTree(book *models.Book, u *models.User, root *m
 		}
 		return nil
 	})
+	if err == nil {
+		for _, doc := range toPublish {
+			m.a.tryPublishDocument(book, doc, u.ID)
+		}
+	}
 	return created, err
 }
 

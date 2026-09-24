@@ -47,6 +47,7 @@ function UserMenu() {
     ...((site.feature_plugins || []).includes('growth') ? [{ label: t('nav.menu.growth'), href: '/user/growth', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-ranking-star ${className || ''}`} aria-hidden="true" /> }] : []),
     ...((site.feature_plugins || []).includes('membership') ? [{ label: t('nav.menu.membership'), href: '/user/membership', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-crown ${className || ''}`} aria-hidden="true" /> }] : []),
     ...((site.feature_plugins || []).includes('payment') ? [{ label: t('nav.menu.orders'), href: '/user/orders', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-receipt ${className || ''}`} aria-hidden="true" /> }] : []),
+    ...((site.feature_plugins || []).includes('moderation') ? [{ label: t('nav.menu.moderation'), href: '/user/moderation', icon: ({ className }: { className?: string }) => <i className={`fa-solid fa-shield-halved ${className || ''}`} aria-hidden="true" /> }] : []),
     { label: t('nav.menu.profile'), href: '/user/profile', icon: UserCircleIcon },
     // 控制台仅对管理员开放
     ...(user.role === 'admin' ? [{ label: t('nav.menu.console'), href: '/admin/system', icon: GridIcon }] : []),

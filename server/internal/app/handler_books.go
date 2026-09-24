@@ -462,6 +462,11 @@ func (a *App) CreateBook(c *gin.Context) {
 		return
 	}
 
+	// 创建即对外可见时先存为私有，发布守卫审查通过后再公开
+	wantVisible := bookVisible(&book)
+	if wantVisible {
+		book.IsPublic = false
+	}
 	if err := a.DB.Create(&book).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "创建失败: "+err.Error())
 		return
@@ -469,6 +474,14 @@ func (a *App) CreateBook(c *gin.Context) {
 	if err := a.saveBookFields(&book, extFields); err != nil {
 		fail(c, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if wantVisible {
+		if v := plugincore.CheckPublish(a, bookPublishTarget(&book, u.ID)); v.Hold {
+			book.PublishHeld = v.Message
+		} else {
+			book.IsPublic = true
+			a.DB.Model(&models.Book{}).Where("id = ?", book.ID).Update("is_public", true)
+		}
 	}
 	a.emitActivity(u.ID, "book.created", "book", strconv.FormatUint(uint64(book.ID), 10), fmt.Sprintf("book.created:%d", book.ID))
 	ok(c, book)
@@ -517,6 +530,7 @@ func (a *App) UpdateBook(c *gin.Context) {
 		return
 	}
 	oldStatus, oldPublic := book.Status, book.IsPublic
+	oldTitle, oldDescription := book.Title, book.Description
 
 	var req bookPayload
 	extFields, bound := bindBookPayload(c, &req)
@@ -631,6 +645,14 @@ func (a *App) UpdateBook(c *gin.Context) {
 		book.SlugEditable = false // 用掉这次修改机会
 	}
 
+	// 发布守卫（如内容审核）：书籍即将对外可见、或可见时标题/简介有改动时审查；拦截则保持私有
+	wasVisible := oldPublic && isPubliclyReadableBookStatus(oldStatus)
+	if bookVisible(book) && (!wasVisible || book.Title != oldTitle || book.Description != oldDescription) {
+		if v := plugincore.CheckPublish(a, bookPublishTarget(book, u.ID)); v.Hold {
+			book.PublishHeld = v.Message
+			book.IsPublic = false
+		}
+	}
 	if err := a.DB.Save(book).Error; err != nil {
 		fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return

@@ -232,6 +232,11 @@ func (a *App) CreateDocument(c *gin.Context) {
 		statusStr = book.DefaultChapterStatus
 	}
 
+	// 请求直接发布时先以草稿写入，发布守卫审查通过后再发布（内容不会在审查前短暂可见）
+	wantPublish := statusStr == "published"
+	if wantPublish {
+		statusStr = "draft"
+	}
 	doc := models.Document{
 		BookID:  book.ID,
 		Title:   *req.Title,
@@ -296,6 +301,9 @@ func (a *App) CreateDocument(c *gin.Context) {
 	}); err != nil {
 		fail(c, http.StatusInternalServerError, "创建失败: "+err.Error())
 		return
+	}
+	if wantPublish {
+		doc.PublishHeld = a.tryPublishDocument(book, &doc, u.ID)
 	}
 	a.emitActivity(u.ID, "document.created", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.created:%d", doc.ID))
 	ok(c, doc)
@@ -415,6 +423,7 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		return
 	}
 	oldStatus := doc.Status // 用于判定「首次发布」以通知关注者
+	oldTitle, oldContent := doc.Title, doc.Content
 
 	var req documentPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -501,6 +510,21 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		}
 	}
 
+	// 发布守卫（如内容审核）：即将发布、或已发布章节的标题/正文有改动时审查；拦截则保持未发布（事务外调用）
+	if doc.Status == "published" && (oldStatus != "published" || doc.Title != oldTitle || doc.Content != oldContent) {
+		if v := plugincore.CheckPublish(a, documentPublishTarget(book, doc, currentUser(c).ID)); v.Hold {
+			doc.PublishHeld = v.Message
+			doc.Status = oldStatus
+			if oldStatus == "published" {
+				doc.Status = "draft"
+			}
+			publishedChapter = false
+			if cascadeStatus == "published" {
+				cascadeStatus = ""
+			}
+		}
+	}
+	var cascaded []uint // 级联发布的后代章节，事务后逐个审查
 	if err := a.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(doc).Error; err != nil {
 			return err
@@ -508,6 +532,9 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		// 级联：把该章节整棵子树的状态一并更新
 		if cascadeStatus != "" {
 			descendants := subtreeDocIDs(tx, doc.ID)
+			if cascadeStatus == "published" {
+				tx.Model(&models.Document{}).Where("id IN ? AND status <> ?", descendants, "published").Pluck("id", &cascaded)
+			}
 			if len(descendants) > 0 {
 				if err := tx.Model(&models.Document{}).Where("id IN ?", descendants).Update("status", cascadeStatus).Error; err != nil {
 					return err
@@ -537,6 +564,12 @@ func (a *App) UpdateDocument(c *gin.Context) {
 		return
 	}
 	a.emitActivity(doc.UserID, "document.updated", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.updated:%d:%d", doc.ID, doc.UpdatedAt.UnixNano()))
+	for _, id := range cascaded {
+		var child models.Document
+		if a.DB.First(&child, id).Error == nil {
+			a.GuardDocumentPublish(book, &child, currentUser(c).ID)
+		}
+	}
 	// 章节首次发布（草稿→已发布）：由插件订阅（书籍关注通知关注者、成长等级给作者发经验）
 	if publishedChapter && oldStatus != "published" {
 		plugincore.FireChapterPublished(a, book, doc)
