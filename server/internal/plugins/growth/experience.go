@@ -20,6 +20,12 @@ func init() {
 	plugincore.ProvideExperienceRecorder(func(core plugincore.Core, userID uint, ruleKey, sourceType, sourceID, dedupeKey string, xp int, reason string) {
 		(&behavior{core: core}).recordExperience(userID, ruleKey, sourceType, sourceID, dedupeKey, xp, reason)
 	})
+	plugincore.ProvideExperienceRevoker(func(core plugincore.Core, userID uint, ruleKey, sourceID, reason string) {
+		b := &behavior{core: core}
+		var granted []models.ExperienceEvent
+		core.Gorm().Where("user_id = ? AND rule_key = ? AND source_id = ? AND final_xp > 0", userID, ruleKey, sourceID).Find(&granted)
+		b.revokeEvents(granted, reason)
+	})
 	plugincore.OnActivity(func(core plugincore.Core, ev plugincore.ActivityEvent) {
 		b := &behavior{core: core}
 		b.awardForActivity(ev)
@@ -147,8 +153,13 @@ func (b *behavior) revokeForActivity(ev plugincore.ActivityEvent) {
 	}
 	var granted []models.ExperienceEvent
 	b.core.Gorm().Where("dedupe_key IN ? AND final_xp > 0", keys).Find(&granted)
+	b.revokeEvents(granted, revokedReason)
+}
+
+// revokeEvents 为每条正经验流水记一条等额负流水（去重键 revoke:<原键>，每条只收回一次）。
+func (b *behavior) revokeEvents(granted []models.ExperienceEvent, reason string) {
 	for _, g := range granted {
-		b.recordExperience(g.UserID, g.RuleKey, g.SourceType, g.SourceID, "revoke:"+g.DedupeKey, -g.FinalXP, revokedReason)
+		b.recordExperience(g.UserID, g.RuleKey, g.SourceType, g.SourceID, "revoke:"+g.DedupeKey, -g.FinalXP, reason)
 	}
 }
 

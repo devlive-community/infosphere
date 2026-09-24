@@ -7,6 +7,7 @@ import IconPicker from '@/components/IconPicker'
 import UserSearchSelect, { type UserLite } from '@/components/UserSearchSelect'
 import UserAvatar from '@/components/UserAvatar'
 import { api } from '@/lib/api'
+import { useApp } from '@/lib/auth'
 import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Pagination, Select, SegmentedTabs, Switch, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 import { growthReasonLabel, growthRuleLabel } from '@/lib/growth'
@@ -26,7 +27,7 @@ interface Level {
 interface LevelForm { id?: number; level: number; name: string; description: string; icon_type: string; icon_value: string; color: string; min_xp: number; status: string }
 interface Rule { id: number; rule_key: string; label: string; base_xp: number; daily_cap: number; enabled: boolean }
 interface LedgerItem { id: number; rule_key: string; final_xp: number; reason?: string; created_at: string; user?: UserLite }
-type Tab = 'levels' | 'rules' | 'events'
+type Tab = 'levels' | 'rules' | 'events' | 'settings'
 
 // useRuleLabel 经验规则显示名（i18n 优先）。
 function useRuleLabel() {
@@ -51,7 +52,7 @@ function AdminGrowthInner() {
   const [rules, setRules] = useState<Rule[] | null>(null)
   const [savingRule, setSavingRule] = useState<number | null>(null)
   const router = useRouter()
-  const tab: Tab = router.query.tab === 'rules' ? 'rules' : router.query.tab === 'events' ? 'events' : 'levels' // tab 由 URL 驱动
+  const tab: Tab = (['rules', 'events', 'settings'] as Tab[]).includes(router.query.tab as Tab) ? (router.query.tab as Tab) : 'levels' // tab 由 URL 驱动
   const ruleLabel = useRuleLabel()
 
   const load = useCallback(() => {
@@ -127,6 +128,7 @@ function AdminGrowthInner() {
           { value: 'levels', label: t('admin.growth.tab.levels'), href: '/admin/growth?tab=levels' },
           { value: 'rules', label: t('admin.growth.tab.rules'), href: '/admin/growth?tab=rules' },
           { value: 'events', label: t('admin.growth.tab.events'), href: '/admin/growth?tab=events' },
+          { value: 'settings', label: t('admin.growth.tab.settings'), href: '/admin/growth?tab=settings' },
         ]} />
 
       <div className={`mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr] ${tab === 'levels' ? '' : 'hidden'}`}>
@@ -198,6 +200,7 @@ function AdminGrowthInner() {
 
       {/* 经验流水（仅在「经验流水」tab 挂载，按需加载） */}
       {tab === 'events' && <LedgerPanel rules={rules || []} />}
+      {tab === 'settings' && <SettingsPanel />}
 
       <Modal open={form !== null} onClose={() => setForm(null)} title={form?.id ? t('admin.growth.editLevel') : t('admin.growth.addLevel')}
         footer={<><Button variant="outline" onClick={() => setForm(null)}>{t('common.actions.cancel')}</Button><Button loading={saving} onClick={save}>{t('common.actions.save')}</Button></>}>
@@ -297,6 +300,57 @@ function LedgerPanel({ rules }: { rules: Rule[] }) {
           <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
         </div>
       )}
+    </Card>
+  )
+}
+
+interface GrowthSettings { leaderboard_enabled: boolean; leaderboard_min_xp: number }
+
+// SettingsPanel 成长设置：经验排行榜开关与最少上榜经验。
+function SettingsPanel() {
+  const { t } = useTranslation()
+  const { showToast } = useFeedback()
+  const { refreshSite } = useApp()
+  const [form, setForm] = useState<GrowthSettings | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api<GrowthSettings>('/admin/growth/settings').then(setForm)
+      .catch((e) => showToast({ title: t('admin.growth.settings.loadFailed'), message: (e as Error).message, tone: 'error' }))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function save() {
+    if (!form) return
+    setSaving(true)
+    try {
+      setForm(await api<GrowthSettings>('/admin/growth/settings', { method: 'PUT', body: form }))
+      await refreshSite() // 同步导航中的排行榜入口
+      showToast({ message: t('admin.growth.settings.saved'), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('admin.growth.saveFailed'), message: (e as Error).message, tone: 'error' })
+    } finally { setSaving(false) }
+  }
+
+  if (!form) return <Loading className="py-16" />
+  return (
+    <Card className="mt-6 max-w-2xl p-5">
+      <h2 className="font-bold text-slate-900">{t('admin.growth.settings.title')}</h2>
+      <div className="mt-4 space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-sm font-medium text-slate-900">{t('admin.growth.settings.leaderboardEnabled')}</div>
+            <p className="mt-1 text-xs text-slate-400">{t('admin.growth.settings.leaderboardEnabledHint')}</p>
+          </div>
+          <Switch ariaLabel={t('admin.growth.settings.leaderboardEnabled')} checked={form.leaderboard_enabled} onChange={(v) => setForm({ ...form, leaderboard_enabled: v })} />
+        </div>
+        <Field label={t('admin.growth.settings.minXp')} hint={t('admin.growth.settings.minXpHint')}>
+          <span className="block w-40">
+            <Input type="number" min={1} max={1000000} value={form.leaderboard_min_xp} disabled={!form.leaderboard_enabled}
+              onChange={(e) => setForm({ ...form, leaderboard_min_xp: Math.min(1000000, Math.max(1, Number(e.target.value) || 1)) })} trailing={<span className="text-xs text-slate-400">XP</span>} />
+          </span>
+        </Field>
+      </div>
+      <div className="mt-6 flex justify-end"><Button loading={saving} onClick={save}>{t('common.actions.save')}</Button></div>
     </Card>
   )
 }

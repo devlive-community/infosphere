@@ -309,3 +309,41 @@ func jsonID(id uint) string {
 	raw, _ := json.Marshal(id)
 	return string(raw)
 }
+
+// 撤销成就收回奖励经验；重新授予再次发放；站点配置由插件下发 achievements_enabled。
+func TestAchievementRevokeReclaimsRewardXP(t *testing.T) {
+	e := newTestEnv(t)
+	e.enable(t, "achievements")
+	e.enable(t, "growth")
+	_ = e.app.SetSetting("achievements_notifications_enabled", "false", "test")
+	_, site := e.do(t, http.MethodGet, "/api/v1/site", "", "")
+	if site["data"].(map[string]any)["achievements_enabled"] != "true" {
+		t.Fatalf("启用后站点配置应含 achievements_enabled=true: %v", site["data"])
+	}
+	user := e.user(t, "achievement-reward")
+	definition := models.AchievementDefinition{Key: "reward.xp", Name: "奖励成就", Category: "special", Status: "active", Rarity: "rare", IconType: "fa", IconValue: "fa-award", Visibility: "public", GrantMode: "manual", RewardXP: 40, Version: 1, Tier: 1, CreatedBy: e.admin.ID, UpdatedBy: e.admin.ID}
+	if err := e.db.Create(&definition).Error; err != nil {
+		t.Fatal(err)
+	}
+	xp := func() int64 {
+		var total int64
+		e.db.Model(&models.ExperienceEvent{}).Where("user_id = ?", user.ID).Select("COALESCE(SUM(final_xp),0)").Scan(&total)
+		return total
+	}
+	grantBody := `{"username":"achievement-reward","achievement_id":` + jsonID(definition.ID) + `,"reason":"活动"}`
+	status, payload := e.do(t, http.MethodPost, "/api/v1/admin/achievement-grants", grantBody, e.token)
+	if status != http.StatusOK || xp() != 40 {
+		t.Fatalf("授予成就应奖励 40 经验: %d %v xp=%d", status, payload, xp())
+	}
+	grantID := jsonID(uint(payload["data"].(map[string]any)["id"].(float64)))
+	if status, payload := e.do(t, http.MethodPost, "/api/v1/admin/achievement-grants/"+grantID+"/revoke", `{"reason":"误发"}`, e.token); status != http.StatusOK || xp() != 0 {
+		t.Fatalf("撤销成就应收回奖励经验: %d %v xp=%d", status, payload, xp())
+	}
+	if status, _ := e.do(t, http.MethodPost, "/api/v1/admin/achievement-grants", grantBody, e.token); status != http.StatusOK || xp() != 40 {
+		t.Fatalf("重新授予应再次奖励经验，实际 xp=%d", xp())
+	}
+	e.do(t, http.MethodPost, "/api/v1/admin/achievement-grants/"+grantID+"/revoke", `{"reason":"再次撤销"}`, e.token)
+	if xp() != 0 {
+		t.Fatalf("再次撤销应收回重新发放的经验，实际 xp=%d", xp())
+	}
+}

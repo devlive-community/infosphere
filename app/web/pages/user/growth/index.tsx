@@ -76,7 +76,7 @@ function MyGrowthInner() {
               <h1 className="text-2xl font-bold text-ink">{t('growth.heading')}</h1>
               <p className="mt-1 text-sm text-slate-500">{t('growth.subtitle')}</p>
             </div>
-            <ButtonLink href="/growth/leaderboard" variant="outline"><i className="fa-solid fa-ranking-star" aria-hidden="true" /> {t('growth.leaderboard.link')}</ButtonLink>
+            {site.growth_leaderboard_enabled && <ButtonLink href="/growth/leaderboard" variant="outline"><i className="fa-solid fa-ranking-star" aria-hidden="true" /> {t('growth.leaderboard.link')}</ButtonLink>}
           </div>
 
           {/* 当前等级 + 进度 */}

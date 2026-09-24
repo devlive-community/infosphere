@@ -53,7 +53,7 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
                      'account.registered', 'account.email_verified', 'account.two_factor_enabled',
                      'account.oauth_bound', 'account.invited_user', 'achievement.unlocked', 'admin.adjust'],
     # growth: 经验流水系统原因码 t(`growth.reason.${reason}`)；排行榜周期 t(`growth.leaderboard.period.${p}`)
-    'growth.reason.': ['revoked'],
+    'growth.reason.': ['revoked', 'achievement_revoked'],
     'growth.leaderboard.period.': ['all', 'month', 'week'],
     # 通知 payload.i18n.key（服务端下发，lib/notification.ts 渲染）
     'growth.notify.': ['levelUp'],

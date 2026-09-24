@@ -49,6 +49,8 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	reg(http.MethodGet, "/admin/growth/rules", authz.GrowthManage, b.AdminListExperienceRules)
 	reg(http.MethodPut, "/admin/growth/rules/:id", authz.GrowthManage, b.AdminUpdateExperienceRule)
 	reg(http.MethodGet, "/admin/growth/events", authz.GrowthManage, b.AdminListExperienceEvents)
+	reg(http.MethodGet, "/admin/growth/settings", authz.GrowthManage, b.AdminGetGrowthSettings)
+	reg(http.MethodPut, "/admin/growth/settings", authz.GrowthManage, b.AdminUpdateGrowthSettings)
 }
 
 // —— 本子包私有的读取/组装辅助（与原 app 内实现一致）——
@@ -91,7 +93,7 @@ func (b *behavior) growthPayload(p models.UserGrowthProfile) gin.H {
 // —— 公开端点 ——
 
 func (b *behavior) GrowthSettings(c *gin.Context) {
-	b.core.OK(c, gin.H{"enabled": b.core.PluginEnabled(plugins.KeyGrowth)})
+	b.core.OK(c, b.publicSettings())
 }
 
 func (b *behavior) GrowthLevels(c *gin.Context) {

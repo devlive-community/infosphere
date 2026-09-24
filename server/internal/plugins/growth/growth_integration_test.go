@@ -351,3 +351,40 @@ func TestLeaderboardAndPrivacy(t *testing.T) {
 		t.Fatalf("升级通知应带 i18n 键且兜底标题含等级名: %s / %s", n.Title, n.Payload)
 	}
 }
+
+// 成长设置：排行榜开关（关闭后接口 404、公开站点配置同步为 false）、最少上榜经验（未达门槛不上榜、本人无名次）。
+func TestLeaderboardSettings(t *testing.T) {
+	e := newTestEnv(t)
+	alice, bob := e.user(t, "set-alice"), e.user(t, "set-bob")
+	plugincore.RecordExperience(e.app, alice.ID, "test.grant", "x", "1", "set-a", 100, "")
+	plugincore.RecordExperience(e.app, bob.ID, "test.grant", "x", "1", "set-b", 20, "")
+
+	_, site := e.do(t, http.MethodGet, "/api/v1/site", "")
+	if site["data"].(map[string]any)["growth_leaderboard_enabled"] != true {
+		t.Fatalf("默认应开放排行榜: %v", site["data"])
+	}
+	if status, payload := e.do(t, http.MethodPut, "/api/v1/admin/growth/settings", `{"leaderboard_enabled":true,"leaderboard_min_xp":50}`); status != http.StatusOK || payload["data"].(map[string]any)["leaderboard_min_xp"].(float64) != 50 {
+		t.Fatalf("保存成长设置失败: %d %v", status, payload)
+	}
+	if status, _ := e.do(t, http.MethodPut, "/api/v1/admin/growth/settings", `{"leaderboard_enabled":true,"leaderboard_min_xp":0}`); status != http.StatusBadRequest {
+		t.Fatalf("最少上榜经验 < 1 应 400，实际 %d", status)
+	}
+	_, payload := e.doAs(t, bob, http.MethodGet, "/api/v1/growth/leaderboard", "")
+	data := payload["data"].(map[string]any)
+	if int(data["total"].(float64)) != 1 || data["items"].([]any)[0].(map[string]any)["user"].(map[string]any)["username"] != "set-alice" {
+		t.Fatalf("门槛 50 时只有 set-alice 上榜: %v", data)
+	}
+	if _, has := data["me"].(map[string]any)["rank"]; has {
+		t.Fatalf("未达门槛的本人不应有名次: %v", data["me"])
+	}
+
+	e.do(t, http.MethodPut, "/api/v1/admin/growth/settings", `{"leaderboard_enabled":false,"leaderboard_min_xp":1}`)
+	if status, _ := e.do(t, http.MethodGet, "/api/v1/growth/leaderboard", ""); status != http.StatusNotFound {
+		t.Fatalf("关闭排行榜后接口应 404，实际 %d", status)
+	}
+	_, site = e.do(t, http.MethodGet, "/api/v1/site", "")
+	_, settings := e.do(t, http.MethodGet, "/api/v1/growth/settings", "")
+	if site["data"].(map[string]any)["growth_leaderboard_enabled"] != false || settings["data"].(map[string]any)["leaderboard_enabled"] != false {
+		t.Fatalf("关闭后公开配置应为 false: site=%v settings=%v", site["data"], settings["data"])
+	}
+}

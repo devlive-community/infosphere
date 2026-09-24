@@ -1,6 +1,7 @@
 package growth
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -35,8 +36,8 @@ type leaderboardRow struct {
 	CurrentLevel int
 }
 
-// leaderboardQuery 周期内经验 > 0、公开成长资料且账号启用的用户（按经验倒序、用户 ID 升序以稳定排序）。
-func (b *behavior) leaderboardQuery(period string) *gorm.DB {
+// leaderboardQuery 周期内经验 ≥ minXP、公开成长资料且账号启用的用户（按经验倒序、用户 ID 升序以稳定排序）。
+func (b *behavior) leaderboardQuery(period string, minXP int) *gorm.DB {
 	db := b.core.Gorm()
 	base := db.Table("user_growth_profiles AS p").
 		Joins("JOIN users u ON u.id = p.user_id").
@@ -47,10 +48,10 @@ func (b *behavior) leaderboardQuery(period string) *gorm.DB {
 			Where("created_at >= ?", time.Now().Add(-window)).
 			Group("user_id")
 		return base.Joins("JOIN (?) s ON s.user_id = p.user_id", sums).
-			Where("s.xp > 0").
+			Where("s.xp >= ?", minXP).
 			Select("p.user_id, s.xp AS xp, u.username, u.nickname, u.avatar, p.current_level")
 	}
-	return base.Where("p.lifetime_xp > 0").
+	return base.Where("p.lifetime_xp >= ?", minXP).
 		Select("p.user_id, p.lifetime_xp AS xp, u.username, u.nickname, u.avatar, p.current_level")
 }
 
@@ -58,15 +59,20 @@ func (b *behavior) leaderboardQuery(period string) *gorm.DB {
 // 公开经验排行榜（仅统计公开成长资料的启用用户）；已登录时附带本人名次 me（本人未公开也可见自己的名次）。
 func (b *behavior) Leaderboard(c *gin.Context) {
 	core := b.core
+	settings := b.settings()
+	if !settings.LeaderboardEnabled {
+		core.Fail(c, http.StatusNotFound, "排行榜未开放")
+		return
+	}
 	period := c.DefaultQuery("period", "all")
 	if _, ok := leaderboardPeriods[period]; !ok {
 		period = "all"
 	}
 	page, pageSize := core.Paginate(c)
 	var total int64
-	core.Gorm().Table("(?) AS lb", b.leaderboardQuery(period)).Count(&total)
+	core.Gorm().Table("(?) AS lb", b.leaderboardQuery(period, settings.LeaderboardMinXP)).Count(&total)
 	var rows []leaderboardRow
-	b.leaderboardQuery(period).Order("xp DESC, p.user_id ASC").Limit(pageSize).Offset((page - 1) * pageSize).Scan(&rows)
+	b.leaderboardQuery(period, settings.LeaderboardMinXP).Order("xp DESC, p.user_id ASC").Limit(pageSize).Offset((page - 1) * pageSize).Scan(&rows)
 
 	levels := b.levelsByNumber()
 	items := make([]leaderboardEntry, 0, len(rows))
@@ -77,15 +83,15 @@ func (b *behavior) Leaderboard(c *gin.Context) {
 			Level: levels[r.CurrentLevel],
 		})
 	}
-	out := gin.H{"items": items, "total": total, "page": page, "page_size": pageSize, "period": period}
+	out := gin.H{"items": items, "total": total, "page": page, "page_size": pageSize, "period": period, "min_xp": settings.LeaderboardMinXP}
 	if u := core.CurrentUser(c); u != nil {
-		out["me"] = b.myLeaderboardRank(u, period, levels)
+		out["me"] = b.myLeaderboardRank(u, period, settings.LeaderboardMinXP, levels)
 	}
 	core.OK(c, out)
 }
 
-// myLeaderboardRank 本人在该周期的经验与名次（名次按公开榜计算：比本人经验高的公开用户数 + 1；本人经验为 0 时无名次）。
-func (b *behavior) myLeaderboardRank(u *models.User, period string, levels map[int]*models.LevelDefinition) gin.H {
+// myLeaderboardRank 本人在该周期的经验与名次（名次按公开榜计算：比本人经验高的公开用户数 + 1；未达上榜经验时无名次）。
+func (b *behavior) myLeaderboardRank(u *models.User, period string, minXP int, levels map[int]*models.LevelDefinition) gin.H {
 	db := b.core.Gorm()
 	p := b.growthProfile(u.ID)
 	xp := p.LifetimeXP
@@ -94,9 +100,9 @@ func (b *behavior) myLeaderboardRank(u *models.User, period string, levels map[i
 			Select("COALESCE(SUM(final_xp),0)").Scan(&xp)
 	}
 	me := gin.H{"xp": xp, "public": p.Public, "user": leaderboardUser{ID: u.ID, Username: u.Username, Nickname: u.Nickname, Avatar: u.Avatar}, "level": levels[p.CurrentLevel]}
-	if xp > 0 {
+	if xp >= int64(minXP) {
 		var ahead int64
-		db.Table("(?) AS lb", b.leaderboardQuery(period)).Where("lb.xp > ? AND lb.user_id <> ?", xp, u.ID).Count(&ahead)
+		db.Table("(?) AS lb", b.leaderboardQuery(period, minXP)).Where("lb.xp > ? AND lb.user_id <> ?", xp, u.ID).Count(&ahead)
 		me["rank"] = ahead + 1
 	}
 	return me

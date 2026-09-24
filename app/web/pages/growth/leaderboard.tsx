@@ -16,7 +16,7 @@ interface Level { level: number; name: string; icon_type?: string; icon_value?: 
 interface LbUser { id: number; username: string; nickname?: string; avatar?: string }
 interface Entry { rank: number; xp: number; user: LbUser; level?: Level }
 interface Me { rank?: number; xp: number; public: boolean; user: LbUser; level?: Level }
-interface Board { items: Entry[]; total: number; page: number; page_size: number; period: Period; me?: Me }
+interface Board { items: Entry[]; total: number; page: number; page_size: number; period: Period; min_xp: number; me?: Me }
 
 const PAGE_SIZE = 20
 const PERIODS: Period[] = ['all', 'month', 'week']
@@ -57,9 +57,10 @@ function LeaderboardInner() {
   const [board, setBoard] = useState<Board | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const open = site.growth_leaderboard_enabled !== false // 管理员关闭排行榜时显示未开放
   useEffect(() => { setPage(1) }, [period])
   useEffect(() => {
-    if (!router.isReady) return
+    if (!router.isReady || !open) return
     let alive = true
     setLoading(true)
     api<Board>('/growth/leaderboard', { params: { period, page, page_size: PAGE_SIZE } })
@@ -67,7 +68,7 @@ function LeaderboardInner() {
       .catch((e) => { if (alive) showToast({ title: t('growth.leaderboard.loadFailed'), message: (e as Error).message, tone: 'error' }) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [router.isReady, period, page]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router.isReady, open, period, page]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const me = board?.me
 
@@ -79,6 +80,9 @@ function LeaderboardInner() {
           <h1 className="text-2xl font-bold text-ink">{t('growth.leaderboard.title')}</h1>
           <p className="mt-1 text-sm text-slate-500">{t('growth.leaderboard.subtitle')}</p>
 
+          {!open ? (
+            <div className="mt-6"><EmptyState>{t('growth.leaderboard.closed')}</EmptyState></div>
+          ) : (<>
           <SegmentedTabs className="mt-6" value={period} ariaLabel={t('growth.leaderboard.title')}
             items={PERIODS.map((p) => ({ value: p, label: t(`growth.leaderboard.period.${p}`), href: p === 'all' ? '/growth/leaderboard' : `/growth/leaderboard?period=${p}` }))} />
 
@@ -121,6 +125,8 @@ function LeaderboardInner() {
             </Card>
           )}
           {board && <Pagination page={board.page} pageSize={board.page_size} total={board.total} onChange={setPage} />}
+          {board && board.min_xp > 1 && <p className="mt-3 text-xs text-slate-400">{t('growth.leaderboard.minXpNote', { xp: formatNumber(board.min_xp) })}</p>}
+          </>)}
         </div>
       </Container>
     </>

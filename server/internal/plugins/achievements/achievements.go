@@ -1329,10 +1329,15 @@ func (am *behavior) AdminGrantAchievement(c *gin.Context) {
 	if (created || reactivated) && am.achievementSettings().NotificationsEnabled {
 		am.core.Notify(user.ID, "achievement", fmt.Sprintf("已获得成就「%s」", definition.Name), map[string]any{"link": "/user/achievements", "achievement_key": definition.Key})
 	}
-	// 成长联动：手工授予成就同样奖励经验（dedupe 保证与自动解锁不重复）
+	// 成长联动：手工授予成就同样奖励经验（dedupe 保证与自动解锁不重复）；
+	// 撤销后重新授予时奖励已被收回，用带时间戳的去重键重新发放
 	if (created || reactivated) && definition.RewardXP > 0 {
+		dedupe := fmt.Sprintf("achievement.unlocked:%d:%d", user.ID, definition.ID)
+		if reactivated {
+			dedupe = fmt.Sprintf("%s:regrant:%d", dedupe, now.UnixNano())
+		}
 		plugincore.RecordExperience(am.core, user.ID, "achievement.unlocked", "achievement", strconv.FormatUint(uint64(definition.ID), 10),
-			fmt.Sprintf("achievement.unlocked:%d:%d", user.ID, definition.ID), definition.RewardXP, "")
+			dedupe, definition.RewardXP, "")
 	}
 	am.core.OK(c, grant)
 }
@@ -1356,6 +1361,8 @@ func (am *behavior) AdminRevokeAchievement(c *gin.Context) {
 		return
 	}
 	am.core.RecordAudit(c, "achievement.revoked", "achievement_grant", auditID(grant.ID), grant.Achievement.Name, map[string]any{"user_id": grant.UserID, "reason": strings.TrimSpace(req.Reason)})
+	// 成长联动：收回该成就的奖励经验（成长插件未启用时为空操作）
+	plugincore.RevokeExperience(am.core, grant.UserID, "achievement.unlocked", strconv.FormatUint(uint64(grant.AchievementID), 10), "achievement_revoked")
 	am.core.OK(c, gin.H{"message": "成就已撤销"})
 }
 

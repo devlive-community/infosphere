@@ -386,3 +386,39 @@ func RegisterBookDataModels(models ...any) { bookDataModels = append(bookDataMod
 
 // BookDataModels 返回全部已登记的书籍归属模型。
 func BookDataModels() []any { return bookDataModels }
+
+// ExperienceRevoker 收回某用户由某来源（规则键 + 来源 ID）获得、尚未收回的经验（记等额负流水）。
+type ExperienceRevoker func(core Core, userID uint, ruleKey, sourceID, reason string)
+
+var experienceRevoker ExperienceRevoker
+
+// ProvideExperienceRevoker 由成长插件登记经验收回实现。
+func ProvideExperienceRevoker(f ExperienceRevoker) { experienceRevoker = f }
+
+// RevokeExperience 收回经验（成长插件未提供或禁用时为空操作）；如成就被撤销时收回其奖励经验。
+func RevokeExperience(core Core, userID uint, ruleKey, sourceID, reason string) {
+	if experienceRevoker != nil {
+		experienceRevoker(core, userID, ruleKey, sourceID, reason)
+	}
+}
+
+// —— 公开站点配置：插件为 GET /site 补充不敏感的配置项（如某功能是否开放），供前端联动入口显示。——
+
+// SiteConfigProvider 返回要合并进公开站点配置的键值。
+type SiteConfigProvider func(core Core) map[string]any
+
+var siteConfigProviders []SiteConfigProvider
+
+// RegisterPublicSiteConfig 登记公开站点配置提供者。
+func RegisterPublicSiteConfig(f SiteConfigProvider) {
+	siteConfigProviders = append(siteConfigProviders, f)
+}
+
+// CollectPublicSiteConfig 把各插件提供的公开配置合并进 into。
+func CollectPublicSiteConfig(core Core, into map[string]any) {
+	for _, f := range siteConfigProviders {
+		for k, v := range f(core) {
+			into[k] = v
+		}
+	}
+}

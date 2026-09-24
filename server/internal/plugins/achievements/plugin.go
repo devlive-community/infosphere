@@ -42,6 +42,13 @@ func init() {
 		_, err := (&behavior{core: core}).enqueueAchievementRecalculation(0)
 		return err
 	})
+	// 公开站点配置：achievements_enabled（前端据此显示成就入口；未设置时不下发，与迁移前一致）
+	plugincore.RegisterPublicSiteConfig(func(core plugincore.Core) map[string]any {
+		if v := core.GetSetting(cfgAchievementsEnabled); v != "" {
+			return map[string]any{cfgAchievementsEnabled: v}
+		}
+		return nil
+	})
 	// 删除用户时一并清理其成就数据
 	plugincore.RegisterUserDataModels(&models.UserAchievementProgress{}, &models.UserAchievement{}, &models.AchievementEvent{})
 	plugins.Register(plugins.Meta{
