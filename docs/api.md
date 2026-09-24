@@ -417,6 +417,8 @@ Authorization: Bearer <token>
 | GET | `/growth/settings` | 模块是否启用（不受插件守卫，禁用返回 `enabled:false`） | 公开 |
 | GET | `/growth/levels` | 等级阶梯（active） | 公开 |
 | GET | `/growth/leaderboard?period=all / week / month&page&page_size` | 经验排行榜：`all` 按累计经验，`week`/`month` 按近 7/30 天流水之和（含收回的负经验）；仅含公开成长资料、经验达到「最少上榜经验」的启用用户；管理员关闭排行榜时 404。响应 `{items:[{rank,xp,user,level}],total,page,page_size,period,min_xp,me?}`，登录时 `me` 为本人经验与名次（未公开也可见） | 公开 |
+| GET | `/users/me/checkin?month=YYYY-MM` | 签到状态：`{enabled,today,checked_today,streak,longest_streak,total_days,streak_bonus_days,next_bonus_in,month,days[]}` | `growth:read` |
+| POST | `/users/me/checkin` | 今日签到（幂等；同日重复返回 `already:true`）：发出 `checkin.created`，连续每满 N 天另发 `checkin.streak_milestone`（经验规则 `checkin.daily` / `checkin.streak_bonus`，成就指标 `checkin.*`）；响应含 `xp_awarded`、`milestone`；签到关闭时 404 | `growth:update` |
 | GET | `/users/:username/growth` | 用户公开等级（用户隐藏则 `public:false`） | 公开 |
 | GET | `/users/me/growth` | 我的成长（等级/经验/进度/下一级） | `growth:read` |
 | GET | `/users/me/experience-events?page=` | 我的经验流水（分页） | `growth:read` |
@@ -424,10 +426,10 @@ Authorization: Bearer <token>
 | GET | `/admin/growth/levels` | 全部等级（含归档） | `growth:manage` |
 | POST/PUT/DELETE | `/admin/growth/levels[/:id]` | 等级增删改（等级 1 不可删、阈值恒 0；编号唯一） | `growth:manage` |
 | POST | `/admin/growth/adjust` | `{user_id 或 username, xp, reason}` 人工加减经验（优先按 user_id；响应含 username 与最新经验/等级）（写审计，生成 adjustment 流水） | `experience:adjust` |
-| GET | `/admin/growth/rules` | 经验规则列表（按代码内的经验触发器目录补建缺失规则：原有阅读章节/发布章节/发表评论默认启用，其余业务活动如阅读时长、标注、建书、点赞、收到评论、账号安全等默认停用） | `growth:manage` |
+| GET | `/admin/growth/rules` | 经验规则列表，附 `stats_7d{rule_key:{count,xp}}` 近 7 天发放统计（按代码内的经验触发器目录补建缺失规则：原有阅读章节/发布章节/发表评论默认启用，其余业务活动如阅读时长、标注、建书、点赞、收到评论、账号安全等默认停用） | `growth:manage` |
 | PUT | `/admin/growth/rules/:id` | 更新规则 `{base_xp,daily_cap,enabled}` | `growth:manage` |
 | GET | `/admin/growth/events?user_id&rule_key&page&page_size` | 全站经验流水（倒序），可按用户/规则筛选，条目附 `user{id,username,nickname,avatar}` | `growth:manage` |
-| GET/PUT | `/admin/growth/settings` | 成长设置 `{leaderboard_enabled, leaderboard_min_xp}`（最少上榜经验 1–1000000）；公开站点配置 `GET /site` 同步下发 `growth_leaderboard_enabled` | `growth:manage` |
+| GET/PUT | `/admin/growth/settings` | 成长设置 `{leaderboard_enabled, leaderboard_min_xp, checkin_enabled, checkin_streak_days}`（最少上榜经验 1–1000000，连续签到奖励周期 2–365 天；PUT 可只传部分字段）；公开站点配置 `GET /site` 同步下发 `growth_leaderboard_enabled` | `growth:manage` |
 
 - 成就定义新增 `reward_xp`（默认 0）：解锁时给作者奖励经验（每 user+achievement 只结算一次）。
 - **经验规则**（`ExperienceRule`）：固定事件（`reading.chapter`、`creation.chapter_published`、`community.comment`）的经验金额与**每人每日上限**由规则表配置，启用时种子默认规则；成就/管理员调整不走规则（金额分别为 reward_xp / 手工值）。

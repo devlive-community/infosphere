@@ -388,3 +388,56 @@ func TestLeaderboardSettings(t *testing.T) {
 		t.Fatalf("关闭后公开配置应为 false: site=%v settings=%v", site["data"], settings["data"])
 	}
 }
+
+// 每日签到：首次签到得经验、同日重复签到幂等；连续签到满 N 天发连续奖励；关闭签到后 404；规则列表带近 7 天统计。
+func TestDailyCheckin(t *testing.T) {
+	e := newTestEnv(t)
+	u := e.user(t, "checkin-user")
+
+	status, payload := e.doAs(t, u, http.MethodPost, "/api/v1/users/me/checkin", "")
+	data := payload["data"].(map[string]any)
+	if status != http.StatusOK || data["already"] != false || data["xp_awarded"].(float64) != 5 || data["streak"].(float64) != 1 || data["checked_today"] != true {
+		t.Fatalf("首次签到应得 5 经验、连续 1 天: %d %v", status, payload)
+	}
+	if days := data["days"].([]any); len(days) != 1 || days[0] != data["today"] {
+		t.Fatalf("当月签到日历应含今天: %v", data)
+	}
+	_, payload = e.doAs(t, u, http.MethodPost, "/api/v1/users/me/checkin", "")
+	data = payload["data"].(map[string]any)
+	if data["already"] != true || data["xp_awarded"].(float64) != 0 || data["total_days"].(float64) != 1 {
+		t.Fatalf("同日重复签到应幂等: %v", data)
+	}
+
+	// 连续签到：已连续 6 天（到昨天），今天签到达成 7 天 → 每日 5 + 连续奖励 20
+	streaker := e.user(t, "checkin-streak")
+	for i := 6; i >= 1; i-- {
+		day := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
+		e.db.Create(&models.UserCheckin{UserID: streaker.ID, Day: day, Streak: 7 - i})
+	}
+	_, payload = e.doAs(t, streaker, http.MethodPost, "/api/v1/users/me/checkin", "")
+	data = payload["data"].(map[string]any)
+	if data["streak"].(float64) != 7 || data["milestone"] != true || data["xp_awarded"].(float64) != 25 || data["next_bonus_in"].(float64) != 7 {
+		t.Fatalf("连续 7 天应触发连续奖励（共 25 经验）: %v", data)
+	}
+	_, payload = e.doAs(t, streaker, http.MethodGet, "/api/v1/users/me/checkin", "")
+	if st := payload["data"].(map[string]any); st["longest_streak"].(float64) != 7 || st["total_days"].(float64) != 7 {
+		t.Fatalf("签到状态统计错误: %v", st)
+	}
+
+	// 规则列表：签到规则默认启用，并带近 7 天发放统计
+	_, payload = e.do(t, http.MethodGet, "/api/v1/admin/growth/rules", "")
+	stats := payload["data"].(map[string]any)["stats_7d"].(map[string]any)
+	if daily := stats["checkin.daily"].(map[string]any); daily["count"].(float64) != 2 || daily["xp"].(float64) != 10 {
+		t.Fatalf("checkin.daily 近 7 天应发放 2 次共 10 经验: %v", stats)
+	}
+
+	// 关闭签到
+	e.do(t, http.MethodPut, "/api/v1/admin/growth/settings", `{"checkin_enabled":false}`)
+	if status, _ := e.doAs(t, e.user(t, "checkin-late"), http.MethodPost, "/api/v1/users/me/checkin", ""); status != http.StatusNotFound {
+		t.Fatalf("关闭签到后应 404，实际 %d", status)
+	}
+	_, payload = e.do(t, http.MethodGet, "/api/v1/growth/settings", "")
+	if payload["data"].(map[string]any)["checkin_enabled"] != false {
+		t.Fatalf("公开设置应反映签到已关闭: %v", payload["data"])
+	}
+}

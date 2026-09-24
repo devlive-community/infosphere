@@ -154,6 +154,9 @@ var achievementMetrics = []achievementMetric{
 	{Key: "account.oauth_bindings", Label: "绑定第三方账号", Category: "account", Description: "当前绑定的 OAuth 提供方数量", Aggregation: "count", Unit: "个", Windows: []string{"lifetime"}},
 	{Key: "account.email_verified", Label: "完成邮箱验证", Category: "account", Description: "邮箱已经通过验证", Aggregation: "current", Unit: "", Windows: []string{"lifetime"}},
 	{Key: "account.two_factor_enabled", Label: "开启二次认证", Category: "account", Description: "账号当前已经开启 TOTP 二次认证", Aggregation: "current", Unit: "", Windows: []string{"lifetime"}},
+	{Key: "checkin.total_days", Label: "累计签到天数", Category: "account", Description: "每日签到的累计天数（需启用成长插件）", Aggregation: "count", Unit: "天", Windows: []string{"lifetime", "calendar_month", "rolling_days"}},
+	{Key: "checkin.current_streak", Label: "当前连续签到", Category: "account", Description: "截至今天（或昨天）的连续签到天数，中断即归零（需启用成长插件）", Aggregation: "current", Unit: "天", Windows: []string{"lifetime"}},
+	{Key: "checkin.longest_streak", Label: "最长连续签到", Category: "account", Description: "历史上最长的一次连续签到天数（需启用成长插件）", Aggregation: "current", Unit: "天", Windows: []string{"lifetime"}},
 }
 
 func metricByKey(key string) (achievementMetric, bool) {
@@ -810,6 +813,26 @@ func (am *behavior) evaluateAchievementMetric(userID uint, rule models.Achieveme
 					value = p.LifetimeXP
 				} else {
 					value = int64(p.CurrentLevel)
+				}
+			}
+		}
+	case "checkin.total_days", "checkin.current_streak", "checkin.longest_streak":
+		// 签到指标：签到表由成长插件建，需启用成长插件且表存在，否则记 0
+		if am.core.PluginEnabled(plugins.KeyGrowth) && am.core.Gorm().Migrator().HasTable(&models.UserCheckin{}) {
+			db := am.core.Gorm().Model(&models.UserCheckin{}).Where("user_id = ?", userID)
+			switch rule.MetricKey {
+			case "checkin.total_days":
+				err = applyAchievementWindow(db, "created_at", rule).Count(&value).Error
+			case "checkin.longest_streak":
+				err = db.Select("COALESCE(MAX(streak),0)").Scan(&value).Error
+			default:
+				// 最近一次签到是今天或昨天时连续未中断
+				var last models.UserCheckin
+				if db.Order("day DESC").First(&last).Error == nil {
+					now := currentTime().In(time.Local)
+					if last.Day == now.Format("2006-01-02") || last.Day == now.AddDate(0, 0, -1).Format("2006-01-02") {
+						value = int64(last.Streak)
+					}
 				}
 			}
 		}

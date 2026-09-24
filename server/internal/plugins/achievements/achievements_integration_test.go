@@ -429,3 +429,40 @@ func TestAchievementRewardXPExactlyOnceAcrossGrowthToggles(t *testing.T) {
 		t.Fatalf("停用期间获得的成就应在启用后补发一份，实际 %d", xp(other))
 	}
 }
+
+// 签到成就指标：累计签到天数（可按窗口）、当前连续（中断归零）、最长连续。
+func TestCheckinAchievementMetrics(t *testing.T) {
+	e := newTestEnv(t)
+	e.enable(t, "achievements")
+	e.enable(t, "growth")
+	user := e.user(t, "checkin-metrics")
+	day := func(offset int) string { return time.Now().AddDate(0, 0, offset).Format("2006-01-02") }
+	// 早期一段连续 5 天（已中断），最近连续 3 天到昨天
+	for i, off := range []int{-20, -19, -18, -17, -16} {
+		e.db.Create(&models.UserCheckin{UserID: user.ID, Day: day(off), Streak: i + 1})
+	}
+	for i, off := range []int{-3, -2, -1} {
+		e.db.Create(&models.UserCheckin{UserID: user.ID, Day: day(off), Streak: i + 1})
+	}
+	metric := func(key, window string, value int) int64 {
+		v, err := achievements.EvaluateMetric(e.app, user.ID, models.AchievementRule{MetricKey: key, WindowType: window, WindowValue: value})
+		if err != nil {
+			t.Fatalf("metric %s: %v", key, err)
+		}
+		return v
+	}
+	if v := metric("checkin.total_days", "lifetime", 0); v != 8 {
+		t.Fatalf("累计签到应为 8，实际 %d", v)
+	}
+	if v := metric("checkin.longest_streak", "lifetime", 0); v != 5 {
+		t.Fatalf("最长连续应为 5，实际 %d", v)
+	}
+	if v := metric("checkin.current_streak", "lifetime", 0); v != 3 {
+		t.Fatalf("当前连续（到昨天）应为 3，实际 %d", v)
+	}
+	// 断签：最近一次签到在 2 天前 → 当前连续归零
+	e.db.Where("user_id = ? AND day = ?", user.ID, day(-1)).Delete(&models.UserCheckin{})
+	if v := metric("checkin.current_streak", "lifetime", 0); v != 0 {
+		t.Fatalf("断签后当前连续应为 0，实际 %d", v)
+	}
+}

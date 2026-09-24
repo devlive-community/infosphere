@@ -26,6 +26,7 @@ interface Level {
 
 interface LevelForm { id?: number; level: number; name: string; description: string; icon_type: string; icon_value: string; color: string; min_xp: number; status: string }
 interface Rule { id: number; rule_key: string; label: string; base_xp: number; daily_cap: number; enabled: boolean }
+interface RuleStat { count: number; xp: number }
 interface LedgerItem { id: number; rule_key: string; final_xp: number; reason?: string; created_at: string; user?: UserLite }
 type Tab = 'levels' | 'rules' | 'events' | 'settings'
 
@@ -50,29 +51,17 @@ function AdminGrowthInner() {
   const [adjReason, setAdjReason] = useState('')
   const [adjusting, setAdjusting] = useState(false)
   const [rules, setRules] = useState<Rule[] | null>(null)
-  const [savingRule, setSavingRule] = useState<number | null>(null)
+  const [ruleStats, setRuleStats] = useState<Record<string, RuleStat>>({})
   const router = useRouter()
   const tab: Tab = (['rules', 'events', 'settings'] as Tab[]).includes(router.query.tab as Tab) ? (router.query.tab as Tab) : 'levels' // tab 由 URL 驱动
   const ruleLabel = useRuleLabel()
 
   const load = useCallback(() => {
     api<{ items: Level[] }>('/admin/growth/levels').then((r) => setLevels(r.items || [])).catch((e) => showToast({ title: t('admin.growth.loadFailed'), message: (e as Error).message, tone: 'error' }))
-    api<{ items: Rule[] }>('/admin/growth/rules').then((r) => setRules(r.items || [])).catch(() => {})
+    api<{ items: Rule[]; stats_7d?: Record<string, RuleStat> }>('/admin/growth/rules').then((r) => { setRules(r.items || []); setRuleStats(r.stats_7d || {}) }).catch(() => {})
   }, [showToast, t])
   useEffect(() => { load() }, [load])
 
-  async function saveRule(rule: Rule) {
-    setSavingRule(rule.id)
-    try {
-      await api(`/admin/growth/rules/${rule.id}`, { method: 'PUT', body: { base_xp: rule.base_xp, daily_cap: rule.daily_cap, enabled: rule.enabled } })
-      showToast({ message: t('admin.growth.ruleSaved'), tone: 'success' })
-    } catch (e) {
-      showToast({ title: t('admin.growth.saveFailed'), message: (e as Error).message, tone: 'error' })
-    } finally { setSavingRule(null) }
-  }
-  function patchRule(id: number, patch: Partial<Rule>) {
-    setRules((rs) => (rs || []).map((r) => (r.id === id ? { ...r, ...patch } : r)))
-  }
 
   async function save() {
     if (!form || !form.name.trim()) return
@@ -169,34 +158,8 @@ function AdminGrowthInner() {
         </Card>
       </div>
 
-      {/* 经验规则（仅在「经验规则」tab 显示） */}
-      <Card className={`mt-6 p-5 ${tab === 'rules' ? '' : 'hidden'}`}>
-        <h2 className="font-bold text-slate-900">{t('admin.growth.rulesTitle')}</h2>
-        <p className="mt-1 text-xs text-slate-400">{t('admin.growth.rulesHint')}</p>
-        {rules === null ? <Loading className="py-6" /> : rules.length === 0 ? (
-          <div className="mt-3"><EmptyState>{t('admin.growth.rulesEmpty')}</EmptyState></div>
-        ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-[640px] w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs text-slate-500">
-                <tr><th className="px-4 py-2.5">{t('admin.growth.rule.event')}</th><th className="px-4 py-2.5">{t('admin.growth.rule.baseXp')}</th><th className="px-4 py-2.5">{t('admin.growth.rule.dailyCap')}</th><th className="px-4 py-2.5">{t('admin.growth.rule.enabled')}</th><th className="px-4 py-2.5 text-right">{t('admin.growth.col.action')}</th></tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rules.map((r) => (
-                  <tr key={r.id}>
-                    <td className="px-4 py-2.5"><span className="block font-medium text-slate-800">{ruleLabel(r.rule_key, r.label)}</span><span className="font-mono text-xs text-slate-400">{r.rule_key}</span></td>
-                    <td className="px-4 py-2.5"><span className="inline-block w-24"><Input type="number" min={0} value={r.base_xp} onChange={(e) => patchRule(r.id, { base_xp: Math.max(0, Number(e.target.value) || 0) })} /></span></td>
-                    <td className="px-4 py-2.5"><span className="inline-block w-24"><Input type="number" min={0} value={r.daily_cap} onChange={(e) => patchRule(r.id, { daily_cap: Math.max(0, Number(e.target.value) || 0) })} /></span></td>
-                    <td className="px-4 py-2.5"><Switch ariaLabel={r.label} checked={r.enabled} onChange={(v) => patchRule(r.id, { enabled: v })} /></td>
-                    <td className="px-4 py-2.5 text-right"><Button size="sm" loading={savingRule === r.id} onClick={() => saveRule(r)}>{t('common.actions.save')}</Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-2 text-xs text-slate-400">{t('admin.growth.rule.capNote')} {t('admin.growth.rule.catalogNote')}</p>
-          </div>
-        )}
-      </Card>
+      {/* 经验规则（仅在「经验规则」tab 挂载） */}
+      {tab === 'rules' && <RulesPanel rules={rules} stats={ruleStats} onRules={setRules} />}
 
       {/* 经验流水（仅在「经验流水」tab 挂载，按需加载） */}
       {tab === 'events' && <LedgerPanel rules={rules || []} />}
@@ -304,9 +267,9 @@ function LedgerPanel({ rules }: { rules: Rule[] }) {
   )
 }
 
-interface GrowthSettings { leaderboard_enabled: boolean; leaderboard_min_xp: number }
+interface GrowthSettings { leaderboard_enabled: boolean; leaderboard_min_xp: number; checkin_enabled: boolean; checkin_streak_days: number }
 
-// SettingsPanel 成长设置：经验排行榜开关与最少上榜经验。
+// SettingsPanel 成长设置：经验排行榜（开关、最少上榜经验）与每日签到（开关、连续签到奖励周期）。
 function SettingsPanel() {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
@@ -349,8 +312,140 @@ function SettingsPanel() {
               onChange={(e) => setForm({ ...form, leaderboard_min_xp: Math.min(1000000, Math.max(1, Number(e.target.value) || 1)) })} trailing={<span className="text-xs text-slate-400">XP</span>} />
           </span>
         </Field>
+        <div className="flex items-start justify-between gap-4 border-t border-slate-100 pt-5">
+          <div>
+            <div className="text-sm font-medium text-slate-900">{t('admin.growth.settings.checkinEnabled')}</div>
+            <p className="mt-1 text-xs text-slate-400">{t('admin.growth.settings.checkinEnabledHint')}</p>
+          </div>
+          <Switch ariaLabel={t('admin.growth.settings.checkinEnabled')} checked={form.checkin_enabled} onChange={(v) => setForm({ ...form, checkin_enabled: v })} />
+        </div>
+        <Field label={t('admin.growth.settings.streakDays')} hint={t('admin.growth.settings.streakDaysHint')}>
+          <span className="block w-40">
+            <Input type="number" min={2} max={365} value={form.checkin_streak_days} disabled={!form.checkin_enabled}
+              onChange={(e) => setForm({ ...form, checkin_streak_days: Math.min(365, Math.max(2, Number(e.target.value) || 2)) })} trailing={<span className="text-xs text-slate-400">{t('admin.growth.settings.daysUnit')}</span>} />
+          </span>
+        </Field>
       </div>
       <div className="mt-6 flex justify-end"><Button loading={saving} onClick={save}>{t('common.actions.save')}</Button></div>
+    </Card>
+  )
+}
+
+// 规则分组：按规则键前缀归类（签到/阅读/创作/互动/账号），其余归「其他」。
+const RULE_GROUPS = ['checkin', 'reading', 'creation', 'community', 'account', 'other'] as const
+type RuleGroup = typeof RULE_GROUPS[number]
+function ruleGroup(key: string): RuleGroup {
+  const prefix = key.split('.')[0] as RuleGroup
+  return (RULE_GROUPS as readonly string[]).includes(prefix) ? prefix : 'other'
+}
+
+// RulesPanel 经验规则：启用开关点击即保存（乐观更新，失败回滚）；经验值/每日上限修改后「保存」才生效。
+// 按类别分组，展示规则说明与近 7 天发放统计。
+function RulesPanel({ rules, stats, onRules }: { rules: Rule[] | null; stats: Record<string, RuleStat>; onRules: (updater: (rs: Rule[] | null) => Rule[] | null) => void }) {
+  const { t } = useTranslation()
+  const { showToast } = useFeedback()
+  const ruleLabel = useRuleLabel()
+  // saved 为服务端已保存的值；rules 为界面编辑中的值（仅经验值/上限可能未保存）
+  const [saved, setSaved] = useState<Record<number, Rule>>({})
+  const [busy, setBusy] = useState<Record<number, 'toggle' | 'save' | undefined>>({})
+  useEffect(() => {
+    if (!rules) return
+    setSaved((prev) => {
+      const next = { ...prev }
+      for (const r of rules) if (!next[r.id]) next[r.id] = r
+      return next
+    })
+  }, [rules])
+
+  function patch(id: number, changes: Partial<Rule>) {
+    onRules((rs) => (rs || []).map((r) => (r.id === id ? { ...r, ...changes } : r)))
+  }
+  async function put(id: number, body: Pick<Rule, 'base_xp' | 'daily_cap' | 'enabled'>) {
+    return api<Rule>(`/admin/growth/rules/${id}`, { method: 'PUT', body })
+  }
+  async function toggle(r: Rule, enabled: boolean) {
+    const base = saved[r.id] || r
+    setBusy((b) => ({ ...b, [r.id]: 'toggle' }))
+    patch(r.id, { enabled })
+    try {
+      // 只提交启用状态，经验值/上限用已保存的值，避免把未保存的编辑顺带提交
+      const updated = await put(r.id, { base_xp: base.base_xp, daily_cap: base.daily_cap, enabled })
+      setSaved((s) => ({ ...s, [r.id]: updated }))
+      showToast({ message: t(enabled ? 'admin.growth.rule.enabledToast' : 'admin.growth.rule.disabledToast', { name: ruleLabel(r.rule_key, r.label) }), tone: 'success' })
+    } catch (e) {
+      patch(r.id, { enabled: !enabled })
+      showToast({ title: t('admin.growth.saveFailed'), message: (e as Error).message, tone: 'error' })
+    } finally { setBusy((b) => ({ ...b, [r.id]: undefined })) }
+  }
+  async function save(r: Rule) {
+    setBusy((b) => ({ ...b, [r.id]: 'save' }))
+    try {
+      const updated = await put(r.id, { base_xp: r.base_xp, daily_cap: r.daily_cap, enabled: saved[r.id]?.enabled ?? r.enabled })
+      setSaved((s) => ({ ...s, [r.id]: updated }))
+      showToast({ message: t('admin.growth.ruleSaved'), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('admin.growth.saveFailed'), message: (e as Error).message, tone: 'error' })
+    } finally { setBusy((b) => ({ ...b, [r.id]: undefined })) }
+  }
+  const dirty = (r: Rule) => { const s = saved[r.id]; return !!s && (s.base_xp !== r.base_xp || s.daily_cap !== r.daily_cap) }
+  const ruleDesc = (key: string) => { const k = `admin.growth.ruleDesc.${key}`; const v = t(k); return v === k ? '' : v }
+
+  return (
+    <Card className="mt-6 p-5">
+      <h2 className="font-bold text-slate-900">{t('admin.growth.rulesTitle')}</h2>
+      <p className="mt-1 text-xs text-slate-400">{t('admin.growth.rulesHint')}</p>
+      {rules === null ? <Loading className="py-6" /> : rules.length === 0 ? (
+        <div className="mt-3"><EmptyState>{t('admin.growth.rulesEmpty')}</EmptyState></div>
+      ) : (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-slate-50 text-left text-xs text-slate-500">
+              <tr>
+                <th className="px-4 py-2.5">{t('admin.growth.rule.event')}</th>
+                <th className="px-4 py-2.5">{t('admin.growth.rule.baseXp')}</th>
+                <th className="px-4 py-2.5">{t('admin.growth.rule.dailyCap')}</th>
+                <th className="px-4 py-2.5">{t('admin.growth.rule.stats7d')}</th>
+                <th className="px-4 py-2.5">{t('admin.growth.rule.enabled')}</th>
+                <th className="px-4 py-2.5 text-right">{t('admin.growth.col.action')}</th>
+              </tr>
+            </thead>
+            {RULE_GROUPS.map((group) => {
+              const list = rules.filter((r) => ruleGroup(r.rule_key) === group)
+              if (list.length === 0) return null
+              return (
+                <tbody key={group} className="divide-y divide-slate-100 border-t border-slate-100">
+                  <tr><td colSpan={6} className="bg-slate-50/60 px-4 py-1.5 text-xs font-semibold text-slate-500">{t(`admin.growth.ruleGroup.${group}`)}</td></tr>
+                  {list.map((r) => {
+                    const stat = stats[r.rule_key]
+                    return (
+                      <tr key={r.id} className={r.enabled ? '' : 'text-slate-400'}>
+                        <td className="px-4 py-2.5">
+                          <span className={`block font-medium ${r.enabled ? 'text-slate-800' : 'text-slate-500'}`}>{ruleLabel(r.rule_key, r.label)}</span>
+                          {ruleDesc(r.rule_key) && <span className="block text-xs text-slate-400">{ruleDesc(r.rule_key)}</span>}
+                          <span className="font-mono text-[11px] text-slate-300">{r.rule_key}</span>
+                        </td>
+                        <td className="px-4 py-2.5"><span className="inline-block w-24"><Input type="number" min={0} value={r.base_xp} onChange={(e) => patch(r.id, { base_xp: Math.max(0, Number(e.target.value) || 0) })} /></span></td>
+                        <td className="px-4 py-2.5"><span className="inline-block w-24"><Input type="number" min={0} value={r.daily_cap} onChange={(e) => patch(r.id, { daily_cap: Math.max(0, Number(e.target.value) || 0) })} /></span></td>
+                        <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{stat ? t('admin.growth.rule.statsValue', { count: stat.count, xp: stat.xp }) : '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <span className="inline-flex items-center gap-2">
+                            <Switch ariaLabel={ruleLabel(r.rule_key, r.label)} checked={r.enabled} disabled={!!busy[r.id]} onChange={(v) => toggle(r, v)} />
+                            {busy[r.id] === 'toggle' && <i className="fa-solid fa-spinner fa-spin text-xs text-slate-400" aria-hidden="true" />}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <Button size="sm" variant={dirty(r) ? 'primary' : 'outline'} disabled={!dirty(r) || !!busy[r.id]} loading={busy[r.id] === 'save'} onClick={() => save(r)}>{t('common.actions.save')}</Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              )
+            })}
+          </table>
+          <p className="mt-2 text-xs text-slate-400">{t('admin.growth.rule.capNote')} {t('admin.growth.rule.autoSaveNote')} {t('admin.growth.rule.catalogNote')}</p>
+        </div>
+      )}
     </Card>
   )
 }

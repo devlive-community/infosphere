@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Container from '@/components/Container'
 import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
+import CheckinCard from '@/components/CheckinCard'
 import Seo from '@/components/Seo'
 import { api, formatNumber } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
@@ -37,18 +38,19 @@ function MyGrowthInner() {
   const [events, setEvents] = useState<{ items: XPEvent[]; total: number; page: number; page_size: number } | null>(null)
   const [page, setPage] = useState(1)
   const [savingPublic, setSavingPublic] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0) // 签到后刷新经验与流水
 
   useEffect(() => {
     if (!user) return
     api<Growth>('/users/me/growth').then(setGrowth).catch(() => {})
     api<{ items: Level[] }>('/growth/levels').then((r) => setLevels(r.items || [])).catch(() => {})
-  }, [user])
+  }, [user, reloadKey])
 
   useEffect(() => {
     if (!user) return
     api<{ items: XPEvent[]; total: number; page: number; page_size: number }>('/users/me/experience-events', { params: { page, page_size: 10 } })
       .then(setEvents).catch(() => {})
-  }, [user, page])
+  }, [user, page, reloadKey])
 
   async function togglePublic(next: boolean) {
     if (!growth) return
@@ -102,6 +104,8 @@ function MyGrowthInner() {
               {t('growth.publicToggle')}
             </label>
           </Card>
+
+          <CheckinCard onCheckedIn={() => { setPage(1); setReloadKey((k) => k + 1) }} />
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
             {/* 等级路线 */}

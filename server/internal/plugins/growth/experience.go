@@ -49,7 +49,7 @@ func init() {
 		return nil
 	})
 	// 删除用户时一并清理其成长数据
-	plugincore.RegisterUserDataModels(&models.UserGrowthProfile{}, &models.ExperienceEvent{}, &models.UserLevelHistory{})
+	plugincore.RegisterUserDataModels(&models.UserGrowthProfile{}, &models.ExperienceEvent{}, &models.UserLevelHistory{}, &models.UserCheckin{})
 }
 
 // seedDefaultLevels 首次启用时种子一套默认等级（已存在则跳过）。
@@ -111,6 +111,9 @@ var xpCatalog = []xpTrigger{
 	{RuleKey: "account.two_factor_enabled", Activity: "account.two_factor_enabled", Label: "开启二次认证", BaseXP: 20, SortOrder: 13},
 	{RuleKey: "account.oauth_bound", Activity: "account.oauth_bound", Label: "绑定第三方账号", BaseXP: 5, DailyCap: 15, SortOrder: 14},
 	{RuleKey: "account.invited_user", Activity: "account.invited_user", Label: "邀请用户注册", BaseXP: 20, DailyCap: 100, SortOrder: 15},
+	// 签到为新功能，规则默认启用（不存在「升级后行为突变」的顾虑）
+	{RuleKey: "checkin.daily", Activity: "checkin.created", Label: "每日签到", BaseXP: 5, Enabled: true, SortOrder: 16},
+	{RuleKey: "checkin.streak_bonus", Activity: "checkin.streak_milestone", Label: "连续签到奖励", BaseXP: 20, Enabled: true, SortOrder: 17},
 }
 
 // ensureExperienceRules 为目录中缺失的触发器补建规则（已存在的规则不改动，保留管理员的配置）。

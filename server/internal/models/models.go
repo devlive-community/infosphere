@@ -547,6 +547,15 @@ type UserLevelHistory struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// UserCheckin 每日签到（成长插件）：每用户每个自然日（服务器本地时区）一条；Streak 为截至当天的连续签到天数。
+type UserCheckin struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"uniqueIndex:uk_user_checkin_day;not null" json:"user_id"`
+	Day       string    `gorm:"size:10;uniqueIndex:uk_user_checkin_day;not null" json:"day"` // YYYY-MM-DD
+	Streak    int       `gorm:"not null" json:"streak"`
+	CreatedAt time.Time `gorm:"index" json:"created_at"`
+}
+
 // BookFollow 模型已迁至「书籍关注」插件子包 internal/plugins/bookfollow/models.go
 // （插件独占表，随插件启用建表、卸载清除；核心不再引用该类型）。
 

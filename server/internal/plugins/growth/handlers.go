@@ -35,6 +35,8 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	api.GET("/users/me/growth", core.RequireAuth(), feat, core.RequirePermissionMiddleware(authz.GrowthRead), b.MyGrowth)
 	api.GET("/users/me/experience-events", core.RequireAuth(), feat, core.RequirePermissionMiddleware(authz.GrowthRead), b.MyExperienceEvents)
 	api.PUT("/users/me/growth/display", core.RequireAuth(), feat, core.RequirePermissionMiddleware(authz.GrowthUpdate), b.UpdateMyGrowthDisplay)
+	api.GET("/users/me/checkin", core.RequireAuth(), feat, core.RequirePermissionMiddleware(authz.GrowthRead), b.MyCheckin)
+	api.POST("/users/me/checkin", core.RequireAuth(), feat, core.RequirePermissionMiddleware(authz.GrowthUpdate), b.Checkin)
 	// 管理员
 	adminGuard := []gin.HandlerFunc{core.RequireAuth(), core.RequireAdmin(), feat}
 	reg := func(method, path string, perm authz.Permission, h gin.HandlerFunc) {
@@ -275,7 +277,22 @@ func (b *behavior) AdminListExperienceRules(c *gin.Context) {
 	b.ensureExperienceRules() // 升级后补建新增触发器的规则（默认停用）
 	rules := []models.ExperienceRule{}
 	b.core.Gorm().Order("sort_order ASC, id ASC").Find(&rules)
-	b.core.OK(c, gin.H{"items": rules})
+	// 近 7 天各规则的发放统计（只计正经验，收回的负流水不计），帮助管理员判断规则是否生效/过松
+	type ruleStat struct {
+		RuleKey string `json:"-"`
+		Count   int64  `json:"count"`
+		XP      int64  `json:"xp"`
+	}
+	var rows []ruleStat
+	b.core.Gorm().Model(&models.ExperienceEvent{}).
+		Select("rule_key, COUNT(*) AS count, COALESCE(SUM(final_xp),0) AS xp").
+		Where("created_at >= ? AND final_xp > 0", time.Now().AddDate(0, 0, -7)).
+		Group("rule_key").Scan(&rows)
+	stats := make(map[string]ruleStat, len(rows))
+	for _, r := range rows {
+		stats[r.RuleKey] = r
+	}
+	b.core.OK(c, gin.H{"items": rules, "stats_7d": stats})
 }
 
 func (b *behavior) AdminUpdateExperienceRule(c *gin.Context) {
