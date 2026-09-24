@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"log"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 
 	"knowforge/server/internal/i18ntext"
 	"knowforge/server/internal/jobqueue"
+	"knowforge/server/internal/mail"
 	"knowforge/server/internal/models"
 )
 
@@ -28,10 +32,16 @@ func init() {
 		"notify.collab.rejected":   {"zh-CN": "「{user}」已拒绝《{book}》的协作邀请", "en": `{user} declined your invitation to collaborate on "{book}"`},
 		"notify.report.resolved":   {"zh-CN": "你对“{target}”的举报已处理", "en": `Your report on "{target}" has been handled`},
 		"notify.system.upgraded":   {"zh-CN": "系统已升级到 v{version}", "en": "The system has been upgraded to v{version}"},
-		// 通知邮件的固定文案
-		"notify.email.greeting":    {"zh-CN": "你好，", "en": "Hi,"},
-		"notify.email.viewDetails": {"zh-CN": "查看详情", "en": "View details"},
-		"notify.email.footer":      {"zh-CN": "这是来自 {site} 的通知邮件。如需关闭，可在账户设置的通知设置中调整。", "en": "This notification was sent by {site}. You can turn these emails off in your account's notification settings."},
+		// 邮件固定文案（服务端专用，前端无对应键）：通用问候、通知邮件链接/页脚、系统邮件（激活邮箱、找回密码）
+		"email.common.greeting":          {"zh-CN": "你好，", "en": "Hi,"},
+		"email.notification.viewDetails": {"zh-CN": "查看详情", "en": "View details"},
+		"email.notification.footer":      {"zh-CN": "这是来自 {site} 的通知邮件。如需关闭，可在账户设置的通知设置中调整。", "en": "This notification was sent by {site}. You can turn these emails off in your account's notification settings."},
+		"email.verify.subject":           {"zh-CN": "激活你的 {site} 邮箱", "en": "Verify your email for {site}"},
+		"email.verify.intro":             {"zh-CN": "感谢注册 {site}。点击下面的链接激活你的邮箱：", "en": "Thanks for signing up for {site}. Click the link below to verify your email:"},
+		"email.verify.note":              {"zh-CN": "链接 {minutes} 分钟内有效，且只能使用一次。激活后即可创建书籍、发表评论等。如果不是你本人操作，请忽略这封邮件。", "en": "This link is valid for {minutes} minutes and can be used only once. Once verified you can create books, comment and more. If you didn't sign up, please ignore this email."},
+		"email.reset.subject":            {"zh-CN": "重置你的 {site} 密码", "en": "Reset your {site} password"},
+		"email.reset.intro":              {"zh-CN": "我们收到了重置你 {site} 账户密码的请求。点击下面的链接设置新密码：", "en": "We received a request to reset the password for your {site} account. Click the link below to set a new password:"},
+		"email.reset.note":               {"zh-CN": "链接 {minutes} 分钟内有效，且只能使用一次。如果不是你本人操作，请忽略这封邮件，你的密码不会被更改。", "en": "This link is valid for {minutes} minutes and can be used only once. If you didn't request this, ignore this email and your password won't change."},
 	} {
 		i18ntext.Register(key, tpls)
 	}
@@ -54,6 +64,28 @@ func (a *App) siteLocaleChain() []string {
 	rows, err := a.siteLocales()
 	if err != nil || len(rows) == 0 {
 		return []string{"zh-CN"}
+	}
+	return localeChain(defaultLocale(rows), rows)
+}
+
+// recipientLocaleChain 邮件收件人的语言回退链：优先其偏好语言（已启用时）；未设置时用触发请求的界面语言
+// （?locale / X-KnowForge-Locale / Cookie / Accept-Language，如刚在英文界面注册的用户），最后回退站点默认语言。
+func (a *App) recipientLocaleChain(c *gin.Context, u *models.User) []string {
+	rows, err := a.siteLocales()
+	if err != nil || len(rows) == 0 {
+		return []string{"zh-CN"}
+	}
+	if u != nil {
+		if pref, err := canonicalLocale(u.PreferredLocale); err == nil {
+			for _, r := range rows {
+				if r.Code == pref && r.Enabled {
+					return localeChain(pref, rows)
+				}
+			}
+		}
+	}
+	if c != nil {
+		return localeChain(a.requestLocale(c, rows), rows)
 	}
 	return localeChain(defaultLocale(rows), rows)
 }
@@ -175,4 +207,28 @@ func (a *App) runNotificationBackfill(ctx context.Context, _ json.RawMessage) er
 			return a.setSetting(cfgNotificationBackfilled, "true", "历史通知已回填多语言键")
 		}
 	}
+}
+
+// siteNameForMail 邮件中的站点名（未设置时 KnowForge），去掉换行以免破坏邮件头。
+func (a *App) siteNameForMail() string {
+	name := strings.TrimSpace(a.getSetting("site_name"))
+	if name == "" {
+		name = "KnowForge"
+	}
+	return strings.NewReplacer("\r", " ", "\n", " ").Replace(name)
+}
+
+// sendActionEmail 发送带操作链接的系统邮件（邮箱激活 kind=verify、找回密码 kind=reset），按收件人语言渲染。
+func (a *App) sendActionEmail(c *gin.Context, u *models.User, to, kind, link string, minutes int) error {
+	chain := a.recipientLocaleChain(c, u)
+	site := a.siteNameForMail()
+	params := map[string]string{"site": site, "minutes": strconv.Itoa(minutes)}
+	body := mail.ActionEmailHTML(mail.ActionEmail{
+		Greeting:  a.renderText("email.common.greeting", nil, chain),
+		Intro:     a.renderText("email."+kind+".intro", params, chain),
+		Link:      link,
+		Note:      a.renderText("email."+kind+".note", params, chain),
+		Signature: site,
+	})
+	return a.enqueueEmail(c.Request.Context(), to, a.renderText("email."+kind+".subject", params, chain), body)
 }

@@ -77,9 +77,9 @@ func (a *App) maybeSendNotificationEmail(userID uint, ntype, title string, paylo
 		title = a.renderText(key, params, chain)
 	}
 	text := mail.NotificationText{
-		Greeting:    a.renderText("notify.email.greeting", nil, chain),
-		ViewDetails: a.renderText("notify.email.viewDetails", nil, chain),
-		Footer:      a.renderText("notify.email.footer", map[string]string{"site": siteName}, chain),
+		Greeting:    a.renderText("email.common.greeting", nil, chain),
+		ViewDetails: a.renderText("email.notification.viewDetails", nil, chain),
+		Footer:      a.renderText("email.notification.footer", map[string]string{"site": siteName}, chain),
 	}
 	subject := strings.NewReplacer("\r", " ", "\n", " ").Replace("[" + siteName + "] " + title)
 	_ = a.enqueueEmail(context.Background(), u.Email, subject, mail.NotificationHTMLWithText(title, link, text))

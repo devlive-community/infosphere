@@ -447,6 +447,7 @@ Authorization: Bearer <token>
 - 通知类型：`comment`（评论/回复）、`reaction`（点赞/收藏）、`collaboration`（协作邀请）、`moderation`（举报处理结果）、`achievement`（成就解锁/授予）、`system`（升级完成等）
 - `payload` 为 JSON 对象，含 `link`（点击跳转地址）等扩展字段
 - 多语言：`payload.i18n = {key, params}`（如 `notify.comment.chapter` + `{user, chapter}`），前端按界面语言渲染；`title` 为站点默认语言的兜底文案。通知邮件按收件人偏好语言（`preferred_locale`）渲染标题与正文固定文案，管理员在语言包中发布的同键翻译优先。模板由核心与插件在服务端 `internal/i18ntext` 登记，须与前端字典同键同文（有测试校验）。历史通知由一次性后台任务按模板反解析补上 `i18n`，无法识别的保持原标题
+- 系统邮件（邮箱激活、找回密码）同样多语言：收件人设置了偏好语言时按偏好，否则按触发请求的界面语言（`?locale` / `X-KnowForge-Locale` / Cookie / `Accept-Language`），最后回退站点默认语言；邮件文案键为服务端专用的 `email.*`，管理员可在语言包中发布同键翻译覆盖
 - 触发规则：他人评论你的章节/回复你的评论、他人点赞/收藏你的书（重复操作不重复通知）、服务启动检测到版本变化时通知管理员
 
 ## 内容举报（登录用户）

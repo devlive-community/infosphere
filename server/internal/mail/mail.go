@@ -142,17 +142,6 @@ type NotificationText struct {
 	Footer      string // 页脚说明（已含站点名）
 }
 
-// NotificationHTML 生成通知邮件正文（中文固定文案，兼容旧调用）。
-func NotificationHTML(title, link, siteName string) string {
-	if strings.TrimSpace(siteName) == "" {
-		siteName = "KnowForge"
-	}
-	return NotificationHTMLWithText(title, link, NotificationText{
-		Greeting: "你好，", ViewDetails: "查看详情",
-		Footer: "这是来自 " + siteName + " 的通知邮件。如需关闭，可在账户设置的通知设置中调整。",
-	})
-}
-
 // NotificationHTMLWithText 以给定文案生成通知邮件正文（多语言）。
 func NotificationHTMLWithText(title, link string, text NotificationText) string {
 	action := ""
@@ -167,34 +156,23 @@ func NotificationHTMLWithText(title, link string, text NotificationText) string 
 </div>`, html.EscapeString(text.Greeting), html.EscapeString(title), action, html.EscapeString(text.Footer))
 }
 
-// VerifyEmailHTML 生成邮箱激活邮件正文
-func VerifyEmailHTML(link, siteName string, expireMinutes int) string {
-	if strings.TrimSpace(siteName) == "" {
-		siteName = "KnowForge"
-	}
-	safeLink := html.EscapeString(link)
-	safeSiteName := html.EscapeString(siteName)
-	return fmt.Sprintf(`<div style="max-width:480px;margin:0 auto;font-family:sans-serif">
-<p>你好，</p>
-<p>感谢注册 %s。点击下面的链接激活你的邮箱：</p>
-<p><a href="%s">%s</a></p>
-<p>链接 %d 分钟内有效，且只能使用一次。激活后即可创建书籍、发表评论等。如果不是你本人操作，请忽略这封邮件。</p>
-<p>%s</p>
-</div>`, safeSiteName, safeLink, safeLink, expireMinutes, safeSiteName)
+// ActionEmail 带一个操作链接的系统邮件（邮箱激活、找回密码等）的文案，已按收件人语言渲染。
+type ActionEmail struct {
+	Greeting  string // 如「你好，」
+	Intro     string // 说明与引导，如「点击下面的链接激活你的邮箱：」
+	Link      string
+	Note      string // 有效期、安全提示等
+	Signature string // 落款（站点名）
 }
 
-// ResetPasswordHTML 生成找回密码邮件正文
-func ResetPasswordHTML(link, siteName string, expireMinutes int) string {
-	if strings.TrimSpace(siteName) == "" {
-		siteName = "KnowForge"
-	}
-	safeLink := html.EscapeString(link)
-	safeSiteName := html.EscapeString(siteName)
+// ActionEmailHTML 生成带操作链接的系统邮件正文（链接同时作为可见文本，便于复制）。
+func ActionEmailHTML(e ActionEmail) string {
+	safeLink := html.EscapeString(e.Link)
 	return fmt.Sprintf(`<div style="max-width:480px;margin:0 auto;font-family:sans-serif">
-<p>你好，</p>
-<p>我们收到了重置你 %s 账户密码的请求。点击下面的链接设置新密码：</p>
-<p><a href="%s">%s</a></p>
-<p>链接 %d 分钟内有效，且只能使用一次。如果不是你本人操作，请忽略这封邮件，你的密码不会被更改。</p>
 <p>%s</p>
-</div>`, safeSiteName, safeLink, safeLink, expireMinutes, safeSiteName)
+<p>%s</p>
+<p><a href="%s">%s</a></p>
+<p>%s</p>
+<p>%s</p>
+</div>`, html.EscapeString(e.Greeting), html.EscapeString(e.Intro), safeLink, safeLink, html.EscapeString(e.Note), html.EscapeString(e.Signature))
 }

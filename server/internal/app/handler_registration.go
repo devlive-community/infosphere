@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"knowforge/server/internal/mail"
 	"knowforge/server/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -243,13 +242,7 @@ func (a *App) sendActivationEmail(c *gin.Context, u *models.User) {
 		return
 	}
 	link := a.resetLinkBase(c) + "/verify-email?token=" + token
-	siteName := strings.TrimSpace(a.getSetting("site_name"))
-	if siteName == "" {
-		siteName = "KnowForge"
-	}
-	mailSiteName := strings.NewReplacer("\r", " ", "\n", " ").Replace(siteName)
-	if err := a.enqueueEmail(c.Request.Context(), u.Email, "激活你的 "+mailSiteName+" 邮箱",
-		mail.VerifyEmailHTML(link, siteName, int(emailVerificationTTL.Minutes()))); err != nil {
+	if err := a.sendActionEmail(c, u, u.Email, "verify", link, int(emailVerificationTTL.Minutes())); err != nil {
 		log.Printf("[mail] 创建邮箱激活邮件任务失败 to=%s: %v", u.Email, err)
 	}
 }
