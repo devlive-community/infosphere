@@ -19,6 +19,7 @@ import {
   ListIcon, PencilIcon, SearchIcon, UploadIcon,
 } from '@/components/icons'
 import type { Book, Document, PageResult } from '@/lib/types'
+import { entitlementAllowed } from '@/lib/entitlements'
 
 const statusTabs = [
   { key: '', labelKey: 'books.status.all' },
@@ -177,7 +178,7 @@ export default function MyBooks() {
             <Button variant="outline" className="px-3 text-sm sm:px-5 sm:text-base" onClick={() => setImportOpen(true)}>
               <UploadIcon className="h-5 w-5" /> {t('books.action.import')}
             </Button>
-            {site.collect_site_enabled !== false && (
+            {entitlementAllowed(user, 'collect.site', site.collect_site_enabled !== false) && (
               <ButtonLink href="/books/collect" variant="outline" className="px-3 text-sm sm:px-5 sm:text-base">
                 <GlobeIcon className="h-5 w-5" /> {t('collect.title')}
               </ButtonLink>
@@ -264,8 +265,8 @@ type WebRenderMode = 'auto' | 'static' | 'browser'
 type ImportResult = { book: Book; message?: string; imported_doc?: number; render_mode?: string }
 
 function BookImportDialog({ onClose, onImported }: { onClose: () => void; onImported: () => Promise<void> }) {
-  const { site } = useApp()
-  const webCollectEnabled = site.collect_page_enabled !== false // 网页采集插件/子开关：禁用则不显示「网页」导入
+  const { site, user: me } = useApp()
+  const webCollectEnabled = entitlementAllowed(me, 'collect.page', site.collect_page_enabled !== false) // 单页采集权益（含插件启用）：无权限则不显示「网页」导入
   const [kind, setKind] = useState<ImportKind>('pdf')
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')

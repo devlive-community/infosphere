@@ -20,6 +20,8 @@ export interface User {
   invite_code?: string
   two_factor_enabled?: boolean
   deletion_requested_at?: string | null
+  /** /auth/me 下发的当前权益生效值（权益键 → 值；-1 = 不限） */
+  entitlements?: Record<string, number>
   last_login_at: string | null
   created_at: string
   updated_at: string

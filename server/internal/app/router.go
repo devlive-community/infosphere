@@ -209,6 +209,10 @@ func (a *App) Router() *gin.Engine {
 		// ── 全文搜索（search:read，匿名可搜公开内容） ──
 		api.GET("/search", a.OptionalAuth(), a.GlobalSearch)
 
+		// ── 权益：定义（供等级/会员权益编辑器）与本人生效值 ──
+		api.GET("/entitlements/definitions", a.RequireAuth(), a.EntitlementDefinitions)
+		api.GET("/users/me/entitlements", a.RequireAuth(), a.MyEntitlements)
+
 		// ── 导入书籍（book:import，ZIP / PDF 成为本人的书籍；网页导入/采集由 content-collect 插件子包注册） ──
 		api.POST("/import", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportBook)
 		api.POST("/import/pdf", a.RequireAuth(), a.RequirePermission(authz.BookImport), a.ImportPDFBook)
@@ -343,6 +347,9 @@ func (a *App) Router() *gin.Engine {
 			// 后台标签管理 /admin/tags* 由 tags 插件子包自注册（自带 RequireAdmin + 特性插件守卫 + tag 权限）
 
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
+			// 权益：基础值（全站默认）；等级/会员等来源由插件提供
+			admin.GET("/admin/entitlements", a.RequirePermission(authz.SiteUpdate), a.AdminEntitlements)
+			admin.PUT("/admin/entitlements/base", a.RequirePermission(authz.SiteUpdate), a.AdminUpdateEntitlementBase)
 			admin.GET("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminListConfigs)
 			admin.PUT("/admin/configs", a.RequirePermission(authz.ConfigManage), a.AdminUpsertConfig)
 			admin.DELETE("/admin/configs/:key", a.RequirePermission(authz.ConfigManage), a.AdminDeleteConfig)

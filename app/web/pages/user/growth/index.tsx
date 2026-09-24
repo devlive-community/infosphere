@@ -3,6 +3,7 @@ import Container from '@/components/Container'
 import FeatureGate from '@/components/FeatureGate'
 import ResourceIcon from '@/components/ResourceIcon'
 import CheckinCard from '@/components/CheckinCard'
+import MyEntitlementsCard from '@/components/MyEntitlementsCard'
 import Seo from '@/components/Seo'
 import { api, formatNumber } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
@@ -106,6 +107,7 @@ function MyGrowthInner() {
           </Card>
 
           <CheckinCard onCheckedIn={() => { setPage(1); setReloadKey((k) => k + 1) }} />
+          <MyEntitlementsCard reloadKey={reloadKey} />
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
             {/* 等级路线 */}

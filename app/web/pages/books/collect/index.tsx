@@ -8,6 +8,7 @@ import { useTranslation } from '@/lib/i18n'
 import { renderMarkdown } from '@/lib/markdown'
 import { Button, Input, Select, Loading, EmptyState, Checkbox, useFeedback } from '@/components/ui'
 import FeatureGate from '@/components/FeatureGate'
+import { entitlementAllowed } from '@/lib/entitlements'
 
 interface CrawlNode { url: string; title: string; depth: number; parent_url: string }
 interface PreviewSample { url: string; ok: boolean; title?: string; markdown?: string; error?: string }
@@ -72,7 +73,7 @@ function CollectWizard() {
   }
 
   if (!user) return <Loading className="min-h-[60vh]" label={t('account.common.verifying')} />
-  if (site.collect_site_enabled === false) {
+  if (!entitlementAllowed(user, 'collect.site', site.collect_site_enabled !== false)) {
     return <Container><EmptyState>{t('collect.siteDisabled')}</EmptyState></Container>
   }
   const included = preview ? preview.tree.length - excluded.size : 0

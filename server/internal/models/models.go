@@ -44,6 +44,8 @@ type User struct {
 	CreatedAt       time.Time            `json:"created_at"`
 	UpdatedAt       time.Time            `json:"updated_at"`
 	Books           []Book               `gorm:"foreignKey:UserID" json:"books,omitempty"`
+	// Entitlements 非持久化：/auth/me 回填的当前权益生效值（权益键 → 值），供前端联动入口
+	Entitlements map[string]int64 `gorm:"-" json:"entitlements,omitempty"`
 	Authentications []UserAuthentication `gorm:"foreignKey:UserID" json:"authentications,omitempty"`
 }
 
@@ -496,8 +498,10 @@ type LevelDefinition struct {
 	MinXP     int       `gorm:"not null;default:0" json:"min_xp"`
 	SortOrder int       `gorm:"default:0" json:"sort_order"`
 	Status    string    `gorm:"size:20;default:'active'" json:"status"` // active | archived
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	// Entitlements 达到该等级后获得的权益（累计：当前等级及以下各等级的配置依次覆盖）；未设置的键不改变
+	Entitlements EntitlementMap `gorm:"type:text" json:"entitlements"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
 }
 
 // UserGrowthProfile 用户成长资料：由 ExperienceEvent 汇总的权威快照（可从流水重建）。

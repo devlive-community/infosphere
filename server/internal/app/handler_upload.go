@@ -31,8 +31,9 @@ func (a *App) Upload(c *gin.Context) {
 	}
 	defer file.Close()
 
-	if header.Size > a.uploadMaxBytes() {
-		fail(c, http.StatusBadRequest, fmt.Sprintf("文件不能超过 %d MB", a.uploadMaxMB()))
+	// 上传大小按用户权益（基础值即「内容设置」的上传大小，等级/会员可放宽）
+	if limit := a.userUploadMaxBytes(currentUser(c)); header.Size > limit {
+		fail(c, http.StatusBadRequest, fmt.Sprintf("文件不能超过 %d MB", limit>>20))
 		return
 	}
 	ext := strings.ToLower(filepath.Ext(header.Filename))

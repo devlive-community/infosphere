@@ -65,8 +65,6 @@ type Core interface {
 	InstalledChromePath() string
 	CreateContentImportBook(u *models.User, title, description string, chapters []ImportedChapter) (models.Book, error)
 	JobQueue() *jobqueue.Queue
-	RequirePageCollect() gin.HandlerFunc
-	RequireSiteCollect() gin.HandlerFunc
 	// InitialChapterStatus 未显式指定状态时新章节的初始状态（子章节跟随父章节 / 第一级用书籍默认状态 / 否则草稿）。
 	InitialChapterStatus(book *models.Book, parentID *uint) string
 	// NewDocumentRevision 为章节生成一条版本记录（调用方负责在事务内保存）。
@@ -83,6 +81,8 @@ type Core interface {
 	DefaultContentLocale() (string, error)
 	// LocalizeResources 按请求语言回退链解析资源的已发布翻译（并设置 Content-Language 等响应头），返回请求语言代码。
 	LocalizeResources(c *gin.Context, kind string, ids []uint) (map[uint]LocalizedResource, string, error)
+	// EnsureBookQuota 校验用户是否还能创建书籍（书籍数量权益）；超限返回可展示的错误。
+	EnsureBookQuota(u *models.User) error
 	// PublicBackgroundJob 后台任务的对外视图（不含 payload），与 /tasks/:id 返回形状一致。
 	PublicBackgroundJob(job *models.BackgroundJob) any
 

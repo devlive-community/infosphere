@@ -342,6 +342,9 @@ func (a *App) CreateBook(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "请填写书籍标题")
 		return
 	}
+	if a.failBookQuota(c, currentUser(c)) {
+		return
+	}
 	if req.Status != nil && !bookStatuses[*req.Status] {
 		fail(c, http.StatusBadRequest, "无效的状态")
 		return

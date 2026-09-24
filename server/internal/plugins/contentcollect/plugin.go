@@ -55,17 +55,17 @@ func (cc *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	feature := core.RequireFeaturePlugin(plugins.KeyContentCollect)
 
 	// 单页网页采集
-	api.POST("/books/:id/documents/import-web", auth, core.RequirePageCollect(), core.RequirePermission(authz.DocumentCreate), cc.ImportWebDocument)
-	api.POST("/import/web", auth, core.RequirePageCollect(), core.RequirePermission(authz.BookImport), cc.ImportWebBook)
+	api.POST("/books/:id/documents/import-web", auth, cc.requireCollect(entCollectPage), core.RequirePermission(authz.DocumentCreate), cc.ImportWebDocument)
+	api.POST("/import/web", auth, cc.requireCollect(entCollectPage), core.RequirePermission(authz.BookImport), cc.ImportWebBook)
 	// 采集网页正文为 Markdown（不建文档），供写作编辑器插入
-	api.POST("/import/web-content", auth, core.RequirePageCollect(), core.RequirePermission(authz.DocumentCreate), cc.CollectWebContent)
+	api.POST("/import/web-content", auth, cc.requireCollect(entCollectPage), core.RequirePermission(authz.DocumentCreate), cc.CollectWebContent)
 	// 浏览器渲染是否可用（依赖无头浏览器插件），供前端联动禁用「浏览器运行 JavaScript」采集模式
 	api.GET("/import/browser-available", auth, feature, core.RequirePermission(authz.BookImport), cc.BrowserRenderAvailable)
 
 	// 整站采集（collect:* 权限）
 	collect := api.Group("/collect", auth, feature)
-	collect.POST("/site/preview", core.RequireSiteCollect(), core.RequirePermission(authz.CollectCreate), cc.SiteCrawlPreview)
-	collect.POST("/site", core.RequireSiteCollect(), core.RequirePermission(authz.CollectCreate), cc.StartSiteCrawl)
+	collect.POST("/site/preview", cc.requireCollect(entCollectSite), core.RequirePermission(authz.CollectCreate), cc.SiteCrawlPreview)
+	collect.POST("/site", cc.requireCollect(entCollectSite), core.RequirePermission(authz.CollectCreate), cc.StartSiteCrawl)
 	collect.GET("/jobs/:id", core.RequirePermission(authz.CollectRead), cc.GetCrawlJob)
 	collect.POST("/jobs/:id/retry", core.RequirePermission(authz.CollectManage), cc.RetryCrawlJob)
 	collect.POST("/pages/:id/retry", core.RequirePermission(authz.CollectManage), cc.RetryCrawlPage)

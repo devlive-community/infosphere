@@ -6,11 +6,13 @@ import ResourceIcon from '@/components/ResourceIcon'
 import IconPicker from '@/components/IconPicker'
 import UserSearchSelect, { type UserLite } from '@/components/UserSearchSelect'
 import UserAvatar from '@/components/UserAvatar'
+import EntitlementEditor from '@/components/EntitlementEditor'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/auth'
 import { Badge, Button, Card, EmptyState, Field, Input, Loading, Modal, Pagination, Select, SegmentedTabs, Switch, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 import { growthReasonLabel, growthRuleLabel } from '@/lib/growth'
+import type { EntitlementDef } from '@/lib/entitlements'
 
 interface Level {
   id: number
@@ -22,9 +24,10 @@ interface Level {
   color?: string
   min_xp: number
   status: string
+  entitlements?: Record<string, number> | null
 }
 
-interface LevelForm { id?: number; level: number; name: string; description: string; icon_type: string; icon_value: string; color: string; min_xp: number; status: string }
+interface LevelForm { id?: number; level: number; name: string; description: string; icon_type: string; icon_value: string; color: string; min_xp: number; status: string; entitlements: Record<string, number> }
 interface Rule { id: number; rule_key: string; label: string; base_xp: number; daily_cap: number; enabled: boolean }
 interface RuleStat { count: number; xp: number }
 interface LedgerItem { id: number; rule_key: string; final_xp: number; reason?: string; created_at: string; user?: UserLite }
@@ -51,6 +54,7 @@ function AdminGrowthInner() {
   const [adjReason, setAdjReason] = useState('')
   const [adjusting, setAdjusting] = useState(false)
   const [rules, setRules] = useState<Rule[] | null>(null)
+  const [entDefs, setEntDefs] = useState<EntitlementDef[]>([])
   const [ruleStats, setRuleStats] = useState<Record<string, RuleStat>>({})
   const router = useRouter()
   const tab: Tab = (['rules', 'events', 'settings'] as Tab[]).includes(router.query.tab as Tab) ? (router.query.tab as Tab) : 'levels' // tab 由 URL 驱动
@@ -61,7 +65,9 @@ function AdminGrowthInner() {
     api<{ items: Rule[]; stats_7d?: Record<string, RuleStat> }>('/admin/growth/rules').then((r) => { setRules(r.items || []); setRuleStats(r.stats_7d || {}) }).catch(() => {})
   }, [showToast, t])
   useEffect(() => { load() }, [load])
-
+  useEffect(() => {
+    api<{ items: EntitlementDef[] }>('/entitlements/definitions').then((r) => setEntDefs(r.items || [])).catch(() => {})
+  }, [])
 
   async function save() {
     if (!form || !form.name.trim()) return
@@ -70,7 +76,7 @@ function AdminGrowthInner() {
       const path = form.id ? `/admin/growth/levels/${form.id}` : '/admin/growth/levels'
       await api(path, { method: form.id ? 'PUT' : 'POST', body: {
         level: form.level, name: form.name.trim(), description: form.description,
-        icon_type: form.icon_type, icon_value: form.icon_value, color: form.color, min_xp: form.min_xp, status: form.status,
+        icon_type: form.icon_type, icon_value: form.icon_value, color: form.color, min_xp: form.min_xp, status: form.status, entitlements: form.entitlements,
       } })
       setForm(null); load()
       showToast({ message: t('admin.growth.saved'), tone: 'success' })
@@ -106,7 +112,7 @@ function AdminGrowthInner() {
           <p className="mt-1.5 text-sm text-slate-500">{t('admin.growth.description')}</p>
         </div>
         {tab === 'levels' && (
-          <Button onClick={() => setForm({ level: nextLevel, name: `Lv.${nextLevel}`, description: '', icon_type: 'fa', icon_value: 'fa-star', color: '', min_xp: 0, status: 'active' })}>
+          <Button onClick={() => setForm({ level: nextLevel, name: `Lv.${nextLevel}`, description: '', icon_type: 'fa', icon_value: 'fa-star', color: '', min_xp: 0, status: 'active', entitlements: {} })}>
             <i className="fa-solid fa-plus" aria-hidden="true" /> {t('admin.growth.addLevel')}
           </Button>
         )}
@@ -133,10 +139,10 @@ function AdminGrowthInner() {
                 <tbody className="divide-y divide-slate-100">
                   {levels.map((lv) => (
                     <tr key={lv.id}>
-                      <td className="px-4 py-3"><span className="flex items-center gap-2.5"><ResourceIcon iconType={lv.icon_type} iconValue={lv.icon_value} fallback="fa-star" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-600" /><span className="font-medium text-slate-800">{lv.name}</span></span></td>
+                      <td className="px-4 py-3"><span className="flex items-center gap-2.5"><ResourceIcon iconType={lv.icon_type} iconValue={lv.icon_value} fallback="fa-star" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-600" /><span className="font-medium text-slate-800">{lv.name}</span>{Object.keys(lv.entitlements || {}).length > 0 && <Badge tone="primary">{t('admin.growth.privilegeCount', { n: Object.keys(lv.entitlements || {}).length })}</Badge>}</span></td>
                       <td className="px-4 py-3 text-slate-500">{lv.min_xp}</td>
                       <td className="px-4 py-3"><Badge tone={lv.status === 'active' ? 'emerald' : 'slate'}>{t(`admin.growth.status.${lv.status}`)}</Badge></td>
-                      <td className="px-4 py-3 text-right"><span className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setForm({ id: lv.id, level: lv.level, name: lv.name, description: lv.description || '', icon_type: lv.icon_type || 'fa', icon_value: lv.icon_value || 'fa-star', color: lv.color || '', min_xp: lv.min_xp, status: lv.status })}>{t('common.actions.edit')}</Button>{lv.level !== 1 && <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => remove(lv)}>{t('common.actions.delete')}</Button>}</span></td>
+                      <td className="px-4 py-3 text-right"><span className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setForm({ id: lv.id, level: lv.level, name: lv.name, description: lv.description || '', icon_type: lv.icon_type || 'fa', icon_value: lv.icon_value || 'fa-star', color: lv.color || '', min_xp: lv.min_xp, status: lv.status, entitlements: { ...(lv.entitlements || {}) } })}>{t('common.actions.edit')}</Button>{lv.level !== 1 && <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => remove(lv)}>{t('common.actions.delete')}</Button>}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -165,7 +171,7 @@ function AdminGrowthInner() {
       {tab === 'events' && <LedgerPanel rules={rules || []} />}
       {tab === 'settings' && <SettingsPanel />}
 
-      <Modal open={form !== null} onClose={() => setForm(null)} title={form?.id ? t('admin.growth.editLevel') : t('admin.growth.addLevel')}
+      <Modal className="max-w-2xl" open={form !== null} onClose={() => setForm(null)} title={form?.id ? t('admin.growth.editLevel') : t('admin.growth.addLevel')}
         footer={<><Button variant="outline" onClick={() => setForm(null)}>{t('common.actions.cancel')}</Button><Button loading={saving} onClick={save}>{t('common.actions.save')}</Button></>}>
         {form && (
           <div className="space-y-4">
@@ -182,6 +188,13 @@ function AdminGrowthInner() {
                   options={[{ value: 'active', label: t('admin.growth.status.active') }, { value: 'archived', label: t('admin.growth.status.archived') }]} />
               </Field>
             </div>
+            {entDefs.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-slate-700">{t('admin.growth.levelEntitlements')}</div>
+                <p className="mb-2 mt-0.5 text-xs text-slate-400">{t('admin.growth.levelEntitlementsHint')}</p>
+                <EntitlementEditor mode="source" defs={entDefs} value={form.entitlements} onChange={(entitlements) => setForm({ ...form, entitlements })} />
+              </div>
+            )}
           </div>
         )}
       </Modal>

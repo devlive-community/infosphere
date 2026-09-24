@@ -210,7 +210,7 @@ Authorization: Bearer <token>
 | GET/PUT | `/captcha-settings` | 管理员读取/保存验证码设置：`{type(image\|arithmetic), length, charset(digit\|alnum), noise(0-3), arith_hard, on_register, on_login, on_comment}` | `site:update` |
 | GET/PUT | `/login-security` | 管理员读取/保存登录安全：`{lockout_enabled, lockout_threshold, lockout_window(分钟), lockout_duration(分钟), password_min_length(≥6), password_require_mixed, account_deletion_cooldown_days(0-90)}`。登录连续失败达阈值临时锁定账户（429）；密码策略作用于注册/改密/找回；`account_deletion_cooldown_days` 为自助注销冷静期（0 表示确认后立即删除） | `site:update` |
 | GET/PUT | `/content-settings` | 管理员读取/保存内容设置：`{upload_max_mb(1-100), upload_allowed_exts(逗号分隔扩展名), comments_enabled}`。上传超限/类型不符拒绝；`comments_enabled=false` 时全站禁止发表评论（`comments_enabled` 也会出现在公开 `/site`，供前端隐藏评论框） | `site:update` |
-| GET | `/auth/me` | 当前用户信息（含 `email_verified`、`invite_code`） | 登录 |
+| GET | `/auth/me` | 当前用户信息（含 `email_verified`、`invite_code`，以及 `entitlements{key:value}` 各项权益的生效值，见「权益」） | 登录 |
 | GET | `/auth/permissions` | 当前用户权限列表（`string[]`） | 登录 |
 | PUT | `/auth/profile` | 更新资料（email/avatar/bio/github_url/nickname/website/location/company；改邮箱受二次认证保护） | `user:update` |
 | GET/PUT | `/auth/export-settings` | 当前用户 PDF 导出样式偏好：`page_size`(A4\|Letter)、`include_cover`、`include_toc`、`font_size`(12–20)、`code_theme`(light\|dark)、`margin`(narrow\|normal\|wide)、`footer`（每页页脚 Powered by 文案，≤100 字，留空用默认 `Powered by <站点名>`） | `user:read` / `user:update` |
@@ -274,6 +274,21 @@ Authorization: Bearer <token>
 | PUT | `/users/me/achievements/:id/display` | 修改本人已解锁成就 `{is_public?,showcase_order?}` | `achievement:update` |
 
 时间窗口支持 `lifetime|calendar_day|calendar_week|calendar_month|rolling_days`（具体以 `GET /admin/achievement-metrics` 返回的每指标 `windows` 为准）；比较方式支持 `gte|eq|between`。
+
+## 权益（等级特权 / 会员）
+
+按用户生效的能力上限与开关。核心登记 `books.max`（书籍数量，含导入/复制/采集新建，不含回收站）、`collaborators.max`（单本书协作者人数，含待接受邀请，按书籍所有者计）、`upload.max_mb`（单文件上传大小）；内容采集插件登记 `collect.page`、`collect.site`（开关）与 `collect.site_max_pages`。数值 `-1` 表示不限，开关 1 开 / 0 关。
+
+- **基础值**：全站默认，未配置时与升级前一致（书籍/协作者不限，上传与采集沿用原设置），管理员主动收紧才生效。
+- **来源**：插件登记（成长等级：当前等级及以下启用等级的累计配置；会员：有效期内独占，未配置的键回退基础值），高优先级来源先取值。
+- **管理员**不受限制；所属插件禁用时对应权益恒为不可用（`source=unavailable`）。超限时接口返回 403。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/entitlements/definitions` | 权益定义 `[{key,kind:limit\|flag,unit,min,max,allow_unlimited}]`（供等级/会员权益编辑器） | 登录 |
+| GET | `/users/me/entitlements` | 我的各项权益 `items:[{key,value,source}]`（`source` 为 base/admin/unavailable 或来源键如 level）+ `definitions` | 登录 |
+| GET | `/admin/entitlements` | 权益定义 + 基础值 `items:[{...定义,base,available}]` | `site:update` |
+| PUT | `/admin/entitlements/base` | `{values:{key:value}}` 只保存传入的键；`upload.max_mb` 基础值最大 100（更大通过等级/会员授予）；写审计 `entitlement.base_updated` | `site:update` |
 
 ## 书籍
 
@@ -371,11 +386,11 @@ Authorization: Bearer <token>
 
 ## 上传
 
-- `POST /upload`（multipart `file`，≤10MB，png/jpg/jpeg/gif/webp/svg/ico）：按存储配置写入 **local**（默认，返回 `/uploads/<name>` 相对地址，由 `/uploads/*` 静态服务）或 **qiniu**（表单上传，返回 `<CDN 域名>/<key>` 绝对地址）；凭据存站点配置表（`storage_driver`、`qiniu_*`），管理端经 `/storage` 维护
+- `POST /upload`（multipart `file`，大小上限为当前用户的 `upload.max_mb` 权益，基础值即内容设置中的上传大小，默认 10MB，png/jpg/jpeg/gif/webp/svg/ico）：按存储配置写入 **local**（默认，返回 `/uploads/<name>` 相对地址，由 `/uploads/*` 静态服务）或 **qiniu**（表单上传，返回 `<CDN 域名>/<key>` 绝对地址）；凭据存站点配置表（`storage_driver`、`qiniu_*`），管理端经 `/storage` 维护
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| POST | `/upload` | `multipart/form-data` 字段 `file`，仅图片（png/jpg/jpeg/gif/webp/svg/ico），≤10MB；返回 `{ url }`（如 `/uploads/xxx.png`） | `upload:create` |
+| POST | `/upload` | `multipart/form-data` 字段 `file`，仅图片（png/jpg/jpeg/gif/webp/svg/ico），≤ `upload.max_mb` 权益；返回 `{ url }`（如 `/uploads/xxx.png`） | `upload:create` |
 
 ## 评论
 
@@ -424,7 +439,7 @@ Authorization: Bearer <token>
 | GET | `/users/me/experience-events?page=` | 我的经验流水（分页） | `growth:read` |
 | PUT | `/users/me/growth/display` | `{public}` 切换是否公开等级 | `growth:update` |
 | GET | `/admin/growth/levels` | 全部等级（含归档） | `growth:manage` |
-| POST/PUT/DELETE | `/admin/growth/levels[/:id]` | 等级增删改（等级 1 不可删、阈值恒 0；编号唯一） | `growth:manage` |
+| POST/PUT/DELETE | `/admin/growth/levels[/:id]` | 等级增删改（等级 1 不可删、阈值恒 0；编号唯一）；`entitlements{key:value}` 为该等级的特权（未出现的键不设置，按键校验类型与范围，未知键 400） | `growth:manage` |
 | POST | `/admin/growth/adjust` | `{user_id 或 username, xp, reason}` 人工加减经验（优先按 user_id；响应含 username 与最新经验/等级）（写审计，生成 adjustment 流水） | `experience:adjust` |
 | GET | `/admin/growth/rules` | 经验规则列表，附 `stats_7d{rule_key:{count,xp}}` 近 7 天发放统计（按代码内的经验触发器目录补建缺失规则：原有阅读章节/发布章节/发表评论默认启用，其余业务活动如阅读时长、标注、建书、点赞、收到评论、账号安全等默认停用） | `growth:manage` |
 | PUT | `/admin/growth/rules/:id` | 更新规则 `{base_xp,daily_cap,enabled}` | `growth:manage` |
@@ -434,7 +449,7 @@ Authorization: Bearer <token>
 - 成就定义新增 `reward_xp`（默认 0）：解锁时给作者奖励经验（每 user+achievement 只结算一次）。
 - **经验规则**（`ExperienceRule`）：固定事件（`reading.chapter`、`creation.chapter_published`、`community.comment`）的经验金额与**每人每日上限**由规则表配置，启用时种子默认规则；成就/管理员调整不走规则（金额分别为 reward_xp / 手工值）。
 - 已接经验来源：首次读章节、章节发布（作者）、发表评论、成就解锁、管理员调整。公开主页头部显示等级徽标（用户可隐藏）。
-- 后续（Phase 3+）：更多来源与创作/社区权威事件、`growth.*` 成就指标双向联动、赛季、等级权益与会员合并、排行榜、追溯补算。见 `user-level-system.md`。
+- 后续（Phase 3+）：更多来源与创作/社区权威事件、`growth.*` 成就指标双向联动、赛季、排行榜、追溯补算。见 `user-level-system.md`。
 
 ## 站内通知（登录用户）
 
@@ -483,12 +498,12 @@ Authorization: Bearer <token>
 
 ### 内容采集插件（`content-collect`，含单页/整站两个子开关）
 
-> `/import/web`、`/import/web-content`、`/books/:id/documents/import-web` 均归入本插件并受「网页采集」子开关门控；插件或子开关禁用时相关接口 404、前端入口隐藏。整站采集受「整站采集」子开关门控。`/site` 额外暴露 `collect_page_enabled`、`collect_site_enabled` 供前端联动。
+> `/import/web`、`/import/web-content`、`/books/:id/documents/import-web` 均归入本插件：插件禁用时相关接口 404、前端入口隐藏；单页/整站采集按当前用户的 `collect.page` / `collect.site` 权益放行（无权益 403），基础值即两个子开关，等级/会员可为特定用户放开。整站采集单次页数上限为 `collect.site_max_pages` 权益（基础值 `collect_site_page_limit`，默认 200）。`/site` 额外暴露全站开关 `collect_page_enabled`、`collect_site_enabled`（由插件提供），登录用户以 `/auth/me` 的权益为准。
 
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
 | POST | `/collect/site/preview` | JSON `{url,render_mode?}`；抓取根页面，按导航/侧边栏推断目录树，并抽取一个样例页正文供内容区确认。返回 `{root_url,tree:[{url,title,depth,parent_url}],sample:{url,ok,title?,markdown?,error?},limit}` | `collect:create` |
-| POST | `/collect/site` | JSON `{root_url,title?,render_mode?,content_selector?,pages:[...]}`；创建草稿书 + 采集任务 + 页面清单并投递后台采集，返回 `{job,book}`。单次页数上限 `collect_site_page_limit`（默认 200） | `collect:create` |
+| POST | `/collect/site` | JSON `{root_url,title?,render_mode?,content_selector?,pages:[...]}`；创建草稿书 + 采集任务 + 页面清单并投递后台采集，返回 `{job,book}`。单次页数上限为 `collect.site_max_pages` 权益（基础值 `collect_site_page_limit`，默认 200） | `collect:create` |
 | GET | `/books/:id/collect/jobs?kind=site\|chapter` | 本书采集历史（需对书有编辑权） | `collect:read` |
 | GET | `/collect/jobs/:id` | 采集任务详情 + 页面清单（按 `sort_order`，供按目录结构展示），仅任务所有者 | `collect:read` |
 | POST | `/collect/jobs/:id/retry` | 重试该任务全部失败页并重新入队 | `collect:manage` |
@@ -547,7 +562,9 @@ Authorization: Bearer <token>
 | GET | `/admin/activity` | 控制台首页时间线：`recent_users`（最近 5 位注册）+ `recent_books`（最近 5 本建书，不限可见性，含草稿/私有） | `user:manage` |
 | GET | `/admin/stats` | 管理后台完整统计，包含私有与未发布内容 | `stats:read` + 管理员 |
 | GET | `/admin/audit-logs?page=&page_size=&actor=&action=&resource_type=&from=&to=` | 分页查询管理员高风险操作；支持操作人、动作、资源类型与日期区间筛选，日期格式为 `YYYY-MM-DD` | `audit:read` |
+| GET | `/admin/audit-logs/facets` | 筛选项：已出现过的 `actions[]` 与 `resource_types[]`（前端按 `admin.audit.actions.*` / `admin.audit.resources.*` 本地化） | `audit:read` |
 | GET | `/admin/tasks?page=&page_size=&status=&type=` | 分页查询异步任务；状态支持 pending/running/retrying/succeeded/failed，类型包含 `email.send`、`content.import.pdf`、`content.import.zip`、`maintenance.cleanup`、`achievement.recalculate`，加密任务载荷永不返回 | `task:read` |
+| GET | `/admin/tasks/types` | 已注册的全部任务类型 `items[]`（含插件任务，前端按 `admin.tasks.types.*` 本地化） | `task:read` |
 | POST | `/admin/tasks/:id/retry` | 将最终失败任务清空旧错误和尝试次数后重新排队；重复操作返回 409 | `task:retry` |
 | GET | `/admin/reports?page=&page_size=&status=&target_type=&reason=&q=` | 举报队列与处理记录；`q` 匹配目标摘要、举报人用户名或邮箱；举报人身份仅此管理员接口返回 | `report:read` |
 | PUT | `/admin/reports/:id` | 处理待审举报：`{resolution:"reject"\|"takedown",note?}`；下架会将书籍转为私有归档、章节归档或评论隐藏，并通知举报人 | `report:update` |

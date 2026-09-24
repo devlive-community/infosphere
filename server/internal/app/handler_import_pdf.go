@@ -60,6 +60,9 @@ var pdfChapterHeading = regexp.MustCompile(`(?i)^(?:第[零一二三四五六七
 // ImportPDFBook POST /import/pdf 上传 PDF 并建立草稿书籍。
 func (a *App) ImportPDFBook(c *gin.Context) {
 	u := currentUser(c)
+	if a.failBookQuota(c, u) {
+		return
+	}
 	if queue := a.jobQueue(); queue != nil {
 		stored, status, err := a.storeUploadedPDF(c)
 		if err != nil {
@@ -413,6 +416,10 @@ func (a *App) createContentImportBook(u *models.User, title, description string,
 	}
 	if len(chapters) == 0 || len(chapters) > maxImportedChapters {
 		return models.Book{}, errors.New("没有可导入的章节或章节数量过多")
+	}
+	// 后台任务执行时再次校验书籍数量上限（排队期间可能已创建了其他书）
+	if err := a.EnsureBookQuota(u); err != nil {
+		return models.Book{}, err
 	}
 	book := models.Book{
 		Title: title, Description: truncateText(strings.TrimSpace(description), 1000),

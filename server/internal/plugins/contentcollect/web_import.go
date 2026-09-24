@@ -89,6 +89,11 @@ func (cc *behavior) ImportWebBook(c *gin.Context) {
 		cc.core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	// 抓取前先校验书籍数量上限，避免白抓一次
+	if err := cc.core.EnsureBookQuota(u); err != nil {
+		cc.core.Fail(c, http.StatusForbidden, err.Error())
+		return
+	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
 	defer cancel()
 	article, page, usedMode, err := cc.collectWebArticle(ctx, req)

@@ -3,7 +3,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { SegmentedTabs } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
-export type SettingsTab = 'site' | 'footer' | 'registration' | 'captcha' | 'login-security' | 'rate-limits' | 'content' | 'storage' | 'mail' | 'oauth' | 'translation' | 'logs'
+export type SettingsTab = 'site' | 'footer' | 'registration' | 'captcha' | 'login-security' | 'rate-limits' | 'entitlements' | 'content' | 'storage' | 'mail' | 'oauth' | 'translation' | 'logs'
 
 interface SettingsLayoutProps {
   active: SettingsTab
@@ -22,6 +22,7 @@ export default function SettingsLayout({ active, description, children }: Settin
     { key: 'captcha', labelKey: 'admin.settings.captcha', href: '/admin/settings/captcha' },
     { key: 'login-security', labelKey: 'admin.settings.loginSecurity', href: '/admin/settings/login-security' },
     { key: 'rate-limits', labelKey: 'admin.settings.rateLimits', href: '/admin/settings/rate-limits' },
+    { key: 'entitlements', labelKey: 'admin.settings.entitlementsTab', href: '/admin/settings/entitlements' },
     { key: 'content', labelKey: 'admin.settings.content', href: '/admin/settings/content' },
     { key: 'storage', labelKey: 'admin.settings.storage', href: '/admin/settings/storage' },
     { key: 'mail', labelKey: 'admin.settings.mail', href: '/admin/settings/mail' },

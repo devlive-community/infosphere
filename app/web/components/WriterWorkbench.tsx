@@ -18,6 +18,7 @@ import {
 import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookStatus, DocumentStatus, PageResult } from '@/lib/types'
 import { diffLines, diffStats, type DiffRow } from '@/lib/text-diff'
 import { HEADING_LEVELS } from '@/lib/editor-blocks'
+import { entitlementAllowed } from '@/lib/entitlements'
 
 type SaveState = 'saved' | 'dirty' | 'saving'
 type TabKey = 'toc' | 'settings'
@@ -116,8 +117,8 @@ export default function Writer({ user }: WriterProps) {
   const { confirmAction, requestInput, showToast } = useFeedback()
   useRequireAuth()
   const router = useRouter()
-  const { site } = useApp()
-  const collectEnabled = site.collect_page_enabled !== false // 网页采集插件/子开关；禁用后隐藏采集入口
+  const { site, user: me } = useApp()
+  const collectEnabled = entitlementAllowed(me, 'collect.page', site.collect_page_enabled !== false) // 单页采集权益（含插件启用）；无权限时隐藏采集入口
   const { t } = useTranslation()
   const bookSlug = (router.query.slug as string) || ''
   // 路由为可选 catch-all（[[...doc]]）：doc 可能是数组或缺省

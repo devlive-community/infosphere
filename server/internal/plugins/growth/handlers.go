@@ -176,6 +176,8 @@ type levelRequest struct {
 	Color       string `json:"color"`
 	MinXP       int    `json:"min_xp"`
 	Status      string `json:"status"`
+	// Entitlements 达到该等级获得的权益（未出现的键不设置）
+	Entitlements models.EntitlementMap `json:"entitlements"`
 }
 
 func normalizeLevel(req *levelRequest) bool {
@@ -202,6 +204,10 @@ func (b *behavior) AdminCreateLevel(c *gin.Context) {
 		core.Fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	if err := plugincore.ValidateEntitlementMap(req.Entitlements); err != nil {
+		core.Fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
 	var dup int64
 	core.Gorm().Model(&models.LevelDefinition{}).Where("level = ?", req.Level).Count(&dup)
 	if dup > 0 {
@@ -211,7 +217,7 @@ func (b *behavior) AdminCreateLevel(c *gin.Context) {
 	lvl := models.LevelDefinition{
 		Level: req.Level, Key: fmt.Sprintf("lv%d", req.Level), Name: req.Name, Description: req.Description,
 		IconType: req.IconType, IconValue: req.IconValue, Color: req.Color, MinXP: req.MinXP,
-		SortOrder: req.Level, Status: req.Status,
+		SortOrder: req.Level, Status: req.Status, Entitlements: req.Entitlements,
 	}
 	if err := core.Gorm().Create(&lvl).Error; err != nil {
 		core.Fail(c, http.StatusInternalServerError, "创建失败: "+err.Error())
@@ -241,14 +247,20 @@ func (b *behavior) AdminUpdateLevel(c *gin.Context) {
 	if lvl.Level == 1 {
 		req.MinXP = 0
 	}
+	if err := plugincore.ValidateEntitlementMap(req.Entitlements); err != nil {
+		core.Fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
 	if err := core.Gorm().Model(&lvl).Updates(map[string]any{
 		"name": req.Name, "description": req.Description, "icon_type": req.IconType,
 		"icon_value": req.IconValue, "color": req.Color, "min_xp": req.MinXP, "status": req.Status,
+		"entitlements": req.Entitlements,
 	}).Error; err != nil {
 		core.Fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 		return
 	}
-	core.RecordAudit(c, "growth.level_updated", "growth", strconv.Itoa(lvl.Level), req.Name, changedFields("name", "min_xp", "status"))
+	core.RecordAudit(c, "growth.level_updated", "growth", strconv.Itoa(lvl.Level), req.Name, changedFields("name", "min_xp", "status", "entitlements"))
+	core.Gorm().First(&lvl, lvl.ID) // 返回保存后的值
 	core.OK(c, lvl)
 }
 

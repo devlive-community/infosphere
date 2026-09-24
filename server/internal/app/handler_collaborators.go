@@ -2,12 +2,14 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -91,6 +93,19 @@ func (a *App) AddCollaborator(c *gin.Context) {
 
 	var collab models.BookCollaborator
 	lookupErr := a.DB.Where("book_id = ? AND user_id = ?", book.ID, target.ID).First(&collab).Error
+	// 新增协作者或重新邀请已拒绝者会占用名额：按书籍所有者的「协作者人数」权益校验（调整现有协作者角色不受限）
+	if lookupErr != nil || collab.Status == "rejected" {
+		var owner models.User
+		if a.DB.First(&owner, book.UserID).Error == nil {
+			limit := a.entitlement(&owner, entCollaboratorsMax)
+			var count int64
+			a.DB.Model(&models.BookCollaborator{}).Where("book_id = ? AND status IN ?", book.ID, []string{"pending", "accepted"}).Count(&count)
+			if !plugincore.WithinLimit(limit, count) {
+				fail(c, http.StatusForbidden, fmt.Sprintf("该书的协作者已达上限（%d 人），升级等级或开通会员可邀请更多协作者", limit))
+				return
+			}
+		}
+	}
 	if lookupErr == nil {
 		if collab.Status == "accepted" {
 			// 已接受的协作者由所有者直接调整角色，不需要重新确认。

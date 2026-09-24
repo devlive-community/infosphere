@@ -39,9 +39,6 @@ const (
 	pluginGrowth           = plugins.KeyGrowth
 	pluginContentCollect   = plugins.KeyContentCollect
 	pluginWatermark        = plugins.KeyWatermark
-	// 内容采集插件的两个子开关（站点配置项，默认启用）：分别控制整站采集与单页网页采集。
-	cfgSiteCollectEnabled = "collect_site_enabled"
-	cfgPageCollectEnabled = "collect_page_enabled"
 	// pluginKindRuntime 需要下载运行时依赖（二进制/镜像）的插件；pluginKindFeature 仅切换某项功能的启用/禁用。
 	pluginKindRuntime = plugins.KindRuntime
 	pluginKindFeature = plugins.KindFeature
@@ -83,40 +80,6 @@ func (a *App) pluginEnabled(key string) bool {
 	}
 	var p models.Plugin
 	return a.DB.Where("`key` = ? AND installed = ?", key, true).First(&p).Error == nil
-}
-
-// pageCollectEnabled 单页网页采集是否可用：插件启用且未关闭「网页采集」子开关（默认启用）。
-func (a *App) pageCollectEnabled() bool {
-	return a.pluginEnabled(pluginContentCollect) && a.getSetting(cfgPageCollectEnabled) != "false"
-}
-
-// siteCollectEnabled 整站采集是否可用：插件启用且未关闭「整站采集」子开关（默认启用）。
-func (a *App) siteCollectEnabled() bool {
-	return a.pluginEnabled(pluginContentCollect) && a.getSetting(cfgSiteCollectEnabled) != "false"
-}
-
-// RequirePageCollect 网页采集守卫：插件禁用或「网页采集」子开关关闭时 404。
-func (a *App) RequirePageCollect() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if !a.pageCollectEnabled() {
-			fail(c, http.StatusNotFound, "网页采集未启用")
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
-
-// RequireSiteCollect 整站采集守卫：插件禁用或「整站采集」子开关关闭时 404。
-func (a *App) RequireSiteCollect() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if !a.siteCollectEnabled() {
-			fail(c, http.StatusNotFound, "整站采集未启用")
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
 }
 
 // RequireFeaturePlugin 特性插件启用守卫：插件被禁用时对应后端接口直接 404，确保「禁用即前后端全禁」。

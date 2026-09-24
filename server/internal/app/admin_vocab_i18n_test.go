@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"knowforge/server/internal/config"
+	"knowforge/server/internal/plugincore"
 )
 
 var (
@@ -17,6 +18,7 @@ var (
 
 // 审计日志里后端会写入的每个操作 / 资源类型、后台任务的每种类型，都必须在前端中英文字典中有文案
 // （admin.audit.actions.* / admin.audit.resources.* / admin.tasks.types.*），否则管理端会显示原始键。
+// 登记的每项权益与权益来源同理（entitlement.*）。
 func TestAdminVocabularyIsTranslated(t *testing.T) {
 	dicts := map[string]map[string]string{"zh": loadWebLocale(t, "zh.ts"), "en": loadWebLocale(t, "en.ts")}
 	want := map[string]bool{}
@@ -63,6 +65,19 @@ func TestAdminVocabularyIsTranslated(t *testing.T) {
 	}
 	for _, ty := range types {
 		want["admin.tasks.types."+ty] = true
+	}
+
+	// 权益（核心与插件登记）：名称、说明、单位，以及各来源（含内置的 base / admin / unavailable）
+	for _, def := range plugincore.Entitlements() {
+		want["entitlement."+def.Key+".label"] = true
+		want["entitlement."+def.Key+".hint"] = true
+		if def.Kind == plugincore.EntitlementLimit {
+			want["entitlement.unit."+def.Unit] = true
+			want["entitlement.unitShort."+def.Unit] = true
+		}
+	}
+	for _, src := range append(plugincore.EntitlementSourceKeys(), "base", "admin", "unavailable") {
+		want["entitlement.source."+src] = true
 	}
 
 	for key := range want {

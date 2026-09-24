@@ -8,6 +8,7 @@ import { useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { Badge, Button, ButtonLink, EmptyState, Loading, SegmentedTabs, useFeedback } from '@/components/ui'
 import { ChevronRightIcon } from '@/components/icons'
+import { entitlementAllowed } from '@/lib/entitlements'
 
 export const getServerSideProps = requireBookSettingsFeature('content-collect')
 
@@ -41,7 +42,7 @@ const PAGE_TONE: Record<string, 'slate' | 'primary' | 'emerald' | 'rose'> = {
 
 export default function CrawlHistoryPage({ book }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { t } = useTranslation()
-  const { site } = useApp()
+  const { site, user: me } = useApp()
   const { showToast } = useFeedback()
   const router = useRouter()
   const kind = router.query.kind === 'chapter' ? 'chapter' : 'site'
@@ -93,7 +94,7 @@ export default function CrawlHistoryPage({ book }: InferGetServerSidePropsType<t
           <h1 className="text-lg font-bold text-slate-900">{t('crawlHistory.title')}</h1>
           <p className="mt-1 text-sm text-slate-500">{t('crawlHistory.subtitle')}</p>
         </div>
-        {site.collect_site_enabled !== false && (
+        {entitlementAllowed(me, 'collect.site', site.collect_site_enabled !== false) && (
           <ButtonLink href={`/books/collect?book_id=${book.id}&book=${encodeURIComponent(book.slug)}`} variant="outline" className="shrink-0">
             <i className="fa-solid fa-spider" aria-hidden="true" /> {t('crawlHistory.newCrawl')}
           </ButtonLink>

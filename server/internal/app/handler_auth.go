@@ -217,7 +217,9 @@ func (a *App) Login(c *gin.Context) {
 
 // Me GET /auth/me
 func (a *App) Me(c *gin.Context) {
-	ok(c, currentUser(c))
+	u := *currentUser(c)
+	u.Entitlements = a.entitlementValues(&u)
+	ok(c, u)
 }
 
 type profileUpdate struct {

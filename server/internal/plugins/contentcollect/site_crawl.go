@@ -263,17 +263,6 @@ func lastURLSegment(raw string) string {
 	return seg
 }
 
-// —— 采集页面数上限（防跑飞，可后台配置 collect_site_page_limit，默认 200） ——
-
-func (cc *behavior) siteCrawlPageLimit() int {
-	if v := strings.TrimSpace(cc.core.GetSetting("collect_site_page_limit")); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 5000 {
-			return n
-		}
-	}
-	return 200
-}
-
 // —— 采集向导：目录预览 + 内容区抽样 ——
 
 // SiteCrawlPreview POST /collect/site/preview
@@ -295,7 +284,7 @@ func (cc *behavior) SiteCrawlPreview(c *gin.Context) {
 		cc.failWebImport(c, err)
 		return
 	}
-	limit := cc.siteCrawlPageLimit()
+	limit := cc.siteCrawlPageLimit(cc.core.CurrentUser(c))
 	doc, perr := html.Parse(strings.NewReader(page.HTML))
 	if perr != nil {
 		cc.core.Fail(c, http.StatusUnprocessableEntity, "网页解析失败")
@@ -386,7 +375,7 @@ func (cc *behavior) StartSiteCrawl(c *gin.Context) {
 		cc.core.Fail(c, http.StatusBadRequest, "请提供采集地址与页面")
 		return
 	}
-	limit := cc.siteCrawlPageLimit()
+	limit := cc.siteCrawlPageLimit(cc.core.CurrentUser(c))
 	if len(req.Pages) > limit {
 		req.Pages = req.Pages[:limit]
 	}
@@ -403,6 +392,10 @@ func (cc *behavior) StartSiteCrawl(c *gin.Context) {
 			return
 		}
 	} else {
+		if err := cc.core.EnsureBookQuota(u); err != nil {
+			cc.core.Fail(c, http.StatusForbidden, err.Error())
+			return
+		}
 		title := strings.TrimSpace(req.Title)
 		if title == "" {
 			if pu, err := url.Parse(req.RootURL); err == nil {

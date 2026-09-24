@@ -36,6 +36,9 @@ func (a *App) CopyBook(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "参数错误")
 		return
 	}
+	if a.failBookQuota(c, u) {
+		return
+	}
 
 	// 源章节（未删除），按原顺序
 	var srcDocs []models.Document

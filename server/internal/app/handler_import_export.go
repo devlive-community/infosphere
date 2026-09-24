@@ -317,6 +317,9 @@ func unquoteValue(v string) string {
 // ImportBook POST /import 上传 zip 还原书籍（成为当前用户的书籍）
 func (a *App) ImportBook(c *gin.Context) {
 	u := currentUser(c)
+	if a.failBookQuota(c, u) {
+		return
+	}
 	stored, status, err := storeUploadedZIP(c)
 	if err != nil {
 		fail(c, status, err.Error())

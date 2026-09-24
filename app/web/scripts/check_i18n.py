@@ -65,6 +65,12 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     # growth: 经验流水系统原因码 t(`growth.reason.${reason}`)；排行榜周期 t(`growth.leaderboard.period.${p}`)
     'growth.reason.': ['revoked', 'achievement_revoked'],
     'growth.leaderboard.period.': ['all', 'month', 'week'],
+    # 权益：t(`entitlement.${key}.label|.hint`)（服务端 plugincore.RegisterEntitlement 登记的键）、
+    # t(`entitlement.unit.${unit}`) / unitShort、t(`entitlement.source.${source}`)（权益来源键）
+    'entitlement.': ['books.max', 'collaborators.max', 'upload.max_mb', 'collect.page', 'collect.site', 'collect.site_max_pages'],
+    'entitlement.unit.': ['books', 'people', 'mb', 'pages'],
+    'entitlement.unitShort.': ['books', 'people', 'mb', 'pages'],
+    'entitlement.source.': ['base', 'level', 'admin', 'unavailable'],
     # 通知 payload.i18n.key（服务端 i18ntext 登记、下发，lib/notification.ts 渲染）；须与服务端模板保持同键
     'notify.': ['book.reviewed', 'comment.chapter', 'comment.reply', 'reaction.like', 'reaction.favorite', 'collab.invited', 'collab.accepted', 'collab.rejected', 'report.resolved', 'system.upgraded', 'collect.finished', 'achievement.unlocked', 'achievement.granted', 'growth.levelUp', 'follow.chapterPublished'],
 }
@@ -72,6 +78,7 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
 # 动态键的字段后缀（如 tfa.op.${key}.label 与 .hint 两套）
 DYNAMIC_SUFFIXES: dict[str, list[str]] = {
     'tfa.op.': ['.label', '.hint'],
+    'entitlement.': ['.label', '.hint'],
 }
 
 SKIP_DIRS = {'node_modules', '.next', '.next-build', 'lib/i18n/locales', 'coverage', 'scripts'}
@@ -79,6 +86,8 @@ SKIP_DIRS = {'node_modules', '.next', '.next-build', 'lib/i18n/locales', 'covera
 # 已确认不是 i18n 键的字符串字面量（与键前缀同名碰撞的数据值）
 # 新增碰撞时在此登记，并注明出处
 KNOWN_NON_KEYS = {
+    # 权益键（lib/entitlements.ts entitlementAllowed 的参数，数据值，文案键为 entitlement.<key>.label）
+    'collect.page', 'collect.site',
     # pages/admin/audit-logs.tsx 审计 action 下拉的 value（数据值，文案键为 admin.audit.action.*）
     'user.role_updated', 'user.status_updated', 'user.deleted',
     'book.moderated', 'book.permanently_deleted', 'report.resolved',
