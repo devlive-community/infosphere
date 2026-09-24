@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,7 +85,7 @@ func (a *App) ServeUploads(r *gin.Engine) {
 
 // M22 存储驱动配置（local | qiniu），凭据存站点配置表，不出现在公开 /site
 
-var storageDrivers = map[string]bool{"local": true, "qiniu": true}
+var storageDrivers = map[string]bool{"local": true, "qiniu": true, "s3": true}
 
 type storageConfigUpdate struct {
 	Driver          *string `json:"driver"`
@@ -93,6 +94,15 @@ type storageConfigUpdate struct {
 	QiniuBucket     *string `json:"qiniu_bucket"`
 	QiniuDomain     *string `json:"qiniu_domain"`
 	QiniuUploadHost *string `json:"qiniu_upload_host"`
+	// S3 兼容对象存储（AWS S3 / 阿里云 OSS / 腾讯云 COS / MinIO / R2）；secret 只写，空串表示不修改
+	S3Endpoint  *string `json:"s3_endpoint"`
+	S3Region    *string `json:"s3_region"`
+	S3Bucket    *string `json:"s3_bucket"`
+	S3AccessKey *string `json:"s3_access_key"`
+	S3SecretKey *string `json:"s3_secret_key"`
+	S3PublicURL *string `json:"s3_public_url"`
+	S3PathStyle *bool   `json:"s3_path_style"`
+	S3Prefix    *string `json:"s3_prefix"`
 }
 
 // AdminGetStorage GET /storage 管理员读取存储配置
@@ -104,6 +114,14 @@ func (a *App) AdminGetStorage(c *gin.Context) {
 		"qiniu_bucket":      a.getSetting("qiniu_bucket"),
 		"qiniu_domain":      a.getSetting("qiniu_domain"),
 		"qiniu_upload_host": a.getSetting("qiniu_upload_host"),
+		"s3_endpoint":       a.getSetting("s3_endpoint"),
+		"s3_region":         a.getSetting("s3_region"),
+		"s3_bucket":         a.getSetting("s3_bucket"),
+		"s3_access_key":     a.getSetting("s3_access_key"),
+		"s3_secret_key_set": a.getSetting("s3_secret_key") != "",
+		"s3_public_url":     a.getSetting("s3_public_url"),
+		"s3_path_style":     a.getSetting("s3_path_style") == "true",
+		"s3_prefix":         a.getSetting("s3_prefix"),
 	})
 }
 
@@ -119,7 +137,7 @@ func (a *App) AdminSaveStorage(c *gin.Context) {
 		fields = append(fields, "driver")
 		driver := *req.Driver
 		if !storageDrivers[driver] {
-			fail(c, http.StatusBadRequest, "存储驱动必须为 local 或 qiniu")
+			fail(c, http.StatusBadRequest, "存储驱动必须为 local、qiniu 或 s3")
 			return
 		}
 		if err := a.setSetting("storage_driver", driver, "上传存储驱动 local|qiniu"); err != nil {
@@ -137,17 +155,31 @@ func (a *App) AdminSaveStorage(c *gin.Context) {
 		{"qiniu_bucket", req.QiniuBucket, "七牛存储空间名"},
 		{"qiniu_domain", req.QiniuDomain, "七牛 CDN 绑定域名（含 https://）"},
 		{"qiniu_upload_host", req.QiniuUploadHost, "七牛上传区域地址"},
+		{"s3_endpoint", req.S3Endpoint, "S3 兼容存储服务地址（含 https://）"},
+		{"s3_region", req.S3Region, "S3 兼容存储区域"},
+		{"s3_bucket", req.S3Bucket, "S3 兼容存储桶"},
+		{"s3_access_key", req.S3AccessKey, "S3 兼容存储 Access Key"},
+		{"s3_secret_key", req.S3SecretKey, "S3 兼容存储 Secret Key"},
+		{"s3_public_url", req.S3PublicURL, "S3 兼容存储对外访问地址（CDN，含 https://）"},
+		{"s3_prefix", req.S3Prefix, "S3 兼容存储对象键前缀"},
 	} {
-		if item.value == nil {
+		if item.value == nil || (item.key == "s3_secret_key" && strings.TrimSpace(*item.value) == "") {
 			continue
 		}
 		fields = append(fields, item.key)
-		if (item.key == "qiniu_domain" || item.key == "qiniu_upload_host") && strings.TrimSpace(*item.value) != "" &&
+		if (item.key == "qiniu_domain" || item.key == "qiniu_upload_host" || item.key == "s3_endpoint" || item.key == "s3_public_url") && strings.TrimSpace(*item.value) != "" &&
 			!strings.HasPrefix(*item.value, "http://") && !strings.HasPrefix(*item.value, "https://") {
 			fail(c, http.StatusBadRequest, item.desc+"必须以 http(s):// 开头")
 			return
 		}
 		if err := a.setSetting(item.key, strings.TrimSpace(*item.value), item.desc); err != nil {
+			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
+			return
+		}
+	}
+	if req.S3PathStyle != nil {
+		fields = append(fields, "s3_path_style")
+		if err := a.setSetting("s3_path_style", strconv.FormatBool(*req.S3PathStyle), "S3 兼容存储使用路径风格（MinIO 等）"); err != nil {
 			fail(c, http.StatusInternalServerError, "保存失败: "+err.Error())
 			return
 		}

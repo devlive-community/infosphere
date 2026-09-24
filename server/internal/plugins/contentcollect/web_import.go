@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"mime"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -23,6 +22,7 @@ import (
 	"knowforge/server/internal/models"
 	"knowforge/server/internal/plugincore"
 	"knowforge/server/internal/plugins"
+	"knowforge/server/internal/safehttp"
 
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
@@ -406,82 +406,11 @@ func validateImportURL(raw string) (*url.URL, error) {
 }
 
 func validatePublicHost(ctx context.Context, host string) error {
-	host = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
-	if host == "" || host == "localhost" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") {
-		return errors.New("不允许访问本机或内网地址")
-	}
-	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
-	if err != nil || len(ips) == 0 {
-		return errors.New("无法解析网页地址")
-	}
-	for _, ip := range ips {
-		if !isPublicIP(ip) {
-			return errors.New("不允许访问本机或内网地址")
-		}
-	}
-	return nil
-}
-
-func isPublicIP(ip net.IP) bool {
-	return ip != nil && !ip.IsLoopback() && !ip.IsPrivate() && !ip.IsUnspecified() &&
-		!ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsMulticast()
+	return safehttp.ValidatePublicHost(ctx, host)
 }
 
 func newSafeWebClient(ctx context.Context) *http.Client {
-	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 20 * time.Second}
-	transport := &http.Transport{
-		DialContext: func(dialCtx context.Context, network, address string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(address)
-			if err != nil {
-				return nil, err
-			}
-			ips, err := net.DefaultResolver.LookupIP(dialCtx, "ip", host)
-			if err != nil || len(ips) == 0 {
-				return nil, errors.New("无法解析网页地址")
-			}
-			for _, ip := range ips {
-				if !isPublicIP(ip) {
-					return nil, errors.New("不允许访问本机或内网地址")
-				}
-			}
-			return dialer.DialContext(dialCtx, network, net.JoinHostPort(ips[0].String(), port))
-		},
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 15 * time.Second,
-		IdleConnTimeout:       30 * time.Second,
-	}
-	return &http.Client{
-		Transport: &limitedResponseTransport{base: transport, limit: webResourceMaxBytes},
-		Timeout:   30 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 5 {
-				return errors.New("网页重定向次数过多")
-			}
-			if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
-				return errors.New("网页重定向到了不支持的协议")
-			}
-			return validatePublicHost(ctx, req.URL.Hostname())
-		},
-	}
-}
-
-type limitedResponseTransport struct {
-	base  http.RoundTripper
-	limit int64
-}
-
-func (t *limitedResponseTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	response, err := t.base.RoundTrip(req)
-	if err != nil {
-		return nil, err
-	}
-	response.Body = &limitedReadCloser{Reader: io.LimitReader(response.Body, t.limit), Closer: response.Body}
-	return response, nil
-}
-
-type limitedReadCloser struct {
-	io.Reader
-	io.Closer
+	return safehttp.NewClient(ctx, webResourceMaxBytes)
 }
 
 func fetchStaticWebPage(ctx context.Context, target *url.URL) (webPage, error) {

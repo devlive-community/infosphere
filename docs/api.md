@@ -233,7 +233,7 @@ Authorization: Bearer <token>
 | DELETE | `/auth/oauth/:provider` | 解绑；未设置本地密码时拒绝（防止锁死） | `auth:oauth` |
 | GET/PUT | `/oauth` | 管理员读取/保存各 provider 凭据：GET 返回 `{providers:[{provider,label,client_id,client_secret,enabled}]}`；PUT 保存单个 `{provider,client_id,client_secret,enabled}`（存 `oauth_<provider>_*` 键，不出现在公开 `/site`） | `site:update` |
 | GET/PUT | `/mail` | 管理员读取/保存邮件配置（driver log\|smtp、host/port/username/password/from）、`site_url`（邮件链接前缀）与 `notifications_enabled`（站内通知是否同时发邮件的总开关） | `site:update` |
-| GET/PUT | `/storage` | 管理员读取/保存存储驱动配置：`driver` local\|qiniu + 七牛凭据（access_key/secret_key/bucket/domain/upload_host，域名须含协议） | `site:update` |
+| GET/PUT | `/storage` | 管理员读取/保存存储驱动配置：`driver` local\|qiniu\|s3 + 七牛凭据（access_key/secret_key/bucket/domain/upload_host，域名须含协议）+ S3 兼容存储（`s3_endpoint`、`s3_region`、`s3_bucket`、`s3_access_key`、`s3_secret_key`（只写：GET 仅返回 `s3_secret_key_set`，PUT 传空串不修改）、`s3_public_url`、`s3_path_style`、`s3_prefix`；适用 AWS S3 / 阿里云 OSS / 腾讯云 COS / MinIO / R2，Signature V4） | `site:update` |
 
 > 凭据存于站点配置（`oauth_github_*` 键）；state 防 CSRF 为内存态（10 分钟 TTL），适配当前单实例部署架构。
 
@@ -386,7 +386,7 @@ Authorization: Bearer <token>
 
 ## 上传
 
-- `POST /upload`（multipart `file`，大小上限为当前用户的 `upload.max_mb` 权益，基础值即内容设置中的上传大小，默认 10MB，png/jpg/jpeg/gif/webp/svg/ico）：按存储配置写入 **local**（默认，返回 `/uploads/<name>` 相对地址，由 `/uploads/*` 静态服务）或 **qiniu**（表单上传，返回 `<CDN 域名>/<key>` 绝对地址）；凭据存站点配置表（`storage_driver`、`qiniu_*`），管理端经 `/storage` 维护
+- `POST /upload`（multipart `file`，大小上限为当前用户的 `upload.max_mb` 权益，基础值即内容设置中的上传大小，默认 10MB，png/jpg/jpeg/gif/webp/svg/ico）：按存储配置写入 **local**（默认，返回 `/uploads/<name>` 相对地址，由 `/uploads/*` 静态服务）或 **qiniu**（表单上传，返回 `<CDN 域名>/<key>` 绝对地址）或 **s3**（S3 兼容对象存储 PutObject，返回对外访问地址或对象直链）；凭据存站点配置表（`storage_driver`、`qiniu_*`、`s3_*`），管理端经 `/storage` 维护
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
@@ -522,6 +522,7 @@ Authorization: Bearer <token>
 | GET | `/users/me/export/books?ids=1,2,3` | 批量导出：将本人（作者本人或编辑协作者，不走管理员越权）的多本书各自打包为独立 markdown zip，合并进一个外层 zip（每本为自包含的 `<slug>.zip`，可单独重新导入，往返无损）+ `manifest.txt`。`ids` 逗号分隔（单次上限 100 本），省略则导出全部自有书籍；无可导出书籍返回 403 | `book:export` |
 | GET | `/users/me/exports?page=&page_size=` | 我的导出历史：本人导出过的书籍记录（markdown/pdf/docx/epub/zip 各类导出成功时各记一条），按时间倒序分页；`book` 字段在原书仍存在时返回（供封面/跳转），已删除的书仅保留标题快照 | `book:export` |
 | POST | `/import` | multipart 上传 `file`（ZIP，≤64MB），可选 `title`；源文件以 0600 权限私有保存并返回 `202` 和 `task`，后台还原元数据、标签、章节树和图片；slug 冲突自动追加 `-imported-N`。安全限制：≤500 文件、解压总量 ≤64MB、拒绝绝对路径与 `..` 路径；ZIP 不含 `book.md` 时按普通 Markdown 目录导入（同 `/import/markdown`，书名默认取 ZIP 文件名） | `book:import` |
+| POST | `/books/:id/cleanup/localize-images` | 外链图片本地化：下载章节中引用的外部 http(s) 图片（跳过站点与存储自身域名；经 SSRF 防护客户端，拒绝内网地址，单张不超过上传大小权益，按类型/内容识别图片）并存入当前存储驱动、改写引用；改动的章节生成版本记录。有任务队列时返回 `202` 与 `task`（结果 `{localized,failed,docs_changed,limit_reached,failures[]}`，单次最多 500 张） | `book:update` + 编辑权 |
 | POST | `/import/markdown` | multipart `files[]`：多个 `.md`/`.markdown`（可附带其引用的图片，单个 md ≤5MB）或一个 Markdown 目录 ZIP；可选 `title`、`publish=true`（章节直接发布，默认草稿）。目录 → 章节层级（README/index 作目录正文）、名称自然排序（支持 `01-` 前缀）；标题取 front-matter `title` → 首行一级标题 → 文件名；相对路径图片上传到当前存储驱动并改写引用；指向包内其他 `.md` 的链接改写为阅读页链接；隐藏文件与 `__MACOSX` 忽略。新书为私有草稿 | `book:import` |
 | POST | `/books/:id/documents/import-markdown` | 同上的 `files[]`，可选 `parent_id`（挂到该章节下，否则为第一级），导入为本书章节（状态按书籍默认规则或 front-matter `status`），返回 `{imported_doc}`；需书籍编辑权 | `document:create` |
 | POST | `/import/pdf` | multipart 上传 `file`（PDF，≤64MB），可选 `title`；文件以 0600 权限私有保存后返回 `202` 和 `task`，后台根据文本坐标、字号和字体样式重建 Markdown 标题、段落、列表及代码块，移除重复页眉页脚并修正双栏阅读顺序；结果固定为私有草稿。扫描版 PDF 需预先 OCR | `book:import` |

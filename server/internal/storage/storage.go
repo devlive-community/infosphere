@@ -1,6 +1,7 @@
 // Package storage 提供图片上传的驱动抽象（M22）：
 //   - local（默认）：写入数据目录 uploads/，返回 /uploads/<name> 相对地址
 //   - qiniu：七牛云表单上传，返回 <domain>/<key> 绝对地址（CDN 域名）
+//   - s3：S3 兼容对象存储（AWS S3 / 阿里云 OSS / 腾讯云 COS / MinIO / R2），见 s3.go
 //
 // 凭据存站点配置表（storage_* / qiniu_* 键），管理端经 /storage 维护。
 // 七牛令牌算法：putPolicy JSON → urlsafe base64 → HMAC-SHA1 → urlsafe base64，
@@ -33,16 +34,28 @@ type Uploader interface {
 
 // Config 站点配置中与存储相关的键值集合
 type Config struct {
-	Driver          string // local | qiniu
+	Driver          string // local | qiniu | s3
 	QiniuAccessKey  string
 	QiniuSecretKey  string
 	QiniuBucket     string
 	QiniuDomain     string // 如 https://cdn.example.com
 	QiniuUploadHost string // 如 https://upload.qiniup.com（分区域），默认华东
+
+	S3Endpoint  string
+	S3Region    string
+	S3Bucket    string
+	S3AccessKey string
+	S3SecretKey string
+	S3PublicURL string
+	S3PathStyle bool
+	S3Prefix    string
 }
 
-// FromConfig 按配置选择驱动；qiniu 凭据不完整时回退 local
+// FromConfig 按配置选择驱动；凭据不完整时回退 local
 func FromConfig(cfg Config, dataDir string) Uploader {
+	if cfg.Driver == "s3" && cfg.S3Endpoint != "" && cfg.S3Bucket != "" && cfg.S3AccessKey != "" && cfg.S3SecretKey != "" {
+		return &S3Uploader{cfg: cfg}
+	}
 	if cfg.Driver == "qiniu" && cfg.QiniuAccessKey != "" && cfg.QiniuSecretKey != "" &&
 		cfg.QiniuBucket != "" && cfg.QiniuDomain != "" {
 		host := cfg.QiniuUploadHost
@@ -56,7 +69,8 @@ func FromConfig(cfg Config, dataDir string) Uploader {
 
 // FromSettings 从站点配置表解析驱动（缺省 local）
 func FromSettings(db *gorm.DB, dataDir string) Uploader {
-	keys := []string{"storage_driver", "qiniu_access_key", "qiniu_secret_key", "qiniu_bucket", "qiniu_domain", "qiniu_upload_host"}
+	keys := []string{"storage_driver", "qiniu_access_key", "qiniu_secret_key", "qiniu_bucket", "qiniu_domain", "qiniu_upload_host",
+		"s3_endpoint", "s3_region", "s3_bucket", "s3_access_key", "s3_secret_key", "s3_public_url", "s3_path_style", "s3_prefix"}
 	var rows []struct {
 		ConfigKey   string
 		ConfigValue string
@@ -79,6 +93,22 @@ func FromSettings(db *gorm.DB, dataDir string) Uploader {
 			cfg.QiniuDomain = r.ConfigValue
 		case "qiniu_upload_host":
 			cfg.QiniuUploadHost = r.ConfigValue
+		case "s3_endpoint":
+			cfg.S3Endpoint = strings.TrimSpace(r.ConfigValue)
+		case "s3_region":
+			cfg.S3Region = strings.TrimSpace(r.ConfigValue)
+		case "s3_bucket":
+			cfg.S3Bucket = strings.TrimSpace(r.ConfigValue)
+		case "s3_access_key":
+			cfg.S3AccessKey = strings.TrimSpace(r.ConfigValue)
+		case "s3_secret_key":
+			cfg.S3SecretKey = strings.TrimSpace(r.ConfigValue)
+		case "s3_public_url":
+			cfg.S3PublicURL = strings.TrimSpace(r.ConfigValue)
+		case "s3_path_style":
+			cfg.S3PathStyle = r.ConfigValue == "true"
+		case "s3_prefix":
+			cfg.S3Prefix = strings.TrimSpace(r.ConfigValue)
 		}
 	}
 	return FromConfig(cfg, dataDir)

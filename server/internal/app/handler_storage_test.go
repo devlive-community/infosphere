@@ -158,7 +158,41 @@ func TestStorageDrivers(t *testing.T) {
 		t.Fatalf("上传 token 格式异常: %q", gotToken)
 	}
 
-	// 5. 切回 local 驱动后恢复相对地址
+	// 5. S3 兼容存储（路径风格，模拟端点校验 SigV4 签名头）；Secret Key 只写不读
+	var s3Path, s3Auth string
+	fakeS3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s3Path, s3Auth = r.URL.Path, r.Header.Get("Authorization")
+		if r.Method != http.MethodPut || !strings.HasPrefix(s3Auth, "AWS4-HMAC-SHA256 Credential=s3-ak/") {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer fakeS3.Close()
+	status, _ = request(http.MethodPut, "/api/v1/storage", map[string]any{
+		"driver": "s3", "s3_endpoint": fakeS3.URL, "s3_region": "us-east-1", "s3_bucket": "kf", "s3_access_key": "s3-ak",
+		"s3_secret_key": "s3-sk", "s3_path_style": true, "s3_public_url": "https://img.example.com", "s3_prefix": "uploads",
+	}, adminToken)
+	if status != 200 {
+		t.Fatalf("保存 S3 配置失败: %d", status)
+	}
+	_, got = request(http.MethodGet, "/api/v1/storage", nil, adminToken)
+	data = got["data"].(map[string]any)
+	if _, leaked := data["s3_secret_key"]; leaked || data["s3_secret_key_set"] != true || data["s3_path_style"] != true {
+		t.Fatalf("S3 Secret Key 不应回显: %v", data)
+	}
+	// 只改其它字段、Secret Key 传空串时保持原值
+	request(http.MethodPut, "/api/v1/storage", map[string]any{"s3_secret_key": "", "s3_region": "us-east-1"}, adminToken)
+	status, up = upload(adminToken)
+	if status != 200 {
+		t.Fatalf("S3 上传失败: %d %v", status, up)
+	}
+	url = up["data"].(map[string]any)["url"].(string)
+	if !strings.HasPrefix(url, "https://img.example.com/uploads/") || s3Path != "/kf/uploads/"+strings.TrimPrefix(url, "https://img.example.com/uploads/") {
+		t.Fatalf("S3 上传地址/对象键错误: url=%q path=%q", url, s3Path)
+	}
+
+	// 6. 切回 local 驱动后恢复相对地址
 	request(http.MethodPut, "/api/v1/storage", map[string]any{"driver": "local"}, adminToken)
 	status, up = upload(adminToken)
 	if status != 200 || !strings.HasPrefix(up["data"].(map[string]any)["url"].(string), "/uploads/") {

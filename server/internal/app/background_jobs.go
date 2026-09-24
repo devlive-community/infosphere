@@ -66,6 +66,7 @@ func (a *App) configureJobQueue() error {
 	})
 	queue.RegisterResult(pdfImportJobType, a.runPDFImportJob)
 	queue.RegisterResult(zipImportJobType, a.runZIPImportJob)
+	queue.RegisterResult(imageLocalizeJobType, a.runImageLocalizeJob)
 	queue.Register(maintenanceJobType, a.runMaintenanceCleanup)
 	queue.Register(sitemapJobType, a.runSitemapGenerate)
 	queue.Register(notificationBackfillJobType, a.runNotificationBackfill)

@@ -174,6 +174,7 @@ func (a *App) Router() *gin.Engine {
 			books.POST("/:id/import/pdf", a.RequirePermission(authz.BookImport), a.ReimportPDFBook)
 			books.POST("/:id/documents/import-markdown", a.RequirePermission(authz.DocumentCreate), a.ImportMarkdownDocuments)
 			books.POST("/:id/cleanup/permalink-anchors", a.RequirePermission(authz.BookUpdate), a.CleanupBookPermalinks)
+			books.POST("/:id/cleanup/localize-images", a.RequirePermission(authz.BookUpdate), a.LocalizeBookImages)
 			books.GET("/:id/read-chapters", a.RequirePermission(authz.UserRead), a.ReadChapters)
 			books.GET("/:id/export-style", a.RequirePermission(authz.BookUpdate), a.GetBookExportStyle)
 			books.PUT("/:id/export-style", a.RequirePermission(authz.BookUpdate), a.UpdateBookExportStyle)

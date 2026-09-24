@@ -48,6 +48,16 @@ export interface StorageConfig {
   qiniu_bucket: string
   qiniu_domain: string
   qiniu_upload_host: string
+  // S3 兼容对象存储（AWS S3 / 阿里云 OSS / 腾讯云 COS / MinIO / R2）；Secret Key 只写（读取时只返回是否已配置）
+  s3_endpoint?: string
+  s3_region?: string
+  s3_bucket?: string
+  s3_access_key?: string
+  s3_secret_key?: string
+  s3_secret_key_set?: boolean
+  s3_public_url?: string
+  s3_path_style?: boolean
+  s3_prefix?: string
 }
 
 export interface ConfigItem {
