@@ -422,3 +422,33 @@ func CollectPublicSiteConfig(core Core, into map[string]any) {
 		}
 	}
 }
+
+// ExperienceGranter 确保某用户由某来源（规则键 + 来源 ID）持有一份经验：该来源当前净经验 > 0 时不重复发放，
+// 否则发放一份（被收回后可再次发放）。用于「每个来源只能有一份」的奖励，如成就解锁奖励。
+type ExperienceGranter func(core Core, userID uint, ruleKey, sourceType, sourceID string, xp int, reason string)
+
+var experienceGranter ExperienceGranter
+
+// ProvideExperienceGranter 由成长插件登记「只发一份」的经验发放实现。
+func ProvideExperienceGranter(f ExperienceGranter) { experienceGranter = f }
+
+// GrantExperienceOnce 为来源发放唯一一份经验（成长插件未提供或禁用时为空操作）。
+func GrantExperienceOnce(core Core, userID uint, ruleKey, sourceType, sourceID string, xp int, reason string) {
+	if experienceGranter != nil {
+		experienceGranter(core, userID, ruleKey, sourceType, sourceID, xp, reason)
+	}
+}
+
+// —— 经验服务就绪：成长插件启用并完成初始化后调用，供其他插件对账（如补发/收回停用期间的成就奖励）。——
+
+var experienceReadyHooks []func(core Core)
+
+// OnExperienceReady 订阅经验服务就绪。
+func OnExperienceReady(h func(core Core)) { experienceReadyHooks = append(experienceReadyHooks, h) }
+
+// FireExperienceReady 由成长插件在启用初始化完成后调用。
+func FireExperienceReady(core Core) {
+	for _, h := range experienceReadyHooks {
+		h(core)
+	}
+}

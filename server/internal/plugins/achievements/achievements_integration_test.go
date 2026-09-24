@@ -347,3 +347,85 @@ func TestAchievementRevokeReclaimsRewardXP(t *testing.T) {
 		t.Fatalf("再次撤销应收回重新发放的经验，实际 xp=%d", xp())
 	}
 }
+
+// 奖励经验「只一份」：成长插件停用期间撤销/重新授予，重新启用后对账——撤销的收回、有效的保持一份，绝不重复；
+// 停用期间获得的成就在启用后补发一份。
+func TestAchievementRewardXPExactlyOnceAcrossGrowthToggles(t *testing.T) {
+	e := newTestEnv(t)
+	e.enable(t, "achievements")
+	e.enable(t, "growth")
+	_ = e.app.SetSetting("achievements_notifications_enabled", "false", "test")
+	user := e.user(t, "reward-once")
+	other := e.user(t, "reward-backfill")
+	definition := models.AchievementDefinition{Key: "reward.once", Name: "唯一奖励", Category: "special", Status: "active", Rarity: "rare", IconType: "fa", IconValue: "fa-award", Visibility: "public", GrantMode: "manual", RewardXP: 40, Version: 1, Tier: 1, CreatedBy: e.admin.ID, UpdatedBy: e.admin.ID}
+	if err := e.db.Create(&definition).Error; err != nil {
+		t.Fatal(err)
+	}
+	xp := func(u *models.User) int64 {
+		var total int64
+		e.db.Model(&models.ExperienceEvent{}).Where("user_id = ?", u.ID).Select("COALESCE(SUM(final_xp),0)").Scan(&total)
+		return total
+	}
+	grant := func(u *models.User) string {
+		status, payload := e.do(t, http.MethodPost, "/api/v1/admin/achievement-grants", `{"username":"`+u.Username+`","achievement_id":`+jsonID(definition.ID)+`,"reason":"r"}`, e.token)
+		if status != http.StatusOK {
+			t.Fatalf("授予失败: %d %v", status, payload)
+		}
+		return jsonID(uint(payload["data"].(map[string]any)["id"].(float64)))
+	}
+	revoke := func(id string) {
+		if status, payload := e.do(t, http.MethodPost, "/api/v1/admin/achievement-grants/"+id+"/revoke", `{"reason":"r"}`, e.token); status != http.StatusOK {
+			t.Fatalf("撤销失败: %d %v", status, payload)
+		}
+	}
+	setGrowth := func(on bool) {
+		action := "uninstall"
+		if on {
+			action = "install"
+		}
+		if status, _ := e.do(t, http.MethodPost, "/api/v1/admin/plugins/growth/"+action, "", e.token); status != http.StatusOK {
+			t.Fatalf("%s growth 失败", action)
+		}
+		e.drainJobs(t) // 执行启用时投递的奖励对账任务
+	}
+
+	id := grant(user)
+	if xp(user) != 40 {
+		t.Fatalf("授予应得 40，实际 %d", xp(user))
+	}
+	// 停用成长 → 撤销（此时无法收回）→ 重新启用：对账收回
+	setGrowth(false)
+	revoke(id)
+	setGrowth(true)
+	if xp(user) != 0 {
+		t.Fatalf("停用期间撤销的成就，重新启用后应收回奖励，实际 %d", xp(user))
+	}
+	// 停用成长 → 重新授予 → 启用：补发一份
+	setGrowth(false)
+	grant(user)
+	setGrowth(true)
+	if xp(user) != 40 {
+		t.Fatalf("重新启用后应只持有一份奖励，实际 %d", xp(user))
+	}
+	// 停用成长 → 撤销 + 重新授予（有效）→ 启用：仍只一份，不重复
+	setGrowth(false)
+	revoke(id)
+	grant(user)
+	setGrowth(true)
+	if xp(user) != 40 {
+		t.Fatalf("反复撤销/授予后仍只能持有一份奖励，实际 %d", xp(user))
+	}
+	// 启用状态下多次对账也不重复
+	setGrowth(false)
+	setGrowth(true)
+	if xp(user) != 40 {
+		t.Fatalf("重复对账不应重复发放，实际 %d", xp(user))
+	}
+	// 停用期间获得的成就，启用后补发
+	setGrowth(false)
+	grant(other)
+	setGrowth(true)
+	if xp(other) != 40 {
+		t.Fatalf("停用期间获得的成就应在启用后补发一份，实际 %d", xp(other))
+	}
+}

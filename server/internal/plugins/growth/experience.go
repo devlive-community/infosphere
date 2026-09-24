@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"knowforge/server/internal/models"
@@ -19,6 +20,9 @@ import (
 func init() {
 	plugincore.ProvideExperienceRecorder(func(core plugincore.Core, userID uint, ruleKey, sourceType, sourceID, dedupeKey string, xp int, reason string) {
 		(&behavior{core: core}).recordExperience(userID, ruleKey, sourceType, sourceID, dedupeKey, xp, reason)
+	})
+	plugincore.ProvideExperienceGranter(func(core plugincore.Core, userID uint, ruleKey, sourceType, sourceID string, xp int, reason string) {
+		(&behavior{core: core}).grantOnce(userID, ruleKey, sourceType, sourceID, xp, reason)
 	})
 	plugincore.ProvideExperienceRevoker(func(core plugincore.Core, userID uint, ruleKey, sourceID, reason string) {
 		b := &behavior{core: core}
@@ -40,6 +44,8 @@ func init() {
 		b := &behavior{core: core}
 		b.seedDefaultLevels()
 		b.ensureExperienceRules()
+		// 经验服务就绪：其他插件据此对账（如补发/收回停用期间的成就奖励）
+		plugincore.FireExperienceReady(core)
 		return nil
 	})
 	// 删除用户时一并清理其成长数据
@@ -154,6 +160,29 @@ func (b *behavior) revokeForActivity(ev plugincore.ActivityEvent) {
 	var granted []models.ExperienceEvent
 	b.core.Gorm().Where("dedupe_key IN ? AND final_xp > 0", keys).Find(&granted)
 	b.revokeEvents(granted, revokedReason)
+}
+
+// grantOnce 为来源（用户 + 规则 + 来源 ID）发放唯一一份经验：净经验 > 0 时跳过；
+// 否则以「规则:用户:来源[:代次]」为去重键发放（代次 = 该来源已有的正流水条数），
+// 首份与历史键「achievement.unlocked:<用户>:<成就>」一致；并发调用落到同一去重键，只成功一次。
+func (b *behavior) grantOnce(userID uint, ruleKey, sourceType, sourceID string, xp int, reason string) {
+	if xp <= 0 || userID == 0 || sourceID == "" || !b.core.PluginEnabled(plugins.KeyGrowth) {
+		return
+	}
+	db := b.core.Gorm()
+	scope := db.Model(&models.ExperienceEvent{}).Where("user_id = ? AND rule_key = ? AND source_id = ?", userID, ruleKey, sourceID)
+	var net int64
+	scope.Session(&gorm.Session{}).Select("COALESCE(SUM(final_xp),0)").Scan(&net)
+	if net > 0 {
+		return
+	}
+	var generation int64
+	scope.Session(&gorm.Session{}).Where("final_xp > 0").Count(&generation)
+	dedupe := fmt.Sprintf("%s:%d:%s", ruleKey, userID, sourceID)
+	if generation > 0 {
+		dedupe = fmt.Sprintf("%s:%d", dedupe, generation)
+	}
+	b.recordExperience(userID, ruleKey, sourceType, sourceID, dedupe, xp, reason)
 }
 
 // revokeEvents 为每条正经验流水记一条等额负流水（去重键 revoke:<原键>，每条只收回一次）。
