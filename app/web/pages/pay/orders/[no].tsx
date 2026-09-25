@@ -6,9 +6,18 @@ import Seo from '@/components/Seo'
 import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
-import { Badge, Button, ButtonLink, Card, EmptyState, Field, Loading, Textarea, useFeedback } from '@/components/ui'
+import { Badge, Button, ButtonLink, Card, EmptyState, Field, Loading, Modal, Textarea, useFeedback } from '@/components/ui'
 import { checkoutHref, durationLabel, formatPrice } from '@/lib/commerce'
-import { isMobileDevice, STATUS_TONE, type PaymentAction, type PaymentOrder } from '@/lib/payment'
+import { isMobileDevice, REFUND_STATUS_TONE, STATUS_TONE, type PaymentAction, type PaymentOrder, type PaymentRefund } from '@/lib/payment'
+
+interface OrderView {
+  order: PaymentOrder
+  action?: PaymentAction
+  refunds: PaymentRefund[]
+  refundable_cents: number
+  can_request_refund?: boolean
+  refund_blocked_reason?: string
+}
 
 const POLL_MS = 3000
 const POLL_LIMIT_MS = 15 * 60 * 1000
@@ -25,7 +34,10 @@ function PaymentOrderInner() {
   const { t, locale } = useTranslation()
   const { showToast, confirmAction } = useFeedback()
   const no = typeof router.query.no === 'string' ? router.query.no : ''
-  const [data, setData] = useState<{ order: PaymentOrder; action?: PaymentAction } | null>(null)
+  const [data, setData] = useState<OrderView | null>(null)
+  const [refundOpen, setRefundOpen] = useState(false)
+  const [refundReason, setRefundReason] = useState('')
+  const [requesting, setRequesting] = useState(false)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -34,7 +46,7 @@ function PaymentOrderInner() {
 
   const load = useCallback(() => {
     if (!no) return Promise.resolve()
-    return api<{ order: PaymentOrder; action?: PaymentAction }>(`/payment/orders/${encodeURIComponent(no)}${isMobileDevice() ? '?mobile=1' : ''}`)
+    return api<OrderView>(`/payment/orders/${encodeURIComponent(no)}${isMobileDevice() ? '?mobile=1' : ''}`)
       .then((r) => { setData(r); setError('') })
       .catch((e) => setError((e as Error).message))
   }, [no])
@@ -63,6 +75,18 @@ function PaymentOrderInner() {
       await load()
     } catch (e) { showToast({ title: t('payment.order.proofFailed'), message: (e as Error).message, tone: 'error' }) }
     finally { setSubmitting(false) }
+  }
+
+  async function requestRefund() {
+    setRequesting(true)
+    try {
+      await api(`/payment/orders/${encodeURIComponent(no)}/refund-request`, { method: 'POST', body: { reason: refundReason.trim() } })
+      showToast({ message: t('payment.refund.requested'), tone: 'success' })
+      setRefundOpen(false)
+      setRefundReason('')
+      await load()
+    } catch (e) { showToast({ title: t('payment.refund.requestFailed'), message: (e as Error).message, tone: 'error' }) }
+    finally { setRequesting(false) }
   }
 
   async function cancel() {
@@ -96,7 +120,10 @@ function PaymentOrderInner() {
                       <div>{t(`payment.channel.${o.channel}`)} · {formatDate(o.created_at)}</div>
                     </div>
                   </div>
-                  <div className="shrink-0 text-2xl font-bold tabular-nums text-slate-900">{formatPrice(o.amount_cents, o.currency, locale)}</div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-2xl font-bold tabular-nums text-slate-900">{formatPrice(o.amount_cents, o.currency, locale)}</div>
+                    {o.refunded_cents > 0 && <div className="mt-1 text-xs tabular-nums text-rose-600">{t('payment.refund.refundedAmount', { amount: formatPrice(o.refunded_cents, o.currency, locale) })}</div>}
+                  </div>
                 </div>
               </Card>
 
@@ -149,12 +176,55 @@ function PaymentOrderInner() {
                 </Card>
               )}
 
+              {o.status === 'refunded' && (
+                <Card className="mt-4 flex flex-col items-center gap-3 p-8 text-center">
+                  <i className="fa-solid fa-rotate-left text-4xl text-slate-400" aria-hidden="true" />
+                  <div className="text-lg font-bold text-slate-900">{t('payment.refund.fullyRefunded')}</div>
+                </Card>
+              )}
+
+              {(data.refunds.length > 0 || data.can_request_refund || (o.status === 'paid' && data.refund_blocked_reason)) && (
+                <Card className="mt-4 p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="font-bold text-slate-900">{t('payment.refund.title')}</h2>
+                    {data.can_request_refund && <Button size="sm" variant="outline" onClick={() => setRefundOpen(true)}>{t('payment.refund.request')}</Button>}
+                  </div>
+                  {!data.can_request_refund && o.status === 'paid' && data.refund_blocked_reason && data.refunds.every((r) => !['requested', 'pending', 'processing'].includes(r.status)) && (
+                    <p className="mt-2 text-xs text-slate-400">{data.refund_blocked_reason}</p>
+                  )}
+                  {data.refunds.length > 0 && (
+                    <ul className="mt-3 divide-y divide-slate-100">
+                      {data.refunds.map((r) => (
+                        <li key={r.id} className="py-3 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium tabular-nums text-slate-900">{formatPrice(r.amount_cents, r.currency, locale)}</span>
+                            <Badge tone={REFUND_STATUS_TONE[r.status]}>{t(`payment.refundStatus.${r.status}`)}</Badge>
+                            <span className="ml-auto text-xs text-slate-400">{formatDate(r.succeeded_at || r.created_at)}</span>
+                          </div>
+                          {r.reason && <p className="mt-1 whitespace-pre-wrap text-xs text-slate-500">{t('payment.refund.reasonLine', { reason: r.reason })}</p>}
+                          {r.admin_note && <p className="mt-0.5 whitespace-pre-wrap text-xs text-slate-500">{t('payment.refund.noteLine', { note: r.admin_note })}</p>}
+                          {r.status === 'processing' && <p className="mt-0.5 text-xs text-sky-600">{t('payment.refund.processingHint')}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+              )}
+
               {(o.status === 'expired' || o.status === 'cancelled') && (
                 <Card className="mt-4 flex flex-col items-center gap-3 p-8 text-center">
                   <p className="text-sm text-slate-500">{t(o.status === 'expired' ? 'payment.order.expiredHint' : 'payment.order.cancelledHint')}</p>
                   <ButtonLink href={checkoutHref(o.kind, o.sku)} variant="outline">{t('payment.order.reorder')}</ButtonLink>
                 </Card>
               )}
+
+              <Modal open={refundOpen} onClose={() => setRefundOpen(false)} title={t('payment.refund.requestTitle')}
+                footer={<><Button variant="ghost" onClick={() => setRefundOpen(false)}>{t('common.actions.cancel')}</Button><Button loading={requesting} disabled={!refundReason.trim()} onClick={() => void requestRefund()}>{t('payment.refund.submit')}</Button></>}>
+                <p className="mb-3 text-sm text-slate-500">{t('payment.refund.requestHint', { amount: formatPrice(data.refundable_cents, o.currency, locale) })}</p>
+                <Field label={t('payment.refund.reason')}>
+                  <Textarea rows={4} maxLength={500} value={refundReason} onChange={(e) => setRefundReason(e.target.value)} />
+                </Field>
+              </Modal>
 
               <div className="mt-4 flex items-center justify-between">
                 <ButtonLink href="/user/orders" variant="ghost">{t('payment.order.myOrders')}</ButtonLink>

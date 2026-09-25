@@ -46,6 +46,7 @@ const (
 	LedgerSale             = "sale"              // 售出：+净收益
 	LedgerWithdrawal       = "withdrawal"        // 申请提现：-金额（冻结）
 	LedgerWithdrawalRevert = "withdrawal_revert" // 提现被驳回：+金额（退回）
+	LedgerRefund           = "refund"            // 订单退款：按比例扣回净收益（可使余额为负，余额为正前不能提现）
 )
 
 // LedgerEntry 作者收益流水；余额 = NetCents 之和。
@@ -54,6 +55,7 @@ type LedgerEntry struct {
 	AuthorID        uint      `gorm:"index" json:"author_id"`
 	Kind            string    `gorm:"size:20;index" json:"kind"`
 	OrderNo         string    `gorm:"size:40;index" json:"order_no"`
+	RefundNo        string    `gorm:"size:40;index" json:"refund_no"` // 退款流水对应的退款单号（幂等）
 	BookID          uint      `json:"book_id"`
 	DocID           uint      `json:"doc_id"`
 	Title           string    `gorm:"size:255" json:"title"`

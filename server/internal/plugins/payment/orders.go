@@ -93,7 +93,8 @@ func (b *behavior) markPaid(res *paidResult, channelKey string, confirmedBy uint
 		return false, fmt.Errorf("订单 %s 金额不匹配（%d %s ≠ %d %s）", o.OrderNo, res.AmountCents, res.Currency, o.AmountCents, o.Currency)
 	}
 	now := time.Now()
-	result := db.Model(&Order{}).Where("id = ? AND status <> ?", o.ID, StatusPaid).Updates(map[string]any{
+	// 已支付或已退款的订单不再变更（避免渠道重发的支付通知把已退款订单重新置为已支付并再次履约）
+	result := db.Model(&Order{}).Where("id = ? AND status NOT IN ?", o.ID, []string{StatusPaid, StatusRefunded}).Updates(map[string]any{
 		"status": StatusPaid, "paid_at": now, "channel_trade_no": truncateRunes(res.TradeNo, 128), "confirmed_by": confirmedBy,
 	})
 	if result.Error != nil {
@@ -163,7 +164,7 @@ func (b *behavior) sync(ctx context.Context, o *Order) {
 	b.core.Gorm().First(o, o.ID)
 }
 
-// sweep 周期巡检：过期待支付订单；重试已支付但履约失败的订单。
+// sweep 周期巡检：过期待支付订单；重试已支付但履约失败的订单；查询受理中的退款、重试退款后的商品回调。
 func sweep(core plugincore.Core, _ *jobqueue.Queue) {
 	if !core.Gorm().Migrator().HasTable(&Order{}) {
 		return
@@ -176,4 +177,5 @@ func sweep(core plugincore.Core, _ *jobqueue.Queue) {
 	for i := range failed {
 		b.fulfill(&failed[i])
 	}
+	b.sweepRefunds(context.Background())
 }

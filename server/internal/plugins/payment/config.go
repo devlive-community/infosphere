@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -34,12 +35,24 @@ type config struct {
 	StripeEnabled       bool
 	StripeSecretKey     string
 	StripeWebhookSecret string
+
+	RefundRequestDays int // 支付后多少天内用户可申请退款；0 表示不开放用户申请（管理员仍可直接退款）
 }
 
 const (
 	defaultOfflineExpireHours = 72
 	maxOfflineExpireHours     = 24 * 30
+	defaultRefundRequestDays  = 7
+	maxRefundRequestDays      = 365
 )
+
+// intRange 整数配置项的取值范围与越界提示。
+func intRange(jsonKey string) (min, max int, msg string) {
+	if jsonKey == "refund_request_days" {
+		return 0, maxRefundRequestDays, fmt.Sprintf("可申请退款天数需在 0 到 %d 之间（0 为不开放用户申请）", maxRefundRequestDays)
+	}
+	return 1, maxOfflineExpireHours, fmt.Sprintf("线下转账订单有效期需在 1 到 %d 小时之间", maxOfflineExpireHours)
+}
 
 // setting 描述一个配置项：键、是否密钥、读写 config 的方法。
 type setting struct {
@@ -71,6 +84,7 @@ var settings = []setting{
 	{"stripe_enabled", "payment_stripe_enabled", false, "bool", "支付：Stripe 开关"},
 	{"stripe_secret_key", "payment_stripe_secret_key", true, "str", "支付：Stripe Secret Key"},
 	{"stripe_webhook_secret", "payment_stripe_webhook_secret", true, "str", "支付：Stripe Webhook 签名密钥"},
+	{"refund_request_days", "payment_refund_request_days", false, "int", "支付：支付后可申请退款的天数（0 为不开放用户申请）"},
 }
 
 func loadConfig(core plugincore.Core) config {
@@ -79,6 +93,10 @@ func loadConfig(core plugincore.Core) config {
 	hours, err := strconv.Atoi(get("payment_offline_expire_hours"))
 	if err != nil || hours < 1 || hours > maxOfflineExpireHours {
 		hours = defaultOfflineExpireHours
+	}
+	refundDays, err := strconv.Atoi(get("payment_refund_request_days"))
+	if err != nil || refundDays < 0 || refundDays > maxRefundRequestDays {
+		refundDays = defaultRefundRequestDays
 	}
 	return config{
 		SiteURL:        strings.TrimRight(get("site_url"), "/"),
@@ -90,6 +108,7 @@ func loadConfig(core plugincore.Core) config {
 		WechatSerialNo: get("payment_wechat_serial_no"), WechatPrivate: get("payment_wechat_private_key"), WechatAPIv3Key: get("payment_wechat_api_v3_key"),
 		WechatPublicKey: get("payment_wechat_public_key"), WechatPublicKeyID: get("payment_wechat_public_key_id"),
 		StripeEnabled: on("payment_stripe_enabled"), StripeSecretKey: get("payment_stripe_secret_key"), StripeWebhookSecret: get("payment_stripe_webhook_secret"),
+		RefundRequestDays: refundDays,
 	}
 }
 
@@ -112,5 +131,6 @@ func adminView(core plugincore.Core) map[string]any {
 	if v, _ := out["offline_expire_hours"].(int); v < 1 || v > maxOfflineExpireHours {
 		out["offline_expire_hours"] = defaultOfflineExpireHours
 	}
+	out["refund_request_days"] = loadConfig(core).RefundRequestDays
 	return out
 }

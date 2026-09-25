@@ -10,7 +10,8 @@ import (
 //
 // 支付插件与商品提供者（如会员）互不依赖，只经此中性扩展点协作：
 //   - 下单时支付插件调用 Resolve 取得商品（价格、标题）并把 Payload 快照进订单；
-//   - 支付成功后支付插件以订单号调用 Fulfill（须按订单号幂等），提供者据快照发放（如开通会员）。
+//   - 支付成功后支付插件以订单号调用 Fulfill（须按订单号幂等），提供者据快照发放（如开通会员）；
+//   - 退款成功后支付插件调用 Refund（须按退款单号幂等），提供者冲回相关财务（如作者收益），并在 Revoke 时撤销已发放的商品。
 
 // CheckoutEnabledKey 公开站点配置（GET /site）中「可在线购买」的中性开关：由提供结算能力的插件（如支付）
 // 经 RegisterPublicSiteConfig 下发；商品所属插件的前端只看此键，不感知具体由哪个插件提供结算。
@@ -32,6 +33,19 @@ type Product struct {
 	Payload map[string]any `json:"-"`
 }
 
+// RefundEvent 一笔退款成功（部分或全额）。
+type RefundEvent struct {
+	UserID      uint
+	OrderNo     string
+	RefundNo    string // 退款单号（幂等键）
+	AmountCents int64  // 本次退款金额
+	TotalCents  int64  // 订单金额
+	Currency    string
+	// Revoke 是否撤销已发放的商品（如扣回会员时长、收回已解锁内容）；由管理员在退款时决定
+	Revoke  bool
+	Payload map[string]any // 下单时的履约快照
+}
+
 // ProductProvider 商品提供者。
 type ProductProvider struct {
 	Kind string
@@ -39,6 +53,8 @@ type ProductProvider struct {
 	Resolve func(core Core, u *models.User, sku string) (Product, error)
 	// Fulfill 订单支付成功后履约；须按 orderNo 幂等（重复调用不重复发放）。
 	Fulfill func(core Core, userID uint, orderNo string, payload map[string]any) error
+	// Refund 退款成功后回调（可选）；须按 RefundNo 幂等。未提供时退款只退钱、不撤销商品。
+	Refund func(core Core, ev RefundEvent) error
 }
 
 var productProviders = map[string]ProductProvider{}

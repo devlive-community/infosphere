@@ -3,6 +3,7 @@ package paidcontent
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -401,6 +402,42 @@ func fulfill(core plugincore.Core, userID uint, orderNo string, payload map[stri
 	var book models.Book
 	db.Select("id, title").First(&book, bookID)
 	core.NotifyI18n(authorID, "system", "notify.paid.sold", map[string]string{"book": book.Title, "title": title, "amount": formatMoney(amount-commission, currency)},
+		map[string]any{"link": "/user/earnings"})
+	return nil
+}
+
+// refund 订单退款：按比例扣回作者净收益（平台抽成同比例退回）；选择撤销时收回解锁（删除购买记录）。
+// 按退款单号幂等；订单从未履约（没有售出流水）时无需处理。
+func refund(core plugincore.Core, ev plugincore.RefundEvent) error {
+	db := core.Gorm()
+	var n int64
+	db.Model(&LedgerEntry{}).Where("kind = ? AND refund_no = ?", LedgerRefund, ev.RefundNo).Count(&n)
+	var sale LedgerEntry
+	if n > 0 || db.Where("kind = ? AND order_no = ?", LedgerSale, ev.OrderNo).First(&sale).Error != nil || sale.GrossCents <= 0 {
+		return nil
+	}
+	amount := ev.AmountCents
+	if amount > sale.GrossCents {
+		amount = sale.GrossCents
+	}
+	netBack := int64(math.Round(float64(sale.NetCents) * float64(amount) / float64(sale.GrossCents)))
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&LedgerEntry{AuthorID: sale.AuthorID, Kind: LedgerRefund, OrderNo: ev.OrderNo, RefundNo: ev.RefundNo, BookID: sale.BookID,
+			DocID: sale.DocID, Title: sale.Title, BuyerID: sale.BuyerID, GrossCents: -amount, CommissionCents: -(amount - netBack), NetCents: -netBack,
+			Currency: sale.Currency}).Error; err != nil {
+			return err
+		}
+		if ev.Revoke {
+			return tx.Where("order_no = ?", ev.OrderNo).Delete(&Purchase{}).Error
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	var book models.Book
+	db.Select("id, title").First(&book, sale.BookID)
+	core.NotifyI18n(sale.AuthorID, "system", "notify.paid.refunded", map[string]string{"book": book.Title, "title": sale.Title, "amount": formatMoney(netBack, sale.Currency)},
 		map[string]any{"link": "/user/earnings"})
 	return nil
 }

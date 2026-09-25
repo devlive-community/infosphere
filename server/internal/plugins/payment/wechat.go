@@ -23,7 +23,8 @@ import (
 )
 
 // 微信支付 APIv3：Native 下单得到 code_url，前端展示二维码扫码支付；请求以商户私钥签名，
-// 响应与回调以「微信支付公钥」验签（公钥模式，需配置公钥 ID），回调资源以 APIv3 密钥 AES-256-GCM 解密。仅支持人民币。
+// 响应与回调以「微信支付公钥」验签（公钥模式，需配置公钥 ID），回调资源以 APIv3 密钥 AES-256-GCM 解密。
+// 退款经 /v3/refund/domestic/refunds 申请与查询。仅支持人民币。
 
 var wechatAPIBase = "https://api.mch.weixin.qq.com" // 测试可替换
 
@@ -278,6 +279,74 @@ func (wechatChannel) Notify(cfg config, r *http.Request, body []byte) (*paidResu
 		return nil, fail("商户不匹配"), err
 	}
 	return res, ok, nil
+}
+
+// wechatRefund 退款单（申请与查询的应答相同）：status 为 SUCCESS | PROCESSING | ABNORMAL | CLOSED。
+type wechatRefund struct {
+	RefundID    string `json:"refund_id"`
+	OutRefundNo string `json:"out_refund_no"`
+	Status      string `json:"status"`
+	Amount      struct {
+		Refund int64 `json:"refund"`
+	} `json:"amount"`
+}
+
+func (r wechatRefund) result(want int64) refundResult {
+	switch r.Status {
+	case "SUCCESS":
+		if r.Amount.Refund != 0 && r.Amount.Refund != want {
+			return refundResult{Status: RefundFailed, ChannelRefundID: r.RefundID, Error: "微信支付退款金额不一致"}
+		}
+		return refundResult{Status: RefundSucceeded, ChannelRefundID: r.RefundID}
+	case "ABNORMAL":
+		return refundResult{Status: RefundFailed, ChannelRefundID: r.RefundID, Error: "微信支付退款异常（如用户银行卡已注销），需在商户平台处理"}
+	case "CLOSED":
+		return refundResult{Status: RefundFailed, ChannelRefundID: r.RefundID, Error: "微信支付退款已关闭"}
+	default:
+		return refundResult{Status: RefundProcessing, ChannelRefundID: r.RefundID}
+	}
+}
+
+func parseWechatRefund(status int, data []byte) (wechatRefund, error) {
+	var r wechatRefund
+	if status != http.StatusOK {
+		return r, wechatError(status, data)
+	}
+	if err := json.Unmarshal(data, &r); err != nil {
+		return r, errors.New("微信支付退款响应格式无效")
+	}
+	return r, nil
+}
+
+// Refund 申请退款（out_refund_no 为退款单号，重复申请幂等）；退款多为异步到账，受理中时稍后查询。
+func (wechatChannel) Refund(ctx context.Context, in refundInput) (refundResult, error) {
+	status, data, err := wechatDo(ctx, in.Cfg, http.MethodPost, "/v3/refund/domestic/refunds", map[string]any{
+		"out_trade_no": in.Order.OrderNo, "out_refund_no": in.Refund.RefundNo, "reason": truncateBytes(in.Refund.Reason, 80),
+		"amount": map[string]any{"refund": in.Refund.AmountCents, "total": in.Order.AmountCents, "currency": "CNY"},
+	})
+	if err != nil {
+		return refundResult{}, err
+	}
+	r, err := parseWechatRefund(status, data)
+	if err != nil {
+		return refundResult{}, err
+	}
+	return r.result(in.Refund.AmountCents), nil
+}
+
+func (wechatChannel) QueryRefund(ctx context.Context, in refundInput) (refundResult, error) {
+	status, data, err := wechatDo(ctx, in.Cfg, http.MethodGet, "/v3/refund/domestic/refunds/"+url.PathEscape(in.Refund.RefundNo), nil)
+	if err != nil {
+		return refundResult{}, err
+	}
+	if status == http.StatusNotFound { // 渠道没有该退款单：未退款
+		return refundResult{Status: RefundFailed, Error: "微信支付未受理该退款"}, nil
+	}
+	r, err := parseWechatRefund(status, data)
+	if err != nil {
+		return refundResult{}, err
+	}
+	return r.result(in.Refund.AmountCents), nil
 }
 
 // qrDataURI 把内容编码为二维码 PNG（data URI）。

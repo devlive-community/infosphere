@@ -97,7 +97,7 @@ func (e *testEnv) user(t *testing.T, name string) *models.User {
 func data(p map[string]any) map[string]any { d, _ := p["data"].(map[string]any); return d }
 
 // buy 读者下单（线下转账）并由管理员确认收款。
-func (e *testEnv) buy(t *testing.T, u *models.User, kind string, sku uint) {
+func (e *testEnv) buy(t *testing.T, u *models.User, kind string, sku uint) string {
 	t.Helper()
 	status, created := e.as(t, u, http.MethodPost, "/api/v1/payment/orders", fmt.Sprintf(`{"kind":"%s","sku":"%d","channel":"offline"}`, kind, sku))
 	if status != http.StatusOK {
@@ -107,6 +107,7 @@ func (e *testEnv) buy(t *testing.T, u *models.User, kind string, sku uint) {
 	if status, p := e.admin(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/confirm", ""); status != http.StatusOK {
 		t.Fatalf("确认收款失败: %d %v", status, p)
 	}
+	return no
 }
 
 func TestPaidContentFlow(t *testing.T) {
@@ -267,5 +268,63 @@ func TestPaidContentFlow(t *testing.T) {
 	_, docC = e.as(t, e.user(t, "late"), http.MethodGet, docURL(c), "")
 	if data(docC)["content"] != long || data(docC)["paywall"] != nil {
 		t.Fatal("插件禁用后内容应不受限")
+	}
+}
+
+// 退款：按比例扣回作者净收益（可为负）；不撤销时仍可阅读，撤销后重新锁定；按退款单号幂等。
+func TestPaidContentRefund(t *testing.T) {
+	e := newTestEnv(t)
+	author, reader := e.user(t, "author"), e.user(t, "reader")
+	_, created := e.as(t, author, http.MethodPost, "/api/v1/books", `{"title":"退款之书","status":"published","is_public":true}`)
+	bookID := uint(data(created)["id"].(float64))
+	body := strings.Repeat("试读内容。", 20) + "\n\n" + strings.Repeat("付费秘密。", 20)
+	_, d := e.as(t, author, http.MethodPost, fmt.Sprintf("/api/v1/books/%d/documents", bookID), fmt.Sprintf(`{"title":"付费章","content":%q,"status":"published"}`, body))
+	docID := uint(data(d)["id"].(float64))
+	e.as(t, author, http.MethodPut, fmt.Sprintf("/api/v1/books/%d/paid-settings", bookID), `{"enabled":true,"chapter_price_cents":300,"preview_percent":30}`)
+	no := e.buy(t, reader, "paid-doc", docID)
+	doc := func() map[string]any {
+		_, p := e.as(t, reader, http.MethodGet, fmt.Sprintf("/api/v1/documents/%d", docID), "")
+		return data(p)
+	}
+	if doc()["paywall"] != nil {
+		t.Fatal("购买后应解锁")
+	}
+	balance := func() int64 {
+		var sum struct{ Total int64 }
+		e.db.Model(&paidcontent.LedgerEntry{}).Select("COALESCE(SUM(net_cents),0) AS total").Where("author_id = ?", author.ID).Scan(&sum)
+		return sum.Total
+	}
+	if balance() != 240 {
+		t.Fatalf("售出后作者净收益应为 240: %d", balance())
+	}
+
+	// 部分退款（不撤销）：扣回一半净收益，仍可阅读
+	status, r1 := e.admin(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/refunds", `{"amount_cents":150,"reason":"部分退款","revoke":false}`)
+	if status != http.StatusOK || data(r1)["settled_at"] == nil {
+		t.Fatalf("部分退款失败: %d %v", status, r1)
+	}
+	var entry paidcontent.LedgerEntry
+	e.db.Where("kind = ? AND refund_no = ?", paidcontent.LedgerRefund, data(r1)["refund_no"]).First(&entry)
+	if entry.GrossCents != -150 || entry.NetCents != -120 || entry.CommissionCents != -30 || balance() != 120 {
+		t.Fatalf("退款流水异常: %+v 余额 %d", entry, balance())
+	}
+	if doc()["paywall"] != nil {
+		t.Fatal("不撤销时应仍可阅读")
+	}
+	// 作者已提现后再退款：余额可为负
+	e.db.Create(&paidcontent.LedgerEntry{AuthorID: author.ID, Kind: paidcontent.LedgerWithdrawal, NetCents: -120, Currency: "CNY"})
+	if status, r2 := e.admin(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/refunds", `{"amount_cents":150,"reason":"全部退款","revoke":true}`); status != http.StatusOK || data(r2)["settled_at"] == nil {
+		t.Fatalf("退剩余失败: %d %v", status, r2)
+	}
+	if balance() != -120 {
+		t.Fatalf("已提现后退款余额应为负: %d", balance())
+	}
+	if pw, _ := doc()["paywall"].(map[string]any); pw == nil || pw["locked"] != true {
+		t.Fatal("撤销后应重新锁定")
+	}
+	var n int64
+	e.db.Model(&paidcontent.LedgerEntry{}).Where("kind = ?", paidcontent.LedgerRefund).Count(&n)
+	if n != 2 {
+		t.Fatalf("两次退款应各有一条流水: %d", n)
 	}
 }

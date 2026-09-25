@@ -475,19 +475,35 @@ Authorization: Bearer <token>
 
 售卖其他插件经 `plugincore.RegisterProductProvider` 登记的商品（如会员：`kind=membership`，`sku`=价格 ID）。下单时快照商品标题、金额与履约数据；支付成功后回调提供者 `Fulfill`（按订单号幂等），之后的改价/归档不影响已下单订单。支付方式：线下转账（用户提交付款说明，管理员确认到账）、支付宝（电脑/手机网站支付，RSA2，仅 CNY）、微信支付（APIv3 Native 扫码，微信支付公钥模式，仅 CNY）、Stripe Checkout。回调与返回地址基于「站点访问地址」`site_url`。在线订单 2 小时有效，线下转账默认 72 小时；已取消/过期的订单若收到渠道支付成功回调仍按已支付入账。回调校验签名、金额、货币与支付方式，不符拒绝入账。`/site` 下发 `payment_channels`（当前可用的支付方式，仅支付插件自身使用）与中性开关 `checkout_enabled`（`plugincore.CheckoutEnabledKey`：是否可在线购买，商品所属插件的前端只看此键，结算入口为 `/pay/checkout?kind=&sku=`，前端约定见 `lib/commerce.ts`）。
 
+
+**退款**：用户在支付后 `refund_request_days`（默认 7，0 为不开放）天内可申请退款，管理员审核（可下调金额、选择是否撤销商品）或驳回；管理员也可在订单上直接退款。支持部分退款（全额退完订单置为 `refunded`，部分退款仍为 `paid` 并记 `refunded_cents`）。
+- 额度以订单上的占用额原子校验（条件更新），并发退款不会超额；退款单号作为渠道幂等键（支付宝 `out_request_no`、微信 `out_refund_no`、Stripe `Idempotency-Key`）。
+- 渠道：支付宝 `alipay.trade.refund` + `alipay.trade.fastpay.refund.query`；微信 `/v3/refund/domestic/refunds`；Stripe `/v1/refunds`（按 PaymentIntent）；线下转账由管理员线下退回后确认即记为已退款。
+- 发起时网络中断等结果未知的情况不会判为失败（避免重复退款），而是置为「退款中」由查询确认；渠道也无法确认时，管理员在商户后台核实后人工确认结果。受理中的退款在查看时（限频 5 秒）与巡检时查询。
+- 退款成功后回调商品提供者 `Refund`（`plugincore.RefundEvent`，按退款单号幂等，失败由巡检重试）：会员在撤销时按比例扣回该订单开通的天数（扣完则会员结束）；付费内容按比例扣回作者净收益（平台抽成同比例退回，余额可为负），撤销时删除购买记录重新锁定。
+- 已支付或已退款的订单不会被重复的支付通知重新置为已支付或再次履约。
+- 通知：用户（退款成功、失败、驳回）、管理员（新的退款申请）、作者（收益扣回）。
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
 | GET | `/payment/products/:kind/:sku` | 结算页：`product{kind,sku,title,description,duration_days,amount_cents,currency,return_link}` + 该货币可用的 `channels` | `payment:order` |
 | POST | `/payment/orders` | `{kind, sku, channel: offline\|alipay\|wechat\|stripe, mobile?}` 下单并发起支付，返回 `{order, action}`；`action.type`：`redirect`（`url` 跳转收银台）/ `qrcode`（`qr` 二维码 data URI）/ `offline`（`instructions`、`qr_image`）。同时待支付订单最多 10 个 | `payment:order` |
-| GET | `/payment/orders/:no` | 订单详情（本人或管理员）；待支付的在线订单会先向渠道主动查询一次（限频 5 秒，回调不可达时的兜底），待支付时附带继续支付的 `action` | `payment:order` |
+| GET | `/payment/orders/:no` | 订单详情（本人或管理员），含退款记录 `refunds[]`（退款中的会先向渠道查询）、`refundable_cents`、`can_request_refund` 或 `refund_blocked_reason`；待支付的在线订单会先向渠道主动查询一次（限频 5 秒，回调不可达时的兜底），待支付时附带继续支付的 `action` | `payment:order` |
 | POST | `/payment/orders/:no/cancel` | 取消待支付订单 | `payment:order` |
 | POST | `/payment/orders/:no/proof` | `{note}` 线下转账：提交付款说明 | `payment:order` |
+| POST | `/payment/orders/:no/refund-request` | `{reason}` 申请退款（本人、已支付、在可申请期内、没有处理中的退款），申请剩余可退金额，等待审核 | `payment:order` |
 | GET | `/users/me/orders?page=&page_size=` | 我的订单 | `payment:order` |
 | POST | `/payment/notify/:channel` | 渠道异步通知（`alipay` / `wechat` / `stripe`），公开、以签名校验；不受插件开关限制 | 签名 |
 | GET | `/admin/payment/orders?status=&channel=&q=&awaiting=1&unfulfilled=1&page=` | 全部订单（`awaiting` 待确认的线下转账，`unfulfilled` 已支付未履约）`items:[{order,user}]` | `payment:manage` |
 | POST | `/admin/payment/orders/:no/confirm` | 确认线下转账到账（置为已支付并履约，写审计） | `payment:manage` |
 | POST | `/admin/payment/orders/:no/cancel` | 取消待支付/已过期订单 | `payment:manage` |
 | POST | `/admin/payment/orders/:no/fulfill` | 重试履约（已支付但履约失败；巡检也会自动重试） | `payment:manage` |
+| POST | `/admin/payment/orders/:no/refunds` | `{amount_cents, reason, revoke}` 直接退款（可部分），随即向渠道发起 | `payment:manage` |
+| GET | `/admin/payment/refunds?status=&q=&page=` | 退款与退款申请（待审核、退款中在前）`items:[{refund,user,order}]`、`requested` 待审核数 | `payment:manage` |
+| POST | `/admin/payment/refunds/:id/approve` | `{amount_cents?, revoke, note?}` 通过申请（金额不超过申请金额）并向渠道发起 | `payment:manage` |
+| POST | `/admin/payment/refunds/:id/reject` | `{note}` 驳回申请（释放额度并通知用户） | `payment:manage` |
+| POST | `/admin/payment/refunds/:id/sync` | 立即向渠道查询退款中的退款 | `payment:manage` |
+| POST | `/admin/payment/refunds/:id/resolve` | `{succeeded, note}` 人工确认退款中的退款结果（渠道无法确认时） | `payment:manage` |
+| POST | `/admin/payment/refunds/:id/settle` | 重试退款成功后的商品回调（冲回财务/撤销商品） | `payment:manage` |
 | GET/PUT | `/admin/payment/settings` | 各支付方式配置；密钥类字段（私钥、公钥、APIv3 密钥、Stripe 密钥）只写不读，GET 仅返回 `<字段>_set`，PUT 传空串表示不修改；保存前校验密钥格式。GET 另含 `notify_urls`、`available`、`site_url_set` | `payment:manage` |
 
 ## 发布审核（「发布审核」插件，默认关闭，Issue #87）

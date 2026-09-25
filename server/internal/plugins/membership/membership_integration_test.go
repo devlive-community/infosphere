@@ -397,4 +397,32 @@ func TestMembershipPurchaseViaPayment(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("同一订单只能开通一次，实际流水 %d 条", n)
 	}
+
+	// 退款：部分退款并撤销 → 按比例扣回天数；再退剩余并撤销 → 会员结束
+	status, r1 := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/refunds", `{"amount_cents":4950,"reason":"半价补偿","revoke":true}`)
+	if status != http.StatusOK || data(r1)["status"] != "succeeded" || data(r1)["settled_at"] == nil {
+		t.Fatalf("部分退款失败: %d %v", status, r1)
+	}
+	m = e.membership(t, u.ID)
+	near(t, m.ExpiresAt, time.Now().Add((365-183)*24*time.Hour), "部分退款后到期时间（扣回 183 天）")
+	var adj membership.Record
+	e.db.Where("user_id = ? AND source = ?", u.ID, "refund").First(&adj)
+	if adj.Action != membership.ActionAdjust || adj.Days != 183 || adj.SourceRef != data(r1)["refund_no"] {
+		t.Fatalf("退款流水异常: %+v", adj)
+	}
+	// 重复回调幂等（管理员重试已完成的回调被拒绝，流水不重复）
+	if status, _ := e.do(t, http.MethodPost, fmt.Sprintf("/api/v1/admin/payment/refunds/%d/settle", uint(data(r1)["id"].(float64))), ""); status != http.StatusConflict {
+		t.Fatalf("已完成的回调不能重试: %d", status)
+	}
+	if status, r2 := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/refunds", `{"amount_cents":4950,"reason":"全部退款","revoke":true}`); status != http.StatusOK || data(r2)["status"] != "succeeded" {
+		t.Fatalf("退剩余失败: %d %v", status, r2)
+	}
+	var left int64
+	e.db.Model(&membership.UserMembership{}).Where("user_id = ?", u.ID).Count(&left)
+	if left != 0 {
+		t.Fatal("全部退款并撤销后会员应结束")
+	}
+	if v, s := e.entitlements(t, u); s["books.max"] == "membership" {
+		t.Fatalf("会员结束后不应再有会员权益: %v %v", v, s)
+	}
 }

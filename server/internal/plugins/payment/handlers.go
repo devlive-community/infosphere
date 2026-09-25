@@ -30,6 +30,7 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	api.GET("/payment/orders/:no", with(b.GetOrder)...)
 	api.POST("/payment/orders/:no/cancel", with(b.CancelOrder)...)
 	api.POST("/payment/orders/:no/proof", with(b.SubmitProof)...)
+	api.POST("/payment/orders/:no/refund-request", with(b.RequestRefund)...)
 	api.GET("/users/me/orders", with(b.MyOrders)...)
 	// 渠道异步通知：公开、以签名校验身份；不受插件开关限制（已发起的支付仍需入账）
 	api.POST("/payment/notify/:channel", b.Notify)
@@ -42,6 +43,13 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	reg(http.MethodPost, "/admin/payment/orders/:no/confirm", b.AdminConfirm)
 	reg(http.MethodPost, "/admin/payment/orders/:no/cancel", b.AdminCancel)
 	reg(http.MethodPost, "/admin/payment/orders/:no/fulfill", b.AdminRetryFulfill)
+	reg(http.MethodPost, "/admin/payment/orders/:no/refunds", b.AdminCreateRefund)
+	reg(http.MethodGet, "/admin/payment/refunds", b.AdminListRefunds)
+	reg(http.MethodPost, "/admin/payment/refunds/:id/approve", b.AdminApproveRefund)
+	reg(http.MethodPost, "/admin/payment/refunds/:id/reject", b.AdminRejectRefund)
+	reg(http.MethodPost, "/admin/payment/refunds/:id/sync", b.AdminSyncRefund)
+	reg(http.MethodPost, "/admin/payment/refunds/:id/resolve", b.AdminResolveRefund)
+	reg(http.MethodPost, "/admin/payment/refunds/:id/settle", b.AdminSettleRefund)
 	reg(http.MethodGet, "/admin/payment/settings", b.AdminGetSettings)
 	reg(http.MethodPut, "/admin/payment/settings", b.AdminUpdateSettings)
 }
@@ -125,7 +133,17 @@ func (b *behavior) GetOrder(c *gin.Context) {
 		return
 	}
 	b.sync(c.Request.Context(), o)
-	out := gin.H{"order": o}
+	refunds := b.refundsOf(o.ID)
+	for i := range refunds {
+		b.syncRefund(c.Request.Context(), &refunds[i])
+	}
+	b.core.Gorm().First(o, o.ID)
+	out := gin.H{"order": o, "refunds": refunds, "refundable_cents": refundableCents(o)}
+	if err := b.canRequestRefund(o); err == nil && o.UserID == b.core.CurrentUser(c).ID {
+		out["can_request_refund"] = true
+	} else if err != nil {
+		out["refund_blocked_reason"] = err.Error()
+	}
 	if o.Status == StatusPending && time.Now().Before(o.ExpiresAt) {
 		if ch, ok := channelFor(o.Channel); ok {
 			if act, err := ch.Resume(createInput{Order: o, Cfg: loadConfig(b.core), BaseURL: b.baseURL(c), Mobile: c.Query("mobile") == "1"}); err == nil {
@@ -170,6 +188,32 @@ func (b *behavior) SubmitProof(c *gin.Context) {
 	now := time.Now()
 	b.core.Gorm().Model(&Order{}).Where("id = ?", o.ID).Updates(map[string]any{"payer_note": truncateRunes(strings.TrimSpace(req.Note), 500), "proof_at": now})
 	b.core.OK(c, gin.H{"message": "已提交"})
+}
+
+// RequestRefund POST /payment/orders/:no/refund-request {reason} 用户申请退款（支付后可申请期内，等待管理员审核）。
+func (b *behavior) RequestRefund(c *gin.Context) {
+	o, found := b.ownOrder(c)
+	if !found {
+		return
+	}
+	u := b.core.CurrentUser(c)
+	if o.UserID != u.ID {
+		b.core.Fail(c, http.StatusForbidden, "只能为自己的订单申请退款")
+		return
+	}
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	if c.ShouldBindJSON(&req) != nil || strings.TrimSpace(req.Reason) == "" {
+		b.core.Fail(c, http.StatusBadRequest, "请填写退款原因")
+		return
+	}
+	r, err := b.requestRefund(u, o, strings.TrimSpace(req.Reason))
+	if err != nil {
+		b.core.Fail(c, http.StatusConflict, err.Error())
+		return
+	}
+	b.core.OK(c, r)
 }
 
 // MyOrders GET /users/me/orders?page=&page_size=
@@ -268,7 +312,7 @@ func (b *behavior) AdminListOrders(c *gin.Context) {
 	}
 	items := make([]gin.H, 0, len(rows))
 	for i := range rows {
-		items = append(items, gin.H{"order": rows[i], "user": users[rows[i].UserID]})
+		items = append(items, gin.H{"order": rows[i], "user": users[rows[i].UserID], "refundable_cents": refundableCents(&rows[i])})
 	}
 	b.core.OK(c, plugincore.PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
 }
@@ -288,7 +332,7 @@ func (b *behavior) AdminConfirm(c *gin.Context) {
 	if !found {
 		return
 	}
-	if o.Channel != chOffline || o.Status == StatusPaid {
+	if o.Channel != chOffline || o.Status == StatusPaid || o.Status == StatusRefunded {
 		b.core.Fail(c, http.StatusConflict, "只能确认未支付的线下转账订单")
 		return
 	}
@@ -330,6 +374,192 @@ func (b *behavior) AdminRetryFulfill(c *gin.Context) {
 	b.fulfill(o)
 	b.core.RecordAudit(c, "payment.order_fulfilled", "payment_order", o.OrderNo, o.Title, map[string]any{"changed_fields": []string{"fulfilled_at"}})
 	b.respondOrder(c, o.ID)
+}
+
+// —— 退款（管理端） ——
+
+func (b *behavior) findRefund(c *gin.Context) (*Refund, bool) {
+	var r Refund
+	if b.core.Gorm().First(&r, c.Param("id")).Error != nil {
+		b.core.Fail(c, http.StatusNotFound, "退款不存在")
+		return nil, false
+	}
+	return &r, true
+}
+
+func (b *behavior) refundAudit(c *gin.Context, action string, r *Refund, fields ...string) {
+	b.core.RecordAudit(c, action, "payment_refund", r.RefundNo, r.OrderNo, map[string]any{"changed_fields": fields, "amount_cents": r.AmountCents, "status": r.Status})
+}
+
+// AdminCreateRefund POST /admin/payment/orders/:no/refunds {amount_cents, reason, revoke} 直接退款（可部分退款）。
+func (b *behavior) AdminCreateRefund(c *gin.Context) {
+	o, found := b.findOrder(c)
+	if !found {
+		return
+	}
+	var req struct {
+		AmountCents int64  `json:"amount_cents"`
+		Reason      string `json:"reason"`
+		Revoke      bool   `json:"revoke"`
+	}
+	if c.ShouldBindJSON(&req) != nil || strings.TrimSpace(req.Reason) == "" {
+		b.core.Fail(c, http.StatusBadRequest, "请填写退款金额与原因")
+		return
+	}
+	r, err := b.createRefund(c.Request.Context(), b.core.CurrentUser(c), o, req.AmountCents, strings.TrimSpace(req.Reason), req.Revoke)
+	if err != nil {
+		b.core.Fail(c, http.StatusConflict, err.Error())
+		return
+	}
+	b.refundAudit(c, "payment.refund_created", r, "status", "amount_cents")
+	b.core.OK(c, r)
+}
+
+// AdminListRefunds GET /admin/payment/refunds?status=&q=&page=&page_size= 退款与退款申请（待审核在前）。
+func (b *behavior) AdminListRefunds(c *gin.Context) {
+	page, pageSize := b.core.Paginate(c)
+	db := b.core.Gorm()
+	q := db.Model(&Refund{})
+	if s := c.Query("status"); s != "" {
+		q = q.Where("status = ?", s)
+	}
+	if kw := strings.TrimSpace(c.Query("q")); kw != "" {
+		like := "%" + kw + "%"
+		q = q.Where("refund_no LIKE ? OR order_no LIKE ? OR user_id IN (?)", like, like,
+			db.Model(&models.User{}).Select("id").Where("username LIKE ? OR email LIKE ?", like, like))
+	}
+	var total int64
+	q.Count(&total)
+	var rows []Refund
+	q.Order("CASE WHEN status = 'requested' THEN 0 WHEN status = 'processing' THEN 1 ELSE 2 END, id DESC").
+		Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows)
+	userIDs, orderIDs := []uint{}, []uint{}
+	for _, r := range rows {
+		userIDs, orderIDs = append(userIDs, r.UserID), append(orderIDs, r.OrderID)
+	}
+	users := map[uint]userBrief{}
+	orders := map[uint]Order{}
+	if len(rows) > 0 {
+		var ul []models.User
+		db.Select("id, username, nickname, avatar").Where("id IN ?", userIDs).Find(&ul)
+		for _, u := range ul {
+			users[u.ID] = userBrief{ID: u.ID, Username: u.Username, Nickname: u.Nickname, Avatar: u.Avatar}
+		}
+		var ol []Order
+		db.Where("id IN ?", orderIDs).Find(&ol)
+		for _, o := range ol {
+			orders[o.ID] = o
+		}
+	}
+	var requested int64
+	db.Model(&Refund{}).Where("status = ?", RefundRequested).Count(&requested)
+	items := make([]gin.H, 0, len(rows))
+	for _, r := range rows {
+		o := orders[r.OrderID]
+		items = append(items, gin.H{"refund": r, "user": users[r.UserID], "order": gin.H{
+			"order_no": o.OrderNo, "title": o.Title, "kind": o.Kind, "amount_cents": o.AmountCents, "currency": o.Currency,
+			"channel": o.Channel, "paid_at": o.PaidAt, "refunded_cents": o.RefundedCents, "status": o.Status,
+		}})
+	}
+	b.core.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": pageSize, "requested": requested})
+}
+
+// AdminApproveRefund POST /admin/payment/refunds/:id/approve {amount_cents, revoke, note} 通过退款申请并向渠道发起。
+func (b *behavior) AdminApproveRefund(c *gin.Context) {
+	r, found := b.findRefund(c)
+	if !found {
+		return
+	}
+	var req struct {
+		AmountCents int64  `json:"amount_cents"`
+		Revoke      bool   `json:"revoke"`
+		Note        string `json:"note"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	if req.AmountCents == 0 {
+		req.AmountCents = r.AmountCents
+	}
+	if err := b.approveRefund(c.Request.Context(), b.core.CurrentUser(c), r, req.AmountCents, req.Revoke, strings.TrimSpace(req.Note)); err != nil {
+		b.core.Fail(c, http.StatusConflict, err.Error())
+		return
+	}
+	b.refundAudit(c, "payment.refund_approved", r, "status", "amount_cents", "revoke")
+	b.core.OK(c, r)
+}
+
+// AdminRejectRefund POST /admin/payment/refunds/:id/reject {note} 驳回退款申请。
+func (b *behavior) AdminRejectRefund(c *gin.Context) {
+	r, found := b.findRefund(c)
+	if !found {
+		return
+	}
+	var req struct {
+		Note string `json:"note"`
+	}
+	if c.ShouldBindJSON(&req) != nil || strings.TrimSpace(req.Note) == "" {
+		b.core.Fail(c, http.StatusBadRequest, "请填写驳回理由")
+		return
+	}
+	if err := b.rejectRefund(b.core.CurrentUser(c), r, strings.TrimSpace(req.Note)); err != nil {
+		b.core.Fail(c, http.StatusConflict, err.Error())
+		return
+	}
+	b.core.Gorm().First(r, r.ID)
+	b.refundAudit(c, "payment.refund_rejected", r, "status")
+	b.core.OK(c, r)
+}
+
+// AdminSyncRefund POST /admin/payment/refunds/:id/sync 立即向渠道查询受理中的退款。
+func (b *behavior) AdminSyncRefund(c *gin.Context) {
+	r, found := b.findRefund(c)
+	if !found {
+		return
+	}
+	r.SyncedAt = nil
+	b.syncRefund(c.Request.Context(), r)
+	b.core.OK(c, r)
+}
+
+// AdminResolveRefund POST /admin/payment/refunds/:id/resolve {succeeded, note} 人工确认受理中退款的结果（渠道无法给出结果时）。
+func (b *behavior) AdminResolveRefund(c *gin.Context) {
+	r, found := b.findRefund(c)
+	if !found {
+		return
+	}
+	var req struct {
+		Succeeded bool   `json:"succeeded"`
+		Note      string `json:"note"`
+	}
+	if c.ShouldBindJSON(&req) != nil || strings.TrimSpace(req.Note) == "" {
+		b.core.Fail(c, http.StatusBadRequest, "请填写核实说明")
+		return
+	}
+	if err := b.resolveRefund(r, req.Succeeded, strings.TrimSpace(req.Note)); err != nil {
+		b.core.Fail(c, http.StatusConflict, err.Error())
+		return
+	}
+	b.core.Gorm().Model(&Refund{}).Where("id = ?", r.ID).Update("admin_note", truncateRunes(strings.TrimSpace(req.Note), 500))
+	b.core.Gorm().First(r, r.ID)
+	b.refundAudit(c, "payment.refund_resolved", r, "status")
+	b.core.OK(c, r)
+}
+
+// AdminSettleRefund POST /admin/payment/refunds/:id/settle 重试退款成功后的商品回调（冲回财务/撤销商品）。
+func (b *behavior) AdminSettleRefund(c *gin.Context) {
+	r, found := b.findRefund(c)
+	if !found {
+		return
+	}
+	if r.Status != RefundSucceeded || r.SettledAt != nil {
+		b.core.Fail(c, http.StatusConflict, "只有已退款且未完成商品回调的退款可以重试")
+		return
+	}
+	var o Order
+	b.core.Gorm().First(&o, r.OrderID)
+	b.settle(r, &o)
+	b.core.Gorm().First(r, r.ID)
+	b.refundAudit(c, "payment.refund_settled", r, "settled_at")
+	b.core.OK(c, r)
 }
 
 func (b *behavior) respondOrder(c *gin.Context, id uint) {
@@ -383,8 +613,9 @@ func (b *behavior) AdminUpdateSettings(c *gin.Context) {
 			value = strconv.FormatBool(v)
 		case "int":
 			v, ok := raw.(float64)
-			if !ok || v < 1 || v > maxOfflineExpireHours || v != float64(int(v)) {
-				b.core.Fail(c, http.StatusBadRequest, fmt.Sprintf("线下转账订单有效期需在 1 到 %d 小时之间", maxOfflineExpireHours))
+			min, max, msg := intRange(s.json)
+			if !ok || v < float64(min) || v > float64(max) || v != float64(int(v)) {
+				b.core.Fail(c, http.StatusBadRequest, msg)
 				return
 			}
 			value = strconv.Itoa(int(v))

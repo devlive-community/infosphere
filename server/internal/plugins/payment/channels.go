@@ -44,6 +44,20 @@ type paidResult struct {
 	Currency    string
 }
 
+// refundInput 发起/查询退款所需的上下文。
+type refundInput struct {
+	Order  *Order
+	Refund *Refund
+	Cfg    config
+}
+
+// refundResult 渠道侧的退款结果：Status 为 succeeded（已退回）| processing（受理中，稍后查询）| failed（Error 为原因）。
+type refundResult struct {
+	Status          string
+	ChannelRefundID string
+	Error           string
+}
+
 // notifyReply 给渠道异步通知的应答。
 type notifyReply struct {
 	Status      int
@@ -64,6 +78,10 @@ type channel interface {
 	Query(ctx context.Context, cfg config, o *Order) (*paidResult, error)
 	// Notify 校验并解析异步通知；返回的结果为 nil 表示与支付成功无关的通知（仍按 reply 应答）。
 	Notify(cfg config, r *http.Request, body []byte) (*paidResult, notifyReply, error)
+	// Refund 向渠道发起退款（以 Refund.RefundNo 作幂等键，重复发起不会重复退款）；请求被拒绝时返回 error。
+	Refund(ctx context.Context, in refundInput) (refundResult, error)
+	// QueryRefund 查询受理中的退款的最新结果。
+	QueryRefund(ctx context.Context, in refundInput) (refundResult, error)
 }
 
 var allChannels = []channel{offlineChannel{}, alipayChannel{}, wechatChannel{}, stripeChannel{}}
@@ -125,4 +143,13 @@ func (offlineChannel) Query(context.Context, config, *Order) (*paidResult, error
 
 func (offlineChannel) Notify(config, *http.Request, []byte) (*paidResult, notifyReply, error) {
 	return nil, notifyReply{Status: http.StatusNotFound}, errNotSupported
+}
+
+// Refund 线下转账：由管理员线下退回款项，确认退款即视为已退回。
+func (offlineChannel) Refund(context.Context, refundInput) (refundResult, error) {
+	return refundResult{Status: RefundSucceeded}, nil
+}
+
+func (offlineChannel) QueryRefund(context.Context, refundInput) (refundResult, error) {
+	return refundResult{Status: RefundSucceeded}, nil
 }

@@ -32,13 +32,13 @@ func init() {
 		Kind:        plugins.KindFeature,
 		Builtin:     true,
 		EnabledKey:  cfgEnabled,
-		Models:      []any{&Order{}},
-		Tables:      []string{"payment_orders"},
+		Models:      []any{&Order{}, &Refund{}},
+		Tables:      []string{"payment_refunds", "payment_orders"},
 		AdminPerms:  []authz.Permission{PermManage},
 		UserPerms:   []authz.Permission{PermOrder},
 	})
 	plugincore.RegisterBehavior(&behavior{})
-	plugincore.RegisterUserDataModels(&Order{})
+	plugincore.RegisterUserDataModels(&Order{}, &Refund{})
 	plugincore.OnJobQueueSweep(sweep)
 	// 公开站点配置：当前可用的支付方式（商品页据此显示「购买」入口）
 	plugincore.RegisterPublicSiteConfig(func(core plugincore.Core) map[string]any {
@@ -55,4 +55,8 @@ func init() {
 	})
 
 	i18ntext.Register("notify.payment.paid", map[string]string{"zh-CN": "支付成功：{title}", "en": "Payment received: {title}"})
+	i18ntext.Register("notify.payment.refunded", map[string]string{"zh-CN": "退款成功：{title}，退回 {amount}", "en": "Refunded {amount} for {title}"})
+	i18ntext.Register("notify.payment.refundFailed", map[string]string{"zh-CN": "退款未能完成：{title}，我们会尽快处理", "en": "Your refund for {title} could not be completed yet; we are looking into it"})
+	i18ntext.Register("notify.payment.refundRejected", map[string]string{"zh-CN": "退款申请未通过：{title}（{note}）", "en": "Refund request declined for {title} ({note})"})
+	i18ntext.Register("notify.payment.refundRequested", map[string]string{"zh-CN": "新的退款申请：{title}，{amount}", "en": "New refund request: {title}, {amount}"})
 }

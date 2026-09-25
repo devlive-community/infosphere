@@ -28,9 +28,11 @@ import (
 // 集成测试：启动完整应用、启用支付插件，以测试内登记的商品验证下单 → 支付确认 → 履约（幂等）全流程。
 
 var (
-	fulfilledMu sync.Mutex
-	fulfilled   = map[string]int{} // 订单号 → 履约次数
-	failNext    bool
+	fulfilledMu    sync.Mutex
+	fulfilled      = map[string]int{} // 订单号 → 履约次数
+	failNext       bool
+	refundEvents   = map[string][]plugincore.RefundEvent{} // 订单号 → 收到的退款回调（按退款单号幂等）
+	failRefundNext bool
 )
 
 func init() {
@@ -54,6 +56,21 @@ func init() {
 				return errors.New("快照丢失")
 			}
 			fulfilled[orderNo]++
+			return nil
+		},
+		Refund: func(_ plugincore.Core, ev plugincore.RefundEvent) error {
+			fulfilledMu.Lock()
+			defer fulfilledMu.Unlock()
+			if failRefundNext {
+				failRefundNext = false
+				return errors.New("临时故障")
+			}
+			for _, prev := range refundEvents[ev.OrderNo] {
+				if prev.RefundNo == ev.RefundNo {
+					return nil
+				}
+			}
+			refundEvents[ev.OrderNo] = append(refundEvents[ev.OrderNo], ev)
 			return nil
 		},
 	})
@@ -305,5 +322,151 @@ func TestStripeWebhookSettlesOrder(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("伪造签名应 400，实际 %d", resp.StatusCode)
+	}
+}
+
+func refundsOf(no string) []plugincore.RefundEvent {
+	fulfilledMu.Lock()
+	defer fulfilledMu.Unlock()
+	return append([]plugincore.RefundEvent(nil), refundEvents[no]...)
+}
+
+// paidOfflineOrder 下单（线下转账）并由管理员确认到账，返回订单号。
+func (e *testEnv) paidOfflineOrder(t *testing.T, u *models.User, sku string) string {
+	t.Helper()
+	_, created := e.as(t, u, http.MethodPost, "/api/v1/payment/orders", fmt.Sprintf(`{"kind":"test-item","sku":%q,"channel":"offline"}`, sku))
+	no := data(created)["order"].(map[string]any)["order_no"].(string)
+	if status, p := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/confirm", ""); status != http.StatusOK {
+		t.Fatalf("确认收款失败: %d %v", status, p)
+	}
+	return no
+}
+
+// 退款：用户申请 → 审核（部分退款）→ 再申请 → 驳回 → 管理员直接退剩余并撤销；超额与并发不会多退；回调失败可重试；申请期限。
+func TestRefundFlow(t *testing.T) {
+	e := newTestEnv(t)
+	u, other := e.user(t, "buyer"), e.user(t, "other")
+	e.do(t, http.MethodPut, "/api/v1/admin/payment/settings", `{"offline_enabled":true,"offline_instructions":"转账"}`)
+	no := e.paidOfflineOrder(t, u, "r1")
+
+	_, view := e.as(t, u, http.MethodGet, "/api/v1/payment/orders/"+no, "")
+	if data(view)["can_request_refund"] != true || data(view)["refundable_cents"].(float64) != 990 {
+		t.Fatalf("已支付订单应可申请退款: %v", view)
+	}
+	if status, _ := e.as(t, other, http.MethodPost, "/api/v1/payment/orders/"+no+"/refund-request", `{"reason":"x"}`); status != http.StatusNotFound {
+		t.Fatalf("不能为他人订单申请退款: %d", status)
+	}
+	if status, _ := e.as(t, u, http.MethodPost, "/api/v1/payment/orders/"+no+"/refund-request", `{"reason":" "}`); status != http.StatusBadRequest {
+		t.Fatalf("须填写退款原因: %d", status)
+	}
+	status, req := e.as(t, u, http.MethodPost, "/api/v1/payment/orders/"+no+"/refund-request", `{"reason":"买错了"}`)
+	if status != http.StatusOK || data(req)["status"] != "requested" || data(req)["amount_cents"].(float64) != 990 {
+		t.Fatalf("申请退款失败: %d %v", status, req)
+	}
+	if status, _ := e.as(t, u, http.MethodPost, "/api/v1/payment/orders/"+no+"/refund-request", `{"reason":"再来"}`); status != http.StatusConflict {
+		t.Fatalf("已有处理中的退款时不能重复申请: %d", status)
+	}
+	var notes int64
+	e.db.Model(&models.Notification{}).Where("user_id = ?", 1).Count(&notes)
+	if notes == 0 {
+		t.Fatal("管理员应收到退款申请通知")
+	}
+	_, list := e.do(t, http.MethodGet, "/api/v1/admin/payment/refunds", "")
+	if data(list)["requested"].(float64) != 1 {
+		t.Fatalf("待审核数异常: %v", list)
+	}
+
+	// 部分退款（审核时下调金额，不撤销商品）
+	rid := uint(data(req)["id"].(float64))
+	if status, _ := e.do(t, http.MethodPost, fmt.Sprintf("/api/v1/admin/payment/refunds/%d/approve", rid), `{"amount_cents":1000,"revoke":false}`); status != http.StatusConflict {
+		t.Fatalf("审核金额不能超过申请金额: %d", status)
+	}
+	status, ok := e.do(t, http.MethodPost, fmt.Sprintf("/api/v1/admin/payment/refunds/%d/approve", rid), `{"amount_cents":500,"revoke":false,"note":"部分退"}`)
+	if status != http.StatusOK || data(ok)["status"] != "succeeded" || data(ok)["settled_at"] == nil {
+		t.Fatalf("线下订单审核通过应直接退款成功: %d %v", status, ok)
+	}
+	o := e.order(t, no)
+	if o.Status != payment.StatusPaid || o.RefundedCents != 500 {
+		t.Fatalf("部分退款后订单应仍为已支付: %+v", o)
+	}
+	if evs := refundsOf(no); len(evs) != 1 || evs[0].AmountCents != 500 || evs[0].TotalCents != 990 || evs[0].Revoke || evs[0].Payload["sku"] != "r1" {
+		t.Fatalf("商品提供者回调异常: %+v", evs)
+	}
+
+	// 再申请剩余金额 → 驳回（释放额度）
+	_, req2 := e.as(t, u, http.MethodPost, "/api/v1/payment/orders/"+no+"/refund-request", `{"reason":"剩下的也退"}`)
+	if data(req2)["amount_cents"].(float64) != 490 {
+		t.Fatalf("应申请剩余可退金额: %v", req2)
+	}
+	if status, _ := e.do(t, http.MethodPost, fmt.Sprintf("/api/v1/admin/payment/refunds/%d/reject", uint(data(req2)["id"].(float64))), `{"note":"已超出使用范围"}`); status != http.StatusOK {
+		t.Fatalf("驳回失败: %d", status)
+	}
+
+	// 管理员直接退款：超额拒绝；回调失败后重试；全额退完订单置为已退款
+	if status, _ := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/refunds", `{"amount_cents":491,"reason":"补偿","revoke":true}`); status != http.StatusConflict {
+		t.Fatalf("超过可退金额应拒绝: %d", status)
+	}
+	fulfilledMu.Lock()
+	failRefundNext = true
+	fulfilledMu.Unlock()
+	status, direct := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/refunds", `{"amount_cents":490,"reason":"补偿","revoke":true}`)
+	if status != http.StatusOK || data(direct)["status"] != "succeeded" || data(direct)["settled_at"] != nil || data(direct)["settle_error"] == "" {
+		t.Fatalf("回调失败时应记录错误待重试: %d %v", status, direct)
+	}
+	if status, p := e.do(t, http.MethodPost, fmt.Sprintf("/api/v1/admin/payment/refunds/%d/settle", uint(data(direct)["id"].(float64))), ""); status != http.StatusOK || data(p)["settled_at"] == nil {
+		t.Fatalf("重试回调失败: %d %v", status, p)
+	}
+	o = e.order(t, no)
+	if o.Status != payment.StatusRefunded || o.RefundedCents != 990 {
+		t.Fatalf("全额退款后订单应为已退款: %+v", o)
+	}
+	if evs := refundsOf(no); len(evs) != 2 || !evs[1].Revoke || evs[1].AmountCents != 490 {
+		t.Fatalf("第二次退款回调异常: %+v", evs)
+	}
+	if status, _ := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no+"/confirm", ""); status != http.StatusConflict {
+		t.Fatalf("已退款订单不能再确认收款: %d", status)
+	}
+	if fulfilledCount(no) != 1 {
+		t.Fatalf("退款不应触发重新履约: %d", fulfilledCount(no))
+	}
+	var userNotes int64
+	e.db.Model(&models.Notification{}).Where("user_id = ?", u.ID).Count(&userNotes)
+	if userNotes < 4 { // 支付成功 + 两次退款成功 + 驳回
+		t.Fatalf("用户通知数量异常: %d", userNotes)
+	}
+
+	// 并发直接退款：额度原子占用，不会超额
+	no2 := e.paidOfflineOrder(t, u, "r2")
+	var wg sync.WaitGroup
+	succeeded := 0
+	var mu sync.Mutex
+	for i := 0; i < 6; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if status, _ := e.do(t, http.MethodPost, "/api/v1/admin/payment/orders/"+no2+"/refunds", `{"amount_cents":300,"reason":"并发","revoke":false}`); status == http.StatusOK {
+				mu.Lock()
+				succeeded++
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	if o2 := e.order(t, no2); succeeded > 3 || o2.RefundedCents != int64(succeeded)*300 || o2.RefundedCents > 990 {
+		t.Fatalf("并发退款不应超额: 成功 %d 次，已退 %d", succeeded, o2.RefundedCents)
+	}
+
+	// 申请期限：设为 0 后不开放用户申请
+	no3 := e.paidOfflineOrder(t, u, "r3")
+	e.do(t, http.MethodPut, "/api/v1/admin/payment/settings", `{"refund_request_days":0}`)
+	_, view3 := e.as(t, u, http.MethodGet, "/api/v1/payment/orders/"+no3, "")
+	if data(view3)["can_request_refund"] == true || data(view3)["refund_blocked_reason"] == nil {
+		t.Fatalf("期限为 0 时不应可申请: %v", view3)
+	}
+	if status, _ := e.as(t, u, http.MethodPost, "/api/v1/payment/orders/"+no3+"/refund-request", `{"reason":"x"}`); status != http.StatusConflict {
+		t.Fatalf("不开放时申请应被拒绝: %d", status)
+	}
+	if status, _ := e.do(t, http.MethodPut, "/api/v1/admin/payment/settings", `{"refund_request_days":400}`); status != http.StatusBadRequest {
+		t.Fatalf("期限越界应 400: %d", status)
 	}
 }

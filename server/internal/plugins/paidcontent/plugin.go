@@ -52,8 +52,8 @@ func init() {
 	plugincore.RegisterBehavior(&behavior{})
 	plugincore.RegisterUserDataModels(&Purchase{})
 	plugincore.RegisterContentGate(plugincore.ContentGate{Document: gateDocument, BookFully: gateBookFully})
-	plugincore.RegisterProductProvider(plugincore.ProductProvider{Kind: kindBook, Resolve: resolveBook, Fulfill: fulfill})
-	plugincore.RegisterProductProvider(plugincore.ProductProvider{Kind: kindDoc, Resolve: resolveDoc, Fulfill: fulfill})
+	plugincore.RegisterProductProvider(plugincore.ProductProvider{Kind: kindBook, Resolve: resolveBook, Fulfill: fulfill, Refund: refund})
+	plugincore.RegisterProductProvider(plugincore.ProductProvider{Kind: kindDoc, Resolve: resolveDoc, Fulfill: fulfill, Refund: refund})
 
 	available := func(core plugincore.Core) bool { return core.PluginEnabled(plugins.KeyPaidContent) }
 	limit := func(key, unit, cfg string, max int64, order int) plugincore.EntitlementDef {
@@ -86,6 +86,7 @@ func init() {
 		},
 	})
 
+	i18ntext.Register("notify.paid.refunded", map[string]string{"zh-CN": "《{book}》的一笔订单已退款：{title}，收益扣回 {amount}", "en": "An order for \"{book}\" was refunded: {title}; {amount} deducted from earnings"})
 	i18ntext.Register("notify.paid.sold", map[string]string{"zh-CN": "《{book}》售出：{title}，收益 {amount}", "en": `Sale in "{book}": {title}, earning {amount}`})
 	i18ntext.Register("notify.paid.withdrawalPaid", map[string]string{"zh-CN": "提现 {amount} 已打款", "en": "Your withdrawal of {amount} has been paid"})
 	i18ntext.Register("notify.paid.withdrawalRejected", map[string]string{"zh-CN": "提现 {amount} 未通过：{note}", "en": "Your withdrawal of {amount} was declined: {note}"})

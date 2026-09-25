@@ -14,7 +14,8 @@ import (
 )
 
 // 支付宝开放平台（RSA2）：电脑网站支付 alipay.trade.page.pay / 手机网站支付 alipay.trade.wap.pay（跳转收银台），
-// 异步通知验签后履约；轮询时以 alipay.trade.query 主动查询（响应同样验签）。仅支持人民币。
+// 异步通知验签后履约；轮询时以 alipay.trade.query 主动查询（响应同样验签）。退款 alipay.trade.refund，
+// 结果以 alipay.trade.fastpay.refund.query 确认。仅支持人民币。
 
 const (
 	alipayGateway        = "https://openapi.alipay.com/gateway.do"
@@ -31,7 +32,13 @@ func (alipayChannel) Available(cfg config, currency string) bool {
 	return cfg.AlipayEnabled && cfg.AlipayAppID != "" && cfg.AlipayPrivate != "" && cfg.AlipayPublicKey != "" && (currency == "" || currency == "CNY")
 }
 
+// alipayGatewayOverride 测试时替换网关地址。
+var alipayGatewayOverride string
+
 func alipayGatewayURL(cfg config) string {
+	if alipayGatewayOverride != "" {
+		return alipayGatewayOverride
+	}
 	if cfg.AlipaySandbox {
 		return alipaySandboxGateway
 	}
@@ -136,24 +143,13 @@ func alipayPaid(status string) bool { return status == "TRADE_SUCCESS" || status
 
 // Query alipay.trade.query；交易不存在（用户尚未扫码/登录）视为未支付。
 func (alipayChannel) Query(ctx context.Context, cfg config, o *Order) (*paidResult, error) {
-	p, err := alipaySignedParams(cfg, "alipay.trade.query", map[string]any{"out_trade_no": o.OrderNo}, nil)
+	raw, err := alipayCall(ctx, cfg, "alipay.trade.query", map[string]any{"out_trade_no": o.OrderNo})
 	if err != nil {
 		return nil, err
 	}
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, alipayGatewayURL(cfg), strings.NewReader(p.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, err
-	}
-	trade, err := alipayVerifyResponse(cfg, body, "alipay_trade_query_response")
-	if err != nil {
-		return nil, err
+	var trade alipayTrade
+	if err := json.Unmarshal(raw, &trade); err != nil {
+		return nil, errors.New("支付宝响应格式无效")
 	}
 	if trade.Code != "10000" {
 		if trade.SubCode == "ACQ.TRADE_NOT_EXIST" {
@@ -169,6 +165,19 @@ func (alipayChannel) Query(ctx context.Context, cfg config, o *Order) (*paidResu
 
 // alipayVerifyResponse 校验同步响应：签名覆盖响应节点的原始 JSON 文本。
 func alipayVerifyResponse(cfg config, body []byte, node string) (*alipayTrade, error) {
+	raw, err := alipayVerifyNode(cfg, body, node)
+	if err != nil {
+		return nil, err
+	}
+	var trade alipayTrade
+	if err := json.Unmarshal(raw, &trade); err != nil {
+		return nil, errors.New("支付宝响应格式无效")
+	}
+	return &trade, nil
+}
+
+// alipayVerifyNode 取出响应节点并验签，返回节点原文。网关级错误（不带签名）只作为错误返回。
+func alipayVerifyNode(cfg config, body []byte, node string) (json.RawMessage, error) {
 	var envelope map[string]json.RawMessage
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, errors.New("支付宝响应格式无效")
@@ -177,15 +186,12 @@ func alipayVerifyResponse(cfg config, body []byte, node string) (*alipayTrade, e
 	if !ok {
 		return nil, errors.New("支付宝响应缺少结果节点")
 	}
-	var trade alipayTrade
-	if err := json.Unmarshal(raw, &trade); err != nil {
-		return nil, errors.New("支付宝响应格式无效")
-	}
 	var sign string
 	_ = json.Unmarshal(envelope["sign"], &sign)
 	if sign == "" {
-		// 网关级错误（如签名错误、参数缺失）不带签名，只作为错误返回，不据此判定支付成功
-		return nil, fmt.Errorf("支付宝返回错误：%s %s", trade.Code, trade.Msg)
+		var e alipayTrade
+		_ = json.Unmarshal(raw, &e)
+		return nil, fmt.Errorf("支付宝返回错误：%s %s", e.Code, e.Msg)
 	}
 	pub, err := parsePublicKey(cfg.AlipayPublicKey)
 	if err != nil {
@@ -194,7 +200,89 @@ func alipayVerifyResponse(cfg config, body []byte, node string) (*alipayTrade, e
 	if !verifySHA256(pub, string(raw), sign) {
 		return nil, errors.New("支付宝响应验签失败")
 	}
-	return &trade, nil
+	return raw, nil
+}
+
+// alipayCall 以签名参数调用开放平台接口，返回验签后的响应节点。
+func alipayCall(ctx context.Context, cfg config, method string, biz map[string]any) (json.RawMessage, error) {
+	p, err := alipaySignedParams(cfg, method, biz, nil)
+	if err != nil {
+		return nil, err
+	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, alipayGatewayURL(cfg), strings.NewReader(p.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+	return alipayVerifyNode(cfg, body, strings.ReplaceAll(method, ".", "_")+"_response")
+}
+
+// Refund alipay.trade.refund（out_request_no 为退款单号，重复请求幂等）。fund_change=Y 表示本次已退回；
+// 否则（如重复请求）以退款查询确认结果。
+func (c alipayChannel) Refund(ctx context.Context, in refundInput) (refundResult, error) {
+	raw, err := alipayCall(ctx, in.Cfg, "alipay.trade.refund", map[string]any{
+		"out_trade_no": in.Order.OrderNo, "refund_amount": formatYuan(in.Refund.AmountCents),
+		"out_request_no": in.Refund.RefundNo, "refund_reason": truncateRunes(in.Refund.Reason, 128),
+	})
+	if err != nil {
+		return refundResult{}, err
+	}
+	var r struct {
+		Code       string `json:"code"`
+		SubCode    string `json:"sub_code"`
+		SubMsg     string `json:"sub_msg"`
+		TradeNo    string `json:"trade_no"`
+		FundChange string `json:"fund_change"`
+	}
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return refundResult{}, errors.New("支付宝退款响应格式无效")
+	}
+	if r.Code != "10000" {
+		return refundResult{}, fmt.Errorf("支付宝退款失败：%s %s", r.SubCode, r.SubMsg)
+	}
+	if r.FundChange == "Y" {
+		return refundResult{Status: RefundSucceeded, ChannelRefundID: r.TradeNo}, nil
+	}
+	return c.QueryRefund(ctx, in)
+}
+
+// QueryRefund alipay.trade.fastpay.refund.query：refund_status=REFUND_SUCCESS 为已退回，否则视为受理中。
+func (alipayChannel) QueryRefund(ctx context.Context, in refundInput) (refundResult, error) {
+	raw, err := alipayCall(ctx, in.Cfg, "alipay.trade.fastpay.refund.query", map[string]any{
+		"out_trade_no": in.Order.OrderNo, "out_request_no": in.Refund.RefundNo,
+	})
+	if err != nil {
+		return refundResult{}, err
+	}
+	var r struct {
+		Code         string `json:"code"`
+		SubCode      string `json:"sub_code"`
+		SubMsg       string `json:"sub_msg"`
+		TradeNo      string `json:"trade_no"`
+		OutRequestNo string `json:"out_request_no"`
+		RefundStatus string `json:"refund_status"`
+		RefundAmount string `json:"refund_amount"`
+	}
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return refundResult{}, errors.New("支付宝退款查询响应格式无效")
+	}
+	if r.Code != "10000" {
+		return refundResult{}, fmt.Errorf("支付宝退款查询失败：%s %s", r.SubCode, r.SubMsg)
+	}
+	// 查询不到该退款请求即未退款；查询到且 refund_status 为空（同步退款）或 REFUND_SUCCESS 即已退款
+	if r.OutRequestNo == "" {
+		return refundResult{Status: RefundFailed, Error: "支付宝未受理该退款"}, nil
+	}
+	if (r.RefundStatus == "" || r.RefundStatus == "REFUND_SUCCESS") && parseYuan(r.RefundAmount) == in.Refund.AmountCents {
+		return refundResult{Status: RefundSucceeded, ChannelRefundID: r.TradeNo}, nil
+	}
+	return refundResult{Status: RefundProcessing}, nil
 }
 
 // Notify 异步通知：验签（剔除 sign/sign_type）、校验 app_id，交易成功时返回结果；应答 success 后支付宝停止重发。

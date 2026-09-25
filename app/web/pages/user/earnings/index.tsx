@@ -9,7 +9,7 @@ import { Badge, Button, Card, EmptyState, Field, Input, Loading, Pagination, Tex
 import { formatPrice } from '@/lib/commerce'
 import { centsFromInput } from '@/lib/membership'
 
-interface Ledger { id: number; kind: 'sale' | 'withdrawal' | 'withdrawal_revert'; title: string; gross_cents: number; commission_cents: number; net_cents: number; currency: string; created_at: string }
+interface Ledger { id: number; kind: 'sale' | 'withdrawal' | 'withdrawal_revert' | 'refund'; title: string; gross_cents: number; commission_cents: number; net_cents: number; currency: string; created_at: string }
 interface Withdrawal { id: number; amount_cents: number; currency: string; account: string; status: 'pending' | 'paid' | 'rejected'; admin_note: string; created_at: string; processed_at?: string | null }
 interface Earnings {
   balance_cents: number; currency: string; min_withdrawal_cents: number; commission_percent: number
@@ -69,6 +69,7 @@ function MyEarningsInner() {
               </Card>
             ))}
           </div>
+          {data.balance_cents < 0 && <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{t('paid.earnings.negativeHint')}</p>}
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_22rem]">
             <Card className="p-5">
               <h2 className="font-bold text-slate-900">{t('paid.earnings.ledger')}</h2>
@@ -77,7 +78,7 @@ function MyEarningsInner() {
                   {data.ledger.items.map((l) => (
                     <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                       <span className="min-w-0">
-                        <span className="text-slate-800">{l.kind === 'sale' ? l.title : t(`paid.earnings.kind.${l.kind}`)}</span>
+                        <span className="text-slate-800">{l.kind === 'sale' ? l.title : l.kind === 'refund' ? t('paid.earnings.refundOf', { title: l.title }) : t(`paid.earnings.kind.${l.kind}`)}</span>
                         {l.kind === 'sale' && <span className="ml-2 text-xs text-slate-400">{t('paid.earnings.saleDetail', { gross: money(l.gross_cents), fee: money(l.commission_cents) })}</span>}
                       </span>
                       <span className="flex items-center gap-3">
