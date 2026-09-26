@@ -94,36 +94,10 @@ func (a *App) CopyBook(c *gin.Context) {
 			slug = a.uniqueBookSlug("book")
 		}
 	}
-	newBook := models.Book{
-		Title: title, UserID: u.ID, Status: "draft", IsPublic: false, Slug: slug,
-		SlugEditable:  slugEditable,
-		Description:   src.Description, CoverImage: src.CoverImage,
-		LoginRequired: src.LoginRequired,
-		OrderCol:      src.OrderCol, OrderDir: src.OrderDir, ChapterPrefix: src.ChapterPrefix,
-		ChildStatusFollowParent: src.ChildStatusFollowParent,
-		Language:                src.Language, TransGroup: src.TransGroup,
-		Version: src.Version, VersionGroup: src.VersionGroup,
-		WatermarkEnabled: src.WatermarkEnabled, WatermarkText: src.WatermarkText, ExtraInfo: append(models.BookInfo{}, src.ExtraInfo...),
-		ExportEnabled: src.ExportEnabled, GuestExportEnabled: src.GuestExportEnabled,
-		ExportStyleShared: src.ExportStyleShared, ExportFormats: src.ExportFormats,
-	}
-	if err := a.DB.Create(&newBook).Error; err != nil {
+	newBook, err := a.copyBookShell(u, src, title, slug, slugEditable)
+	if err != nil {
 		fail(c, http.StatusInternalServerError, "复制失败: "+err.Error())
 		return
-	}
-
-	// 插件复制自身关联数据（如标签插件复制标签）
-	plugincore.FireBookCopied(a, src, &newBook)
-
-	// 复制每本书的导出样式设置（PageSize/字号/页边距/页脚等）
-	var srcExport models.BookExportSetting
-	if a.DB.Where("book_id = ?", src.ID).First(&srcExport).Error == nil {
-		copyExport := srcExport
-		copyExport.ID = 0
-		copyExport.BookID = newBook.ID
-		copyExport.CreatedAt = time.Time{}
-		copyExport.UpdatedAt = time.Time{}
-		_ = a.DB.Create(&copyExport).Error
 	}
 
 	// 章节：第一遍建档（记录 原 id -> 新 id），第二遍重建父子关系（父章节须同在选中集合内）
@@ -156,6 +130,40 @@ func (a *App) CopyBook(c *gin.Context) {
 	}
 
 	ok(c, gin.H{"book": newBook, "copied_documents": len(chosen), "first_doc_slug": firstDocSlug})
+}
+
+// copyBookShell 以 src 为模板为 u 新建一本私有草稿书（不含章节）：尽量完整复制配置（含语言/版本/翻译分组、导出与水印设置、
+// 每本书的导出样式），并触发插件的复制钩子（如标签）。
+func (a *App) copyBookShell(u *models.User, src *models.Book, title, slug string, slugEditable bool) (models.Book, error) {
+	newBook := models.Book{
+		Title: title, UserID: u.ID, Status: "draft", IsPublic: false, Slug: slug,
+		SlugEditable:  slugEditable,
+		Description:   src.Description, CoverImage: src.CoverImage,
+		LoginRequired: src.LoginRequired,
+		OrderCol:      src.OrderCol, OrderDir: src.OrderDir, ChapterPrefix: src.ChapterPrefix,
+		ChildStatusFollowParent: src.ChildStatusFollowParent,
+		Language:                src.Language, TransGroup: src.TransGroup,
+		Version: src.Version, VersionGroup: src.VersionGroup,
+		WatermarkEnabled: src.WatermarkEnabled, WatermarkText: src.WatermarkText, ExtraInfo: append(models.BookInfo{}, src.ExtraInfo...),
+		ExportEnabled: src.ExportEnabled, GuestExportEnabled: src.GuestExportEnabled,
+		ExportStyleShared: src.ExportStyleShared, ExportFormats: src.ExportFormats,
+	}
+	if err := a.DB.Create(&newBook).Error; err != nil {
+		return newBook, err
+	}
+	// 插件复制自身关联数据（如标签插件复制标签）
+	plugincore.FireBookCopied(a, src, &newBook)
+	// 复制每本书的导出样式设置（PageSize/字号/页边距/页脚等）
+	var srcExport models.BookExportSetting
+	if a.DB.Where("book_id = ?", src.ID).First(&srcExport).Error == nil {
+		copyExport := srcExport
+		copyExport.ID = 0
+		copyExport.BookID = newBook.ID
+		copyExport.CreatedAt = time.Time{}
+		copyExport.UpdatedAt = time.Time{}
+		_ = a.DB.Create(&copyExport).Error
+	}
+	return newBook, nil
 }
 
 type copyDocumentsRequest struct {
