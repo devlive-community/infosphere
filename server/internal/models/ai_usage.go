@@ -50,3 +50,19 @@ func backfillAITraceIDs(db *gorm.DB) error {
 		}
 	}
 }
+
+// AIAlert AI 用量预警记录（只报警、不限流）：同一类型与对象（日期/用户/调用链）只记录与通知一次。
+type AIAlert struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Kind      string    `gorm:"size:30;not null;uniqueIndex:idx_ai_alert_key,priority:1" json:"kind"` // site_daily_cost | user_daily_tokens | trace_tokens
+	Key       string    `gorm:"size:80;not null;uniqueIndex:idx_ai_alert_key,priority:2" json:"key"`
+	UserID    uint      `json:"user_id"`
+	TraceID   string    `gorm:"size:40" json:"trace_id"`
+	Feature   string    `gorm:"size:50" json:"feature"`
+	Value     int64     `json:"value"`     // 触发时的数值（tokens 或 cost_micros）
+	Threshold int64     `json:"threshold"` // 阈值（同单位）
+	Currency  string    `gorm:"size:10" json:"currency"`
+	CreatedAt time.Time `gorm:"index" json:"created_at"`
+}
+
+func (AIAlert) TableName() string { return "ai_alerts" }

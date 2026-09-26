@@ -821,6 +821,7 @@ func All(db *gorm.DB) error {
 		&PasswordResetToken{},
 		&BackgroundJob{},
 		&AIUsageLog{},
+		&AIAlert{},
 		// 成就相关表由「成就」插件在启用时建表（首次启用才创建），不在核心 AutoMigrate 里。
 	); err != nil {
 		return err

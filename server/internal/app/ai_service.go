@@ -34,6 +34,9 @@ var aiSettingKeys = []struct {
 	{"price_output", "ai_price_output", "AI 服务：对话输出单价（每百万 tokens）", false},
 	{"price_embed", "ai_price_embed", "AI 服务：向量嵌入单价（每百万 tokens）", false},
 	{"price_translate", "ai_price_translate", "AI 服务：机器翻译单价（每百万字符，Google 翻译）", false},
+	{"alert_daily_cost", cfgAlertDailyCost, "AI 用量预警：全站当日估算费用阈值（0 为关闭）", false},
+	{"alert_user_daily_tokens", cfgAlertUserDailyTokens, "AI 用量预警：单个用户当日 tokens 阈值（0 为关闭）", false},
+	{"alert_trace_tokens", cfgAlertTraceTokens, "AI 用量预警：单条调用链 tokens 阈值（0 为关闭）", false},
 }
 
 // aiConfig 当前生效的 AI 配置与来源（ai | translation | none）。
@@ -185,6 +188,18 @@ func (a *App) AdminUpdateAI(c *gin.Context) {
 		if strings.HasPrefix(s.field, "price_") && s.field != "price_currency" && v != "" {
 			if f, err := strconv.ParseFloat(v, 64); err != nil || f < 0 || f > 100000 {
 				fail(c, http.StatusBadRequest, "单价需为 0 到 100000 之间的数字（每百万 tokens）")
+				return
+			}
+		}
+		if s.field == "alert_daily_cost" && v != "" {
+			if f, err := strconv.ParseFloat(v, 64); err != nil || f < 0 || f > 1_000_000 {
+				fail(c, http.StatusBadRequest, "费用预警阈值需为 0 到 1000000 之间的数字（0 为关闭）")
+				return
+			}
+		}
+		if (s.field == "alert_user_daily_tokens" || s.field == "alert_trace_tokens") && v != "" {
+			if n, err := strconv.ParseInt(v, 10, 64); err != nil || n < 0 || n > 1_000_000_000 {
+				fail(c, http.StatusBadRequest, "tokens 预警阈值需为 0 到 1000000000 之间的整数（0 为关闭）")
 				return
 			}
 		}

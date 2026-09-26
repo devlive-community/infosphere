@@ -358,6 +358,7 @@ func (a *App) Router() *gin.Engine {
 			admin.POST("/admin/ai/test", a.RequirePermission(authz.SiteUpdate), a.AdminTestAI)
 			admin.GET("/admin/ai/usage", a.RequirePermission(authz.SiteUpdate), a.AdminAIUsage)
 			admin.GET("/admin/ai/usage/logs", a.RequirePermission(authz.SiteUpdate), a.AdminAIUsageLogs)
+			admin.GET("/admin/ai/alerts", a.RequirePermission(authz.SiteUpdate), a.AdminAIAlerts)
 			// 通用系统配置（config:manage，仅管理员）：任意 key-value 配置的增删改查
 			// 权益：基础值（全站默认）；等级/会员等来源由插件提供
 			admin.GET("/admin/entitlements", a.RequirePermission(authz.SiteUpdate), a.AdminEntitlements)

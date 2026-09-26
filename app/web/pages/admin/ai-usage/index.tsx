@@ -97,10 +97,48 @@ export default function AdminAIUsage() {
           </div>
           {tokens(summary.total) === 0 && summary.total.calls === 0 && <EmptyState>{t('admin.aiUsage.empty')}</EmptyState>}
 
+          <AlertsCard currency={summary.currency} />
+
           <UsageLogs features={summary.features} />
         </div>
       )}
     </AdminLayout>
+  )
+}
+
+interface AlertItem {
+  alert: { id: number; kind: 'site_daily_cost' | 'user_daily_tokens' | 'trace_tokens'; key: string; user_id: number; trace_id: string; feature: string; value: number; threshold: number; currency: string; created_at: string }
+  username: string
+}
+
+// AlertsCard 最近的用量预警（只报警、不限流），可直接跳到对应用户或调用链的明细
+function AlertsCard({ currency }: { currency: string }) {
+  const { t } = useTranslation()
+  const [items, setItems] = useState<AlertItem[] | null>(null)
+  useEffect(() => {
+    api<{ items: AlertItem[] }>('/admin/ai/alerts', { params: { page_size: 10 } }).then((d) => setItems(d.items)).catch(() => setItems([]))
+  }, [])
+  if (!items || items.length === 0) return null
+  const value = (a: AlertItem['alert'], n: number) => a.kind === 'site_daily_cost' ? formatCost(n, a.currency || currency) : `${formatTokens(n)} tokens`
+  return (
+    <Card className="border-amber-200 p-5">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900"><i className="fa-solid fa-triangle-exclamation text-amber-500" aria-hidden="true" />{t('admin.aiUsage.alertsTitle')}</h2>
+      <ul className="mt-3 divide-y divide-slate-100 text-sm">
+        {items.map(({ alert: a, username }) => (
+          <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+            <Badge tone="amber">{t(`admin.aiUsage.alertKind.${a.kind}`)}</Badge>
+            <span className="text-slate-700">
+              {a.kind === 'user_daily_tokens' && username ? `${username} · ` : ''}
+              {a.kind === 'trace_tokens' ? `${aiFeatureLabel(t, a.feature)} · ` : ''}
+              {t('admin.aiUsage.alertValue', { value: value(a, a.value), threshold: value(a, a.threshold) })}
+            </span>
+            <span className="text-xs text-slate-400">{formatDate(a.created_at)}</span>
+            {a.kind === 'trace_tokens' && <Link href={`/admin/ai-usage?trace=${encodeURIComponent(a.trace_id)}`} className="ml-auto text-xs font-medium text-primary-600 hover:text-primary-700">{t('admin.aiUsage.viewTrace')}</Link>}
+            {a.kind === 'user_daily_tokens' && username && <Link href={`/admin/ai-usage?user=${encodeURIComponent(username)}`} className="ml-auto text-xs font-medium text-primary-600 hover:text-primary-700">{t('admin.aiUsage.viewUser')}</Link>}
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
 }
 
@@ -149,11 +187,16 @@ function Breakdown({ title, rows, currency }: { title: string; rows: { key: stri
 function UsageLogs({ features }: { features: string[] }) {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
+  const router = useRouter()
+  // 预警通知的链接可带 ?trace= / ?user= 直接定位
+  const initialTrace = typeof router.query.trace === 'string' ? router.query.trace : ''
+  const initialUser = typeof router.query.user === 'string' ? router.query.user : ''
   const [feature, setFeature] = useState('')
   const [status, setStatus] = useState('')
-  const [userInput, setUserInput] = useState('')
-  const [user, setUser] = useState('')
-  const [trace, setTrace] = useState('')
+  const [userInput, setUserInput] = useState(initialUser)
+  const [user, setUser] = useState(initialUser)
+  const [trace, setTrace] = useState(initialTrace)
+  useEffect(() => { setTrace(initialTrace); setUser(initialUser); setUserInput(initialUser); setPage(1) }, [initialTrace, initialUser])
   const [page, setPage] = useState(1)
   const [data, setData] = useState<{ items: LogItem[]; total: number; page_size: number } | null>(null)
   const [loading, setLoading] = useState(true)

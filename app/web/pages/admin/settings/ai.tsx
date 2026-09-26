@@ -17,6 +17,9 @@ interface AIConfig {
   price_output: string
   price_embed: string
   price_translate: string
+  alert_daily_cost: string
+  alert_user_daily_tokens: string
+  alert_trace_tokens: string
   api_key_set: boolean
   embed_api_key_set: boolean
   source: 'ai' | 'translation' | 'none'
@@ -58,6 +61,7 @@ export default function SettingsAI() {
         provider: cfg.provider, base_url: cfg.base_url, model: cfg.model,
         embed_base_url: cfg.embed_base_url, embed_model: cfg.embed_model,
         price_currency: cfg.price_currency, price_input: cfg.price_input, price_output: cfg.price_output, price_embed: cfg.price_embed, price_translate: cfg.price_translate,
+        alert_daily_cost: cfg.alert_daily_cost, alert_user_daily_tokens: cfg.alert_user_daily_tokens, alert_trace_tokens: cfg.alert_trace_tokens,
         api_key: clear === 'api_key' ? '-' : apiKey, embed_api_key: clear === 'embed_api_key' ? '-' : embedKey,
       }
       setCfg(await api<AIConfig>('/admin/ai', { method: 'PUT', body }))
@@ -170,6 +174,23 @@ export default function SettingsAI() {
               </Field>
             </div>
             <p className="mt-3 text-xs text-slate-400">{t('admin.settings.ai.quotaNote')}</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">{t('admin.settings.ai.alertTitle')}</h2>
+            <p className="mt-1 text-sm text-slate-500">{t('admin.settings.ai.alertDescription')}</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <Field label={t('admin.settings.ai.alertDailyCost', { currency: cfg.price_currency || 'USD' })}>
+                <Input type="number" min={0} step="0.01" value={cfg.alert_daily_cost} onChange={(e) => set({ alert_daily_cost: e.target.value })} placeholder="0" />
+              </Field>
+              <Field label={t('admin.settings.ai.alertUserDailyTokens')}>
+                <Input type="number" min={0} step="1000" value={cfg.alert_user_daily_tokens} onChange={(e) => set({ alert_user_daily_tokens: e.target.value })} placeholder="0" />
+              </Field>
+              <Field label={t('admin.settings.ai.alertTraceTokens')}>
+                <Input type="number" min={0} step="1000" value={cfg.alert_trace_tokens} onChange={(e) => set({ alert_trace_tokens: e.target.value })} placeholder="0" />
+              </Field>
+            </div>
+            <p className="mt-3 text-xs text-slate-400">{t('admin.settings.ai.alertHint')}</p>
           </div>
 
           {message && <div className="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{message}</div>}
