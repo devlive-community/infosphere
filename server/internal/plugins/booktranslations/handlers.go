@@ -54,6 +54,7 @@ func (b *behavior) Key() string { return plugins.KeyBookTranslations }
 func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	b.core = core
 	api.GET("/books/:id/translations", core.OptionalAuth(), core.RequireFeaturePlugin(plugins.KeyBookTranslations), b.GetBookTranslations)
+	b.registerAIRoutes(api, core)
 }
 
 // GetBookTranslations GET /books/:id/translations 同一翻译组内、对当前用户可见的书籍（含自身），供阅读页语言切换。

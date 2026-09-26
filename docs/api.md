@@ -578,6 +578,26 @@ Authorization: Bearer <token>
 | DELETE | `/qa/answers/:id` | 回答者、作者/协作者或管理员删除回答（删除被采纳的回答时问题回到待解决） | 登录 + `qa:use` |
 | GET/PUT | `/admin/qa/settings` | `{ai_enabled, agent_enabled, top_k(3–12), trace_retention_days(0 永久或 7–3650)}`，PUT 可只传部分字段；超过保留天数的已结束问答由巡检清空调用链详情（`trace`），问题、回答与用量合计保留；另返回 `ai_chat_available`、`ai_embed_available` | 管理员 + `qa:manage` |
 
+## 整本 AI 翻译（「书籍多语言」插件）
+
+作者（可编辑原书内容的用户）用 AI 把整本书翻译为新的语言版本，或把原书的新增与修改同步到已有译本。模型经核心「AI 服务」调用。
+- **新建译本**：新建一本私有草稿书（沿用原书的导出、水印、标签等配置，`language` 为目标语言名称），与原书同一翻译分组（原书未分组时以其访问路径作为 `trans_group`），阅读页即可切换语言。后台先翻译目录（书名、简介、全部章节标题，一次调用返回 JSON 数组，解析失败时逐条翻译）并按原书结构建好全部章节（草稿，访问路径与原书一致），再逐章翻译正文：正文按空行切为不超过约 3000 字的片段逐段调用（单个段落不拆开），只由代码块组成的片段原样保留、不发给模型也不计字数。译文写入译本章节并记录版本（`reason=ai_translate`）；已发布的章节被更新时交发布守卫审查。
+- **同步**：`target_book_id` 指定译本时，只翻译原文修改过（标题 + 正文 + 外链的摘要与上次翻译时不同）或新增的章节；修改过的章节重新翻译标题并更新内容，新增章节按目录位置建立。没有变化时返回 400。
+- **术语表**：按原书 + 目标语言保存，翻译时写入系统提示要求统一采用；另可填写对整本书生效的翻译要求（同步时沿用）。
+- **后台执行**：不设整体超时，可暂停/继续（暂停时当前章节未完成的部分不保存，继续时重新翻译该章）；某章调用失败时记为失败并继续下一章，可重试失败的章节；本月翻译字数或 AI 用量不足时任务暂停并说明原因。服务重启时遗留的进行中任务由巡检标记为已暂停。完成后站内通知发起人（`notify.bookTranslate.done`）。
+- **计量与权益**：每次调用写入 AI 用量记录（功能 `translate.book`，按原文字符数记 `characters`，与写作台翻译一起计入每月翻译字数 `translate.monthly_chars`；配置了 AI 服务时该权益即可用），另受每月 AI 用量约束。能否使用整本 AI 翻译为开关权益 `translate.ai_book`（基础为开，可设为会员专享）。开始前按需要翻译的原文字数判定本月剩余额度，不足返回 429。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/books/:id/ai-translate` | `{available, allowed, chars_left(-1 不限), source{chapters, chars, language}, targets[]{book{id,slug,title,language,status}, target_lang, target_label, changed, added, chars, last_job}, jobs[]（最近 20 个）}` | 登录 + `booktrans:ai`，可编辑原书 |
+| GET/PUT | `/books/:id/ai-translate/glossary?lang=` | 术语表；PUT `{lang, terms:[{source, target}]}` 整体替换（最多 500 条，各不超过 200 字，原文不可重复；原文与译文都为空的行忽略） | 同上 |
+| POST | `/books/:id/ai-translate/jobs` | 新建译本 `{target_lang, target_label, title?, instructions?(≤1000)}`（`title` 为空时由 AI 翻译原书名），或同步 `{target_book_id, instructions?}` → `{job, items}`，任务立即开始 | 同上；同步另需可编辑译本 |
+| GET | `/ai-translate/jobs/:id` | `{job{id, mode: full\|sync, stage: outline\|content\|done, status: running\|paused\|done\|failed, total, done, failed, chars, input_tokens, output_tokens, estimated, trace_id, error, ...}, items[]{id, source_doc_id, target_doc_id, ord, depth, title, target_title, status: pending\|running\|done\|failed, chars, input_tokens, output_tokens, duration_ms, error}}` | 发起人或管理员 |
+| GET | `/ai-translate/jobs/:id/stream?ticket=` | 进度（SSE，事件流凭证鉴权）：先推 `snapshot {job, items, current?{item_id, seq, text}}`，之后推 `job`（任务合计）、`item`（章节状态）、`reset {item_id, seq}`（开始翻译某章）、`delta {item_id, seq, text}`（当前章节译文片段，按 `seq` 去重），结束或暂停时推 `done {job, items}` 后关闭；25 秒心跳 | 发起人或管理员 |
+| POST | `/ai-translate/jobs/:id/pause` | 暂停进行中的任务（不在进行中返回 409） | 发起人或管理员 |
+| POST | `/ai-translate/jobs/:id/resume` | 继续已暂停的任务（本月翻译字数已用完时 429） | 发起人或管理员 |
+| POST | `/ai-translate/jobs/:id/retry` | 重新翻译失败的章节（没有失败章节时 400，进行中时 409） | 发起人或管理员 |
+
 ## AI 写作助手（「AI 写作助手」插件，默认关闭）
 
 写作台中对选中的文字续写、改写、润色、扩写、精简，为章节生成大纲或摘要，或按作者的自定义要求处理。模型经核心「AI 服务」（`/admin/ai`）以流式接口调用，插件不接触密钥；只有能编辑该书内容的用户（作者、协作者、管理员）可用。

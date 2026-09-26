@@ -69,7 +69,7 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     # t(`entitlement.unit.${unit}`) / unitShort、t(`entitlement.source.${source}`)（权益来源键）
     'entitlement.': ['books.max', 'collaborators.max', 'upload.max_mb', 'collect.page', 'collect.site', 'collect.site_max_pages',
                      'content.access_tier', 'content.discount_percent', 'content.free_all',
-                     'qa.ai_daily', 'qa.agent_daily', 'ai.monthly_tokens', 'translate.monthly_chars', 'aiwriter.monthly_uses'],
+                     'qa.ai_daily', 'qa.agent_daily', 'ai.monthly_tokens', 'translate.monthly_chars', 'aiwriter.monthly_uses', 'translate.ai_book'],
     'entitlement.unit.': ['books', 'people', 'mb', 'pages', 'tier', 'percent', 'questions', 'tokens', 'chars', 'uses'],
     'entitlement.unitShort.': ['books', 'people', 'mb', 'pages', 'tier', 'percent', 'questions', 'tokens', 'chars', 'uses'],
     # AI 写作助手：动作 / 动作说明 / 任务状态 / 采纳方式；调用功能名 ai.feature.aiwriter.<action>
@@ -78,6 +78,11 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     'aiWriter.status.': ['running', 'done', 'failed', 'canceled'],
     'aiWriter.adopted.': ['replace', 'insert'],
     'ai.feature.aiwriter.': ['continue', 'polish', 'rewrite', 'expand', 'shorten', 'outline', 'summary', 'custom'],
+    # 整本 AI 翻译：任务方式 / 状态 / 阶段 / 章节状态
+    'bookSettings.aiTranslate.mode.': ['full', 'sync'],
+    'bookSettings.aiTranslate.status.': ['running', 'paused', 'done', 'failed'],
+    'bookSettings.aiTranslate.stage.': ['outline', 'content', 'done'],
+    'bookSettings.aiTranslate.itemStatus.': ['pending', 'running', 'done', 'failed'],
     'entitlement.source.': ['base', 'level', 'membership', 'admin', 'unavailable'],
     # 会员：tab / 状态 / 流水动作（Record.Action 取值域）/ 时长单位
     'admin.membership.tab.': ['plans', 'members', 'records', 'settings'],

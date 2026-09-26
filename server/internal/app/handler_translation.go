@@ -34,8 +34,13 @@ const (
 func init() {
 	plugincore.RegisterEntitlement(plugincore.EntitlementDef{
 		Key: entTranslateMonthlyChars, Kind: plugincore.EntitlementLimit, Unit: "chars", Min: 0, Max: 1_000_000_000, AllowUnlimited: true, Order: 45,
+		// 翻译服务已配置，或 AI 服务可用（插件的 AI 翻译功能如整本翻译同样按字数计量）
 		Available: func(core plugincore.Core) bool {
-			return core.GetSetting("translation_provider") != "" && core.GetSetting("translation_provider") != "none"
+			if p := core.GetSetting("translation_provider"); p != "" && p != "none" {
+				return true
+			}
+			chat, _ := core.AIStatus()
+			return chat
 		},
 		Base: func(core plugincore.Core) int64 {
 			return settingLimit(core, cfgTranslateMonthlyChars, plugincore.Unlimited)
@@ -46,12 +51,24 @@ func init() {
 	})
 }
 
-// translateMonthUsed 用户本月已翻译的原文字符数（仅成功的调用）。
+// translateMonthUsed 用户本月已翻译的原文字符数（仅成功的调用；含插件的翻译功能 translate.*，如整本 AI 翻译）。
 func (a *App) translateMonthUsed(userID uint) int64 {
 	var total struct{ N int64 }
 	a.DB.Model(&models.AIUsageLog{}).Select("COALESCE(SUM(characters), 0) AS n").
-		Where("user_id = ? AND feature = ? AND status = ? AND created_at >= ?", userID, featureTranslate, "ok", monthStart(time.Now())).Scan(&total)
+		Where("user_id = ? AND (feature = ? OR feature LIKE ?) AND status = ? AND created_at >= ?", userID, featureTranslate, featureTranslate+".%", "ok", monthStart(time.Now())).Scan(&total)
 	return total.N
+}
+
+// TranslateCharsLeft 用户本月剩余翻译字数（每月翻译字数权益；不限返回 -1）。
+func (a *App) TranslateCharsLeft(u *models.User) int64 {
+	limit, enforced := a.meteredLimit(u, entTranslateMonthlyChars)
+	if !enforced {
+		return -1
+	}
+	if left := limit - a.translateMonthUsed(u.ID); left > 0 {
+		return left
+	}
+	return 0
 }
 
 var translateRefTypes = map[string]bool{"document": true, "book": true, "resource": true}

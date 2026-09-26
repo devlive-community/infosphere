@@ -67,6 +67,8 @@ type Core interface {
 	UniqueChildSlug(bookID uint, parentID *uint, base string, excludeID uint) string
 	InstalledChromePath() string
 	CreateContentImportBook(u *models.User, title, description string, chapters []ImportedChapter) (models.Book, error)
+	// CreateDraftBookFrom 以 src 的配置为模板为 u 新建一本私有草稿书（不含章节；校验书籍数量权益，复制导出/水印/标签等设置）。
+	CreateDraftBookFrom(u *models.User, src *models.Book, title string) (models.Book, error)
 	JobQueue() *jobqueue.Queue
 	// InitialChapterStatus 未显式指定状态时新章节的初始状态（子章节跟随父章节 / 第一级用书籍默认状态 / 否则草稿）。
 	InitialChapterStatus(book *models.Book, parentID *uint) string
@@ -90,6 +92,10 @@ type Core interface {
 	// AIChatStream 同 AIChat，并流式回调生成的文本片段（onDelta 在调用方的 goroutine 中同步调用）。
 	AIChatStream(ctx context.Context, req ai.ChatRequest, onDelta func(text string)) (ai.ChatResponse, error)
 	AIStatus() (chat, embed bool)
+	// AITranslateStream 同 AIChatStream，并按原文字符数 chars 记入翻译用量（调用方功能须为 translate.*，计入每月翻译字数权益）。
+	AITranslateStream(ctx context.Context, req ai.ChatRequest, chars int64, onDelta func(text string)) (ai.ChatResponse, error)
+	// TranslateCharsLeft 用户本月剩余翻译字数（-1 为不限）。
+	TranslateCharsLeft(u *models.User) int64
 	// AICheckQuota 按 ctx 上标注的调用方（ai.WithCaller）判定每月 AI 用量额度，超出返回 ai.ErrQuotaExceeded；
 	// 多次调用的功能可在开始前调用，避免中途失败。
 	AICheckQuota(ctx context.Context) error

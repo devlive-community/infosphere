@@ -91,6 +91,12 @@ func (a *App) AIChatStream(ctx context.Context, req ai.ChatRequest, onDelta func
 	return a.meteredChatStream(ctx, cfg, req, 0, onDelta)
 }
 
+// AITranslateStream 以 AI 服务翻译并按原文字符数 chars 记入翻译用量（调用方功能须为 translate.*，计入每月翻译字数）。
+func (a *App) AITranslateStream(ctx context.Context, req ai.ChatRequest, chars int64, onDelta func(text string)) (ai.ChatResponse, error) {
+	cfg, _ := a.aiConfig()
+	return a.meteredChatStream(ctx, cfg, req, chars, onDelta)
+}
+
 // meteredChatStream onDelta 非空时以流式接口调用；计量与额度判定同 meteredChat。
 func (a *App) meteredChatStream(ctx context.Context, cfg ai.Config, req ai.ChatRequest, chars int64, onDelta func(string)) (ai.ChatResponse, error) {
 	caller := ai.CallerFrom(ctx)

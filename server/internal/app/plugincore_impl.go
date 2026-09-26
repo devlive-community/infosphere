@@ -1,6 +1,8 @@
 package app
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
@@ -56,6 +58,20 @@ func (a *App) CreateContentImportBook(u *models.User, title, description string,
 		local[i] = importedChapter{Title: ch.Title, Content: ch.Content}
 	}
 	return a.createContentImportBook(u, title, description, local)
+}
+func (a *App) CreateDraftBookFrom(u *models.User, src *models.Book, title string) (models.Book, error) {
+	if err := a.EnsureBookQuota(u); err != nil {
+		return models.Book{}, err
+	}
+	title = truncateText(strings.TrimSpace(title), 255)
+	if title == "" {
+		title = src.Title
+	}
+	slug := a.uniqueBookSlug(slugify(title))
+	if slug == "" {
+		slug = a.uniqueBookSlug(randomSlug("book"))
+	}
+	return a.copyBookShell(u, src, title, slug, true)
 }
 func (a *App) InitialChapterStatus(book *models.Book, parentID *uint) string {
 	return a.initialChapterStatus(book, parentID)
