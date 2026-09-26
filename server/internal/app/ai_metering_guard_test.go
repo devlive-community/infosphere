@@ -14,10 +14,11 @@ import (
 func TestModelCallsAreMetered(t *testing.T) {
 	allowed := map[string][]string{
 		filepath.Join("ai", "ai.go"):                   nil, // 客户端实现本身
-		filepath.Join("app", "ai_service.go"):          {"ai.Chat(", "ai.Embed("},
+		filepath.Join("ai", "stream.go"):               nil,
+		filepath.Join("app", "ai_service.go"):          {"ai.Chat(", "ai.ChatStream(", "ai.Embed("},
 		filepath.Join("app", "handler_translation.go"): {"/language/translate/v2"},
 	}
-	patterns := []string{"ai.Chat(", "ai.Embed(", "/chat/completions", "/v1/messages", "/embeddings", "/language/translate/v2", "generativelanguage.googleapis.com"}
+	patterns := []string{"ai.Chat(", "ai.ChatStream(", "ai.Embed(", "/chat/completions", "/v1/messages", "/embeddings", "/language/translate/v2", "generativelanguage.googleapis.com"}
 	root := ".."
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {

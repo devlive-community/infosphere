@@ -61,7 +61,8 @@ func (f *fakeAI) handler() http.Handler {
 				Role    string `json:"role"`
 				Content string `json:"content"`
 			} `json:"messages"`
-			Tools []any `json:"tools"`
+			Tools  []any `json:"tools"`
+			Stream bool  `json:"stream"`
 		}
 		_ = json.Unmarshal(raw, &req)
 		toolMsgs, lastUser := 0, ""
@@ -96,6 +97,27 @@ func (f *fakeAI) handler() http.Handler {
 			}}}
 		} else if toolMsgs > 0 {
 			msg["content"] = "索引帮助检索 [1]。"
+		}
+		if req.Stream { // 流式：文本分两段推送，工具调用一次推送，最后推用量
+			w.Header().Set("Content-Type", "text/event-stream")
+			write := func(v any) {
+				raw, _ := json.Marshal(v)
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", raw)
+			}
+			if calls, ok := msg["tool_calls"].([]map[string]any); ok {
+				for i, c := range calls {
+					c["index"] = i
+				}
+				write(map[string]any{"model": "fake-1", "choices": []map[string]any{{"delta": map[string]any{"tool_calls": calls}}}})
+			} else {
+				text := []rune(msg["content"].(string))
+				half := len(text) / 2
+				write(map[string]any{"model": "fake-1", "choices": []map[string]any{{"delta": map[string]any{"content": string(text[:half])}}}})
+				write(map[string]any{"choices": []map[string]any{{"delta": map[string]any{"content": string(text[half:])}}}})
+			}
+			write(map[string]any{"choices": []any{}, "usage": map[string]any{"prompt_tokens": 100, "completion_tokens": 20}})
+			_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
+			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"model": "fake-1", "usage": map[string]any{"prompt_tokens": 100, "completion_tokens": 20}, "choices": []map[string]any{{"message": msg}}})
 	})
@@ -680,8 +702,11 @@ func TestQAStreamProgress(t *testing.T) {
 	next := len(snap.Trace)
 	steps := 0
 	for _, ev := range events[1 : len(events)-1] {
+		if ev[0] == "delta" || ev[0] == "reset" {
+			continue
+		}
 		if ev[0] != "step" {
-			t.Fatalf("中间事件应为 step: %v", ev)
+			t.Fatalf("中间事件应为 step/delta/reset: %v", ev)
 		}
 		var st struct {
 			Index int `json:"index"`
@@ -696,12 +721,30 @@ func TestQAStreamProgress(t *testing.T) {
 		next++
 		steps++
 	}
+	// 回答文本逐段推送：最后一次 reset 之后的 delta 拼起来即最终回答
+	streamed, deltas := "", 0
+	for _, ev := range events {
+		switch ev[0] {
+		case "delta":
+			var d struct {
+				Text string `json:"text"`
+			}
+			_ = json.Unmarshal([]byte(ev[1]), &d)
+			streamed += d.Text
+			deltas++
+		case "reset":
+			streamed = ""
+		}
+	}
 	var done struct {
 		Status string          `json:"status"`
 		Trace  []TraceStepJSON `json:"trace"`
 		Answer string          `json:"answer"`
 	}
 	_ = json.Unmarshal([]byte(events[len(events)-1][1]), &done)
+	if deltas == 0 || streamed != done.Answer {
+		t.Fatalf("流式片段应拼成最终回答: %d 段 %q vs %q", deltas, streamed, done.Answer)
+	}
 	if steps == 0 || done.Status != "done" || done.Answer == "" || len(done.Trace) != next {
 		t.Fatalf("推送与最终结果不一致: steps=%d next=%d done=%+v", steps, next, done)
 	}

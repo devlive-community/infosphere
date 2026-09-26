@@ -240,19 +240,23 @@ function AskItem({ item, bookSlug, sharing, shareDisabled, onShare, onClick, onC
 }) {
   const { t } = useTranslation()
   const [showTrace, setShowTrace] = useState(false)
-  const html = useMemo(() => item.status === 'done' ? renderAnswer(item.answer, bookSlug, item.citations) : '', [item.status, item.answer, bookSlug, item.citations])
+  // 生成中也实时渲染已生成的部分（出处角标在完成后才可点击）
+  const html = useMemo(() => item.status === 'done' || (item.status === 'running' && item.answer) ? renderAnswer(item.answer, bookSlug, item.citations) : '', [item.status, item.answer, bookSlug, item.citations])
   const running = item.status === 'running'
   return (
     <div className="space-y-2">
       <QuestionBubble question={item.question} selection={item.selection} />
       <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3">
         {running ? (
+          <>
+          {item.answer && <div className="markdown-body qa-answer mb-2 text-sm" dangerouslySetInnerHTML={{ __html: html }} />}
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Loading className="!p-0" label={t(item.mode === 'agent' ? 'qa.ask.thinkingAgent' : 'qa.ask.thinking')} />
             <Button size="sm" variant="ghost" className="ml-auto text-rose-600" loading={canceling} onClick={onCancel}>
               <i className="fa-solid fa-stop" aria-hidden="true" />{t('qa.ask.cancel')}
             </Button>
           </div>
+          </>
         ) : item.status === 'done' ? (
           <>
             <div className="markdown-body qa-answer text-sm" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />

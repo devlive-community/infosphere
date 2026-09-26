@@ -11,11 +11,12 @@ import (
 )
 
 // 问答进度推送（SSE）：后台生成的每一步都推给正在查看的读者，不需要前端轮询。
-// GET /qa/asks/:id/stream 先推 snapshot（当前完整记录），之后逐步推 step（新增的调用链步骤与合计），结束推 done（最终记录）。
+// GET /qa/asks/:id/stream 先推 snapshot（当前完整记录，进行中时含已生成的部分回答与 answer_seq），之后逐步推 step（新增的调用链步骤与合计）、
+// delta（回答文本片段 {seq, text}）、reset（本轮以工具调用结束，清空临时文本 {seq}），结束推 done（最终记录）。
 // 内存 hub 与站内通知推送相同，适用于单实例部署；订阅者消费过慢时断开连接，EventSource 自动重连后重新获得 snapshot，不丢步骤。
 
 const (
-	streamBuffer    = 256
+	streamBuffer    = 1024
 	streamHeartbeat = 25 * time.Second
 )
 
@@ -111,7 +112,11 @@ func (b *behavior) StreamAsk(c *gin.Context) {
 	ch := asksHub.subscribe(rec.ID)
 	defer asksHub.unsubscribe(rec.ID, ch)
 	rec, _ = load()
-	snapshot, _ := json.Marshal(toAskView(rec))
+	view := toAskView(rec)
+	if v, ok := runningAsks.Load(rec.ID); ok && rec.Status == askRunning {
+		view.Answer, view.AnswerSeq = v.(*runState).snapshot() // 已生成的部分回答（后续 delta 按 seq 去重）
+	}
+	snapshot, _ := json.Marshal(view)
 	writeEvent(c.Writer, "snapshot", snapshot)
 	if rec.Status != askRunning {
 		writeEvent(c.Writer, "done", snapshot)

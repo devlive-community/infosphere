@@ -184,6 +184,7 @@ type askView struct {
 	Ask
 	Citations []Citation  `json:"citations"`
 	Trace     []TraceStep `json:"trace"`
+	AnswerSeq int         `json:"answer_seq,omitempty"` // 进行中：快照已包含的回答片段序号
 }
 
 func toAskView(a Ask) askView {

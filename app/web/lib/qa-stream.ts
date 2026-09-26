@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react'
 import { API_BASE, getToken } from '@/lib/api'
 import type { QAAsk, QATraceStep } from '@/lib/qa'
 
-// 进行中问答的实时进度（SSE）：服务端先推 snapshot，之后逐步推 step，结束推 done。
-// 连接断开时 EventSource 自动重连并重新获得 snapshot；step 按 index 去重，保证不重复、不遗漏。
+// 进行中问答的实时进度（SSE）：服务端先推 snapshot，之后逐步推 step（调用链）、delta（回答文本片段）、
+// reset（本轮以工具调用结束，清空临时文本），结束推 done。连接断开时 EventSource 自动重连并重新获得 snapshot；
+// step 按 index、delta/reset 按 seq 去重，保证不重复、不遗漏。
 
 interface StepEvent {
   index: number
@@ -22,6 +23,20 @@ export function applyStep(ask: QAAsk, ev: StepEvent): QAAsk {
     ...ask, trace: [...ask.trace, ev.step], calls: ev.calls, input_tokens: ev.input_tokens,
     output_tokens: ev.output_tokens, estimated: ev.estimated, duration_ms: ev.duration_ms,
   }
+}
+
+interface DeltaEvent { seq: number; text?: string }
+
+// applyDelta 追加回答文本片段（快照已包含的忽略）。
+export function applyDelta(ask: QAAsk, ev: DeltaEvent): QAAsk {
+  if (ev.seq <= (ask.answer_seq ?? 0)) return ask
+  return { ...ask, answer: (ask.answer || '') + (ev.text || ''), answer_seq: ev.seq }
+}
+
+// applyReset 本轮以工具调用结束：清空临时文本（快照已是更新的内容时忽略）。
+export function applyReset(ask: QAAsk, ev: DeltaEvent): QAAsk {
+  if ((ask.answer_seq ?? 0) > ev.seq) return ask
+  return { ...ask, answer: '', answer_seq: ev.seq }
 }
 
 // useAskStreams 为列表中每条进行中的问答订阅进度；update 用最新记录替换（或按函数更新）列表项，onFinish 在某条结束时调用。
@@ -51,6 +66,14 @@ export function useAskStreams(
       source.addEventListener('step', (e) => {
         const ev = parse<StepEvent>(e as MessageEvent)
         if (ev) updateRef.current(id, (ask) => applyStep(ask, ev))
+      })
+      source.addEventListener('delta', (e) => {
+        const ev = parse<DeltaEvent>(e as MessageEvent)
+        if (ev) updateRef.current(id, (ask) => applyDelta(ask, ev))
+      })
+      source.addEventListener('reset', (e) => {
+        const ev = parse<DeltaEvent>(e as MessageEvent)
+        if (ev) updateRef.current(id, (ask) => applyReset(ask, ev))
       })
       source.addEventListener('done', (e) => {
         source.close() // 结束后关闭，避免 EventSource 自动重连

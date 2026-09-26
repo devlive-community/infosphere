@@ -77,12 +77,31 @@ func (a *App) AIChat(ctx context.Context, req ai.ChatRequest) (ai.ChatResponse, 
 // meteredChat 用指定配置调用对话模型：调用前判定调用方每月额度，调用后记录用量。
 // 站点内所有对话模型调用（AI 服务、翻译等）都必须经过这里，保证用量记录完整。chars 为翻译类调用的原文字符数。
 func (a *App) meteredChat(ctx context.Context, cfg ai.Config, req ai.ChatRequest, chars int64) (ai.ChatResponse, error) {
+	return a.meteredChatStream(ctx, cfg, req, chars, nil)
+}
+
+// AIChatStream 同 AIChat，并流式回调生成的文本片段。
+func (a *App) AIChatStream(ctx context.Context, req ai.ChatRequest, onDelta func(text string)) (ai.ChatResponse, error) {
+	cfg, _ := a.aiConfig()
+	return a.meteredChatStream(ctx, cfg, req, 0, onDelta)
+}
+
+// meteredChatStream onDelta 非空时以流式接口调用；计量与额度判定同 meteredChat。
+func (a *App) meteredChatStream(ctx context.Context, cfg ai.Config, req ai.ChatRequest, chars int64, onDelta func(string)) (ai.ChatResponse, error) {
 	caller := ai.CallerFrom(ctx)
 	if err := a.checkAIQuota(caller); err != nil {
 		return ai.ChatResponse{}, err
 	}
 	started := time.Now()
-	res, err := ai.Chat(ctx, cfg, req)
+	var (
+		res ai.ChatResponse
+		err error
+	)
+	if onDelta != nil {
+		res, err = ai.ChatStream(ctx, cfg, req, onDelta)
+	} else {
+		res, err = ai.Chat(ctx, cfg, req)
+	}
 	model := res.Model
 	if model == "" {
 		model = cfg.Model

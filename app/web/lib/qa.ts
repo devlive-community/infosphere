@@ -32,6 +32,7 @@ export interface QAAsk {
   created_at: string
   citations: QACitation[]
   trace: QATraceStep[]
+  answer_seq?: number // 进行中：已包含的回答片段序号（SSE delta 去重用）
 }
 
 // QATraceStep 调用链中的一步（与服务端 TraceStep 一致）

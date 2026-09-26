@@ -257,7 +257,8 @@ func Chat(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse, error
 
 // —— OpenAI 兼容 ——
 
-func chatOpenAI(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse, error) {
+// openAIPayload 组装 OpenAI 兼容的请求体（流式与非流式共用），返回接口地址、模型与请求体。
+func openAIPayload(cfg Config, req ChatRequest) (string, string, map[string]any) {
 	base := strings.TrimRight(cfg.BaseURL, "/")
 	if base == "" {
 		base = "https://api.openai.com/v1"
@@ -292,6 +293,11 @@ func chatOpenAI(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse,
 		}
 		payload["tools"] = tools
 	}
+	return base, model, payload
+}
+
+func chatOpenAI(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse, error) {
+	base, model, payload := openAIPayload(cfg, req)
 	data, err := postJSON(ctx, base+"/chat/completions", map[string]string{"Authorization": bearer(cfg.APIKey)}, payload)
 	if err != nil {
 		return ChatResponse{}, err
@@ -350,7 +356,8 @@ func bearer(key string) string {
 
 // —— Anthropic Messages ——
 
-func chatAnthropic(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse, error) {
+// anthropicPayload 组装 Anthropic Messages 请求体（流式与非流式共用）：连续的工具结果合并到同一条 user 消息。
+func anthropicPayload(cfg Config, req ChatRequest) (string, string, map[string]any) {
 	base := strings.TrimRight(cfg.BaseURL, "/")
 	if base == "" {
 		base = "https://api.anthropic.com"
@@ -397,6 +404,11 @@ func chatAnthropic(ctx context.Context, cfg Config, req ChatRequest) (ChatRespon
 		}
 		payload["tools"] = tools
 	}
+	return base, model, payload
+}
+
+func chatAnthropic(ctx context.Context, cfg Config, req ChatRequest) (ChatResponse, error) {
+	base, model, payload := anthropicPayload(cfg, req)
 	data, err := postJSON(ctx, base+"/v1/messages", map[string]string{"x-api-key": cfg.APIKey, "anthropic-version": "2023-06-01"}, payload)
 	if err != nil {
 		return ChatResponse{}, err

@@ -139,10 +139,22 @@ type answerResult struct {
 	Steps     int // Agent 工具调用次数
 }
 
-// chat 调用模型并把本次调用记入调用链（模型、tokens、耗时、请求的工具）。
+// chat 调用模型并把本次调用记入调用链（模型、tokens、耗时、请求的工具）。后台问答时以流式接口调用，
+// 生成的文本逐段推送给读者；本轮以工具调用结束时清空临时文本。
 func (b *behavior) chat(ctx context.Context, tr *tracer, req ai.ChatRequest) (ai.ChatResponse, error) {
 	startMs, started := tr.begin()
-	res, err := b.core.AIChat(ctx, req)
+	var (
+		res ai.ChatResponse
+		err error
+	)
+	if st := runFrom(ctx); st != nil {
+		res, err = b.core.AIChatStream(ctx, req, st.append)
+		if err == nil && len(res.ToolCalls) > 0 {
+			st.reset()
+		}
+	} else {
+		res, err = b.core.AIChat(ctx, req)
+	}
 	step := TraceStep{Type: "model", Model: res.Model, InputTokens: res.Usage.InputTokens, OutputTokens: res.Usage.OutputTokens, Estimated: res.Usage.Estimated}
 	if err != nil {
 		step.Error = userError(err)

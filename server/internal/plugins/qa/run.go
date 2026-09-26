@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,12 +16,61 @@ import (
 // 问答在后台生成：不受单个 HTTP 请求（及反向代理）超时约束，也不限制时长与轮数；
 // 每一步写入调用链并经 SSE 推送给正在查看的读者（见 stream.go）；读者可取消。进程内登记进行中的问答，服务重启后遗留的进行中记录由巡检标记为中断。
 
-var runningAsks sync.Map // 问答 ID → context.CancelFunc
+var runningAsks sync.Map // 问答 ID → *runState
+
+// runState 进行中问答的内存状态：取消函数与当前轮已生成的回答文本（逐字推送，快照据此给中途加入的读者）。
+// seq 为全程递增的片段序号，客户端据此去重；某轮以工具调用结束时清空文本（reset），序号继续递增。
+type runState struct {
+	id      uint
+	cancel  context.CancelFunc
+	mu      sync.Mutex
+	partial strings.Builder
+	seq     int
+}
+
+type deltaEvent struct {
+	Seq  int    `json:"seq"`
+	Text string `json:"text,omitempty"`
+}
+
+// append 追加一个文本片段并推送 delta（在锁内推送，保证与快照一致）。
+func (s *runState) append(text string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.seq++
+	s.partial.WriteString(text)
+	asksHub.publish(s.id, "delta", deltaEvent{Seq: s.seq, Text: text})
+}
+
+// reset 本轮以工具调用结束：清空临时文本并推送 reset。
+func (s *runState) reset() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.partial.Len() == 0 {
+		return
+	}
+	s.partial.Reset()
+	asksHub.publish(s.id, "reset", deltaEvent{Seq: s.seq})
+}
+
+// snapshot 当前轮已生成的文本与序号。
+func (s *runState) snapshot() (string, int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.partial.String(), s.seq
+}
+
+type runKey struct{}
+
+func runFrom(ctx context.Context) *runState {
+	st, _ := ctx.Value(runKey{}).(*runState)
+	return st
+}
 
 // cancelAsk 取消进行中的问答，返回是否找到。
 func cancelAsk(id uint) bool {
 	if v, ok := runningAsks.Load(id); ok {
-		v.(context.CancelFunc)()
+		v.(*runState).cancel()
 		return true
 	}
 	return false
@@ -29,7 +79,9 @@ func cancelAsk(id uint) bool {
 // startAsk 在后台生成回答（调用方标注随 ctx 传递，用于 AI 用量记录与每月额度）。
 func (b *behavior) startAsk(rec Ask, u models.User, book models.Book, caller ai.Caller, topK int) {
 	ctx, cancel := context.WithCancel(ai.WithCaller(context.Background(), caller))
-	runningAsks.Store(rec.ID, cancel)
+	st := &runState{id: rec.ID, cancel: cancel}
+	ctx = context.WithValue(ctx, runKey{}, st)
+	runningAsks.Store(rec.ID, st)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
