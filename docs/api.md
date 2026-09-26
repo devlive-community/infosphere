@@ -560,7 +560,7 @@ Authorization: Bearer <token>
 | GET | `/qa/books/:id/status` | `{ai_available, agent_available, vector_search, index?{chunks, embedded, indexed_at, embed_error}, quota?{used, limit, agent_used, agent_limit}（-1 不限）, can_reindex?}`；深度模式权益为 0 时 `agent_available=false` | 书籍可读 |
 | POST | `/qa/books/:id/ask` | `{question(≤1000), selection?(≤2000), doc_id?, mode: rag\|agent}` → 立即返回 `status=running` 的问答记录，回答在后台生成；只填 `selection` 时视为「请解释这段内容」 | 登录 + `qa:use` |
 | GET | `/qa/asks/:id` | 我的一条问答：状态、回答、出处、实时调用链 `trace[]` 与消耗 | 登录 + `qa:use` |
-| GET | `/qa/asks/:id/stream?token=` | 实时进度（SSE，`?token=` 鉴权，EventSource 无法带请求头）：先推 `snapshot`（完整记录；进行中时含已生成的部分回答与 `answer_seq`），之后每新增一步推 `step` `{index, step, calls, input_tokens, output_tokens, estimated, duration_ms}`（客户端按 `index` 去重），回答文本逐段推 `delta` `{seq, text}`，某轮以工具调用结束时推 `reset` `{seq}` 清空临时文本（均按 `seq` 去重），结束推 `done`（最终记录）后关闭；25 秒心跳。消费过慢时服务端断开，EventSource 自动重连并重新获得快照 | 登录 + `qa:use` |
+| GET | `/qa/asks/:id/stream?ticket=` | 实时进度（SSE，`?ticket=` 事件流凭证鉴权，见「事件流凭证」）：先推 `snapshot`（完整记录；进行中时含已生成的部分回答与 `answer_seq`），之后每新增一步推 `step` `{index, step, calls, input_tokens, output_tokens, estimated, duration_ms}`（客户端按 `index` 去重），回答文本逐段推 `delta` `{seq, text}`，某轮以工具调用结束时推 `reset` `{seq}` 清空临时文本（均按 `seq` 去重），结束推 `done`（最终记录）后关闭；25 秒心跳。消费过慢时服务端断开，EventSource 自动重连并重新获得快照 | 登录 + `qa:use` |
 | POST | `/qa/asks/:id/cancel` | 取消进行中的问答（已产生的调用照常记入 AI 用量）；已结束返回 409 | 登录 + `qa:use` |
 | GET | `/qa/books/:id/asks?page=` | 我在本书的 AI 问答记录（新→旧，含进行中/失败/已取消，含调用链） | 登录 + `qa:use` |
 | GET | `/qa/me/asks?page=&book_id=` | 我在全部书籍的 AI 问答记录 `items[]{ask, book{id,slug,title}, book_available}`（含消耗） | 登录 + `qa:use` |
@@ -583,7 +583,8 @@ Authorization: Bearer <token>
 | --- | --- | --- | --- |
 | GET | `/notifications?page=&per_page=&unread=true` | 当前用户通知（ newest 在前）+ `unread_count` | `notification:read` |
 | POST | `/notifications/read` | 标记已读：`{ids:[]}` 或 `{all:true}`，返回最新 `unread_count` | `notification:update` |
-| GET | `/notifications/stream` | SSE 实时流：连接即推 `{"unread_count":n}`，新通知实时推送；25s 心跳。**鉴权支持 `?token=`**（EventSource 无法带 Authorization 头） | `notification:read` |
+| GET | `/notifications/stream` | SSE 实时流（`?ticket=` 事件流凭证鉴权）：连接即推 `{"unread_count":n}`，新通知实时推送；25s 心跳。不接受 URL 中的登录令牌 | `notification:read` |
+| POST | `/stream-tickets` | 签发事件流凭证 `{ticket, expires_in:60}`：EventSource 无法携带请求头，事件流接口（站内通知、问答进度、插件安装日志）以 `?ticket=` 鉴权，不接受 URL 中的登录令牌。凭证为 HMAC 签名的用户与过期时间，60 秒内用于建立连接（已建立的连接不受影响），不能当作 API 令牌；无状态，多实例可用。前端在连接被拒时自动换新凭证重连 | 登录 |
 
 - 通知类型：`comment`（评论/回复）、`reaction`（点赞/收藏）、`collaboration`（协作邀请）、`moderation`（举报处理结果）、`achievement`（成就解锁/授予）、`system`（升级完成等）
 - `payload` 为 JSON 对象，含 `link`（点击跳转地址）等扩展字段

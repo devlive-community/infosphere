@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"knowforge/server/internal/auth"
 	"knowforge/server/internal/authz"
 	"knowforge/server/internal/models"
 
@@ -174,22 +173,10 @@ func (a *App) MarkNotificationsRead(c *gin.Context) {
 // SSENotifications GET /notifications/stream SSE 实时通知流
 // EventSource 无法设置请求头，鉴权支持 ?token= 或 Authorization 头
 func (a *App) SSENotifications(c *gin.Context) {
-	token := c.Query("token")
-	if header := c.GetHeader("Authorization"); token == "" && len(header) > 7 {
-		token = header[7:]
-	}
-	if token == "" {
-		fail(c, http.StatusUnauthorized, "缺少令牌")
-		return
-	}
-	claims, err := auth.ParseToken(a.Config.Secret, token)
-	if err != nil {
-		fail(c, http.StatusUnauthorized, "令牌无效")
-		return
-	}
-	var user models.User
-	if err := a.DB.First(&user, claims.UserID).Error; err != nil || !user.IsActive || !authz.Has(user.Role, authz.NotificationRead) {
-		fail(c, http.StatusUnauthorized, "令牌无效")
+	// 鉴权：请求头/Cookie 登录态或 ?ticket= 短时事件流凭证（不接受 URL 中的登录令牌）
+	user := a.streamUser(c)
+	if user == nil || !authz.Has(user.Role, authz.NotificationRead) {
+		failStream(c)
 		return
 	}
 	userID := user.ID

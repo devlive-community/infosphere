@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"knowforge/server/internal/auth"
 	"knowforge/server/internal/authz"
 	"knowforge/server/internal/config"
 	"knowforge/server/internal/models"
@@ -512,18 +511,10 @@ func (a *App) AdminPluginLogs(c *gin.Context) {
 		return
 	}
 	// EventSource 无法带请求头，令牌经 query 传入
-	token := c.Query("token")
-	if header := c.GetHeader("Authorization"); token == "" && len(header) > 7 {
-		token = header[7:]
-	}
-	claims, err := auth.ParseToken(a.Config.Secret, token)
-	if err != nil {
-		fail(c, http.StatusUnauthorized, "令牌无效")
-		return
-	}
-	var user models.User
-	if err := a.DB.First(&user, claims.UserID).Error; err != nil || !user.IsActive || !authz.Has(user.Role, authz.PluginManage) {
-		fail(c, http.StatusUnauthorized, "令牌无效")
+	// 鉴权：请求头/Cookie 登录态或 ?ticket= 短时事件流凭证（不接受 URL 中的登录令牌）
+	user := a.streamUser(c)
+	if user == nil || !authz.Has(user.Role, authz.PluginManage) {
+		failStream(c)
 		return
 	}
 

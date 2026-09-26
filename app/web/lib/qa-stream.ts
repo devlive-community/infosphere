@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { API_BASE, getToken } from '@/lib/api'
+import { getToken } from '@/lib/api'
+import { openTicketedStream } from '@/lib/event-stream'
 import type { QAAsk, QATraceStep } from '@/lib/qa'
 
 // 进行中问答的实时进度（SSE）：服务端先推 snapshot，之后逐步推 step（调用链）、delta（回答文本片段）、
@@ -52,10 +53,8 @@ export function useAskStreams(
   const runningKey = asks.filter((a) => a.status === 'running').map((a) => a.id).join(',')
 
   useEffect(() => {
-    const token = getToken()
-    if (!runningKey || !token) return
-    const sources = runningKey.split(',').map(Number).map((id) => {
-      const source = new EventSource(`${API_BASE}/api/v1/qa/asks/${id}/stream?token=${encodeURIComponent(token)}`)
+    if (!runningKey || !getToken()) return
+    const stops = runningKey.split(',').map(Number).map((id) => openTicketedStream(`/qa/asks/${id}/stream`, (source, stop) => {
       const parse = <T,>(e: MessageEvent): T | null => {
         try { return JSON.parse(e.data) as T } catch { return null }
       }
@@ -76,15 +75,14 @@ export function useAskStreams(
         if (ev) updateRef.current(id, (ask) => applyReset(ask, ev))
       })
       source.addEventListener('done', (e) => {
-        source.close() // 结束后关闭，避免 EventSource 自动重连
+        stop() // 结束后关闭，不再重连
         const ask = parse<QAAsk>(e as MessageEvent)
         if (ask) {
           updateRef.current(id, () => ask)
           finishRef.current?.(ask)
         }
       })
-      return source
-    })
-    return () => sources.forEach((s) => s.close())
+    }))
+    return () => stops.forEach((stop) => stop())
   }, [runningKey])
 }

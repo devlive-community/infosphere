@@ -165,10 +165,19 @@ func TestNotifications(t *testing.T) {
 	if status != 401 {
 		t.Fatalf("SSE 未登录应 401: %d", status)
 	}
+	// URL 中的登录令牌不再被接受；须先换取短时事件流凭证
+	if resp, err := client.Get(ts.URL + "/api/v1/notifications/stream?token=" + aliceToken); err != nil || resp.StatusCode != 401 {
+		t.Fatalf("URL 中的登录令牌不应被接受: %v %v", err, resp)
+	}
+	_, issued := request(http.MethodPost, "/api/v1/stream-tickets", nil, aliceToken)
+	ticket := issued["data"].(map[string]any)["ticket"].(string)
+	if status, _ := request(http.MethodGet, "/api/v1/auth/me", nil, ticket); status != 401 {
+		t.Fatalf("事件流凭证不能当作 API 令牌: %d", status)
+	}
 	sseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	sseReq, _ := http.NewRequestWithContext(sseCtx, http.MethodGet,
-		ts.URL+"/api/v1/notifications/stream?token="+aliceToken, nil)
+		ts.URL+"/api/v1/notifications/stream?ticket="+ticket, nil)
 	sseResp, err := client.Do(sseReq)
 	if err != nil {
 		t.Fatalf("SSE 连接失败: %v", err)

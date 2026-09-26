@@ -49,16 +49,13 @@ func (a *App) RequireAuth() gin.HandlerFunc {
 	}
 }
 
-// RequireAuthStream 供 SSE（EventSource 无法带请求头）使用的登录校验：请求头/Cookie 之外也接受 ?token= 查询参数。
-// 只应挂在只读的事件流接口上。
+// RequireAuthStream 供 SSE（EventSource 无法带请求头）使用的登录校验：请求头/Cookie 之外接受 ?ticket= 短时事件流凭证
+// （POST /stream-tickets 签发），不接受 URL 中的登录令牌。只应挂在只读的事件流接口上。
 func (a *App) RequireAuthStream() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if token := strings.TrimSpace(c.Query("token")); token != "" && c.GetHeader("Authorization") == "" {
-			c.Request.Header.Set("Authorization", "Bearer "+token)
-		}
-		u := a.resolveUser(c)
+		u := a.streamUser(c)
 		if u == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"success": false, "message": "请先登录"})
+			failStream(c)
 			return
 		}
 		c.Set("user", u)

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
-import { api, API_BASE, getToken } from '@/lib/api'
+import { api } from '@/lib/api'
+import { openTicketedStream } from '@/lib/event-stream'
 import { useApp } from '@/lib/auth'
 import AdminLayout from '@/components/AdminLayout'
 import { Badge, Button, EmptyState, Loading, SegmentedTabs, Switch, Modal, Select, Field, useFeedback } from '@/components/ui'
@@ -38,7 +39,7 @@ export default function AdminPlugins() {
   const [busy, setBusy] = useState<string | null>(null)
   const [logs, setLogs] = useState<Record<string, LogLine[]>>({})
   const [logOpen, setLogOpen] = useState<Record<string, boolean>>({})
-  const sources = useRef<Record<string, EventSource>>({})
+  const sources = useRef<Record<string, () => void>>({}) // 各插件日志流的关闭函数
   const { site } = useApp()
   // 「书籍版本」插件配置弹框：阅读页版本排序（desc 最新在前 / asc 最旧在前）
   const [versionCfgOpen, setVersionCfgOpen] = useState(false)
@@ -74,24 +75,23 @@ export default function AdminPlugins() {
 
   // 打开某插件的日志 SSE 流；重复调用先关闭旧连接
   const openLogs = useCallback((key: string) => {
-    sources.current[key]?.close()
+    sources.current[key]?.()
     setLogs((s) => ({ ...s, [key]: [] }))
     setLogOpen((s) => ({ ...s, [key]: true }))
-    const token = getToken()
-    const es = new EventSource(`${API_BASE}/api/v1/admin/plugins/${key}/logs?token=${encodeURIComponent(token || '')}`)
-    es.onmessage = (e) => {
-      try {
-        const line = JSON.parse(e.data) as LogLine
-        setLogs((s) => ({ ...s, [key]: [...(s[key] || []), line].slice(-200) }))
-        if (line.level === 'success' || line.level === 'error') load()
-      } catch { /* 忽略心跳等非 JSON 行 */ }
-    }
-    es.onerror = () => { /* 浏览器会自动重连；出错时不打断 */ }
-    sources.current[key] = es
+    // 短时事件流凭证鉴权（登录令牌不出现在 URL 中）；断开后自动换新凭证重连
+    sources.current[key] = openTicketedStream(`/admin/plugins/${key}/logs`, (es) => {
+      es.onmessage = (e) => {
+        try {
+          const line = JSON.parse(e.data) as LogLine
+          setLogs((s) => ({ ...s, [key]: [...(s[key] || []), line].slice(-200) }))
+          if (line.level === 'success' || line.level === 'error') load()
+        } catch { /* 忽略心跳等非 JSON 行 */ }
+      }
+    })
   }, [load])
 
   // 卸载时关闭全部日志连接
-  useEffect(() => () => { Object.values(sources.current).forEach((es) => es.close()) }, [])
+  useEffect(() => () => { Object.values(sources.current).forEach((stop) => stop()) }, [])
 
   async function install(p: Plugin) {
     setBusy(p.key)
@@ -155,7 +155,7 @@ export default function AdminPlugins() {
 
   function toggleLogs(key: string) {
     if (logOpen[key]) {
-      sources.current[key]?.close()
+      sources.current[key]?.()
       setLogOpen((s) => ({ ...s, [key]: false }))
     } else {
       openLogs(key)

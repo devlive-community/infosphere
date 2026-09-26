@@ -229,6 +229,7 @@ func (a *App) Router() *gin.Engine {
 			notif.GET("", a.RequirePermission(authz.NotificationRead), a.ListNotifications)
 			notif.POST("/read", a.RequirePermission(authz.NotificationUpdate), a.MarkNotificationsRead)
 		}
+		api.POST("/stream-tickets", a.RequireAuth(), a.IssueStreamTicket)
 		api.GET("/notifications/stream", a.SSENotifications)
 
 		// ── 当前用户的协作邀请（未接受前不授予书籍访问权限） ──

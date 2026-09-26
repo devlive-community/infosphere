@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { API_BASE, api, formatDate, getToken } from '@/lib/api'
+import { api, formatDate, getToken } from '@/lib/api'
+import { openTicketedStream } from '@/lib/event-stream'
 import { useApp } from '@/lib/auth'
 import { Button, Loading } from '@/components/ui'
 import { BellIcon } from '@/components/icons'
@@ -58,11 +59,9 @@ export default function NotificationBell() {
     if (!user) return
     load()
 
-    // SSE 实时推送（EventSource 无法带请求头，用查询参数令牌鉴权）
-    const token = getToken()
-    if (!token) return
-    const source = new EventSource(`${API_BASE}/api/v1/notifications/stream?token=${encodeURIComponent(token)}`)
-    source.onmessage = (e) => {
+    // SSE 实时推送（EventSource 无法带请求头，用短时事件流凭证鉴权，登录令牌不出现在 URL 中）
+    if (!getToken()) return
+    return openTicketedStream('/notifications/stream', (source) => { source.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data) as { unread_count?: number; notification?: NotificationItem }
         if (typeof data.unread_count === 'number') setUnread(data.unread_count)
@@ -71,8 +70,7 @@ export default function NotificationBell() {
           setItems((list) => [data.notification as NotificationItem, ...list].slice(0, 10))
         }
       } catch { /* 忽略无法解析的帧 */ }
-    }
-    return () => source.close()
+    } })
   }, [user, load])
 
   // 点击面板外部关闭

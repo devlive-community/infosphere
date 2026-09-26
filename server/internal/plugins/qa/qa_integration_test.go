@@ -640,8 +640,8 @@ func TestQAAgentUnboundedTraceAndCancel(t *testing.T) {
 // readSSE 读取事件流直到 done（或连接结束），返回按顺序的 (事件名, 数据)。
 func readSSE(t *testing.T, e *testEnv, u *models.User, path string) (int, [][2]string) {
 	t.Helper()
-	token, _ := auth.GenerateToken(e.app.Config.Secret, u.ID, u.Username, u.Role)
-	resp, err := e.client.Get(e.server.URL + path + "?token=" + token)
+	_, issued := e.as(t, u, http.MethodPost, "/api/v1/stream-tickets", "")
+	resp, err := e.client.Get(e.server.URL + path + "?ticket=" + data(issued)["ticket"].(string))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -690,6 +690,10 @@ func TestQAStreamProgress(t *testing.T) {
 	}
 	if resp, err := e.client.Get(e.server.URL + stream); err != nil || resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("未登录应 401: %v %v", err, resp)
+	}
+	token, _ := auth.GenerateToken(e.app.Config.Secret, reader.ID, reader.Username, reader.Role)
+	if resp, err := e.client.Get(e.server.URL + stream + "?token=" + token); err != nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("URL 中的登录令牌不应被接受: %v %v", err, resp)
 	}
 	status, events := readSSE(t, e, reader, stream)
 	if status != http.StatusOK || len(events) < 3 || events[0][0] != "snapshot" || events[len(events)-1][0] != "done" {
