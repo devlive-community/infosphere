@@ -19,6 +19,8 @@ import type { Book, Document, DocumentRevision, DocumentRevisionSummary, BookSta
 import { diffLines, diffStats, type DiffRow } from '@/lib/text-diff'
 import { HEADING_LEVELS } from '@/lib/editor-blocks'
 import { entitlementAllowed } from '@/lib/entitlements'
+import AIWriterDrawer, { type AIWriterTab, type WriterEditorBridge } from '@/components/ai-writer/AIWriterDrawer'
+import { aiWriterEnabled } from '@/lib/ai-writer'
 
 type SaveState = 'saved' | 'dirty' | 'saving'
 type TabKey = 'toc' | 'settings'
@@ -108,6 +110,7 @@ const SLASH_COMMANDS: { key: string; labelKey: string; kw: string }[] = [
   { key: 'hr', labelKey: 'writer.slash.hr', kw: 'hr rule divider' },
   { key: 'image', labelKey: 'writer.slash.image', kw: 'image img upload photo' },
   { key: 'collect', labelKey: 'writer.slash.collect', kw: 'collect web fetch import scrape 采集 网页' },
+  { key: 'ai', labelKey: 'writer.slash.aiWriter', kw: 'ai assistant continue rewrite polish 写作助手 续写 润色 改写' },
   { key: 'import-md', labelKey: 'writer.slash.importMarkdown', kw: 'import markdown md file upload 导入 文件' },
   { key: 'link', labelKey: 'writer.slash.link', kw: 'link url href' },
 ]
@@ -120,6 +123,9 @@ export default function Writer({ user }: WriterProps) {
   const { site, user: me } = useApp()
   const collectEnabled = entitlementAllowed(me, 'collect.page', site.collect_page_enabled !== false) // 单页采集权益（含插件启用）；无权限时隐藏采集入口
   const { t } = useTranslation()
+  // AI 写作助手（插件）：抽屉状态由 URL 承载（?ai=assist|history）
+  const aiOn = aiWriterEnabled(site)
+  const aiTab: AIWriterTab | null = !aiOn ? null : router.query.ai === 'history' ? 'history' : router.query.ai === 'assist' ? 'assist' : null
   const bookSlug = (router.query.slug as string) || ''
   // 路由为可选 catch-all（[[...doc]]）：doc 可能是数组或缺省
   const docSlug = Array.isArray(router.query.doc) ? (router.query.doc[0] || '') : ((router.query.doc as string) || '')
@@ -245,11 +251,11 @@ export default function Writer({ user }: WriterProps) {
   }, [fontSize])
 
   const filteredSlash = useMemo(() => {
-    const items = collectEnabled ? SLASH_COMMANDS : SLASH_COMMANDS.filter((c) => c.key !== 'collect')
+    const items = SLASH_COMMANDS.filter((c) => (c.key !== 'collect' || collectEnabled) && (c.key !== 'ai' || aiOn))
     const q = slash.query.toLowerCase()
     if (!q) return items
     return items.filter((c) => t(c.labelKey).includes(slash.query) || c.kw.includes(q) || c.key.includes(q))
-  }, [slash.query, t, collectEnabled])
+  }, [slash.query, t, collectEnabled, aiOn])
   const previewRef = useRef<HTMLDivElement>(null)
   // 预览内容防抖：输入时避免每键全量重渲染 Markdown
   const [previewHtml, setPreviewHtml] = useState('')
@@ -724,6 +730,31 @@ export default function Writer({ user }: WriterProps) {
     if (book) await loadTree(book)
   }
 
+  // navigateAI 打开/切换/关闭 AI 写作助手抽屉（写入 URL，保留其余参数）。
+  function navigateAI(tab: AIWriterTab | null) {
+    const query = { ...router.query }
+    if (tab) query.ai = tab
+    else delete query.ai
+    const el = textareaRef.current
+    if (el) setAISelectionLength(el.selectionEnd - el.selectionStart)
+    void router.replace({ pathname: router.pathname, query }, undefined, { shallow: true })
+  }
+  const [aiSelectionLength, setAISelectionLength] = useState(0)
+  const aiEditor: WriterEditorBridge = {
+    read: () => {
+      const el = textareaRef.current
+      const value = el ? el.value : content
+      return { content: value, start: el ? el.selectionStart : value.length, end: el ? el.selectionEnd : value.length }
+    },
+    write: (next, selStart, selEnd) => {
+      setContent(next)
+      requestAnimationFrame(() => {
+        const el = textareaRef.current
+        if (el) { el.focus(); el.setSelectionRange(selStart, selEnd) }
+      })
+    },
+  }
+
   // Markdown 工具：选区包裹 / 行首插入
   function wrapSelection(before: string, after = before) {
     const el = textareaRef.current
@@ -1134,6 +1165,7 @@ export default function Writer({ user }: WriterProps) {
         case 'hr': insertText('---\n'); break
         case 'image': fileInputRef.current?.click(); break
         case 'collect': if (collectEnabled) void collectWebContent(); break
+        case 'ai': if (aiOn) navigateAI('assist'); break
         case 'import-md': mdImportRef.current?.click(); break
         case 'link': void insertLink(); break
       }
@@ -1306,8 +1338,12 @@ export default function Writer({ user }: WriterProps) {
   const filteredTree = search.trim() ? filterTree(tree, search.trim()) : tree
 
   return (
-    <div className="flex h-screen flex-col bg-warm">
+    <div className={`flex h-screen flex-col bg-warm ${aiTab ? 'lg:pr-96 2xl:pr-[28rem]' : ''}`}>
       <Seo siteName={siteName} title={titleText} noindex />
+      {aiTab && (
+        <AIWriterDrawer bookId={book.id} docId={current?.id ?? null} tab={aiTab} onNavigate={navigateAI}
+          selectionLength={aiSelectionLength} editor={aiEditor} />
+      )}
       {/* 顶栏 */}
       <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
@@ -1321,7 +1357,7 @@ export default function Writer({ user }: WriterProps) {
           <Link href={`/book/detail/${encodeURIComponent(book.slug)}`} onClick={(event) => { event.preventDefault(); navigateAway(`/book/detail/${encodeURIComponent(book.slug)}`) }}
             className="truncate font-medium text-slate-900 hover:text-primary-600">{book.title}</Link>
         </div>
-        <div className="hidden items-center gap-1.5 text-sm text-slate-400 md:flex">
+        <div className={`hidden items-center gap-1.5 whitespace-nowrap text-sm text-slate-400 ${aiTab ? '2xl:flex' : 'md:flex'}`}>
           {saveState === 'saved' && <><CheckCircleIcon className="h-4 w-4 text-emerald-500" /> {t('writer.allSaved')}</>}
           {saveState === 'dirty' && <><CloudIcon className="h-4 w-4 text-amber-500" /> {t('writer.unsaved')}</>}
           {saveState === 'saving' && <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> <span className="text-primary-600">{t('writer.savingState')}</span></>}
@@ -1578,6 +1614,11 @@ export default function Writer({ user }: WriterProps) {
                   <ToolbarDivider />
                   <ToolbarButton title={t('writer.tb.uploadImage')} onClick={() => fileInputRef.current?.click()}><UploadIcon className="h-4 w-4" /></ToolbarButton>
                   <ToolbarButton title={t('writer.tb.imageLink')} onClick={insertImage}><ImageIcon className="h-4 w-4" /></ToolbarButton>
+                  {aiOn && (
+                    <ToolbarButton title={t('writer.tb.aiWriter')} onClick={() => navigateAI(aiTab ? null : 'assist')}>
+                      <i className={`fa-solid fa-wand-magic-sparkles text-[15px] ${aiTab ? 'text-primary-600' : ''}`} aria-hidden="true" />
+                    </ToolbarButton>
+                  )}
                   {collectEnabled && (
                     <ToolbarButton title={collecting ? t('writer.tb.collecting') : t('writer.tb.collect')} onClick={() => { if (!collecting) void collectWebContent() }}>
                       {collecting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-primary-500" /> : <GlobeIcon className="h-4 w-4" />}
@@ -1648,7 +1689,8 @@ export default function Writer({ user }: WriterProps) {
                     onPaste={onEditorPaste}
                     onDrop={onEditorDrop}
                     onScroll={() => { syncScroll('edit'); closeSlash() }}
-                    onBlur={closeSlash} />
+                    onSelect={(e) => setAISelectionLength(e.currentTarget.selectionEnd - e.currentTarget.selectionStart)}
+                  onBlur={closeSlash} />
                   <div ref={previewRef} onScroll={() => syncScroll('preview')}
                     className="markdown-body min-h-0 w-full flex-1 overflow-y-auto px-6 py-5 md:w-1/2"
                     dangerouslySetInnerHTML={{ __html: previewHtml }} />
@@ -1662,6 +1704,7 @@ export default function Writer({ user }: WriterProps) {
                   onKeyDown={onEditorKeyDown}
                   onPaste={onEditorPaste}
                   onDrop={onEditorDrop}
+                  onSelect={(e) => setAISelectionLength(e.currentTarget.selectionEnd - e.currentTarget.selectionStart)}
                   onBlur={closeSlash} />
               )}
 

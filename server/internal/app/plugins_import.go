@@ -4,6 +4,7 @@ package app
 // 之后通过 plugins.All() 读取清单；新增插件时在此追加一行 blank import 即可被发现。
 import (
 	_ "knowforge/server/internal/plugins/achievements"
+	_ "knowforge/server/internal/plugins/aiwriter"
 	_ "knowforge/server/internal/plugins/bookfollow"
 	_ "knowforge/server/internal/plugins/booktranslations"
 	_ "knowforge/server/internal/plugins/bookversions"

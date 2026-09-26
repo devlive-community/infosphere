@@ -578,6 +578,26 @@ Authorization: Bearer <token>
 | DELETE | `/qa/answers/:id` | 回答者、作者/协作者或管理员删除回答（删除被采纳的回答时问题回到待解决） | 登录 + `qa:use` |
 | GET/PUT | `/admin/qa/settings` | `{ai_enabled, agent_enabled, top_k(3–12), trace_retention_days(0 永久或 7–3650)}`，PUT 可只传部分字段；超过保留天数的已结束问答由巡检清空调用链详情（`trace`），问题、回答与用量合计保留；另返回 `ai_chat_available`、`ai_embed_available` | 管理员 + `qa:manage` |
 
+## AI 写作助手（「AI 写作助手」插件，默认关闭）
+
+写作台中对选中的文字续写、改写、润色、扩写、精简，为章节生成大纲或摘要，或按作者的自定义要求处理。模型经核心「AI 服务」（`/admin/ai`）以流式接口调用，插件不接触密钥；只有能编辑该书内容的用户（作者、协作者、管理员）可用。
+- **动作** `action`：`continue`（续写，`text` 为光标前的上文，只取末尾 6000 字）、`rewrite`、`polish`、`expand`、`shorten`、`outline`、`summary`（前端在未选中文字时传整章内容）、`custom`（`instruction` 必填）。其他动作的 `instruction` 为可选的附加要求（≤500 字）。`before`/`after` 为紧邻的上下文，只取前文末尾 3000 字、后文开头 1000 字供模型参考；处理对象本身不截断（上限 5 万字）。
+- **后台生成**：创建后立即返回 `status=running` 的任务，结果在后台生成（不设整体超时，可随时取消，已生成的部分保留）；订阅 `GET /ai-writer/tasks/:id/stream` 实时接收文本。状态 running\|done\|failed\|canceled；服务重启时遗留的进行中任务由巡检标记为中断。错误只返回面向作者的说明。
+- **采纳**：写作台对比原文与结果后替换选区或插入到下方（由前端写入正文，生成期间原文被修改时按原文重新定位），再调用 `adopt` 记录采纳方式。
+- **额度（权益，可在成长等级/会员方案中提升或设为不限）**：每月使用次数 `aiwriter.monthly_uses`（基础 100，0 表示当前等级/会员不含写作助手）；计入进行中、已完成以及取消/失败前已生成内容的任务，超出返回 429。另受核心每月 AI 用量 `ai.monthly_tokens` 约束。
+- **消耗**：每次调用写入核心 AI 用量记录（功能 `aiwriter.<action>`，关联章节或书籍，`trace_id` 与任务一致）；任务记录 `model`、`input_tokens`、`output_tokens`、`estimated`、`duration_ms`。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/ai-writer/status` | `{available, quota{limit(-1 不限), used}}` | 登录 + `aiwriter:use` |
+| POST | `/ai-writer/tasks` | `{book_id, doc_id?, action, text, before?, after?, instruction?}` → 立即返回 `status=running` 的任务 | 登录 + `aiwriter:use`，可编辑该书 |
+| GET | `/ai-writer/tasks?book_id=&doc_id=&page=&page_size=` | 我的写作助手记录（新→旧） | 登录 + `aiwriter:use` |
+| GET | `/ai-writer/tasks/:id` | 我的一条任务 `{id, book_id, doc_id, action, instruction, input, result, status, error, trace_id, model, input_tokens, output_tokens, estimated, duration_ms, adopted: ""\|replace\|insert, adopted_at, created_at}` | 登录 + `aiwriter:use` |
+| GET | `/ai-writer/tasks/:id/stream?ticket=` | 实时生成（SSE，`?ticket=` 事件流凭证鉴权）：先推 `snapshot`（进行中时 `result` 为已生成的部分，`result_seq` 为其包含的片段序号），之后逐段推 `delta` `{seq, text}`（按 `seq` 去重），结束推 `done`（最终记录）后关闭；25 秒心跳 | 登录 + `aiwriter:use` |
+| POST | `/ai-writer/tasks/:id/cancel` | 取消进行中的任务；已结束返回 409 | 登录 + `aiwriter:use` |
+| POST | `/ai-writer/tasks/:id/adopt` | `{mode: replace\|insert}` 记录已采纳（进行中或没有结果时 409） | 登录 + `aiwriter:use` |
+| DELETE | `/ai-writer/tasks/:id` | 删除一条记录（进行中的需先取消，返回 409；不退还次数，AI 用量记录保留） | 登录 + `aiwriter:use` |
+
 ## 站内通知（登录用户）
 
 | 方法 | 路径 | 说明 | 权限 |

@@ -68,9 +68,16 @@ DYNAMIC_KEY_SPACES: dict[str, list[str]] = {
     # 权益：t(`entitlement.${key}.label|.hint`)（服务端 plugincore.RegisterEntitlement 登记的键）、
     # t(`entitlement.unit.${unit}`) / unitShort、t(`entitlement.source.${source}`)（权益来源键）
     'entitlement.': ['books.max', 'collaborators.max', 'upload.max_mb', 'collect.page', 'collect.site', 'collect.site_max_pages',
-                     'content.access_tier', 'content.discount_percent', 'content.free_all'],
-    'entitlement.unit.': ['books', 'people', 'mb', 'pages', 'tier', 'percent'],
-    'entitlement.unitShort.': ['books', 'people', 'mb', 'pages', 'tier', 'percent'],
+                     'content.access_tier', 'content.discount_percent', 'content.free_all',
+                     'qa.ai_daily', 'qa.agent_daily', 'ai.monthly_tokens', 'translate.monthly_chars', 'aiwriter.monthly_uses'],
+    'entitlement.unit.': ['books', 'people', 'mb', 'pages', 'tier', 'percent', 'questions', 'tokens', 'chars', 'uses'],
+    'entitlement.unitShort.': ['books', 'people', 'mb', 'pages', 'tier', 'percent', 'questions', 'tokens', 'chars', 'uses'],
+    # AI 写作助手：动作 / 动作说明 / 任务状态 / 采纳方式；调用功能名 ai.feature.aiwriter.<action>
+    'aiWriter.action.': ['continue', 'polish', 'rewrite', 'expand', 'shorten', 'outline', 'summary', 'custom'],
+    'aiWriter.actionHint.': ['continue', 'polish', 'rewrite', 'expand', 'shorten', 'outline', 'summary', 'custom'],
+    'aiWriter.status.': ['running', 'done', 'failed', 'canceled'],
+    'aiWriter.adopted.': ['replace', 'insert'],
+    'ai.feature.aiwriter.': ['continue', 'polish', 'rewrite', 'expand', 'shorten', 'outline', 'summary', 'custom'],
     'entitlement.source.': ['base', 'level', 'membership', 'admin', 'unavailable'],
     # 会员：tab / 状态 / 流水动作（Record.Action 取值域）/ 时长单位
     'admin.membership.tab.': ['plans', 'members', 'records', 'settings'],
