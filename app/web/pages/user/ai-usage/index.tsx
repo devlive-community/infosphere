@@ -82,12 +82,15 @@ export default function MyAIUsagePage() {
                 <h2 className="text-sm font-semibold text-slate-900">{t('aiUsage.mine.dailyTitle')}</h2>
                 <div className="mt-3 flex h-28 items-end gap-[2px]">
                   {usage.daily.map((d) => (
-                    <Tooltip key={d.date} content={t('aiUsage.mine.dayTip', { date: d.date, tokens: formatTokens(d.tokens), chars: d.characters })}>
-                      <div className="flex h-28 min-w-0 flex-1 items-end">
+                    <Tooltip className="min-w-0 flex-1" key={d.date} content={t('aiUsage.mine.dayTip', { date: d.date, tokens: formatTokens(d.tokens), chars: d.characters })}>
+                      <div className="flex h-28 w-full items-end">
                         <div className={`w-full rounded-t ${d.tokens ? 'bg-primary-400' : 'bg-slate-100'}`} style={{ height: `${Math.max(2, (d.tokens / maxDay) * 100)}%` }} />
                       </div>
                     </Tooltip>
                   ))}
+                </div>
+                <div className="mt-2 flex justify-between text-xs text-slate-400">
+                  <span>{usage.daily[0]?.date}</span><span>{usage.daily[usage.daily.length - 1]?.date}</span>
                 </div>
               </Card>
             </>

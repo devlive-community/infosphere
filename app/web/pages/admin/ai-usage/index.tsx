@@ -76,8 +76,8 @@ export default function AdminAIUsage() {
             <h2 className="text-sm font-semibold text-slate-900">{t('admin.aiUsage.dailyTitle')}</h2>
             <div className="mt-4 flex h-40 items-end gap-[2px]">
               {summary.daily.map((d) => (
-                <Tooltip key={d.date} content={t('admin.aiUsage.dayTip', { date: d.date, tokens: formatTokens(d.tokens), calls: d.calls, cost: formatCost(d.cost_micros, summary.currency) })}>
-                  <div className="flex h-40 min-w-0 flex-1 items-end">
+                <Tooltip className="min-w-0 flex-1" key={d.date} content={t('admin.aiUsage.dayTip', { date: d.date, tokens: formatTokens(d.tokens), calls: d.calls, cost: formatCost(d.cost_micros, summary.currency) })}>
+                  <div className="flex h-40 w-full items-end">
                     <div className={`w-full rounded-t ${d.tokens ? 'bg-primary-400 hover:bg-primary-500' : 'bg-slate-100'}`}
                       style={{ height: `${Math.max(2, (d.tokens / maxDay) * 100)}%` }} />
                   </div>
