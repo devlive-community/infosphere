@@ -39,7 +39,7 @@ func (s *runState) append(text string) {
 	defer s.mu.Unlock()
 	s.seq++
 	s.partial.WriteString(text)
-	asksHub.publish(s.id, "delta", deltaEvent{Seq: s.seq, Text: text})
+	asksHub.Publish(s.id, "delta", deltaEvent{Seq: s.seq, Text: text})
 }
 
 // reset 本轮以工具调用结束：清空临时文本并推送 reset。
@@ -50,7 +50,7 @@ func (s *runState) reset() {
 		return
 	}
 	s.partial.Reset()
-	asksHub.publish(s.id, "reset", deltaEvent{Seq: s.seq})
+	asksHub.Publish(s.id, "reset", deltaEvent{Seq: s.seq})
 }
 
 // snapshot 当前轮已生成的文本与序号。
@@ -104,7 +104,7 @@ func (b *behavior) runAsk(ctx context.Context, rec Ask, u *models.User, book *mo
 			"estimated": t.Estimated, "duration_ms": elapsed,
 		})
 		// 写库后再推送，保证订阅者读到的快照不会缺少已推送的步骤
-		asksHub.publish(rec.ID, "step", stepEvent{Index: len(steps) - 1, Step: steps[len(steps)-1], Calls: t.Calls,
+		asksHub.Publish(rec.ID, "step", stepEvent{Index: len(steps) - 1, Step: steps[len(steps)-1], Calls: t.Calls,
 			InputTokens: t.InputTokens, OutputTokens: t.OutputTokens, Estimated: t.Estimated, DurationMs: elapsed})
 	})
 	if _, err := b.ensureIndex(ctx, book.ID); err != nil {
@@ -149,7 +149,7 @@ func (b *behavior) finishAsk(id uint, started time.Time, status string, res answ
 	})
 	var final Ask
 	if db.First(&final, id).Error == nil {
-		asksHub.publish(id, "done", toAskView(final))
+		asksHub.Publish(id, "done", toAskView(final))
 	}
 }
 
