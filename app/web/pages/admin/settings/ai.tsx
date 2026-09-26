@@ -20,6 +20,7 @@ interface AIConfig {
   alert_daily_cost: string
   alert_user_daily_tokens: string
   alert_trace_tokens: string
+  usage_retention_days: string
   api_key_set: boolean
   embed_api_key_set: boolean
   source: 'ai' | 'translation' | 'none'
@@ -62,6 +63,7 @@ export default function SettingsAI() {
         embed_base_url: cfg.embed_base_url, embed_model: cfg.embed_model,
         price_currency: cfg.price_currency, price_input: cfg.price_input, price_output: cfg.price_output, price_embed: cfg.price_embed, price_translate: cfg.price_translate,
         alert_daily_cost: cfg.alert_daily_cost, alert_user_daily_tokens: cfg.alert_user_daily_tokens, alert_trace_tokens: cfg.alert_trace_tokens,
+        usage_retention_days: cfg.usage_retention_days,
         api_key: clear === 'api_key' ? '-' : apiKey, embed_api_key: clear === 'embed_api_key' ? '-' : embedKey,
       }
       setCfg(await api<AIConfig>('/admin/ai', { method: 'PUT', body }))
@@ -171,6 +173,11 @@ export default function SettingsAI() {
               </Field>
               <Field label={t('admin.settings.ai.priceTranslate')} hint={t('admin.settings.ai.priceTranslateHint')}>
                 <Input type="number" min={0} step="0.01" value={cfg.price_translate} onChange={(e) => set({ price_translate: e.target.value })} placeholder="0" />
+              </Field>
+            </div>
+            <div className="mt-4 max-w-xs">
+              <Field label={t('admin.settings.ai.retentionDays')} hint={t('admin.settings.ai.retentionHint')}>
+                <Input type="number" min={0} max={3650} value={cfg.usage_retention_days} onChange={(e) => set({ usage_retention_days: e.target.value })} placeholder="0" />
               </Field>
             </div>
             <p className="mt-3 text-xs text-slate-400">{t('admin.settings.ai.quotaNote')}</p>

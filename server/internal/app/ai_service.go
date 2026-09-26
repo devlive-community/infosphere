@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -37,6 +38,7 @@ var aiSettingKeys = []struct {
 	{"alert_daily_cost", cfgAlertDailyCost, "AI 用量预警：全站当日估算费用阈值（0 为关闭）", false},
 	{"alert_user_daily_tokens", cfgAlertUserDailyTokens, "AI 用量预警：单个用户当日 tokens 阈值（0 为关闭）", false},
 	{"alert_trace_tokens", cfgAlertTraceTokens, "AI 用量预警：单条调用链 tokens 阈值（0 为关闭）", false},
+	{"usage_retention_days", cfgAIUsageRetentionDays, "AI 用量记录保留天数（0 为永久，否则不少于 90）", false},
 }
 
 // aiConfig 当前生效的 AI 配置与来源（ai | translation | none）。
@@ -194,6 +196,12 @@ func (a *App) AdminUpdateAI(c *gin.Context) {
 		if s.field == "alert_daily_cost" && v != "" {
 			if f, err := strconv.ParseFloat(v, 64); err != nil || f < 0 || f > 1_000_000 {
 				fail(c, http.StatusBadRequest, "费用预警阈值需为 0 到 1000000 之间的数字（0 为关闭）")
+				return
+			}
+		}
+		if s.field == "usage_retention_days" && v != "" {
+			if n, err := strconv.Atoi(v); err != nil || (n != 0 && (n < minAIUsageRetentionDays || n > 3650)) {
+				fail(c, http.StatusBadRequest, fmt.Sprintf("保留天数需为 0（永久）或 %d 到 3650 之间的整数", minAIUsageRetentionDays))
 				return
 			}
 		}

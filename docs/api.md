@@ -289,6 +289,7 @@ Authorization: Bearer <token>
 | GET | `/users/me/entitlements` | 我的各项权益 `items:[{key,value,source}]`（`source` 为 base/admin/unavailable 或来源键如 level）+ `definitions` | 登录 |
 | GET | `/users/me/ai-usage` | 本月 AI 用量：`used_tokens`、`calls`、`limit`（权益 `ai.monthly_tokens`，-1 不限；超出后本月内 AI 调用返回「本月 AI 用量已达上限」）、按功能分布 `by_feature[]`、本月每日用量 `daily[]{date, tokens, characters}`，以及本月翻译字数 `translate_chars` 与额度 `translate_limit` | 登录 |
 | GET | `/users/me/ai-usage/logs?page=&page_size=&feature=&trace_id=` | 我的全部模型调用，按调用链（`trace_id`，同一次操作如一次提问的多次调用）分组，新→旧：`items[]{trace_id, feature, ref_type, ref_id, started_at, ended_at, calls, errors, input_tokens, output_tokens, characters, duration_ms, items[]}`，每次调用含 `kind`（chat\|embed\|translate）、`model`、tokens/字数、`estimated`、`duration_ms`、`status`；不返回费用与 AI 服务的原始报错 | 登录 |
+| GET | `/users/me/ai-usage/export?feature=` | 以 CSV（UTF-8 BOM，便于 Excel 打开）导出我的全部调用记录：`time, trace_id, feature, kind, model, input_tokens, output_tokens, characters, estimated, duration_ms, status`，不含费用 | 登录 |
 | GET | `/admin/entitlements` | 权益定义 + 基础值 `items:[{...定义,base,available}]` | `site:update` |
 | PUT | `/admin/entitlements/base` | `{values:{key:value}}` 只保存传入的键；`upload.max_mb` 基础值最大 100（更大通过等级/会员授予）；写审计 `entitlement.base_updated` | `site:update` |
 
@@ -575,7 +576,7 @@ Authorization: Bearer <token>
 | POST | `/qa/questions/:id/answers` | `{body(≤10000)}` 回答（问题须已公开；先审查，返回 `{answer, held, message}`）；公开后通知提问者 | 登录 + `qa:use` |
 | POST | `/qa/answers/:id/accept` | 提问者或作者采纳（再次调用取消），问题变为已解决；通知回答者 | 登录 + `qa:use` |
 | DELETE | `/qa/answers/:id` | 回答者、作者/协作者或管理员删除回答（删除被采纳的回答时问题回到待解决） | 登录 + `qa:use` |
-| GET/PUT | `/admin/qa/settings` | `{ai_enabled, agent_enabled, top_k(3–12)}`，PUT 可只传部分字段；另返回 `ai_chat_available`、`ai_embed_available` | 管理员 + `qa:manage` |
+| GET/PUT | `/admin/qa/settings` | `{ai_enabled, agent_enabled, top_k(3–12), trace_retention_days(0 永久或 7–3650)}`，PUT 可只传部分字段；超过保留天数的已结束问答由巡检清空调用链详情（`trace`），问题、回答与用量合计保留；另返回 `ai_chat_available`、`ai_embed_available` | 管理员 + `qa:manage` |
 
 ## 站内通知（登录用户）
 
@@ -711,6 +712,7 @@ Authorization: Bearer <token>
 | GET | `/admin/ai/usage?days=7\|30\|90` | AI 用量统计（逐次调用记录聚合）：`total{calls, errors, input_tokens, output_tokens, cost_micros}`、按日 `daily[]`、`by_feature[]`、`by_model[]`、`top_users[]`、全部功能键 `features[]`、`currency`。站点内所有模型调用（经 `Core.AIChat/AIEmbed` 的 AI 服务调用与翻译服务，测试 `TestModelCallsAreMetered` 禁止绕过）都记录调用方（`ai.WithCaller` 标注的用户/功能/关联对象，0 为系统）、模型、tokens（服务未返回时按文本估算并标记 `estimated`）、耗时与按调用时单价估算的费用（`cost_micros` 为货币单位百万分之一）；删除账号时记录保留但解除关联 | `site:update` |
 | GET | `/admin/ai/usage/logs?page=&page_size=&feature=&status=ok\|error&user=&trace_id=` | 调用明细 `items[]{log, username}`（`user` 为用户名，`trace_id` 查看一条调用链的全部调用）。AI 调用不设整体超时（只限制建连与 TLS 握手），由调用方取消。插件可经 `Core.AIChatStream` 以流式接口调用（OpenAI 兼容 `stream` + `include_usage`，不支持时自动去掉 `stream_options` 重试；Anthropic SSE 事件流），计量与额度同 `AIChat` | `site:update` |
 | GET | `/admin/ai/alerts?page=` | 用量预警记录 `items[]{alert{kind: site_daily_cost\|user_daily_tokens\|trace_tokens, key, user_id, trace_id, feature, value, threshold, currency}, username}`。阈值在 `/admin/ai` 设置（`alert_daily_cost` 货币单位、`alert_user_daily_tokens`、`alert_trace_tokens`，0 为关闭）；每次调用记账后检查，超过时记录并通知全部管理员，同一对象（当天/用户当天/调用链）只报一次。只报警，不限制调用 | `site:update` |
+| GET | `/admin/ai/usage/export?days=&feature=&status=&user=&trace_id=` | 以 CSV（UTF-8 BOM）导出最近 `days` 天（不传则不限时间）符合筛选的调用记录：`time, user, trace_id, feature, ref_type, ref_id, kind, provider, model, input_tokens, output_tokens, characters, estimated, cost, currency, duration_ms, status, error`。`/admin/ai` 的 `usage_retention_days`（0 永久，否则 90–3650）控制保留期，超期记录与预警由每日维护任务分批删除 | `site:update` |
 | GET/PUT | `/translation` | 翻译服务配置（写作台与多语言内容的「翻译」按钮）：`provider` none\|google\|openai\|claude、`api_key`、`api_base`、`model` | 管理员 |
 | POST | `/translate` | 登录用户翻译文本 `{text(≤20000 字), target_lang?, target_label?, source_lang?, ref_type?: document\|book\|resource, ref_id?}` → `{text}`。每次调用写入 AI 用量记录（功能 `translate`）：OpenAI/Claude 经统一 AI 客户端记录 tokens 与原文字数并受 `ai.monthly_tokens` 约束，Google 按字符记录（`kind=translate`，按 `price_translate` 计价）；所有方式受权益 `translate.monthly_chars`（每月翻译字数，默认不限）约束，剩余不足返回 429 | 登录 |
 | GET/PUT | `/admin/achievement-settings` | 读取/保存模块总开关、公开主页展示、解锁通知、允许用户隐藏和陈列数量 | `achievement:manage` |

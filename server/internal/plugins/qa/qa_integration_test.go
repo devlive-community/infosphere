@@ -876,3 +876,28 @@ func TestQACommunityGovernance(t *testing.T) {
 		t.Fatalf("关闭用户内容审查后应直接公开: %v", p)
 	}
 }
+
+// 调用链保留期：过期问答只清空调用链明细，问答与消耗合计保留；进行中的不受影响。
+func TestQATraceRetention(t *testing.T) {
+	fake := &fakeAI{}
+	aiServer := httptest.NewServer(fake.handler())
+	t.Cleanup(aiServer.Close)
+	e := newTestEnv(t, aiServer.URL)
+	reader := e.user(t, "reader")
+	if status, _ := e.req(t, e.token, http.MethodPut, "/api/v1/admin/qa/settings", `{"trace_retention_days":3}`); status != http.StatusBadRequest {
+		t.Fatalf("少于 7 天应被拒绝: %d", status)
+	}
+	if status, p := e.req(t, e.token, http.MethodPut, "/api/v1/admin/qa/settings", `{"trace_retention_days":10}`); status != http.StatusOK || data(p)["settings"].(map[string]any)["trace_retention_days"].(float64) != 10 {
+		t.Fatalf("保存保留天数失败: %d %v", status, p)
+	}
+	old := qa.Ask{BookID: 1, UserID: reader.ID, Mode: "rag", Question: "旧", Answer: "答", Status: "done", Trace: `[{"type":"model"}]`, InputTokens: 100, CreatedAt: time.Now().AddDate(0, 0, -20)}
+	recent := qa.Ask{BookID: 1, UserID: reader.ID, Mode: "rag", Question: "新", Answer: "答", Status: "done", Trace: `[{"type":"model"}]`, CreatedAt: time.Now().AddDate(0, 0, -2)}
+	e.db.Create(&old)
+	e.db.Create(&recent)
+	plugincore.FireJobQueueSweep(e.app, e.app.Jobs)
+	e.db.First(&old, old.ID)
+	e.db.First(&recent, recent.ID)
+	if old.Trace != "[]" || old.Answer != "答" || old.InputTokens != 100 || recent.Trace == "[]" {
+		t.Fatalf("保留期清理异常: old=%+v recent=%+v", old, recent)
+	}
+}

@@ -2,6 +2,7 @@ package qa
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -58,15 +59,19 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 // —— 设置 ——
 
 type settings struct {
-	AIEnabled    bool `json:"ai_enabled"`
-	AgentEnabled bool `json:"agent_enabled"`
-	TopK         int  `json:"top_k"`
+	AIEnabled          bool `json:"ai_enabled"`
+	AgentEnabled       bool `json:"agent_enabled"`
+	TopK               int  `json:"top_k"`
+	TraceRetentionDays int  `json:"trace_retention_days"` // 调用链明细保留天数（0 为永久）
 }
 
 func (b *behavior) settings() settings {
 	s := settings{AIEnabled: b.core.GetSetting("qa_ai_enabled") != "false", AgentEnabled: b.core.GetSetting("qa_agent_enabled") != "false", TopK: 6}
 	if v := b.core.AtoiDefault(b.core.GetSetting("qa_top_k"), 6); v >= 3 && v <= 12 {
 		s.TopK = v
+	}
+	if v := b.core.AtoiDefault(b.core.GetSetting("qa_trace_retention_days"), 0); v >= minTraceRetentionDays {
+		s.TraceRetentionDays = v
 	}
 	return s
 }
@@ -83,6 +88,7 @@ func (b *behavior) AdminUpdateSettings(c *gin.Context) {
 		AIEnabled    *bool `json:"ai_enabled"`
 		AgentEnabled *bool `json:"agent_enabled"`
 		TopK         *int  `json:"top_k"`
+		TraceDays    *int  `json:"trace_retention_days"`
 	}
 	if c.ShouldBindJSON(&req) != nil {
 		b.core.Fail(c, http.StatusBadRequest, "参数错误")
@@ -92,6 +98,10 @@ func (b *behavior) AdminUpdateSettings(c *gin.Context) {
 	fields := []string{}
 	if req.TopK != nil && (*req.TopK < 3 || *req.TopK > 12) {
 		b.core.Fail(c, http.StatusBadRequest, "检索片段数需在 3 到 12 之间")
+		return
+	}
+	if req.TraceDays != nil && *req.TraceDays != 0 && (*req.TraceDays < minTraceRetentionDays || *req.TraceDays > 3650) {
+		b.core.Fail(c, http.StatusBadRequest, fmt.Sprintf("调用链保留天数需为 0（永久）或 %d 到 3650 之间", minTraceRetentionDays))
 		return
 	}
 	if req.AIEnabled != nil && *req.AIEnabled != old.AIEnabled {
@@ -105,6 +115,10 @@ func (b *behavior) AdminUpdateSettings(c *gin.Context) {
 	if req.TopK != nil && *req.TopK != old.TopK {
 		_ = b.core.SetSetting("qa_top_k", strconv.Itoa(*req.TopK), "问答：每次检索的片段数")
 		fields = append(fields, "top_k")
+	}
+	if req.TraceDays != nil && *req.TraceDays != old.TraceRetentionDays {
+		_ = b.core.SetSetting("qa_trace_retention_days", strconv.Itoa(*req.TraceDays), "问答：调用链明细保留天数（0 为永久）")
+		fields = append(fields, "trace_retention_days")
 	}
 	if len(fields) > 0 {
 		b.core.RecordAudit(c, "qa.settings_updated", "qa", "settings", "问答设置", map[string]any{"changed_fields": fields})

@@ -56,6 +56,7 @@ func init() {
 	plugincore.OnJobQueueSweep(func(core plugincore.Core, _ *jobqueue.Queue) {
 		if core.PluginEnabled(plugins.KeyQA) {
 			sweepInterruptedAsks(core)
+			purgeExpiredTraces(core)
 		}
 	})
 	plugincore.RegisterJob(indexJobType, func(core plugincore.Core) func(ctx context.Context, raw json.RawMessage) error {

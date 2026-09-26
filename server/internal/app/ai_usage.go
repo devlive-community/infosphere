@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"math"
 	"net/http"
 	"sort"
@@ -142,6 +143,39 @@ func truncateRunes(s string, n int) string {
 		return string(r[:n])
 	}
 	return s
+}
+
+// —— 保留期 ——
+
+const (
+	cfgAIUsageRetentionDays = "ai_usage_retention_days"
+	minAIUsageRetentionDays = 90 // 统计页最长查看 90 天
+)
+
+// purgeExpiredAIUsage 按保留天数清理 AI 用量记录与预警（0 为永久保留）；分批删除，避免长事务。
+func (a *App) purgeExpiredAIUsage(ctx context.Context, now time.Time) error {
+	days, err := strconv.Atoi(strings.TrimSpace(a.getSetting(cfgAIUsageRetentionDays)))
+	if err != nil || days <= 0 {
+		return nil
+	}
+	if days < minAIUsageRetentionDays {
+		days = minAIUsageRetentionDays
+	}
+	cutoff := now.AddDate(0, 0, -days)
+	db := a.DB.WithContext(ctx)
+	for {
+		var ids []uint
+		if err := db.Model(&models.AIUsageLog{}).Where("created_at < ?", cutoff).Limit(1000).Pluck("id", &ids).Error; err != nil {
+			return err
+		}
+		if len(ids) == 0 {
+			break
+		}
+		if err := db.Where("id IN ?", ids).Delete(&models.AIUsageLog{}).Error; err != nil {
+			return err
+		}
+	}
+	return db.Where("created_at < ?", cutoff).Delete(&models.AIAlert{}).Error
 }
 
 // —— 用户 ——

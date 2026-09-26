@@ -153,6 +153,18 @@ func (b *behavior) finishAsk(id uint, started time.Time, status string, res answ
 	}
 }
 
+const minTraceRetentionDays = 7
+
+// purgeExpiredTraces 按保留天数清空过期问答的调用链明细（问答内容与消耗合计保留）。
+func purgeExpiredTraces(core plugincore.Core) {
+	days := core.AtoiDefault(core.GetSetting("qa_trace_retention_days"), 0)
+	if days < minTraceRetentionDays {
+		return
+	}
+	core.Gorm().Model(&Ask{}).Where("created_at < ? AND status <> ? AND trace <> ?", time.Now().AddDate(0, 0, -days), askRunning, "[]").
+		Update("trace", "[]")
+}
+
 // sweepInterruptedAsks 把不在本进程中运行的「进行中」问答标记为中断（服务重启等）。
 // 只处理创建超过 30 秒的记录，避开刚创建、尚未登记的问答。
 func sweepInterruptedAsks(core plugincore.Core) {

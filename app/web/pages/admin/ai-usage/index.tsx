@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import AdminLayout from '@/components/AdminLayout'
 import { api, formatDate } from '@/lib/api'
 import { aiFeatureLabel, formatCost, formatTokens, type UsageAgg } from '@/lib/ai-usage'
+import { dateStamp, downloadAuthed } from '@/lib/download'
 import { Badge, Button, Card, EmptyState, Input, Loading, Pagination, SegmentedTabs, Select, Tooltip, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
@@ -99,7 +100,7 @@ export default function AdminAIUsage() {
 
           <AlertsCard currency={summary.currency} />
 
-          <UsageLogs features={summary.features} />
+          <UsageLogs features={summary.features} days={days} />
         </div>
       )}
     </AdminLayout>
@@ -184,7 +185,7 @@ function Breakdown({ title, rows, currency }: { title: string; rows: { key: stri
   )
 }
 
-function UsageLogs({ features }: { features: string[] }) {
+function UsageLogs({ features, days }: { features: string[]; days: string }) {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
   const router = useRouter()
@@ -200,6 +201,18 @@ function UsageLogs({ features }: { features: string[] }) {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<{ items: LogItem[]; total: number; page_size: number } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
+
+  async function exportCSV() {
+    setExporting(true)
+    try {
+      await downloadAuthed('/admin/ai/usage/export', { days, feature, status, user, trace_id: trace }, `ai-usage-${dateStamp()}.csv`)
+    } catch (e) {
+      showToast({ title: t('admin.aiUsage.exportFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -218,6 +231,9 @@ function UsageLogs({ features }: { features: string[] }) {
     <Card className="p-5">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="mr-auto text-sm font-semibold text-slate-900">{t('admin.aiUsage.logsTitle')}</h2>
+        <Tooltip content={t('admin.aiUsage.exportHint', { n: days })}>
+          <Button size="sm" variant="outline" loading={exporting} onClick={() => void exportCSV()}><i className="fa-solid fa-file-csv" aria-hidden="true" />{t('admin.aiUsage.export')}</Button>
+        </Tooltip>
         <Select size="sm" className="w-40" value={feature} onChange={(v) => { setFeature(v); setPage(1) }}
           options={[{ value: '', label: t('admin.aiUsage.allFeatures') }, ...features.map((f) => ({ value: f, label: aiFeatureLabel(t, f) }))]} />
         <Select size="sm" className="w-28" value={status} onChange={(v) => { setStatus(v); setPage(1) }} options={[

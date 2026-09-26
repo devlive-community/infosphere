@@ -10,6 +10,7 @@ interface QASettings {
   ai_enabled: boolean
   agent_enabled: boolean
   top_k: number
+  trace_retention_days: number
 }
 
 interface QASettingsResponse {
@@ -27,7 +28,7 @@ function AdminQAInner() {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
   const [data, setData] = useState<QASettingsResponse | null>(null)
-  const [form, setForm] = useState<QASettings>({ ai_enabled: true, agent_enabled: true, top_k: 6 })
+  const [form, setForm] = useState<QASettings>({ ai_enabled: true, agent_enabled: true, top_k: 6, trace_retention_days: 0 })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -83,11 +84,14 @@ function AdminQAInner() {
             <Field label={t('admin.qa.topK')} hint={t('admin.qa.topKHint')}>
               <Input type="number" min={3} max={12} value={form.top_k} onChange={(e) => setForm({ ...form, top_k: Number(e.target.value) || 0 })} className="w-32" />
             </Field>
+            <Field label={t('admin.qa.traceRetention')} hint={t('admin.qa.traceRetentionHint')}>
+              <Input type="number" min={0} max={3650} value={form.trace_retention_days} onChange={(e) => setForm({ ...form, trace_retention_days: Number(e.target.value) || 0 })} className="w-32" />
+            </Field>
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">
               {t('admin.qa.quotaNote')} <Link href="/admin/settings/entitlements" className="font-medium text-primary-600 hover:text-primary-700">{t('admin.qa.quotaLink')}</Link>
             </p>
             <div className="flex justify-end">
-              <Button loading={saving} disabled={form.top_k < 3 || form.top_k > 12} onClick={() => void save()}>{t('admin.qa.save')}</Button>
+              <Button loading={saving} disabled={form.top_k < 3 || form.top_k > 12 || (form.trace_retention_days !== 0 && form.trace_retention_days < 7)} onClick={() => void save()}>{t('admin.qa.save')}</Button>
             </div>
           </Card>
         </div>

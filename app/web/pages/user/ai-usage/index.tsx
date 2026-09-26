@@ -6,6 +6,7 @@ import { api, formatDate } from '@/lib/api'
 import { useRequireAuth, useApp } from '@/lib/auth'
 import { useTranslation } from '@/lib/i18n'
 import { aiFeatureLabel, formatTokens, type MyAIUsage } from '@/lib/ai-usage'
+import { dateStamp, downloadAuthed } from '@/lib/download'
 import { Badge, Button, Card, EmptyState, Loading, Pagination, Select, Tooltip, useFeedback } from '@/components/ui'
 
 interface CallView {
@@ -125,6 +126,18 @@ function TraceList({ features }: { features: string[] }) {
   const [feature, setFeature] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<{ items: TraceView[]; total: number; page_size: number } | null>(null)
+  const [exporting, setExporting] = useState(false)
+
+  async function exportCSV() {
+    setExporting(true)
+    try {
+      await downloadAuthed('/users/me/ai-usage/export', { feature }, `my-ai-usage-${dateStamp()}.csv`)
+    } catch (e) {
+      showToast({ title: t('aiUsage.mine.exportFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -139,6 +152,7 @@ function TraceList({ features }: { features: string[] }) {
     <Card className="mt-4 p-5">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="mr-auto text-sm font-semibold text-slate-900">{t('aiUsage.mine.logsTitle')}</h2>
+        <Button size="sm" variant="outline" loading={exporting} onClick={() => void exportCSV()}><i className="fa-solid fa-file-csv" aria-hidden="true" />{t('aiUsage.mine.export')}</Button>
         {trace ? (
           <Button size="sm" variant="outline" onClick={() => router.push('/user/ai-usage', undefined, { shallow: true })}>
             <i className="fa-solid fa-xmark" aria-hidden="true" />{t('aiUsage.mine.clearTrace')}
