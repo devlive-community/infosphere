@@ -22,6 +22,8 @@ import BookCopyDialog from '@/components/BookCopyDialog'
 import BookReviews from '@/components/BookReviews'
 import PaidBookCard from '@/components/PaidBookCard'
 import QACommunity from '@/components/qa/QACommunity'
+import BookOverviewCard from '@/components/chapter-guide/BookOverviewCard'
+import { chapterGuideEnabled } from '@/lib/chapter-guide'
 import { qaEnabled } from '@/lib/qa'
 import BookExtraInfo from '@/components/BookExtraInfo'
 import ReportButton from '@/components/ReportButton'
@@ -575,6 +577,7 @@ export default function BookDetail({ site, siteUrl, book: ssrBook, tree: ssrTree
               {(book.description || t('detail.noDescription')).split('\n').filter(Boolean).map((para, i) => <p key={i} className="max-w-full [overflow-wrap:anywhere]">{para}</p>)}
             </div>
           </div>
+          {chapterGuideEnabled(site) && <BookOverviewCard bookId={book.id} bookSlug={book.slug} />}
 
           <SegmentedTabs className="mb-6 mt-8 max-w-md" value={activeTab} ariaLabel={t('detail.toc')} onChange={(v) => goTab(v)}
             items={[{ value: 'toc', label: t('detail.toc') }, { value: 'reviews', label: t('review.title') },

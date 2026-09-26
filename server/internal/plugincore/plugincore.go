@@ -165,6 +165,20 @@ func FireChapterPublished(core Core, book *models.Book, doc *models.Document) {
 	}
 }
 
+var chapterChangedHooks []ChapterPublishedHook
+
+// OnChapterContentChanged 订阅章节标题或正文被保存修改（任意状态，插件按需判断是否已发布）。
+func OnChapterContentChanged(h ChapterPublishedHook) {
+	chapterChangedHooks = append(chapterChangedHooks, h)
+}
+
+// FireChapterContentChanged 由核心在章节标题或正文保存修改后调用。
+func FireChapterContentChanged(core Core, book *models.Book, doc *models.Document) {
+	for _, h := range chapterChangedHooks {
+		h(core, book, doc)
+	}
+}
+
 // —— 插件后台任务：任务队列可能在安装向导完成后才创建（且会重建），故插件只登记「处理器工厂」，
 // 由核心在每次创建队列时统一注册。——
 

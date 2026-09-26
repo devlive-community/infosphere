@@ -8,6 +8,7 @@ import (
 	_ "knowforge/server/internal/plugins/bookfollow"
 	_ "knowforge/server/internal/plugins/booktranslations"
 	_ "knowforge/server/internal/plugins/bookversions"
+	_ "knowforge/server/internal/plugins/chapterguide"
 	_ "knowforge/server/internal/plugins/contentcollect"
 	_ "knowforge/server/internal/plugins/growth"
 	_ "knowforge/server/internal/plugins/membership"

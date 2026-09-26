@@ -580,6 +580,10 @@ func (a *App) UpdateDocument(c *gin.Context) {
 	if publishedChapter && oldStatus != "published" {
 		plugincore.FireChapterPublished(a, book, doc)
 	}
+	// 标题或正文有修改：由插件订阅（如章节导读在内容变化后更新）
+	if doc.Title != oldTitle || doc.Content != oldContent {
+		plugincore.FireChapterContentChanged(a, book, doc)
+	}
 	ok(c, doc)
 }
 

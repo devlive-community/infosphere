@@ -598,6 +598,29 @@ Authorization: Bearer <token>
 | POST | `/ai-translate/jobs/:id/resume` | 继续已暂停的任务（本月翻译字数已用完时 429） | 发起人或管理员 |
 | POST | `/ai-translate/jobs/:id/retry` | 重新翻译失败的章节（没有失败章节时 400，进行中时 409） | 发起人或管理员 |
 
+## 章节导读（「章节导读」插件，默认关闭）
+
+AI 为章节生成阅读前导读（一两段）与本章要点，为书籍生成全书概览（Markdown），分别显示在阅读页正文上方与书籍详情页「关于这本书」下方。模型经核心「AI 服务」调用。
+- **生成**：经任务队列一章一个任务（`chapterguide.chapter` / `chapterguide.overview`，不设超时）。章节正文取前 3 万字交给模型；概览基于已发布章节（目录顺序）的导读，没有导读的章节取开头约 600 字。内容（标题 + 正文）与上次生成时相同则复用，不调用模型；作者编辑过的导读/概览不被批量生成或自动更新覆盖，只有强制重新生成（`force`）才会替换。没有正文的章节不生成。
+- **自动模式**（书籍设置）：章节首次发布（含创建即发布）立即排队生成；已发布章节标题或正文修改后约 90 秒排队（连续保存只触发一次），服务重启丢失的延迟由巡检补上。
+- **读者可见性**：只显示已发布章节的导读；付费内容门禁未解锁的章节不显示（避免泄露正文），作者与协作者始终可见。
+- **费用与权益**：管理员设置费用承担方——`author`（默认，用量记在触发生成的作者名下，计入其每月 AI 用量）或 `site`（记为系统调用）；AI 用量功能为 `chapterguide.chapter` / `chapterguide.overview`。每月生成次数为权益 `chapterguide.monthly`（基础 200，实际调用了模型的才计，复用不计），批量生成前按需要的章数判定，不足返回 429。
+- **事件流**：管理页订阅本书导读状态变化（排队、生成中、完成、失败），不轮询。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/chapter-guides/docs/:id` | 读者：`{guide: {summary, points[], generated_at, edited} \| null}` | 书籍可读 |
+| GET | `/chapter-guides/books/:id/overview` | 读者：`{overview: {content, generated_at} \| null}` | 书籍可读 |
+| GET | `/chapter-guides/books/:id` | 管理：`{available, auto_generate, cost_bearer, quota{limit(-1 不限), used}, chapters[]{doc{id,title,slug,status,depth,empty}, guide{doc_id, summary, points, status: queued\|generating\|ready\|failed\|skipped, error, edited, stale, input_tokens, output_tokens, generated_at}\|null}, overview\|null}`（`stale` 为生成后内容已修改） | 登录 + `chapterguide:use`，可编辑该书 |
+| PUT | `/chapter-guides/books/:id/settings` | `{auto_generate}` | 同上 |
+| POST | `/chapter-guides/books/:id/generate` | `{scope: missing\|ids, doc_ids?, force?}` → `{queued}`；`missing` 为没有导读或已过期（未经编辑）的有正文章节；没有需要生成的返回 400 | 同上 |
+| POST | `/chapter-guides/books/:id/overview/generate` | `{force?}`；正在生成时 409 | 同上 |
+| PUT | `/chapter-guides/books/:id/overview` | `{content(≤1 万字)}` 编辑概览（视为与当前内容一致）；清空即删除 | 同上 |
+| PUT | `/chapter-guides/docs/:id` | `{summary(≤2000), points[](≤12 条，各 ≤300)}` 编辑导读（视为与当前内容一致） | 同上 |
+| DELETE | `/chapter-guides/docs/:id` | 删除导读（进行中 409） | 同上 |
+| GET | `/chapter-guides/books/:id/stream?ticket=` | SSE：`guide`（章节导读，删除时 summary 为空且无状态）、`overview`（删除时为 null）；连接建立时推 `ready`，25 秒心跳 | 同上 |
+| GET/PUT | `/admin/chapter-guides/settings` | `{cost_bearer: author\|site, ai_available}` | 管理员 + `chapterguide:manage` |
+
 ## AI 写作助手（「AI 写作助手」插件，默认关闭）
 
 写作台中对选中的文字续写、改写、润色、扩写、精简，为章节生成大纲或摘要，或按作者的自定义要求处理。模型经核心「AI 服务」（`/admin/ai`）以流式接口调用，插件不接触密钥；只有能编辑该书内容的用户（作者、协作者、管理员）可用。

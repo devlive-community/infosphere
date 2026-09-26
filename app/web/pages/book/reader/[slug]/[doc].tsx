@@ -18,6 +18,8 @@ import ReaderAnnotations from '@/components/ReaderAnnotations'
 import type { PaidBookInfo } from '@/lib/paid'
 import PaywallCard from '@/components/PaywallCard'
 import QADrawer, { type QATab } from '@/components/qa/QADrawer'
+import ChapterGuideCard from '@/components/chapter-guide/ChapterGuideCard'
+import { chapterGuideEnabled } from '@/lib/chapter-guide'
 import { qaEnabled, citationHref, type QACitation } from '@/lib/qa'
 import ReportButton from '@/components/ReportButton'
 import BookTranslations from '@/components/BookTranslations'
@@ -553,6 +555,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                     key: 'qa', icon: 'fa-wand-magic-sparkles', label: t('qa.reader.askSelection'),
                     onSelect: (quote) => { setQaSelection(quote.slice(0, 2000)); navigateQa('ai') },
                   }] : []} />
+                  {chapterGuideEnabled(site) && <ChapterGuideCard docId={doc.id} />}
                   <div ref={contentRef} className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
                   {doc.paywall && <PaywallCard paywall={doc.paywall} />}
 

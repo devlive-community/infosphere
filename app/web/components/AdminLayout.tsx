@@ -13,7 +13,7 @@ import {
   ActivityIcon, ClockIcon,
 } from '@/components/icons'
 
-export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'tags' | 'achievements' | 'growth' | 'membership' | 'payment' | 'paid' | 'moderation' | 'qa' | 'reports' | 'audit' | 'ai-usage' | 'tasks' | 'languages' | 'settings' | 'plugins' | 'upgrade'
+export type AdminNavKey = 'system' | 'users' | 'books' | 'documents' | 'tags' | 'achievements' | 'growth' | 'membership' | 'payment' | 'paid' | 'moderation' | 'qa' | 'chapter-guide' | 'reports' | 'audit' | 'ai-usage' | 'tasks' | 'languages' | 'settings' | 'plugins' | 'upgrade'
 
 function ReportIcon({ className }: { className?: string }) {
   return <i className={`fa-solid fa-flag ${className || ''}`.trim()} aria-hidden="true" />
@@ -73,6 +73,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
     { key: 'payment', labelKey: 'admin.nav.payment', href: '/admin/payment', icon: ({ className }) => <i className={`fa-solid fa-credit-card ${className || ''}`} aria-hidden="true" /> },
     { key: 'paid', labelKey: 'admin.nav.paid', href: '/admin/paid', icon: ({ className }) => <i className={`fa-solid fa-coins ${className || ''}`} aria-hidden="true" /> },
     { key: 'qa', labelKey: 'admin.nav.qa', href: '/admin/qa', icon: ({ className }) => <i className={`fa-solid fa-comments ${className || ''}`} aria-hidden="true" /> },
+    { key: 'chapter-guide', labelKey: 'admin.nav.chapterGuide', href: '/admin/chapter-guides', icon: ({ className }) => <i className={`fa-solid fa-compass ${className || ''}`} aria-hidden="true" /> },
     { key: 'moderation', labelKey: 'admin.nav.moderation', href: '/admin/moderation', icon: ({ className }) => <i className={`fa-solid fa-shield-halved ${className || ''}`} aria-hidden="true" /> },
     { key: 'reports', labelKey: 'admin.nav.reports', href: '/admin/reports', icon: ReportIcon },
     { key: 'audit', labelKey: 'admin.nav.audit', href: '/admin/audit-logs', icon: ActivityIcon },
@@ -95,6 +96,7 @@ function SidebarNav({ current, onNavigate }: { current: AdminNavKey; onNavigate?
     if (item.key === 'moderation') return features.includes('moderation')
     if (item.key === 'paid') return features.includes('paid-content')
     if (item.key === 'qa') return features.includes('qa')
+    if (item.key === 'chapter-guide') return features.includes('chapter-guide')
     return true
   })
 
