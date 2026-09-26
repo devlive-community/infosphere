@@ -326,10 +326,11 @@ func TestQAFlow(t *testing.T) {
 
 	// 社区问答：附带 AI 回答提问 → 作者收到通知 → 他人回答 → 提问者采纳
 	status, q := e.as(t, reader, http.MethodPost, base+"/questions", fmt.Sprintf(`{"title":"缓存和索引的区别？","ask_id":%d}`, askID))
-	if status != http.StatusOK || data(q)["ai_answer"] != "缓存用于加速读取 [1]。" || len(data(q)["ai_citations"].([]any)) != 1 {
+	qv := data(q)["question"].(map[string]any)
+	if status != http.StatusOK || data(q)["held"] != false || qv["ai_answer"] != "缓存用于加速读取 [1]。" || len(qv["ai_citations"].([]any)) != 1 {
 		t.Fatalf("提问失败: %d %v", status, q)
 	}
-	qid := uint(data(q)["id"].(float64))
+	qid := uint(qv["id"].(float64))
 	var notes int64
 	e.db.Model(&models.Notification{}).Where("user_id = ?", author.ID).Count(&notes)
 	if notes != 1 {
@@ -339,7 +340,7 @@ func TestQAFlow(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("回答失败: %d %v", status, ans)
 	}
-	aid := uint(data(ans)["id"].(float64))
+	aid := uint(data(ans)["answer"].(map[string]any)["id"].(float64))
 	if status, _ := e.as(t, helper, http.MethodPost, fmt.Sprintf("/api/v1/qa/answers/%d/accept", aid), ""); status != http.StatusForbidden {
 		t.Fatalf("回答者不能采纳自己的回答: %d", status)
 	}
@@ -712,3 +713,119 @@ func TestQAStreamProgress(t *testing.T) {
 
 // TraceStepJSON 仅用于测试中解析调用链长度。
 type TraceStepJSON = map[string]any
+
+// 社区问答治理：发布前经发布守卫（此处启用敏感词审核插件）审查；被拦截内容只对本人与管理员可见、通知延后到通过时；
+// 回答数只统计公开回答；可被举报并下架（下架被采纳的回答时问题回到待解决）。
+func TestQACommunityGovernance(t *testing.T) {
+	fake := &fakeAI{}
+	aiServer := httptest.NewServer(fake.handler())
+	t.Cleanup(aiServer.Close)
+	e := newTestEnv(t, aiServer.URL)
+	author, reader, helper, other := e.user(t, "author"), e.user(t, "reader"), e.user(t, "helper"), e.user(t, "other")
+	if status, p := e.req(t, e.token, http.MethodPost, "/api/v1/admin/plugins/moderation/install", ""); status != http.StatusOK {
+		t.Fatalf("启用审核插件失败: %d %v", status, p)
+	}
+	e.req(t, e.token, http.MethodPost, "/api/v1/admin/moderation/words", `{"words":"违禁词"}`)
+	_, created := e.as(t, author, http.MethodPost, "/api/v1/books", `{"title":"治理之书","status":"published","is_public":true}`)
+	bookID := uint(data(created)["id"].(float64))
+	base := fmt.Sprintf("/api/v1/qa/books/%d", bookID)
+	notes := func(u *models.User) int64 {
+		var n int64
+		e.db.Model(&models.Notification{}).Where("user_id = ? AND type = ?", u.ID, "comment").Count(&n)
+		return n
+	}
+	authorBefore := notes(author)
+
+	// 命中敏感词的提问：待审核，对他人不可见，作者暂不收到通知
+	status, held := e.as(t, reader, http.MethodPost, base+"/questions", `{"title":"这里有违禁词吗"}`)
+	hq := data(held)["question"].(map[string]any)
+	if status != http.StatusOK || data(held)["held"] != true || hq["visibility"] != "held" || data(held)["message"] == "" {
+		t.Fatalf("命中敏感词应待审核: %d %v", status, held)
+	}
+	hqid := uint(hq["id"].(float64))
+	if _, list := e.as(t, other, http.MethodGet, base+"/questions", ""); data(list)["total"].(float64) != 0 {
+		t.Fatalf("待审核提问对他人不可见: %v", list)
+	}
+	if _, list := e.as(t, reader, http.MethodGet, base+"/questions", ""); data(list)["total"].(float64) != 1 {
+		t.Fatalf("提问者本人应可见: %v", list)
+	}
+	if status, _ := e.as(t, other, http.MethodGet, fmt.Sprintf("/api/v1/qa/questions/%d", hqid), ""); status != http.StatusNotFound {
+		t.Fatalf("他人不能打开待审核提问: %d", status)
+	}
+	if status, _ := e.as(t, other, http.MethodPost, "/api/v1/reports", fmt.Sprintf(`{"target_type":"qa_question","target_id":%d,"reason":"spam"}`, hqid)); status != http.StatusNotFound {
+		t.Fatalf("不可见的内容不能被举报: %d", status)
+	}
+	if notes(author) != authorBefore {
+		t.Fatal("待审核提问不应通知作者")
+	}
+	// 管理员在审核队列中看到它（带查看链接）并通过 → 公开并补发通知
+	_, cases := e.req(t, e.token, http.MethodGet, "/api/v1/admin/moderation/cases?status=pending&kind=qa_question", "")
+	items := data(cases)["items"].([]any)
+	if len(items) != 1 || !strings.Contains(items[0].(map[string]any)["link"].(string), fmt.Sprintf("question=%d", hqid)) {
+		t.Fatalf("审核队列应包含提问及链接: %v", cases)
+	}
+	caseID := uint(items[0].(map[string]any)["case"].(map[string]any)["id"].(float64))
+	if status, p := e.req(t, e.token, http.MethodPost, fmt.Sprintf("/api/v1/admin/moderation/cases/%d/approve", caseID), `{}`); status != http.StatusOK {
+		t.Fatalf("审核通过失败: %d %v", status, p)
+	}
+	if _, list := e.as(t, other, http.MethodGet, base+"/questions", ""); data(list)["total"].(float64) != 1 {
+		t.Fatal("通过后应公开")
+	}
+	if notes(author) != authorBefore+1 {
+		t.Fatal("通过后应补发提问通知")
+	}
+
+	// 正常回答立即公开；命中敏感词的回答待审核，不计入回答数、提问者看不到
+	if status, p := e.as(t, helper, http.MethodPost, fmt.Sprintf("/api/v1/qa/questions/%d/answers", hqid), `{"body":"正常的回答"}`); status != http.StatusOK || data(p)["held"] != false {
+		t.Fatalf("正常回答应直接公开: %d %v", status, p)
+	}
+	_, heldAns := e.as(t, helper, http.MethodPost, fmt.Sprintf("/api/v1/qa/questions/%d/answers", hqid), `{"body":"回答里有违禁词"}`)
+	if data(heldAns)["held"] != true {
+		t.Fatalf("命中敏感词的回答应待审核: %v", heldAns)
+	}
+	var q qa.Question
+	e.db.First(&q, hqid)
+	if q.AnswerCount != 1 {
+		t.Fatalf("回答数只统计公开回答: %d", q.AnswerCount)
+	}
+	_, detail := e.as(t, reader, http.MethodGet, fmt.Sprintf("/api/v1/qa/questions/%d", hqid), "")
+	if n := len(data(detail)["answers"].([]any)); n != 1 {
+		t.Fatalf("提问者不应看到待审核的回答: %d", n)
+	}
+	_, mine := e.as(t, helper, http.MethodGet, fmt.Sprintf("/api/v1/qa/questions/%d", hqid), "")
+	if n := len(data(mine)["answers"].([]any)); n != 2 {
+		t.Fatalf("回答者本人应看到自己待审核的回答: %d", n)
+	}
+	heldAnsID := uint(data(heldAns)["answer"].(map[string]any)["id"].(float64))
+	if status, _ := e.as(t, reader, http.MethodPost, fmt.Sprintf("/api/v1/qa/answers/%d/accept", heldAnsID), ""); status != http.StatusConflict {
+		t.Fatalf("未公开的回答不能采纳: %d", status)
+	}
+
+	// 举报公开回答 → 下架：回答隐藏、回答数减少、采纳被撤销
+	answers := data(detail)["answers"].([]any)
+	pubAnsID := uint(answers[0].(map[string]any)["answer"].(map[string]any)["id"].(float64))
+	e.as(t, reader, http.MethodPost, fmt.Sprintf("/api/v1/qa/answers/%d/accept", pubAnsID), "")
+	status, rep := e.as(t, other, http.MethodPost, "/api/v1/reports", fmt.Sprintf(`{"target_type":"qa_answer","target_id":%d,"reason":"spam"}`, pubAnsID))
+	if status != http.StatusOK {
+		t.Fatalf("举报回答失败: %d %v", status, rep)
+	}
+	_, reports := e.req(t, e.token, http.MethodGet, "/api/v1/admin/reports?target_type=qa_answer", "")
+	if data(reports)["total"].(float64) != 1 || !strings.Contains(fmt.Sprint(data(reports)["target_types"]), "qa_answer") {
+		t.Fatalf("管理端应能按问答类型筛选举报: %v", reports)
+	}
+	if status, p := e.req(t, e.token, http.MethodPut, fmt.Sprintf("/api/v1/admin/reports/%d", uint(data(rep)["id"].(float64))), `{"resolution":"takedown"}`); status != http.StatusOK {
+		t.Fatalf("下架失败: %d %v", status, p)
+	}
+	e.db.First(&q, hqid)
+	var a qa.Answer
+	e.db.First(&a, pubAnsID)
+	if a.Visibility != "hidden" || q.AnswerCount != 0 || q.AcceptedAnswerID != 0 || q.Status != "open" {
+		t.Fatalf("下架后状态异常: answer=%+v question=%+v", a, q)
+	}
+
+	// 关闭「审查用户内容」后不再拦截
+	e.req(t, e.token, http.MethodPut, "/api/v1/admin/moderation/settings", `{"scope_ugc":false}`)
+	if _, p := e.as(t, reader, http.MethodPost, base+"/questions", `{"title":"又一个违禁词"}`); data(p)["held"] != false {
+		t.Fatalf("关闭用户内容审查后应直接公开: %v", p)
+	}
+}

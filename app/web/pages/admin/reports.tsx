@@ -13,7 +13,7 @@ interface ContentReport {
   reporter_id: number
   reporter_username: string
   reporter_email: string
-  target_type: 'book' | 'document' | 'comment'
+  target_type: string // book | document | comment | 插件登记的用户内容类型
   target_id: number
   target_label: string
   reason: string
@@ -36,6 +36,7 @@ export default function AdminReports() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState('pending')
   const [targetType, setTargetType] = useState('')
+  const [targetTypes, setTargetTypes] = useState<string[]>(['book', 'document', 'comment'])
   const [reason, setReason] = useState('')
   const [queryInput, setQueryInput] = useState('')
   const [query, setQuery] = useState('')
@@ -53,12 +54,9 @@ export default function AdminReports() {
     { value: 'resolved', label: t('admin.reports.status.resolved') },
     { value: 'rejected', label: t('admin.reports.status.rejected') },
   ]
-  const targetOptions = [
-    { value: '', label: t('admin.reports.target.all') },
-    { value: 'book', label: t('admin.reports.target.book') },
-    { value: 'document', label: t('admin.reports.target.document') },
-    { value: 'comment', label: t('admin.reports.target.comment') },
-  ]
+  // 可举报类型由服务端下发（含插件登记的用户内容）；文案 admin.reports.target.<类型>，缺失时回退类型名
+  const targetLabel = (type: string) => { const k = `admin.reports.target.${type}`; const v = t(k); return v === k ? type : v }
+  const targetOptions = [{ value: '', label: t('admin.reports.target.all') }, ...targetTypes.map((type) => ({ value: type, label: targetLabel(type) }))]
   const reasonOptions = [
     { value: '', label: t('admin.reports.reason.all') },
     { value: 'spam', label: t('admin.reports.reason.spam') },
@@ -75,9 +73,10 @@ export default function AdminReports() {
     setLoading(true)
     setError('')
     try {
-      const result = await api<PageResult<ContentReport>>('/admin/reports', {
+      const result = await api<PageResult<ContentReport> & { target_types?: string[] }>('/admin/reports', {
         params: { page, page_size: PAGE_SIZE, status, target_type: targetType, reason, q: query },
       })
+      if (result.target_types?.length) setTargetTypes(result.target_types)
       setItems(result.items)
       setTotal(result.total)
     } catch (requestError) {

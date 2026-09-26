@@ -106,5 +106,9 @@ func (a *App) ApplyModeration(kind string, id uint, approve bool, requested map[
 		}
 		return a.DB.Model(&models.Book{}).Where("id = ?", book.ID).Updates(updates).Error
 	}
+	// 插件登记的用户内容（如问答的提问、回答）：由登记者落地
+	if uc, found := plugincore.UserContentFor(kind); found {
+		return uc.SetVisible(a, id, approve)
+	}
 	return fmt.Errorf("不支持的审核对象：%s", kind)
 }

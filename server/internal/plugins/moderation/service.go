@@ -20,6 +20,7 @@ type behavior struct{ core plugincore.Core }
 const (
 	cfgScopeDocuments = "moderation_scope_documents" // 审查章节发布（默认开）
 	cfgScopeBooks     = "moderation_scope_books"     // 审查书籍公开（默认开）
+	cfgScopeUGC       = "moderation_scope_ugc"       // 审查其他插件登记的用户内容（如问答的提问、回答，默认开）
 	cfgSkipNoise      = "moderation_skip_noise"      // 忽略词语间的空白与符号（默认开）
 	cfgNotifyPass     = "moderation_notify_pass"     // 自动通过时通知作者（默认关）
 	cfgAdminExempt    = "moderation_admin_exempt"    // 管理员发布免审（默认开）
@@ -30,6 +31,7 @@ const (
 type settings struct {
 	ScopeDocuments bool `json:"scope_documents"`
 	ScopeBooks     bool `json:"scope_books"`
+	ScopeUGC       bool `json:"scope_ugc"`
 	SkipNoise      bool `json:"skip_noise"`
 	NotifyPass     bool `json:"notify_pass"`
 	AdminExempt    bool `json:"admin_exempt"`
@@ -46,7 +48,7 @@ func (b *behavior) settings() settings {
 		return def
 	}
 	return settings{
-		ScopeDocuments: on(cfgScopeDocuments, true), ScopeBooks: on(cfgScopeBooks, true), SkipNoise: on(cfgSkipNoise, true),
+		ScopeDocuments: on(cfgScopeDocuments, true), ScopeBooks: on(cfgScopeBooks, true), ScopeUGC: on(cfgScopeUGC, true), SkipNoise: on(cfgSkipNoise, true),
 		NotifyPass: on(cfgNotifyPass, false), AdminExempt: on(cfgAdminExempt, true),
 	}
 }
@@ -118,7 +120,8 @@ func guard(core plugincore.Core, t plugincore.PublishTarget) plugincore.PublishV
 	}
 	b := &behavior{core: core}
 	s := b.settings()
-	if (t.Kind == plugincore.PublishDocument && !s.ScopeDocuments) || (t.Kind == plugincore.PublishBook && !s.ScopeBooks) {
+	_, ugc := plugincore.UserContentFor(t.Kind)
+	if (t.Kind == plugincore.PublishDocument && !s.ScopeDocuments) || (t.Kind == plugincore.PublishBook && !s.ScopeBooks) || (ugc && !s.ScopeUGC) {
 		return plugincore.PublishVerdict{}
 	}
 	if s.AdminExempt && t.ActorID != 0 {

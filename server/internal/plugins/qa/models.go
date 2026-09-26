@@ -89,7 +89,8 @@ type Question struct {
 	AICitations      string    `gorm:"type:text" json:"-"`
 	AcceptedAnswerID uint      `json:"accepted_answer_id"`
 	AnswerCount      int       `json:"answer_count"`
-	Status           string    `gorm:"size:10;index" json:"status"` // open | resolved
+	Status           string    `gorm:"size:10;index" json:"status"`                         // open | resolved
+	Visibility       string    `gorm:"size:10;index;not null;default:''" json:"visibility"` // ""（公开）| held（待审核）| hidden（驳回/下架）
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
@@ -102,6 +103,7 @@ type Answer struct {
 	QuestionID uint      `gorm:"index" json:"question_id"`
 	UserID     uint      `gorm:"index" json:"user_id"`
 	Body       string    `gorm:"type:text" json:"body"`
+	Visibility string    `gorm:"size:10;index;not null;default:''" json:"visibility"` // 同 Question.Visibility
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }

@@ -80,7 +80,15 @@ func (b *behavior) caseItems(rows []Case) []gin.H {
 	}
 	items := make([]gin.H, 0, len(rows))
 	for _, r := range rows {
-		items = append(items, gin.H{"case": r, "user": users[r.UserID], "book": books[r.BookID], "doc_slug": docs[r.TargetID]})
+		item := gin.H{"case": r, "user": users[r.UserID], "book": books[r.BookID]}
+		if r.Kind == plugincore.PublishDocument {
+			item["doc_slug"] = docs[r.TargetID]
+		} else if uc, found := plugincore.UserContentFor(r.Kind); found {
+			if ref, ok := uc.Resolve(b.core, nil, r.TargetID); ok { // 其他插件登记的用户内容：由登记者提供查看链接
+				item["link"] = ref.Link
+			}
+		}
+		items = append(items, item)
 	}
 	return items
 }
@@ -107,7 +115,7 @@ func (b *behavior) AdminListCases(c *gin.Context) {
 	case "handled":
 		q = q.Where("status IN ?", []string{StatusApproved, StatusRejected})
 	}
-	if k := c.Query("kind"); k == plugincore.PublishDocument || k == plugincore.PublishBook {
+	if k := c.Query("kind"); k == plugincore.PublishDocument || k == plugincore.PublishBook || isUserContent(k) {
 		q = q.Where("kind = ?", k)
 	}
 	if kw := strings.TrimSpace(c.Query("q")); kw != "" {
@@ -375,6 +383,7 @@ func (b *behavior) AdminUpdateSettings(c *gin.Context) {
 	keys := map[string][2]string{
 		"scope_documents": {cfgScopeDocuments, "内容审核：审查章节发布"},
 		"scope_books":     {cfgScopeBooks, "内容审核：审查书籍公开"},
+		"scope_ugc":       {cfgScopeUGC, "内容审核：审查用户发布的其他内容（如问答）"},
 		"skip_noise":      {cfgSkipNoise, "内容审核：忽略词语间的空白与符号"},
 		"notify_pass":     {cfgNotifyPass, "内容审核：自动通过时通知作者"},
 		"admin_exempt":    {cfgAdminExempt, "内容审核：管理员发布免审"},
@@ -393,4 +402,9 @@ func (b *behavior) AdminUpdateSettings(c *gin.Context) {
 	}
 	b.core.RecordAudit(c, "moderation.settings_updated", "moderation", "settings", "内容审核设置", changedFields(changed...))
 	b.core.OK(c, b.settings())
+}
+
+func isUserContent(kind string) bool {
+	_, found := plugincore.UserContentFor(kind)
+	return found
 }

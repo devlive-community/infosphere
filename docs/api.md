@@ -551,6 +551,7 @@ Authorization: Bearer <token>
 - **索引**：已发布章节按 H2/H3 小节切分（锚点 `h-N` 与阅读页一致，过长小节按段落再切，约 900 字），关键词检索用中日韩单字+二元组与拉丁词的 BM25；配置了嵌入模型时后台任务 `qa.index` 为分块计算向量，检索改为「向量 + 关键词」各半的混合打分。内容变化（章节 ID/更新时间摘要）时提问前自动重建，未变化的分块复用已算好的向量。
 - **作答**：标准模式检索 `top_k` 个片段后一次作答；Agent 模式（`mode=agent`）由模型调用 `search_book` / `read_section` / `get_toc` 工具，直到模型不再调用工具为止（不限轮数，不设整体超时；与之前完全相同的工具调用不重复执行，直接提示模型基于已有结果作答）。回答中的 `[n]` 映射为出处 `citations[]{n, doc_id, doc_slug, doc_title, heading, anchor, snippet}`，前端链接到 `/book/reader/<书>/<章节>#<anchor>`。划词提问（`selection` + `doc_id`）优先加入所在章节中包含选中文字的小节。
 - **后台生成与调用链**：提问后立即返回 `status=running` 的记录，回答在后台生成（不受反向代理超时影响），读者订阅 `GET /qa/asks/:id/stream`（SSE）实时接收每一步，可取消；状态 running\|done\|failed\|canceled。每条记录含调用链 `trace[]`（按顺序：`context` 划词/当前章节上下文、`embed` 查询向量化、`retrieve` 检索命中、`model` 模型调用（模型、输入/输出 tokens、耗时、请求的工具及参数）、`tool` 工具执行（参数、检索方式、返回的小节））、合计 `calls`/`input_tokens`/`output_tokens`/`duration_ms`，以及与核心 AI 用量一致的 `trace_id`（可在「我的 AI 用量」查看同一链条的全部调用）。服务重启时遗留的进行中记录由巡检标记为中断。错误只返回面向读者的说明，不透出 AI 服务原始报错。
+- **内容治理**：提问与回答登记为用户内容（`plugincore.RegisterUserContent`，类型 `qa_question` / `qa_answer`），纳入发布审核与内容举报。新内容先以待审核写入，经发布守卫（如敏感词审核插件，范围开关 `scope_ugc`）放行后才公开；被拦截时 `visibility=held`，只对本人与管理员可见，给作者/提问者的通知延后到审核通过时发送；驳回或举报下架后 `visibility=hidden`。回答数只统计公开回答；下架被采纳的回答时问题回到待解决。创建接口返回 `{question|answer, held, message}`。
 - **额度（均为权益，可在成长等级/会员方案中提升或设为不限）**：每日 AI 提问次数 `qa.ai_daily`（基础 20）；其中深度模式另计 `qa.agent_daily`（基础 5，0 表示当前等级/会员不含深度模式）；另受核心每月 AI 用量 `ai.monthly_tokens` 约束。计入进行中与成功且实际调用了模型的提问（失败、取消、书中无相关内容不计），超出返回 429。
 - **消耗**：每条问答记录 `calls`（模型调用次数）、`input_tokens`、`output_tokens`、`estimated`；每次模型调用另写入核心 AI 用量记录（功能 `qa.ask` / `qa.agent`，后台向量化为系统调用 `qa.index`）。内容门禁同样生效：未解锁的付费章节不参与检索。
 
@@ -568,10 +569,10 @@ Authorization: Bearer <token>
 | GET | `/qa/me/quota` | 今日额度 `{used, limit, agent_used, agent_limit}` | 登录 + `qa:use` |
 | POST | `/qa/books/:id/reindex` | 作者/协作者/管理员立即重建索引（向量在后台计算） | 登录 + `qa:use` |
 | GET | `/qa/books/:id/questions?filter=all\|open\|resolved&q=&page=` | 社区问题列表（已解决在前，按更新时间排序），含提问者 `user` | 书籍可读 |
-| POST | `/qa/books/:id/questions` | `{title(≤200), body?, doc_id?, selection?, ask_id?}` 提问；`ask_id` 附上自己的 AI 回答作参考；通知作者 | 登录 + `qa:use` |
+| POST | `/qa/books/:id/questions` | `{title(≤200), body?, doc_id?, selection?, ask_id?}` 提问（先审查，返回 `{question, held, message}`）；`ask_id` 附上自己的 AI 回答作参考；公开后通知作者 | 登录 + `qa:use` |
 | GET | `/qa/questions/:id` | 问题详情 + `answers[]{answer, user, accepted, is_author, can_delete}`（采纳的在最前）+ `can_accept`、`can_manage` | 书籍可读 |
 | DELETE | `/qa/questions/:id` | 提问者、作者/协作者或管理员删除问题（连同回答） | 登录 + `qa:use` |
-| POST | `/qa/questions/:id/answers` | `{body(≤10000)}` 回答；通知提问者 | 登录 + `qa:use` |
+| POST | `/qa/questions/:id/answers` | `{body(≤10000)}` 回答（问题须已公开；先审查，返回 `{answer, held, message}`）；公开后通知提问者 | 登录 + `qa:use` |
 | POST | `/qa/answers/:id/accept` | 提问者或作者采纳（再次调用取消），问题变为已解决；通知回答者 | 登录 + `qa:use` |
 | DELETE | `/qa/answers/:id` | 回答者、作者/协作者或管理员删除回答（删除被采纳的回答时问题回到待解决） | 登录 + `qa:use` |
 | GET/PUT | `/admin/qa/settings` | `{ai_enabled, agent_enabled, top_k(3–12)}`，PUT 可只传部分字段；另返回 `ai_chat_available`、`ai_embed_available` | 管理员 + `qa:manage` |
@@ -595,7 +596,7 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 说明 | 权限 |
 | --- | --- | --- | --- |
-| POST | `/reports` | 举报当前有权查看的内容：`{target_type:"book"\|"document"\|"comment",target_id,reason,description?}`；原因支持 `spam/harassment/copyright/illegal/misleading/other`；同一用户对同一目标只能存在一条待处理举报 | `report:create` |
+| POST | `/reports` | 举报当前有权查看的内容：`{target_type:"book"\|"document"\|"comment"\|插件登记的用户内容类型（如 qa_question、qa_answer）,target_id,reason,description?}`；原因支持 `spam/harassment/copyright/illegal/misleading/other`；同一用户对同一目标只能存在一条待处理举报 | `report:create` |
 
 普通用户只能提交举报，无法读取队列或其他举报人的信息。目标不可见或不存在时统一返回 404；补充说明最多 1000 字。
 
@@ -694,8 +695,8 @@ Authorization: Bearer <token>
 | GET | `/admin/tasks?page=&page_size=&status=&type=` | 分页查询异步任务；状态支持 pending/running/retrying/succeeded/failed，类型包含 `email.send`、`content.import.pdf`、`content.import.zip`、`maintenance.cleanup`、`achievement.recalculate`，加密任务载荷永不返回 | `task:read` |
 | GET | `/admin/tasks/types` | 已注册的全部任务类型 `items[]`（含插件任务，前端按 `admin.tasks.types.*` 本地化） | `task:read` |
 | POST | `/admin/tasks/:id/retry` | 将最终失败任务清空旧错误和尝试次数后重新排队；重复操作返回 409 | `task:retry` |
-| GET | `/admin/reports?page=&page_size=&status=&target_type=&reason=&q=` | 举报队列与处理记录；`q` 匹配目标摘要、举报人用户名或邮箱；举报人身份仅此管理员接口返回 | `report:read` |
-| PUT | `/admin/reports/:id` | 处理待审举报：`{resolution:"reject"\|"takedown",note?}`；下架会将书籍转为私有归档、章节归档或评论隐藏，并通知举报人 | `report:update` |
+| GET | `/admin/reports?page=&page_size=&status=&target_type=&reason=&q=` | 举报队列与处理记录；`q` 匹配目标摘要、举报人用户名或邮箱；举报人身份仅此管理员接口返回；另返回全部可举报类型 `target_types` | `report:read` |
+| PUT | `/admin/reports/:id` | 处理待审举报：`{resolution:"reject"\|"takedown",note?}`；下架会将书籍转为私有归档、章节归档、评论隐藏，插件登记的用户内容由登记者隐藏（在事务之外执行，失败时举报回到待处理），并通知举报人 | `report:update` |
 | GET | `/admin/plugins` | 列出后台插件（`key/name/description/kind/builtin/installed/version/status/error`）。`kind=runtime` 为运行时依赖插件（下载二进制），`kind=feature` 为特性开关插件；`installed` 表示已安装/已启用 | `plugin:manage` |
 | POST | `/admin/plugins/:key/install` | runtime 插件后台异步安装（pdf-export 下载 chrome-headless-shell），轮询 `/admin/plugins` 看状态；feature 插件（如 achievements）为即时**启用** | `plugin:manage` |
 | POST | `/admin/plugins/:key/uninstall[?purge=true]` | runtime 插件卸载并清理下载文件；feature 插件为即时**禁用**（保留数据）。`purge=true` 额外 DROP 该插件独占表（如成就 7 张表，不可恢复）。特性插件禁用后其前端页面与后端接口一并停用（成就管理菜单隐藏、`/admin/achievement-*` 与 `/users/me/achievements` 返回 404），其动态权限也随之移除 | `plugin:manage` |

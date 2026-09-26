@@ -91,13 +91,17 @@ export interface QAQuestion {
   accepted_answer_id: number
   answer_count: number
   status: 'open' | 'resolved'
+  visibility: QAVisibility
   created_at: string
   updated_at: string
   user: QAUser
 }
 
+// QAVisibility 社区内容可见性：''（公开）| held（待审核）| hidden（驳回/下架）；非公开内容只对本人与管理员可见
+export type QAVisibility = '' | 'held' | 'hidden'
+
 export interface QAAnswerItem {
-  answer: { id: number; question_id: number; user_id: number; body: string; created_at: string }
+  answer: { id: number; question_id: number; user_id: number; body: string; visibility: QAVisibility; created_at: string }
   user: QAUser
   accepted: boolean
   is_author: boolean

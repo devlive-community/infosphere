@@ -466,7 +466,12 @@ func (b *behavior) ListQuestions(c *gin.Context) {
 		return
 	}
 	page, pageSize := b.core.Paginate(c)
-	q := b.core.Gorm().Model(&Question{}).Where("book_id = ?", book.ID)
+	viewerID := uint(0)
+	if u := b.core.CurrentUser(c); u != nil {
+		viewerID = u.ID
+	}
+	// 未公开（待审核/已隐藏）的提问只有提问者本人在列表中可见
+	q := b.core.Gorm().Model(&Question{}).Where("book_id = ? AND (visibility = ? OR user_id = ?)", book.ID, visPublic, viewerID)
 	switch c.Query("filter") {
 	case "open":
 		q = q.Where("status = ?", "open")
@@ -507,7 +512,7 @@ func (b *behavior) CreateQuestion(c *gin.Context) {
 		return
 	}
 	u := b.core.CurrentUser(c)
-	q := Question{BookID: book.ID, UserID: u.ID, DocID: req.DocID, Title: title, Body: body, Selection: strings.TrimSpace(req.Selection), Status: "open"}
+	q := Question{BookID: book.ID, UserID: u.ID, DocID: req.DocID, Title: title, Body: body, Selection: strings.TrimSpace(req.Selection), Status: "open", Visibility: visHeld}
 	if req.AskID != 0 {
 		var ask Ask
 		if b.core.Gorm().Where("id = ? AND user_id = ? AND book_id = ? AND status = ?", req.AskID, u.ID, book.ID, askDone).First(&ask).Error == nil {
@@ -521,11 +526,10 @@ func (b *behavior) CreateQuestion(c *gin.Context) {
 		b.core.Fail(c, http.StatusInternalServerError, "提问失败")
 		return
 	}
-	if book.UserID != u.ID {
-		b.core.NotifyI18n(book.UserID, "comment", "notify.qa.asked", map[string]string{"book": book.Title, "title": q.Title},
-			map[string]any{"link": "/book/detail/" + book.Slug + "?tab=qa&question=" + strconv.FormatUint(uint64(q.ID), 10)})
-	}
-	b.core.OK(c, b.questionViews([]Question{q})[0])
+	held, msg := publishOrHold(b.core, plugincore.PublishTarget{Kind: kindQuestion, ID: q.ID, BookID: book.ID, UserID: u.ID, Title: q.Title, ActorID: u.ID,
+		Fields: map[string]string{"title": q.Title, "body": q.Body, "selection": q.Selection}})
+	b.core.Gorm().First(&q, q.ID)
+	b.core.OK(c, gin.H{"question": b.questionViews([]Question{q})[0], "held": held, "message": msg})
 }
 
 func (b *behavior) findQuestion(c *gin.Context) (*Question, *models.Book, bool) {
@@ -535,7 +539,8 @@ func (b *behavior) findQuestion(c *gin.Context) (*Question, *models.Book, bool) 
 		return nil, nil, false
 	}
 	var book models.Book
-	if b.core.Gorm().First(&book, q.BookID).Error != nil || !b.core.CanReadBook(b.core.CurrentUser(c), &book) {
+	viewer := b.core.CurrentUser(c)
+	if b.core.Gorm().First(&book, q.BookID).Error != nil || !b.core.CanReadBook(viewer, &book) || !canSee(b.core, viewer, q.UserID, q.Visibility) {
 		b.core.Fail(c, http.StatusNotFound, "问题不存在")
 		return nil, nil, false
 	}
@@ -548,8 +553,13 @@ func (b *behavior) GetQuestion(c *gin.Context) {
 	if !found {
 		return
 	}
-	var answers []Answer
-	b.core.Gorm().Where("question_id = ?", q.ID).Order("id ASC").Find(&answers)
+	var all, answers []Answer
+	b.core.Gorm().Where("question_id = ?", q.ID).Order("id ASC").Find(&all)
+	for _, a := range all {
+		if canSee(b.core, b.core.CurrentUser(c), a.UserID, a.Visibility) {
+			answers = append(answers, a)
+		}
+	}
 	ids := []uint{}
 	for _, a := range answers {
 		ids = append(ids, a.UserID)
@@ -584,23 +594,20 @@ func (b *behavior) CreateAnswer(c *gin.Context) {
 		b.core.Fail(c, http.StatusBadRequest, "请填写回答（不超过 10000 字）")
 		return
 	}
+	if q.Visibility != visPublic {
+		b.core.Fail(c, http.StatusConflict, "该问题尚未公开，暂不能回答")
+		return
+	}
 	u := b.core.CurrentUser(c)
-	a := Answer{QuestionID: q.ID, UserID: u.ID, Body: strings.TrimSpace(req.Body)}
-	err := b.core.Gorm().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&a).Error; err != nil {
-			return err
-		}
-		return tx.Model(&Question{}).Where("id = ?", q.ID).Updates(map[string]any{"answer_count": gorm.Expr("answer_count + 1"), "updated_at": time.Now()}).Error
-	})
-	if err != nil {
+	a := Answer{QuestionID: q.ID, UserID: u.ID, Body: strings.TrimSpace(req.Body), Visibility: visHeld}
+	if err := b.core.Gorm().Create(&a).Error; err != nil {
 		b.core.Fail(c, http.StatusInternalServerError, "回答失败")
 		return
 	}
-	if q.UserID != u.ID {
-		b.core.NotifyI18n(q.UserID, "comment", "notify.qa.answered", map[string]string{"title": q.Title},
-			map[string]any{"link": "/book/detail/" + book.Slug + "?tab=qa&question=" + strconv.FormatUint(uint64(q.ID), 10)})
-	}
-	b.core.OK(c, a)
+	held, msg := publishOrHold(b.core, plugincore.PublishTarget{Kind: kindAnswer, ID: a.ID, BookID: book.ID, UserID: u.ID,
+		Title: truncate("回答「"+q.Title+"」", 120), ActorID: u.ID, Fields: map[string]string{"body": a.Body}})
+	b.core.Gorm().First(&a, a.ID)
+	b.core.OK(c, gin.H{"answer": a, "held": held, "message": msg})
 }
 
 // AcceptAnswer POST /qa/answers/:id/accept 提问者或作者采纳回答（再次采纳同一回答则取消）。
@@ -619,6 +626,10 @@ func (b *behavior) AcceptAnswer(c *gin.Context) {
 	u := b.core.CurrentUser(c)
 	if u.ID != q.UserID && !b.isEditor(u, &book) {
 		b.core.Fail(c, http.StatusForbidden, "只有提问者或作者可以采纳回答")
+		return
+	}
+	if a.Visibility != visPublic {
+		b.core.Fail(c, http.StatusConflict, "该回答尚未公开，不能采纳")
 		return
 	}
 	updates := map[string]any{"accepted_answer_id": a.ID, "status": "resolved", "updated_at": time.Now()}
@@ -674,7 +685,10 @@ func (b *behavior) DeleteAnswer(c *gin.Context) {
 		if err := tx.Delete(&Answer{}, a.ID).Error; err != nil {
 			return err
 		}
-		updates := map[string]any{"answer_count": gorm.Expr("CASE WHEN answer_count > 0 THEN answer_count - 1 ELSE 0 END")}
+		updates := map[string]any{"updated_at": time.Now()}
+		if a.Visibility == visPublic {
+			updates["answer_count"] = gorm.Expr("CASE WHEN answer_count > 0 THEN answer_count - 1 ELSE 0 END")
+		}
 		if q.AcceptedAnswerID == a.ID {
 			updates["accepted_answer_id"], updates["status"] = 0, "open"
 		}

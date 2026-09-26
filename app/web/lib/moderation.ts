@@ -15,7 +15,7 @@ export type ModerationStatus = 'auto_passed' | 'pending' | 'approved' | 'rejecte
 
 export interface ModerationCase {
   id: number
-  kind: 'document' | 'book'
+  kind: string // document | book | 插件登记的用户内容类型（如 qa_question）
   target_id: number
   book_id: number
   user_id: number
@@ -33,6 +33,7 @@ export interface ModerationCaseItem {
   user?: UserLite
   book?: { id: number; title: string; slug: string }
   doc_slug?: string
+  link?: string // 插件登记的用户内容由登记者提供查看链接
 }
 
 export const MODERATION_STATUS_TONE: Record<ModerationStatus, 'slate' | 'amber' | 'emerald' | 'rose'> = {
@@ -41,6 +42,7 @@ export const MODERATION_STATUS_TONE: Record<ModerationStatus, 'slate' | 'amber' 
 
 // caseLink 审核对象的阅读页链接（章节 → 阅读页，书籍 → 详情页）。
 export function caseLink(item: ModerationCaseItem): string | undefined {
+  if (item.link) return item.link
   if (!item.book) return undefined
   if (item.case.kind === 'document') return item.doc_slug ? `/book/reader/${encodeURIComponent(item.book.slug)}/${encodeURIComponent(item.doc_slug)}` : undefined
   return `/book/detail/${encodeURIComponent(item.book.slug)}`

@@ -200,6 +200,7 @@ function MyQuestions() {
               ) : <span className="block break-words font-medium text-slate-500">{q.title}</span>}
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
                 {q.status === 'resolved' && <Badge tone="emerald">{t('qa.community.resolved')}</Badge>}
+                {q.visibility && <Badge tone={q.visibility === 'held' ? 'amber' : 'rose'}>{t(q.visibility === 'held' ? 'qa.community.visibilityHeld' : 'qa.community.visibilityHidden')}</Badge>}
                 <span>{available ? book.title : t('qa.mine.bookUnavailable')}</span>
                 <span>{formatDate(q.updated_at)}</span>
               </div>

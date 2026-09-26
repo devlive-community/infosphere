@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"knowforge/server/internal/models"
+	"knowforge/server/internal/plugincore"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -19,6 +20,21 @@ var reportReasons = map[string]bool{
 	"illegal": true, "misleading": true, "other": true,
 }
 var reportTargetTypes = map[string]bool{"book": true, "document": true, "comment": true}
+
+// validReportTarget 内置类型或插件登记的用户内容类型（如问答的提问、回答）。
+func validReportTarget(kind string) bool {
+	if reportTargetTypes[kind] {
+		return true
+	}
+	_, found := plugincore.UserContentFor(kind)
+	return found
+}
+
+// reportTargetTypeList 全部可举报类型（内置在前），供管理端筛选。
+func reportTargetTypeList() []string {
+	return append([]string{"book", "document", "comment"}, plugincore.UserContentKinds()...)
+}
+
 var errReportAlreadyProcessed = errors.New("report already processed")
 
 type reportTarget struct {
@@ -55,7 +71,7 @@ func (a *App) CreateContentReport(c *gin.Context) {
 		Reason      string `json:"reason"`
 		Description string `json:"description"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil || !reportTargetTypes[req.TargetType] || req.TargetID == 0 || !reportReasons[req.Reason] {
+	if err := c.ShouldBindJSON(&req); err != nil || !validReportTarget(req.TargetType) || req.TargetID == 0 || !reportReasons[req.Reason] {
 		fail(c, http.StatusBadRequest, "举报参数无效")
 		return
 	}
@@ -116,6 +132,11 @@ func (a *App) findReportableTarget(u *models.User, kind string, id uint) *report
 		}
 		return &reportTarget{Type: kind, ID: comment.ID, Label: trimRunes(comment.Content, 80)}
 	}
+	if uc, found := plugincore.UserContentFor(kind); found && u != nil {
+		if ref, visible := uc.Resolve(a, u, id); visible {
+			return &reportTarget{Type: kind, ID: id, Label: trimRunes(ref.Label, 80)}
+		}
+	}
 	return nil
 }
 
@@ -128,7 +149,7 @@ func (a *App) AdminListContentReports(c *gin.Context) {
 	if status := strings.TrimSpace(c.Query("status")); status == "pending" || status == "resolved" || status == "rejected" {
 		query = query.Where("content_reports.status = ?", status)
 	}
-	if targetType := strings.TrimSpace(c.Query("target_type")); reportTargetTypes[targetType] {
+	if targetType := strings.TrimSpace(c.Query("target_type")); validReportTarget(targetType) {
 		query = query.Where("content_reports.target_type = ?", targetType)
 	}
 	if reason := strings.TrimSpace(c.Query("reason")); reportReasons[reason] {
@@ -154,7 +175,7 @@ func (a *App) AdminListContentReports(c *gin.Context) {
 		fail(c, http.StatusInternalServerError, "查询举报失败")
 		return
 	}
-	ok(c, PageResult{Items: items, Total: total, Page: page, PageSize: pageSize})
+	ok(c, gin.H{"items": items, "total": total, "page": page, "page_size": pageSize, "target_types": reportTargetTypeList()})
 }
 
 // AdminResolveContentReport PUT /admin/reports/:id 驳回举报或下架目标内容。
@@ -203,7 +224,7 @@ func (a *App) AdminResolveContentReport(c *gin.Context) {
 		if claimed.RowsAffected == 0 {
 			return errReportAlreadyProcessed
 		}
-		if req.Resolution == "takedown" {
+		if req.Resolution == "takedown" && reportTargetTypes[report.TargetType] {
 			if err := takedownReportedTarget(tx, &report); err != nil {
 				return err
 			}
@@ -218,6 +239,20 @@ func (a *App) AdminResolveContentReport(c *gin.Context) {
 			fail(c, http.StatusInternalServerError, "处理举报失败")
 		}
 		return
+	}
+	// 插件登记的内容在事务之外下架（插件经自己的连接写库，SQLite 单写者下不能嵌套在事务内）；失败则撤回处理结果
+	if req.Resolution == "takedown" && !reportTargetTypes[report.TargetType] {
+		err := errors.New("未登记的举报类型")
+		if uc, found := plugincore.UserContentFor(report.TargetType); found {
+			err = uc.SetVisible(a, report.TargetID, false)
+		}
+		if err != nil {
+			a.DB.Model(&models.ContentReport{}).Where("id = ?", report.ID).Updates(map[string]any{
+				"status": "pending", "resolution": "", "resolution_note": "", "handler_id": 0, "resolved_at": nil,
+			})
+			fail(c, http.StatusInternalServerError, "下架失败："+err.Error())
+			return
+		}
 	}
 	report.Status = finalStatus
 	report.Resolution = req.Resolution

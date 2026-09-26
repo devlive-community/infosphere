@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, formatDate } from '@/lib/api'
 import type { PageResult, User } from '@/lib/types'
-import { renderAnswer, type QACitation, type QAQuestion, type QAQuestionDetail } from '@/lib/qa'
+import { renderAnswer, type QACitation, type QAQuestion, type QAQuestionDetail, type QAVisibility } from '@/lib/qa'
+import ReportButton from '@/components/ReportButton'
 import { renderMarkdown } from '@/lib/markdown'
 import UserAvatar from '@/components/UserAvatar'
 import { CitationList } from '@/components/qa/QAAskPanel'
@@ -26,6 +27,13 @@ interface Props {
 // QACommunity 社区问答：本书的公开提问列表与问题详情（回答、采纳、删除）。当前打开的问题由调用方放在 URL 中。
 export default function QACommunity(props: Props) {
   return props.questionId ? <QuestionDetail {...props} questionId={props.questionId} /> : <QuestionList {...props} />
+}
+
+// VisibilityBadge 本人可见的非公开内容标识（待审核 / 已隐藏）
+function VisibilityBadge({ visibility }: { visibility: QAVisibility }) {
+  const { t } = useTranslation()
+  if (!visibility) return null
+  return <Badge tone={visibility === 'held' ? 'amber' : 'rose'}>{t(visibility === 'held' ? 'qa.community.visibilityHeld' : 'qa.community.visibilityHidden')}</Badge>
 }
 
 function displayName(u?: { username: string; nickname?: string }) {
@@ -62,14 +70,14 @@ function QuestionList({ user, book, onOpenQuestion, docId, selection, loginHref,
   async function submit() {
     setSaving(true)
     try {
-      const created = await api<QAQuestion>(`/qa/books/${book.id}/questions`, { method: 'POST', body: {
+      const created = await api<{ question: QAQuestion; held: boolean }>(`/qa/books/${book.id}/questions`, { method: 'POST', body: {
         title: form.title.trim(), body: form.body.trim(), doc_id: docId || 0,
         selection: form.withSelection && selection ? selection : '',
       } })
       setAsking(false)
       setForm({ title: '', body: '', withSelection: true })
-      showToast({ message: t('qa.community.asked'), tone: 'success' })
-      onOpenQuestion(created.id)
+      showToast({ message: t(created.held ? 'qa.community.askedHeld' : 'qa.community.asked'), tone: created.held ? 'info' : 'success' })
+      onOpenQuestion(created.question.id)
     } catch (e) {
       showToast({ title: t('qa.community.askFailed'), message: (e as Error).message, tone: 'error' })
     } finally {
@@ -108,6 +116,7 @@ function QuestionList({ user, book, onOpenQuestion, docId, selection, loginHref,
                 <span className="min-w-0 flex-1">
                   <span className="block break-words font-medium text-slate-900">{q.title}</span>
                   <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+                    <VisibilityBadge visibility={q.visibility} />
                     {q.status === 'resolved' && <Badge tone="emerald">{t('qa.community.resolved')}</Badge>}
                     {q.ai_answer && <Badge tone="violet">{t('qa.community.hasAI')}</Badge>}
                     <span>{displayName(q.user)}</span>
@@ -170,9 +179,9 @@ function QuestionDetail({ user, book, questionId, onOpenQuestion, onCite, loginH
   async function postAnswer() {
     setPosting(true)
     try {
-      await api(`/qa/questions/${questionId}/answers`, { method: 'POST', body: { body: answer.trim() } })
+      const res = await api<{ held: boolean }>(`/qa/questions/${questionId}/answers`, { method: 'POST', body: { body: answer.trim() } })
       setAnswer('')
-      showToast({ message: t('qa.community.answered'), tone: 'success' })
+      showToast({ message: t(res.held ? 'qa.community.answeredHeld' : 'qa.community.answered'), tone: res.held ? 'info' : 'success' })
       await load()
     } catch (e) {
       showToast({ title: t('qa.community.answerFailed'), message: (e as Error).message, tone: 'error' })
@@ -229,10 +238,12 @@ function QuestionDetail({ user, book, questionId, onOpenQuestion, onCite, loginH
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="flex items-start gap-3">
           <h3 className="min-w-0 flex-1 break-words text-lg font-semibold text-slate-900">{q.title}</h3>
+          <VisibilityBadge visibility={q.visibility} />
           <Badge tone={q.status === 'resolved' ? 'emerald' : 'slate'}>{t(q.status === 'resolved' ? 'qa.community.resolved' : 'qa.community.open')}</Badge>
         </div>
         <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
           <UserAvatar user={q.user} size="h-5 w-5" /><span>{displayName(q.user)}</span><span>{formatDate(q.created_at)}</span>
+          {user && user.id !== q.user_id && q.visibility === '' && <span className="ml-auto"><ReportButton targetType="qa_question" targetId={q.id} compact /></span>}
           {detail.can_manage && (
             <Button size="sm" variant="ghost" className="ml-auto text-rose-600" loading={busy === 'delete-question'} disabled={busy !== null} onClick={() => void removeQuestion()}>
               <i className="fa-solid fa-trash" aria-hidden="true" />{t('common.actions.delete')}
@@ -270,9 +281,11 @@ function QuestionDetail({ user, book, questionId, onOpenQuestion, onCite, loginH
                 <UserAvatar user={au} size="h-5 w-5" /><span className="text-slate-600">{displayName(au)}</span>
                 {is_author && <Badge tone="primary">{t('qa.community.author')}</Badge>}
                 {accepted && <Badge tone="emerald"><i className="fa-solid fa-check mr-1" aria-hidden="true" />{t('qa.community.accepted')}</Badge>}
+                <VisibilityBadge visibility={a.visibility} />
                 <span>{formatDate(a.created_at)}</span>
                 <span className="ml-auto flex items-center gap-1">
-                  {detail.can_accept && (
+                  {user && user.id !== a.user_id && a.visibility === '' && <ReportButton targetType="qa_answer" targetId={a.id} compact />}
+                  {detail.can_accept && a.visibility === '' && (
                     <Button size="sm" variant="ghost" loading={busy === `accept:${a.id}`} disabled={busy !== null} onClick={() => void accept(a.id)}>
                       {accepted ? t('qa.community.unaccept') : t('qa.community.accept')}
                     </Button>

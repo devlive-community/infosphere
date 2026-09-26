@@ -5,7 +5,8 @@ import { useApp } from '@/lib/auth'
 import { Button, Field, Modal, Select, Textarea, useFeedback } from '@/components/ui'
 import { useTranslation } from '@/lib/i18n'
 
-export type ReportTargetType = 'book' | 'document' | 'comment'
+// 内置类型或插件登记的用户内容类型（如问答的 qa_question、qa_answer）
+export type ReportTargetType = 'book' | 'document' | 'comment' | (string & {})
 
 const REASON_KEYS: { value: string; key: string }[] = [
   { value: 'spam', key: 'report.reasonSpam' },

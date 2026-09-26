@@ -262,8 +262,8 @@ function WordsPanel() {
 
 // —— 设置 ——
 
-type Settings = { scope_documents: boolean; scope_books: boolean; skip_noise: boolean; notify_pass: boolean; admin_exempt: boolean }
-const SETTING_KEYS: (keyof Settings)[] = ['scope_documents', 'scope_books', 'skip_noise', 'admin_exempt', 'notify_pass']
+type Settings = { scope_documents: boolean; scope_books: boolean; scope_ugc: boolean; skip_noise: boolean; notify_pass: boolean; admin_exempt: boolean }
+const SETTING_KEYS: (keyof Settings)[] = ['scope_documents', 'scope_books', 'scope_ugc', 'skip_noise', 'admin_exempt', 'notify_pass']
 
 function SettingsPanel() {
   const { t } = useTranslation()
