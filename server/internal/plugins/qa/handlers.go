@@ -1,6 +1,7 @@
 package qa
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -54,6 +55,7 @@ func (b *behavior) RegisterRoutes(api *gin.RouterGroup, core plugincore.Core) {
 	}
 	api.GET("/admin/qa/settings", admin(b.AdminGetSettings)...)
 	api.PUT("/admin/qa/settings", admin(b.AdminUpdateSettings)...)
+	api.POST("/admin/qa/semantic/reindex", admin(b.AdminSemanticReindex)...)
 }
 
 // —— 设置 ——
@@ -63,10 +65,12 @@ type settings struct {
 	AgentEnabled       bool `json:"agent_enabled"`
 	TopK               int  `json:"top_k"`
 	TraceRetentionDays int  `json:"trace_retention_days"` // 调用链明细保留天数（0 为永久）
+	SemanticSearch     bool `json:"semantic_search"`      // 全站语义搜索与相关推荐（为公开书籍建立向量索引）
 }
 
 func (b *behavior) settings() settings {
-	s := settings{AIEnabled: b.core.GetSetting("qa_ai_enabled") != "false", AgentEnabled: b.core.GetSetting("qa_agent_enabled") != "false", TopK: 6}
+	s := settings{AIEnabled: b.core.GetSetting("qa_ai_enabled") != "false", AgentEnabled: b.core.GetSetting("qa_agent_enabled") != "false", TopK: 6,
+		SemanticSearch: b.core.GetSetting(cfgSemantic) == "true"}
 	if v := b.core.AtoiDefault(b.core.GetSetting("qa_top_k"), 6); v >= 3 && v <= 12 {
 		s.TopK = v
 	}
@@ -79,7 +83,7 @@ func (b *behavior) settings() settings {
 // AdminGetSettings GET /admin/qa/settings
 func (b *behavior) AdminGetSettings(c *gin.Context) {
 	chat, embed := b.core.AIStatus()
-	b.core.OK(c, gin.H{"settings": b.settings(), "ai_chat_available": chat, "ai_embed_available": embed})
+	b.core.OK(c, gin.H{"settings": b.settings(), "ai_chat_available": chat, "ai_embed_available": embed, "semantic": b.semanticStats()})
 }
 
 // AdminUpdateSettings PUT /admin/qa/settings（可只传部分字段）
@@ -89,6 +93,7 @@ func (b *behavior) AdminUpdateSettings(c *gin.Context) {
 		AgentEnabled *bool `json:"agent_enabled"`
 		TopK         *int  `json:"top_k"`
 		TraceDays    *int  `json:"trace_retention_days"`
+		Semantic     *bool `json:"semantic_search"`
 	}
 	if c.ShouldBindJSON(&req) != nil {
 		b.core.Fail(c, http.StatusBadRequest, "参数错误")
@@ -120,10 +125,26 @@ func (b *behavior) AdminUpdateSettings(c *gin.Context) {
 		_ = b.core.SetSetting("qa_trace_retention_days", strconv.Itoa(*req.TraceDays), "问答：调用链明细保留天数（0 为永久）")
 		fields = append(fields, "trace_retention_days")
 	}
+	if req.Semantic != nil && *req.Semantic != old.SemanticSearch {
+		_ = b.core.SetSetting(cfgSemantic, strconv.FormatBool(*req.Semantic), "问答：全站语义搜索与相关推荐")
+		fields = append(fields, "semantic_search")
+		if *req.Semantic {
+			go b.enqueueStaleIndexes(context.Background()) // 开启后立即为公开书籍建立索引
+		}
+	}
 	if len(fields) > 0 {
 		b.core.RecordAudit(c, "qa.settings_updated", "qa", "settings", "问答设置", map[string]any{"changed_fields": fields})
 	}
 	b.AdminGetSettings(c)
+}
+
+// AdminSemanticReindex POST /admin/qa/semantic/reindex 立即为索引缺失或已过期的公开书籍排队重建 → {queued}。
+func (b *behavior) AdminSemanticReindex(c *gin.Context) {
+	if _, embed := b.core.AIStatus(); !embed || !b.semanticEnabled() {
+		b.core.Fail(c, http.StatusBadRequest, "请先配置向量嵌入模型并开启全站语义搜索")
+		return
+	}
+	b.core.OK(c, gin.H{"queued": b.enqueueStaleIndexes(c.Request.Context())})
 }
 
 // —— 公共 ——

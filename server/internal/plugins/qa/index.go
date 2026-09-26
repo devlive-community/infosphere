@@ -298,6 +298,9 @@ func (b *behavior) ensureIndex(ctx context.Context, bookID uint) (IndexState, er
 	if err != nil {
 		return state, err
 	}
+	if embedded == len(chunks) {
+		b.updateCentroids(bookID) // 分块有变化但向量都可复用：直接更新书籍/章节向量
+	}
 	if _, embed := b.core.AIStatus(); embed && embedded < len(chunks) {
 		if q := b.core.JobQueue(); q != nil {
 			_, _ = q.Enqueue(ctx, indexJobType, map[string]any{"book_id": bookID}, 3)
@@ -341,6 +344,7 @@ func (b *behavior) embedPending(ctx context.Context, bookID uint) error {
 	var embedded int64
 	db.Model(&Chunk{}).Where("book_id = ? AND embedding IS NOT NULL AND LENGTH(embedding) > 0", bookID).Count(&embedded)
 	db.Model(&IndexState{}).Where("book_id = ?", bookID).Updates(map[string]any{"embedded": embedded, "embed_error": ""})
+	b.updateCentroids(bookID)
 	return nil
 }
 

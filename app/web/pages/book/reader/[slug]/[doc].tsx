@@ -19,6 +19,7 @@ import type { PaidBookInfo } from '@/lib/paid'
 import PaywallCard from '@/components/PaywallCard'
 import QADrawer, { type QATab } from '@/components/qa/QADrawer'
 import ChapterGuideCard from '@/components/chapter-guide/ChapterGuideCard'
+import RelatedChapters from '@/components/RelatedChapters'
 import { chapterGuideEnabled } from '@/lib/chapter-guide'
 import { qaEnabled, citationHref, type QACitation } from '@/lib/qa'
 import ReportButton from '@/components/ReportButton'
@@ -558,6 +559,7 @@ export default function Reader({ site, siteUrl, user, book, doc, html, tree, acc
                   {chapterGuideEnabled(site) && <ChapterGuideCard docId={doc.id} />}
                   <div ref={contentRef} className="markdown-body" style={{ fontSize: FONT_SIZES[fontIdx] }} dangerouslySetInnerHTML={{ __html: html }} />
                   {doc.paywall && <PaywallCard paywall={doc.paywall} />}
+                  <RelatedChapters docId={doc.id} bookId={book.id} />
 
                   {/* 章节关闭评论时整个评论模块都不出现（不渲染标题/评论框/列表） */}
                   {doc.allow_comments !== false && <Comments docId={doc.id} allowComments />}

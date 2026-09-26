@@ -11,12 +11,14 @@ interface QASettings {
   agent_enabled: boolean
   top_k: number
   trace_retention_days: number
+  semantic_search: boolean
 }
 
 interface QASettingsResponse {
   settings: QASettings
   ai_chat_available: boolean
   ai_embed_available: boolean
+  semantic: { public_books: number; indexed_books: number }
 }
 
 export default function AdminQA() {
@@ -28,8 +30,21 @@ function AdminQAInner() {
   const { t } = useTranslation()
   const { showToast } = useFeedback()
   const [data, setData] = useState<QASettingsResponse | null>(null)
-  const [form, setForm] = useState<QASettings>({ ai_enabled: true, agent_enabled: true, top_k: 6, trace_retention_days: 0 })
+  const [form, setForm] = useState<QASettings>({ ai_enabled: true, agent_enabled: true, top_k: 6, trace_retention_days: 0, semantic_search: false })
   const [saving, setSaving] = useState(false)
+  const [reindexing, setReindexing] = useState(false)
+
+  async function reindex() {
+    setReindexing(true)
+    try {
+      const r = await api<{ queued: number }>('/admin/qa/semantic/reindex', { method: 'POST' })
+      showToast({ message: t('admin.qa.semanticQueued', { n: r.queued }), tone: 'success' })
+    } catch (e) {
+      showToast({ title: t('admin.qa.semanticReindexFailed'), message: (e as Error).message, tone: 'error' })
+    } finally {
+      setReindexing(false)
+    }
+  }
 
   useEffect(() => {
     api<QASettingsResponse>('/admin/qa/settings')
@@ -80,6 +95,20 @@ function AdminQAInner() {
                 <p className="mt-1 text-sm text-slate-500">{t('admin.qa.agentEnabledHint')}</p>
               </div>
               <Switch checked={form.agent_enabled} disabled={!form.ai_enabled} onChange={(v) => setForm({ ...form, agent_enabled: v })} ariaLabel={t('admin.qa.agentEnabled')} />
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="font-medium text-slate-900">{t('admin.qa.semantic')}</div>
+                <p className="mt-1 text-sm text-slate-500">{t('admin.qa.semanticHint')}</p>
+                {!data.ai_embed_available && <p className="mt-1 text-xs text-amber-600">{t('admin.qa.semanticNeedsEmbed')}</p>}
+                {data.settings.semantic_search && data.ai_embed_available && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span className="tabular-nums">{t('admin.qa.semanticStats', { indexed: data.semantic.indexed_books, total: data.semantic.public_books })}</span>
+                    <Button size="sm" variant="outline" loading={reindexing} onClick={() => void reindex()}>{t('admin.qa.semanticReindex')}</Button>
+                  </div>
+                )}
+              </div>
+              <Switch checked={form.semantic_search} disabled={!data.ai_embed_available && !form.semantic_search} onChange={(v) => setForm({ ...form, semantic_search: v })} ariaLabel={t('admin.qa.semantic')} />
             </div>
             <Field label={t('admin.qa.topK')} hint={t('admin.qa.topKHint')}>
               <Input type="number" min={3} max={12} value={form.top_k} onChange={(e) => setForm({ ...form, top_k: Number(e.target.value) || 0 })} className="w-32" />

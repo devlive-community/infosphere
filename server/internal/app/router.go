@@ -149,6 +149,8 @@ func (a *App) Router() *gin.Engine {
 			// /books/:id/translations 与 /books/:id/versions 由 book-translations / book-versions 插件子包自注册
 			public.GET("/books/:id/documents/slug/:slug", a.GetDocumentBySlug)
 			public.GET("/documents/:id", a.GetDocument)
+			public.GET("/books/:id/related", a.RelatedBooks)         // 语义相关书籍（插件提供，没有时为空）
+			public.GET("/documents/:id/related", a.RelatedDocuments) // 语义相关章节
 			// /tags、/tags/:slug/books 由 tags 插件子包自注册
 			public.POST("/books/:id/view", a.IncrementBookView)
 			// 导出（公开且开放导出的书籍匿名可导，鉴权在 handler 内）
@@ -210,6 +212,7 @@ func (a *App) Router() *gin.Engine {
 
 		// ── 全文搜索（search:read，匿名可搜公开内容） ──
 		api.GET("/search", a.OptionalAuth(), a.GlobalSearch)
+		api.GET("/search/semantic", a.OptionalAuth(), a.SemanticSearch)
 
 		// ── 权益：定义（供等级/会员权益编辑器）与本人生效值 ──
 		api.GET("/entitlements/definitions", a.RequireAuth(), a.EntitlementDefinitions)

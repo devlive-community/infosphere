@@ -576,7 +576,8 @@ Authorization: Bearer <token>
 | POST | `/qa/questions/:id/answers` | `{body(≤10000)}` 回答（问题须已公开；先审查，返回 `{answer, held, message}`）；公开后通知提问者 | 登录 + `qa:use` |
 | POST | `/qa/answers/:id/accept` | 提问者或作者采纳（再次调用取消），问题变为已解决；通知回答者 | 登录 + `qa:use` |
 | DELETE | `/qa/answers/:id` | 回答者、作者/协作者或管理员删除回答（删除被采纳的回答时问题回到待解决） | 登录 + `qa:use` |
-| GET/PUT | `/admin/qa/settings` | `{ai_enabled, agent_enabled, top_k(3–12), trace_retention_days(0 永久或 7–3650)}`，PUT 可只传部分字段；超过保留天数的已结束问答由巡检清空调用链详情（`trace`），问题、回答与用量合计保留；另返回 `ai_chat_available`、`ai_embed_available` | 管理员 + `qa:manage` |
+| GET/PUT | `/admin/qa/settings` | `{ai_enabled, agent_enabled, top_k(3–12), trace_retention_days(0 永久或 7–3650), semantic_search}`（GET 另返回 `semantic{public_books, indexed_books}`），PUT 可只传部分字段；超过保留天数的已结束问答由巡检清空调用链详情（`trace`），问题、回答与用量合计保留；另返回 `ai_chat_available`、`ai_embed_available` | 管理员 + `qa:manage` |
+| POST | `/admin/qa/semantic/reindex` | 立即为索引缺失或内容已变化的公开书籍排队重建（任务 `qa.reindex`）→ `{queued}`；未开启或未配置嵌入模型时 400 | 管理员 + `qa:manage` |
 
 ## 整本 AI 翻译（「书籍多语言」插件）
 
@@ -640,6 +641,19 @@ AI 为章节生成阅读前导读（一两段）与本章要点，为书籍生�
 | POST | `/ai-writer/tasks/:id/cancel` | 取消进行中的任务；已结束返回 409 | 登录 + `aiwriter:use` |
 | POST | `/ai-writer/tasks/:id/adopt` | `{mode: replace\|insert}` 记录已采纳（进行中或没有结果时 409） | 登录 + `aiwriter:use` |
 | DELETE | `/ai-writer/tasks/:id` | 删除一条记录（进行中的需先取消，返回 409；不退还次数，AI 用量记录保留） | 登录 + `aiwriter:use` |
+
+## 语义搜索与相关推荐
+
+核心只经 `plugincore.RegisterSemanticProvider` 询问插件登记的语义检索能力（目前由「书籍问答」插件的「全站语义搜索与相关推荐」提供，管理员开启且配置了嵌入模型时可用），返回的章节与书籍再按当前用户的可见性与内容门禁过滤；没有可用能力时各接口返回空列表。
+- **索引**：开启后为所有公开书籍建立问答分块的向量索引（巡检补齐；公开书籍的章节发布或修改后约 2 分钟重建，连续修改只重建一次），并为每本书、每个章节保存分块向量的均值。向量化为系统调用（功能 `qa.index`）。
+- **检索**：先用书籍向量选出最相关的 20 本读者可读的书，再在这些书中按分块相似度取每章最相关的一处（未解锁的付费章节不参与）。搜索词的向量化为系统调用（功能 `qa.search`），相同搜索词复用向量。
+- **相关推荐**：相关书籍比较书籍向量（不含同一作品的其他语言/版本，只推荐公开书籍）；相关章节先选相关的书（含本书），再比较章节向量。相似度低于 0.2 的不推荐。书籍详情页优先展示相关书籍，没有时回退到同标签书籍。
+
+| 方法 | 路径 | 说明 | 权限 |
+| --- | --- | --- | --- |
+| GET | `/search/semantic?q=&book=` | `{available, items[]{id, book_id, book_slug, book_title, doc_slug, title, heading, anchor, excerpt, score}, error?}`（`q` ≤ 100 字；`book` 为书籍访问路径时限定在该书）；搜索页在关键词结果之后单独加载，只显示关键词结果中没有的章节 | 公开（按可见性过滤） |
+| GET | `/books/:id/related?limit=` | 内容相近的公开书籍 `{items: Book[]}`（默认 3，最多 12） | 书籍可读 |
+| GET | `/documents/:id/related?limit=` | 内容相近的已发布章节 `{items[]{id, title, slug, book_id, book_slug, book_title}}`（默认 5，最多 12；只含标题，付费章节同样可以推荐） | 章节可读 |
 
 ## 站内通知（登录用户）
 

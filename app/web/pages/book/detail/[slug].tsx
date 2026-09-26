@@ -85,9 +85,11 @@ export const getServerSideProps: GetServerSideProps<BookDetailProps> = async ({ 
     return { notFound: true }
   }
 
-  // 你可能也喜欢：同标签的其它公开书籍
+  // 你可能也喜欢：优先内容相近的书（站点开启语义检索时），否则同标签的其它公开书籍
+  const semantic = await serverApi<{ items: Book[] }>(`/books/${first.book.id}/related`, { headers: auth, params: { limit: 3 } })
+    .then((d) => d.items || []).catch(() => [] as Book[])
   const tagSlug = first.book.tags?.[0]?.slug
-  const related = tagSlug
+  const related = semantic.length > 0 ? semantic : tagSlug
     ? await serverApi<Book[]>(`/tags/${encodeURIComponent(tagSlug)}/books`, { params: { page_size: 6 } })
         .then((d) => (d as unknown as { items?: Book[] }).items || []).catch(() => [] as Book[])
     : []

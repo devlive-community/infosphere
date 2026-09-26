@@ -46,8 +46,8 @@ func init() {
 		Kind:        plugins.KindFeature,
 		Builtin:     true,
 		EnabledKey:  cfgEnabled,
-		Models:      []any{&Chunk{}, &IndexState{}, &Ask{}, &Question{}, &Answer{}},
-		Tables:      []string{"qa_answers", "qa_questions", "qa_asks", "qa_index_states", "qa_chunks"},
+		Models:      []any{&Chunk{}, &IndexState{}, &Ask{}, &Question{}, &Answer{}, &BookVector{}, &DocVector{}},
+		Tables:      []string{"qa_doc_vectors", "qa_book_vectors", "qa_answers", "qa_questions", "qa_asks", "qa_index_states", "qa_chunks"},
 		AdminPerms:  []authz.Permission{PermManage},
 		UserPerms:   []authz.Permission{PermUse},
 	})
@@ -57,8 +57,12 @@ func init() {
 		if core.PluginEnabled(plugins.KeyQA) {
 			sweepInterruptedAsks(core)
 			purgeExpiredTraces(core)
+			if b := (&behavior{core: core}); b.semanticAvailable() {
+				b.enqueueStaleIndexes(context.Background())
+			}
 		}
 	})
+	registerSemantic()
 	plugincore.RegisterJob(indexJobType, func(core plugincore.Core) func(ctx context.Context, raw json.RawMessage) error {
 		return (&behavior{core: core}).runEmbedJob
 	})

@@ -6,6 +6,7 @@ import { EmptyState, Input, Button, DatePicker, Select, Pagination, SegmentedTab
 import Seo from '@/components/Seo'
 import BookCard from '@/components/BookCard'
 import HighlightText from '@/components/HighlightText'
+import SemanticResults from '@/components/SemanticResults'
 import { BookIcon, FileTextIcon, SearchIcon } from '@/components/icons'
 import { useEffect, useState, FormEvent } from 'react'
 import { useRouter } from 'next/router'
@@ -218,6 +219,10 @@ export default function SearchPage({ site, q, filters, tags, result }: InferGetS
                   ))}
                 </div>
               </section>
+            )}
+
+            {q && filters.type !== 'book' && result.page === 1 && (
+              <SemanticResults q={q} exclude={result.documents.map((d) => d.id)} />
             )}
 
             {q && result.total > 0 && (
