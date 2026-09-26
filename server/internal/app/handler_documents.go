@@ -304,6 +304,10 @@ func (a *App) CreateDocument(c *gin.Context) {
 	}
 	if wantPublish {
 		doc.PublishHeld = a.tryPublishDocument(book, &doc, u.ID)
+		// 创建即发布同样是章节首次发布（被审核拦截的在审核通过时再触发）
+		if doc.PublishHeld == "" {
+			plugincore.FireChapterPublished(a, book, &doc)
+		}
 	}
 	a.emitActivity(u.ID, "document.created", "document", strconv.FormatUint(uint64(doc.ID), 10), fmt.Sprintf("document.created:%d", doc.ID))
 	ok(c, doc)

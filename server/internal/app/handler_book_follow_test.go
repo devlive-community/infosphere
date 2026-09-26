@@ -49,6 +49,7 @@ func TestBookFollowAndUpdateNotification(t *testing.T) {
 		}
 	}
 	r.PUT("/documents/:id", app.RequireAuth(), app.UpdateDocument)
+	r.POST("/books/:id/documents", app.RequireAuth(), app.CreateDocument)
 
 	call := func(method, path, body, token string) (int, map[string]any) {
 		rec := httptest.NewRecorder()
@@ -80,6 +81,14 @@ func TestBookFollowAndUpdateNotification(t *testing.T) {
 	db.Model(&models.Notification{}).Where("user_id = ? AND type = ?", follower.ID, "book_update").Count(&notifCount)
 	if notifCount != 1 {
 		t.Fatalf("关注者应收到 1 条更新通知，实际 %d", notifCount)
+	}
+	// 创建时直接发布同样是首次发布，也要通知
+	if st, p := call(http.MethodPost, fmt.Sprintf("/books/%d/documents", book.ID), `{"title":"第二章","content":"正文","status":"published"}`, authorToken); st != http.StatusOK {
+		t.Fatalf("创建并发布章节失败: %d %v", st, p)
+	}
+	db.Model(&models.Notification{}).Where("user_id = ? AND type = ?", follower.ID, "book_update").Count(&notifCount)
+	if notifCount != 2 {
+		t.Fatalf("创建即发布的章节也应通知关注者，实际 %d 条", notifCount)
 	}
 
 	if st, p := call(http.MethodDelete, fmt.Sprintf("/books/%d/follow", book.ID), "", followerToken); st != http.StatusOK || p["data"].(map[string]any)["following"] != false {
